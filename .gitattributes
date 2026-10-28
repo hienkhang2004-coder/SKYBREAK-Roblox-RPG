@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.bat text eol=crlf
+*.rbxl binary
+*.rbxlx binary
+*.part01 binary
+*.part02 binary
+*.part03 binary
+*.part04 binary
+*.wav binary
+*.png binary
+*.jpg binary
+*.blend binary
+*.fbx binary
