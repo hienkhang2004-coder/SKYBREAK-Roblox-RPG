@@ -7,10 +7,7 @@
 __pycache__/
 *.pyc
 
-# Ignore raw >100MB files so standard GitHub (free tier without Git LFS) accepts push cleanly
-# Note: 04_Roblox/SKYBREAK_Playable_v12_PremiumUI.rbxl (79.6 MB) and
-# 04_Roblox/rbxlx_parts/*.part* (<80 MB each + restore_rbxlx.bat) ARE tracked!
-04_Roblox/SKYBREAK_Playable_v12_PremiumUI.rbxlx
+# Track 04_Roblox/SKYBREAK_Playable_v12_PremiumUI.rbxlx via Git LFS (+ rbxlx_parts/*.part* fallback)
 06_Antigravity_Work/SKYBREAK_Playable_v12_PremiumUI.rbxlx
 02_Blender/
 02_Blender_Files/
