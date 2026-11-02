@@ -160,21 +160,43 @@ function M.BuildExpansionWeaponModel(assetName, rawItemId, isLeftHand, lowFX)
         for i = -1, 3 do
             addRelPart(relParts, makePart(model, 'ShaftGoldRing_' .. i, Vector3.new(0.14, 0.22, 0.22), PAL.Gold, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0, i * 0.85, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
         end
+        -- Shaft fluting detail — thin ivory ridge lines along the pole
+        for _, sgn in ipairs({ -1, 1 }) do
+            addRelPart(relParts, makePart(model, 'ShaftFlute_' .. sgn, Vector3.new(0.04, 4.2, 0.04), PAL.Gold, Enum.PartType.Block, 0.06, 'Part', Enum.Material.Metal, 0.20), CFrame.new(0, 1.4, sgn * 0.06))
+        end
         -- Pommel sun-ring
         addRelPart(relParts, makePart(model, 'HalberdPommelRing', Vector3.new(0.10, 0.48, 0.48), PAL.Gold, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0, -1.05, 0) * CFrame.Angles(0, math.pi * 0.5, 0))
+        -- Pommel sun gem
+        addRelPart(relParts, makePart(model, 'HalberdPommelSunGem', Vector3.new(0.18, 0.18, 0.18), PAL.Solar, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -1.05, 0))
+        -- Rain guard disc above grip
+        addRelPart(relParts, makePart(model, 'HalberdRainGuard', Vector3.new(0.06, 0.34, 0.34), PAL.Gold, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0, 0.55, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
         -- Solar Crossguard & Diamond Sun-Core
         local core = addRelPart(relParts, makePart(model, 'SolarSunCore', Vector3.new(0.38, 0.52, 0.26), PAL.Solar, Enum.PartType.Block, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 3.35, 0) * CFrame.Angles(0, 0, math.pi * 0.25), 'PulseGlow', 0)
         addSafePointLight(core, PAL.Gold, 1.05, 9)
         addAmbientMotes(core, 'SunshardMotes', PAL.Gold, PAL.Solar, 9, 0.15, NumberRange.new(0.8, 2.0), Vector3.new(0, 1.8, 0), lowFX)
+        -- Solar rune engravings around crossguard
+        for r = 1, 3 do
+            local rAng = (r - 1) * (math.pi * 2 / 3)
+            addRelPart(relParts, makePart(model, 'SolarRuneStrip_' .. r, Vector3.new(0.04, 0.32, 0.06), PAL.Solar, Enum.PartType.Block, 0.06, 'Part', Enum.Material.Neon, 0), CFrame.new(math.cos(rAng) * 0.18, 3.35, math.sin(rAng) * 0.18) * CFrame.Angles(0, -rAng, 0))
+        end
         -- Spinning Solar Halo around Halberd head
         addRelPart(relParts, makePart(model, 'SolarHalberdHalo', Vector3.new(0.08, 1.38, 1.38), PAL.Gold, Enum.PartType.Cylinder, 0.18, 'Part', Enum.Material.ForceField, 0), CFrame.new(0, 3.55, 0) * CFrame.Angles(0, math.pi * 0.5, 0), 'SpinZ', 0)
         -- Main Spear Tip + Twin Crescent Halberd Axes
         addRelPart(relParts, makePart(model, 'HalberdSpearTip', Vector3.new(0.14, 1.65, 0.34), PAL.Gold, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.18), CFrame.new(0, 4.45, 0))
         addRelPart(relParts, makePart(model, 'HalberdSpearEdge', Vector3.new(0.08, 1.50, 0.20), PAL.HotWhite, Enum.PartType.Block, 0.05, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, 4.48, -0.08))
+        -- Spear tip fuller groove
+        addRelPart(relParts, makePart(model, 'HalberdSpearFuller', Vector3.new(0.04, 1.25, 0.08), PAL.Solar, Enum.PartType.Block, 0.08, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 4.35, 0.02))
+        -- Blade tip mote emitter
+        addAmbientMotes(makePart(model, 'HalberdTipMoteAnchor', Vector3.new(0.08, 0.08, 0.08), PAL.Gold, Enum.PartType.Block, 1, 'Part', Enum.Material.SmoothPlastic, 0), 'SunshardTipMotes', PAL.Solar, PAL.Gold, 5, 0.10, NumberRange.new(0.5, 1.2), Vector3.new(0, 2.0, 0), lowFX)
+        addRelPart(relParts, model:FindFirstChild('HalberdTipMoteAnchor'), CFrame.new(0, 5.25, 0))
         for _, sgn in ipairs({ -1, 1 }) do
             local scaleW = sgn > 0 and 0.88 or 0.58
             addRelPart(relParts, makePart(model, 'CrescentWing_' .. sgn, Vector3.new(0.12, 1.42, scaleW), PAL.Gold, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.16), CFrame.new(0, 3.55, -sgn * (scaleW * 0.48)) * CFrame.Angles(0, sgn > 0 and 0 or math.pi, 0))
             addRelPart(relParts, makePart(model, 'CrescentEdge_' .. sgn, Vector3.new(0.07, 1.32, scaleW * 0.45), PAL.Solar, Enum.PartType.Block, 0.06, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, 3.55, -sgn * (scaleW * 0.78)) * CFrame.Angles(0, sgn > 0 and 0 or math.pi, 0))
+            -- Crescent wing spine ridge
+            addRelPart(relParts, makePart(model, 'CrescentSpineRidge_' .. sgn, Vector3.new(0.04, 1.12, 0.06), PAL.Ivory, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.14), CFrame.new(0, 3.55, -sgn * (scaleW * 0.30)) * CFrame.Angles(0, sgn > 0 and 0 or math.pi, 0))
+            -- Crescent inlaid gem
+            addRelPart(relParts, makePart(model, 'CrescentGem_' .. sgn, Vector3.new(0.15, 0.15, 0.15), PAL.Solar, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 3.85, -sgn * (scaleW * 0.35)))
         end
 
     elseif id == 'cyber_katana_mk2' then
@@ -184,11 +206,21 @@ function M.BuildExpansionWeaponModel(assetName, rawItemId, isLeftHand, lowFX)
         for i = 1, 4 do
             addRelPart(relParts, makePart(model, 'TsukaDiamond_' .. i, Vector3.new(0.16, 0.12, 0.12), PAL.Cyan, Enum.PartType.Block, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -0.72 + i * 0.22, 0) * CFrame.Angles(0.78, 0, 0))
         end
+        -- Leather wrap texture rings on hilt
+        for w = 1, 3 do
+            addRelPart(relParts, makePart(model, 'TsukaWrapRing_' .. w, Vector3.new(0.16, 0.04, 0.24), PAL.Slate, Enum.PartType.Block, 0, 'Part', Enum.Material.Fabric, 0), CFrame.new(0, -0.70 + w * 0.28, 0))
+        end
+        -- Pommel data-port cylinder
+        addRelPart(relParts, makePart(model, 'KatanaPommelPort', Vector3.new(0.12, 0.22, 0.22), PAL.Cyan, Enum.PartType.Cylinder, 0.08, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -0.90, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
         -- Hexagonal Cyber Tsuba Guard + Power Conduit
         local tsuba = addRelPart(relParts, makePart(model, 'KatanaHexTsuba', Vector3.new(0.14, 0.58, 0.58), PAL.Slate, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.16), CFrame.new(0, 0.42, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
         local tsubaRim = addRelPart(relParts, makePart(model, 'KatanaTsubaGlow', Vector3.new(0.10, 0.64, 0.64), PAL.Cyan, Enum.PartType.Cylinder, 0.12, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 0.42, 0) * CFrame.Angles(0, 0, math.pi * 0.5), 'PulseGlow', 0)
         addSafePointLight(tsubaRim, PAL.Cyan, 1.0, 9)
         addAmbientMotes(tsuba, 'QuantumBladeSparks', PAL.Cyan, PAL.Violet, 10, 0.13, NumberRange.new(1.0, 2.4), Vector3.new(0, 2.2, 0), lowFX)
+        -- Tsuba power conduit lines
+        for _, sgn in ipairs({ -1, 1 }) do
+            addRelPart(relParts, makePart(model, 'TsubaPowerConduit_' .. sgn, Vector3.new(0.04, 0.06, 0.32), PAL.Cyan, Enum.PartType.Block, 0.06, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 0.42, sgn * 0.15))
+        end
         -- Dark Titanium Spine + High-Frequency Cyan Plasma Edge (3 slightly curved segments)
         for seg = 1, 3 do
             local yPos = 0.55 + (seg - 0.5) * 1.28
@@ -196,99 +228,236 @@ function M.BuildExpansionWeaponModel(assetName, rawItemId, isLeftHand, lowFX)
             local zOff = -0.02 * seg * seg
             addRelPart(relParts, makePart(model, 'KatanaSpine_' .. seg, Vector3.new(0.08, 1.32, 0.18), PAL.Obsidian, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0, yPos, zOff + 0.05) * CFrame.Angles(pitch, 0, 0))
             addRelPart(relParts, makePart(model, 'KatanaPlasmaEdge_' .. seg, Vector3.new(0.05, 1.32, 0.12), PAL.Cyan, Enum.PartType.Block, 0.04, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, yPos, zOff - 0.08) * CFrame.Angles(pitch, 0, 0))
+            -- Fuller groove on each spine segment
+            addRelPart(relParts, makePart(model, 'KatanaFuller_' .. seg, Vector3.new(0.04, 1.10, 0.05), PAL.Slate, Enum.PartType.Block, 0.10, 'Part', Enum.Material.Metal, 0.22), CFrame.new(0, yPos, zOff + 0.02) * CFrame.Angles(pitch, 0, 0))
+            -- Circuit trace engraving neon strip
+            addRelPart(relParts, makePart(model, 'KatanaCircuitTrace_' .. seg, Vector3.new(0.04, 0.85, 0.04), PAL.Cyan, Enum.PartType.Block, 0.08, 'Part', Enum.Material.Neon, 0), CFrame.new(0.04, yPos + 0.08, zOff + 0.06) * CFrame.Angles(pitch, 0, 0.12))
         end
+        -- Kissaki blade tip accent
+        addRelPart(relParts, makePart(model, 'KatanaKissaki', Vector3.new(0.06, 0.38, 0.14), PAL.Cyan, Enum.PartType.Block, 0.04, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, 4.48, -0.32))
+        -- Blade tip mote emitter
+        addAmbientMotes(makePart(model, 'KatanaTipMoteAnchor', Vector3.new(0.06, 0.06, 0.06), PAL.Cyan, Enum.PartType.Block, 1, 'Part', Enum.Material.SmoothPlastic, 0), 'CyberTipMotes', PAL.Cyan, PAL.Violet, 4, 0.08, NumberRange.new(0.6, 1.4), Vector3.new(0, 1.6, 0), lowFX)
+        addRelPart(relParts, model:FindFirstChild('KatanaTipMoteAnchor'), CFrame.new(0, 4.55, -0.35))
 
     elseif id == 'sylvaris_thornblade' then
         boxSpanY = 5.2
         -- Living Heartwood Hilt & Golden Root Pommel
         addRelPart(relParts, makePart(model, 'SylvarisGrip', Vector3.new(1.25, 0.18, 0.18), PAL.Walnut, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.SmoothPlastic, 0.04), CFrame.new(0, -0.25, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
         addRelPart(relParts, makePart(model, 'SylvarisPommelGem', Vector3.new(0.28, 0.28, 0.28), PAL.Emerald, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -0.92, 0))
+        -- Bark-texture grip rings
+        for b = 1, 4 do
+            addRelPart(relParts, makePart(model, 'SylvarisBarkRing_' .. b, Vector3.new(0.08, 0.22, 0.22), PAL.Walnut, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Slate, 0.04), CFrame.new(0, -0.68 + b * 0.22, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        end
+        -- Root tendril pommel wrap
+        for _, sgn in ipairs({ -1, 1 }) do
+            addRelPart(relParts, makePart(model, 'SylvarisRootTendril_' .. sgn, Vector3.new(0.06, 0.42, 0.06), PAL.Walnut, Enum.PartType.Block, 0, 'Part', Enum.Material.SmoothPlastic, 0.04), CFrame.new(sgn * 0.08, -0.78, 0) * CFrame.Angles(0, 0, sgn * 0.35))
+        end
         -- Golden Stag-Antler Crossguard + Heartwood Core
         local guardCore = addRelPart(relParts, makePart(model, 'SylvarisHeartGem', Vector3.new(0.32, 0.42, 0.32), PAL.Emerald, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 0.48, 0), 'PulseGlow', 0)
         addSafePointLight(guardCore, PAL.Emerald, 1.05, 9)
         addAmbientMotes(guardCore, 'SylvarisLeafMotes', PAL.Emerald, PAL.Jade, 10, 0.16, NumberRange.new(0.7, 1.8), Vector3.new(0, 1.4, 0), lowFX)
         for _, sgn in ipairs({ -1, 1 }) do
             addRelPart(relParts, makePart(model, 'AntlerGuard_' .. sgn, Vector3.new(0.14, 0.85, 0.22), PAL.Gold, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.16), CFrame.new(0, 0.62, -sgn * 0.48) * CFrame.Angles(sgn * 0.65, 0, 0))
+            -- Secondary antler tine
+            addRelPart(relParts, makePart(model, 'AntlerTine_' .. sgn, Vector3.new(0.08, 0.42, 0.12), PAL.Gold, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.16), CFrame.new(0, 0.88, -sgn * 0.32) * CFrame.Angles(sgn * 0.95, 0, 0))
         end
         -- Living Wood Spine + Sculpted Emerald Crystal Greatsaber Blade
         addRelPart(relParts, makePart(model, 'HeartwoodSpine', Vector3.new(0.14, 3.65, 0.24), PAL.Walnut, Enum.PartType.Block, 0, 'Part', Enum.Material.SmoothPlastic, 0.04), CFrame.new(0, 2.35, 0.08))
         addRelPart(relParts, makePart(model, 'EmeraldCrystalBlade', Vector3.new(0.10, 3.85, 0.42), PAL.Emerald, Enum.PartType.Block, 0.08, 'WedgePart', Enum.Material.Glass, 0.12), CFrame.new(0, 2.45, -0.16))
         addRelPart(relParts, makePart(model, 'JadeCoreVein', Vector3.new(0.06, 3.55, 0.14), PAL.Jade, Enum.PartType.Block, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 2.38, -0.04))
+        -- Thorn growths along blade spine
+        for t = 1, 4 do
+            local tSgn = (t % 2 == 0) and 1 or -1
+            addRelPart(relParts, makePart(model, 'BladeThorn_' .. t, Vector3.new(0.06, 0.28, 0.10), PAL.Walnut, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.SmoothPlastic, 0.04), CFrame.new(tSgn * 0.06, 1.25 + t * 0.65, 0.16) * CFrame.Angles(0, 0, tSgn * 0.55))
+        end
+        -- Emerald shard inlays along blade
+        for s = 1, 3 do
+            addRelPart(relParts, makePart(model, 'EmeraldShardInlay_' .. s, Vector3.new(0.16, 0.16, 0.16), PAL.Emerald, Enum.PartType.Ball, 0.06, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 1.45 + s * 0.85, -0.12))
+        end
+        -- Leaf-mote emitter at blade tip
+        addAmbientMotes(makePart(model, 'SylvarisTipMoteAnchor', Vector3.new(0.06, 0.06, 0.06), PAL.Emerald, Enum.PartType.Block, 1, 'Part', Enum.Material.SmoothPlastic, 0), 'ThornTipMotes', PAL.Jade, PAL.Emerald, 4, 0.10, NumberRange.new(0.5, 1.2), Vector3.new(0, 1.2, 0), lowFX)
+        addRelPart(relParts, model:FindFirstChild('SylvarisTipMoteAnchor'), CFrame.new(0, 4.45, -0.10))
 
     elseif id == 'ignivar_magma_breaker' then
         boxSpanY = 5.5
         -- Heavy Brass & Obsidian Hilt
         addRelPart(relParts, makePart(model, 'MagmaHilt', Vector3.new(1.35, 0.22, 0.22), PAL.Obsidian, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.10), CFrame.new(0, -0.30, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        -- Brass grip bands
+        for gb = 1, 3 do
+            addRelPart(relParts, makePart(model, 'MagmaGripBand_' .. gb, Vector3.new(0.08, 0.26, 0.26), PAL.Gold, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0, -0.72 + gb * 0.28, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        end
+        -- Heavy brass pommel cap
+        addRelPart(relParts, makePart(model, 'MagmaPommelCap', Vector3.new(0.10, 0.32, 0.32), PAL.Gold, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0, -1.0, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        addRelPart(relParts, makePart(model, 'MagmaPommelGem', Vector3.new(0.20, 0.20, 0.20), PAL.Magma, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -1.0, 0))
         -- Twin Dragon-Horn Furnace Guard
         local furnace = addRelPart(relParts, makePart(model, 'IgnivarFurnaceCore', Vector3.new(0.38, 0.48, 0.56), PAL.Magma, Enum.PartType.Block, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 0.55, 0), 'PulseGlow', 0)
         addSafePointLight(furnace, PAL.Magma, 1.12, 10)
         addAmbientMotes(furnace, 'MagmaBreakerEmbers', PAL.Magma, PAL.Gold, 12, 0.17, NumberRange.new(1.0, 2.6), Vector3.new(0, 2.8, 0), lowFX)
+        -- Furnace grate detail bars
+        for g = 1, 2 do
+            addRelPart(relParts, makePart(model, 'FurnaceGrateBar_' .. g, Vector3.new(0.04, 0.38, 0.48), PAL.Obsidian, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.08), CFrame.new(0, 0.55, 0) * CFrame.Angles(0, (g - 1) * (math.pi * 0.5), 0))
+        end
         for _, sgn in ipairs({ -1, 1 }) do
             addRelPart(relParts, makePart(model, 'DragonGuardHorn_' .. sgn, Vector3.new(0.24, 0.92, 0.32), PAL.Gold, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.15), CFrame.new(0, 0.68, -sgn * 0.56) * CFrame.Angles(sgn * 0.72, 0, 0))
+            -- Dragon horn tip neon accent
+            addRelPart(relParts, makePart(model, 'DragonHornTip_' .. sgn, Vector3.new(0.06, 0.22, 0.12), PAL.Magma, Enum.PartType.Block, 0.06, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, 1.08, -sgn * 0.72) * CFrame.Angles(sgn * 0.72, 0, 0))
         end
         -- Colossal Tectonic Obsidian Slab + 4 Glowing Molten Magma Fissures
         addRelPart(relParts, makePart(model, 'ObsidianSlabLeft', Vector3.new(0.22, 3.85, 0.38), PAL.Obsidian, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Slate, 0), CFrame.new(0, 2.65, -0.24))
         addRelPart(relParts, makePart(model, 'ObsidianSlabRight', Vector3.new(0.22, 3.85, 0.38), PAL.Obsidian, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Slate, 0), CFrame.new(0, 2.65, 0.24) * CFrame.Angles(0, math.pi, 0))
         addRelPart(relParts, makePart(model, 'MoltenMagmaCoreChannel', Vector3.new(0.16, 3.95, 0.28), PAL.Magma, Enum.PartType.Block, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 2.68, 0), 'PulseGlow', 0.8)
+        -- Obsidian slab beveled edge ridges
+        for _, sgn in ipairs({ -1, 1 }) do
+            addRelPart(relParts, makePart(model, 'ObsidianBevel_' .. sgn, Vector3.new(0.06, 3.55, 0.08), PAL.Slate, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.08), CFrame.new(0.08, 2.65, sgn * 0.38))
+        end
         for i = 1, 4 do
             local sgn = (i % 2 == 0) and 1 or -1
             addRelPart(relParts, makePart(model, 'MagmaTooth_' .. i, Vector3.new(0.14, 0.42, 0.28), PAL.Solar, Enum.PartType.Block, 0.04, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, 1.15 + i * 0.72, sgn * 0.36) * CFrame.Angles(0, sgn > 0 and math.pi or 0, 0))
         end
+        -- Magma rune engravings along blade
+        for mr = 1, 3 do
+            addRelPart(relParts, makePart(model, 'MagmaRuneStrip_' .. mr, Vector3.new(0.04, 0.48, 0.06), PAL.Solar, Enum.PartType.Block, 0.06, 'Part', Enum.Material.Neon, 0), CFrame.new(0.10, 1.55 + mr * 0.82, 0))
+        end
+        -- Tip ember mote emitter
+        addAmbientMotes(makePart(model, 'MagmaTipMoteAnchor', Vector3.new(0.08, 0.08, 0.08), PAL.Magma, Enum.PartType.Block, 1, 'Part', Enum.Material.SmoothPlastic, 0), 'MagmaTipEmbers', PAL.Solar, PAL.Magma, 5, 0.12, NumberRange.new(0.8, 2.0), Vector3.new(0, 3.0, 0), lowFX)
+        addRelPart(relParts, model:FindFirstChild('MagmaTipMoteAnchor'), CFrame.new(0, 4.70, 0))
 
     elseif id == 'nerith_abyssal_trident' then
         boxSpanY = 5.7
         -- Spiral Abyssal Coral & Gold Shaft
         addRelPart(relParts, makePart(model, 'TridentShaft', Vector3.new(5.1, 0.16, 0.16), Color3.fromRGB(22, 58, 88), Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.14), CFrame.new(0, 1.55, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        -- Spiral coral wraps along shaft
+        for sw = 1, 5 do
+            local swAng = sw * 1.26
+            addRelPart(relParts, makePart(model, 'CoralSpiralWrap_' .. sw, Vector3.new(0.08, 0.24, 0.24), PAL.Cyan, Enum.PartType.Cylinder, 0.12, 'Part', Enum.Material.Glass, 0.06), CFrame.new(math.cos(swAng) * 0.04, -0.60 + sw * 0.62, math.sin(swAng) * 0.04) * CFrame.Angles(0, 0, math.pi * 0.5))
+        end
+        -- Deep-sea coral pommel
+        addRelPart(relParts, makePart(model, 'TridentCoralPommel', Vector3.new(0.22, 0.22, 0.22), PAL.Cyan, Enum.PartType.Ball, 0.08, 'Part', Enum.Material.Glass, 0.06), CFrame.new(0, -1.0, 0))
         -- Sea-Dragon Pearl Collar + Orbiting Water Ring
         local pearl = addRelPart(relParts, makePart(model, 'AbyssalPearlCore', Vector3.new(0.42, 0.42, 0.42), PAL.Cyan, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 3.35, 0), 'PulseGlow', 0)
         addSafePointLight(pearl, PAL.Cyan, 1.05, 9)
         addAmbientMotes(pearl, 'AbyssalTideMotes', PAL.Cyan, PAL.Ice, 10, 0.15, NumberRange.new(0.8, 2.0), Vector3.new(0, 1.8, 0), lowFX)
         addRelPart(relParts, makePart(model, 'TridentWaterHalo', Vector3.new(0.08, 1.28, 1.28), PAL.Cyan, Enum.PartType.Cylinder, 0.22, 'Part', Enum.Material.ForceField, 0), CFrame.new(0, 3.35, 0) * CFrame.Angles(0.35, 0, math.pi * 0.5), 'SpinY', 0)
+        -- Inner water ring (counter-rotating)
+        addRelPart(relParts, makePart(model, 'TridentInnerWaterRing', Vector3.new(0.06, 0.88, 0.88), PAL.Ice, Enum.PartType.Cylinder, 0.18, 'Part', Enum.Material.ForceField, 0), CFrame.new(0, 3.35, 0) * CFrame.Angles(-0.35, 0, math.pi * 0.5), 'SpinZ', 0.6)
         -- 3 Bioluminescent Serrated Prongs
         addRelPart(relParts, makePart(model, 'TridentCrossBar', Vector3.new(0.18, 0.22, 1.26), PAL.Gold, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0, 3.42, 0))
+        -- Crossbar decorative end caps
+        for _, sgn in ipairs({ -1, 1 }) do
+            addRelPart(relParts, makePart(model, 'CrossBarEndCap_' .. sgn, Vector3.new(0.16, 0.16, 0.16), PAL.Gold, Enum.PartType.Ball, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0, 3.42, sgn * 0.62))
+        end
         for p = -1, 1 do
             local h = (p == 0) and 1.95 or 1.55
             local col = (p == 0) and PAL.Cyan or PAL.Gold
             addRelPart(relParts, makePart(model, 'TridentProng_' .. p, Vector3.new(0.12, h, 0.22), col, Enum.PartType.Block, 0.04, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, 3.45 + h * 0.5, p * 0.52) * CFrame.Angles(-p * 0.08, 0, 0))
+            -- Prong serration barbs
+            addRelPart(relParts, makePart(model, 'ProngBarb_' .. p, Vector3.new(0.06, 0.22, 0.10), PAL.Gold, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.14), CFrame.new(0, 3.75 + h * 0.25, p * 0.52 + (p == 0 and 0.12 or 0)) * CFrame.Angles(-p * 0.20, 0, 0))
+            -- Bioluminescent vein on each prong
+            addRelPart(relParts, makePart(model, 'ProngBioVein_' .. p, Vector3.new(0.04, h * 0.7, 0.04), PAL.Cyan, Enum.PartType.Block, 0.08, 'Part', Enum.Material.Neon, 0), CFrame.new(0.04, 3.55 + h * 0.35, p * 0.52) * CFrame.Angles(-p * 0.08, 0, 0))
+        end
+        -- Abyssal rune engravings on shaft
+        for ar = 1, 2 do
+            addRelPart(relParts, makePart(model, 'AbyssalRuneStrip_' .. ar, Vector3.new(0.04, 0.55, 0.06), PAL.Cyan, Enum.PartType.Block, 0.06, 'Part', Enum.Material.Neon, 0), CFrame.new(0.06, 1.2 + ar * 0.85, 0))
         end
 
     elseif id == 'aion_chrono_scythe' then
         boxSpanY = 5.6
         -- Curved Nebula & Gold Scythe Snath
         addRelPart(relParts, makePart(model, 'ChronoScytheShaft', Vector3.new(5.2, 0.16, 0.16), Color3.fromRGB(36, 26, 68), Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.14), CFrame.new(0, 1.65, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        -- Gold decorative shaft rings
+        for cr = 1, 4 do
+            addRelPart(relParts, makePart(model, 'ChronoShaftRing_' .. cr, Vector3.new(0.10, 0.22, 0.22), PAL.Gold, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.20), CFrame.new(0, -0.20 + cr * 0.72, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        end
+        -- Chrono pommel hourglass
+        addRelPart(relParts, makePart(model, 'ChronoPommelTop', Vector3.new(0.08, 0.18, 0.18), PAL.Chrono, Enum.PartType.Cylinder, 0.08, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -0.90, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        addRelPart(relParts, makePart(model, 'ChronoPommelBot', Vector3.new(0.08, 0.18, 0.18), PAL.Chrono, Enum.PartType.Cylinder, 0.08, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -1.10, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        addRelPart(relParts, makePart(model, 'ChronoPommelWaist', Vector3.new(0.04, 0.10, 0.10), PAL.Gold, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.20), CFrame.new(0, -1.0, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
         -- Spinning Golden Clockwork Astrolabe Collar + Counter-Rotating Clock Hands!
         local clockWheel = addRelPart(relParts, makePart(model, 'ScytheAstrolabeWheel', Vector3.new(0.10, 1.45, 1.45), PAL.Gold, Enum.PartType.Cylinder, 0.08, 'Part', Enum.Material.Metal, 0.20), CFrame.new(0, 3.85, 0) * CFrame.Angles(0, math.pi * 0.5, 0), 'SpinX', 0)
         addRelPart(relParts, makePart(model, 'ScytheClockHandHour', Vector3.new(0.12, 0.58, 0.08), PAL.Cyan, Enum.PartType.Block, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 3.85, 0), 'SpinXFast', 0)
+        -- Minute hand (counter-rotating)
+        addRelPart(relParts, makePart(model, 'ScytheClockHandMinute', Vector3.new(0.10, 0.42, 0.06), PAL.Chrono, Enum.PartType.Block, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 3.85, 0) * CFrame.Angles(0, 0, math.pi * 0.5), 'SpinZ', 0.4)
         addSafePointLight(clockWheel, PAL.Chrono, 1.08, 10)
         addAmbientMotes(clockWheel, 'ChronoSandMotes', PAL.Chrono, PAL.Gold, 10, 0.15, NumberRange.new(0.7, 1.8), Vector3.new(0, 1.4, 0), lowFX)
+        -- Clock numerals as neon gem inlays around wheel
+        for n = 1, 4 do
+            local nAng = (n - 1) * (math.pi * 0.5)
+            addRelPart(relParts, makePart(model, 'ChronoNumeral_' .. n, Vector3.new(0.15, 0.15, 0.15), PAL.Chrono, Enum.PartType.Ball, 0.06, 'Part', Enum.Material.Neon, 0), CFrame.new(math.cos(nAng) * 0.55, 3.85, math.sin(nAng) * 0.55))
+        end
         -- Giant Crescent Astral Scythe Blade (Sweeping forward along -Z)
         addRelPart(relParts, makePart(model, 'ChronoCrescentSpine', Vector3.new(0.14, 0.34, 2.35), PAL.Gold, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.18), CFrame.new(0, 4.02, -1.05) * CFrame.Angles(0.22, 0, 0))
         addRelPart(relParts, makePart(model, 'ChronoCrescentEdge', Vector3.new(0.08, 0.28, 2.55), PAL.Chrono, Enum.PartType.Block, 0.05, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, 3.82, -1.18) * CFrame.Angles(0.28, 0, math.pi))
+        -- Blade fuller groove
+        addRelPart(relParts, makePart(model, 'ChronoCrescentFuller', Vector3.new(0.04, 0.22, 1.85), PAL.Chrono, Enum.PartType.Block, 0.10, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 3.95, -0.85) * CFrame.Angles(0.24, 0, 0))
+        -- Chrono rune strip along blade
+        addRelPart(relParts, makePart(model, 'ChronoBladeRuneStrip', Vector3.new(0.04, 0.18, 1.55), PAL.Gold, Enum.PartType.Block, 0.06, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 4.10, -0.72) * CFrame.Angles(0.22, 0, 0))
+        -- Scythe tip chrono mote emitter
+        addAmbientMotes(makePart(model, 'ChronoTipMoteAnchor', Vector3.new(0.06, 0.06, 0.06), PAL.Chrono, Enum.PartType.Block, 1, 'Part', Enum.Material.SmoothPlastic, 0), 'ChronoTipMotes', PAL.Chrono, PAL.Gold, 4, 0.10, NumberRange.new(0.5, 1.2), Vector3.new(0, 1.0, 0), lowFX)
+        addRelPart(relParts, model:FindFirstChild('ChronoTipMoteAnchor'), CFrame.new(0, 3.82, -2.35))
 
     elseif id == 'architect_severance' then
         boxSpanY = 5.5
         -- Sovereign Obsidian & Gold Hilt
         addRelPart(relParts, makePart(model, 'SeveranceHilt', Vector3.new(1.30, 0.18, 0.18), PAL.Obsidian, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.14), CFrame.new(0, -0.28, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        -- Hilt leather wrap rings
+        for hw = 1, 3 do
+            addRelPart(relParts, makePart(model, 'SeveranceWrapRing_' .. hw, Vector3.new(0.10, 0.22, 0.22), PAL.Slate, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Fabric, 0), CFrame.new(0, -0.70 + hw * 0.25, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        end
+        -- Sovereign pommel gem
+        addRelPart(relParts, makePart(model, 'SeverancePommelGem', Vector3.new(0.22, 0.22, 0.22), PAL.Crimson, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -0.95, 0))
         addRelPart(relParts, makePart(model, 'SeveranceCrossguard', Vector3.new(0.20, 0.28, 1.32), PAL.Gold, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.20), CFrame.new(0, 0.45, 0))
+        -- Crossguard filigree tips
+        for _, sgn in ipairs({ -1, 1 }) do
+            addRelPart(relParts, makePart(model, 'SeveranceFiligree_' .. sgn, Vector3.new(0.08, 0.18, 0.22), PAL.Gold, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.20), CFrame.new(0, 0.48, sgn * 0.72) * CFrame.Angles(0, sgn > 0 and 0 or math.pi, 0))
+        end
+        -- Crossguard inlaid gems
+        for _, sgn in ipairs({ -1, 1 }) do
+            addRelPart(relParts, makePart(model, 'SeveranceCrossGem_' .. sgn, Vector3.new(0.15, 0.15, 0.15), PAL.Gold, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 0.45, sgn * 0.48))
+        end
         -- Suspended Black-Hole Singularity Core + Counter-Rotating Accretion Rings
         local bhCore = addRelPart(relParts, makePart(model, 'SingularityBladeCore', Vector3.new(0.46, 0.46, 0.46), PAL.Obsidian, Enum.PartType.Ball, 0.02, 'Part', Enum.Material.SmoothPlastic, 0), CFrame.new(0, 1.85, 0), 'BobY', 0)
         local accRing = addRelPart(relParts, makePart(model, 'SingularityAccretionRing', Vector3.new(0.08, 1.15, 1.15), PAL.Crimson, Enum.PartType.Cylinder, 0.12, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 1.85, 0) * CFrame.Angles(0.45, 0, math.pi * 0.5), 'SpinY', 0)
+        -- Second accretion ring (counter-rotating, tilted)
+        addRelPart(relParts, makePart(model, 'SingularityAccretionRingB', Vector3.new(0.06, 0.88, 0.88), PAL.Gold, Enum.PartType.Cylinder, 0.16, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 1.85, 0) * CFrame.Angles(-0.65, 0, math.pi * 0.5), 'SpinZ', 0.5)
         addSafePointLight(accRing, PAL.Crimson, 1.15, 10)
         addAmbientMotes(accRing, 'SingularityBladeSparks', PAL.Crimson, PAL.Gold, 11, 0.16, NumberRange.new(0.9, 2.3), Vector3.new(0, 2.0, 0), lowFX)
         -- Split Twin Reality Blades flanking the singularity gap
         for _, sgn in ipairs({ -1, 1 }) do
             addRelPart(relParts, makePart(model, 'SplitRealityBlade_' .. sgn, Vector3.new(0.10, 3.85, 0.24), PAL.Obsidian, Enum.PartType.Block, 0, 'WedgePart', Enum.Material.Metal, 0.18), CFrame.new(0, 2.55, sgn * 0.28) * CFrame.Angles(0, sgn > 0 and math.pi or 0, 0))
             addRelPart(relParts, makePart(model, 'SplitCrimsonEdge_' .. sgn, Vector3.new(0.06, 3.75, 0.12), sgn > 0 and PAL.Crimson or PAL.Gold, Enum.PartType.Block, 0.04, 'WedgePart', Enum.Material.Neon, 0), CFrame.new(0, 2.55, sgn * 0.40) * CFrame.Angles(0, sgn > 0 and math.pi or 0, 0))
+            -- Blade spine ridge detail
+            addRelPart(relParts, makePart(model, 'SplitBladeSpineRidge_' .. sgn, Vector3.new(0.04, 3.45, 0.06), PAL.Slate, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.14), CFrame.new(0.04, 2.55, sgn * 0.22))
+            -- Rune engravings along blade
+            addRelPart(relParts, makePart(model, 'SplitBladeRuneStrip_' .. sgn, Vector3.new(0.04, 2.85, 0.04), sgn > 0 and PAL.Crimson or PAL.Gold, Enum.PartType.Block, 0.08, 'Part', Enum.Material.Neon, 0), CFrame.new(-0.04, 2.85, sgn * 0.30))
         end
+        -- Singularity gap distortion aura
+        addRelPart(relParts, makePart(model, 'SingularityGapAura', Vector3.new(0.04, 2.2, 0.52), PAL.Crimson, Enum.PartType.Block, 0.22, 'Part', Enum.Material.ForceField, 0), CFrame.new(0, 2.55, 0), 'PulseGlow', 0.3)
 
     elseif id == 'eternal_frost_staff' then
         boxSpanY = 5.6
         -- Silver-White Cryo-Chrono Archmage Shaft
         addRelPart(relParts, makePart(model, 'FrostStaffShaft', Vector3.new(5.0, 0.15, 0.15), PAL.Ivory, Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.16), CFrame.new(0, 1.50, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        -- Frost crystal shaft rings
+        for fr = 1, 4 do
+            addRelPart(relParts, makePart(model, 'FrostShaftRing_' .. fr, Vector3.new(0.08, 0.22, 0.22), PAL.Ice, Enum.PartType.Cylinder, 0.08, 'Part', Enum.Material.Glass, 0.12), CFrame.new(0, -0.30 + fr * 0.72, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        end
+        -- Frost pommel snowflake disc
+        addRelPart(relParts, makePart(model, 'FrostPommelDisc', Vector3.new(0.06, 0.36, 0.36), PAL.Ice, Enum.PartType.Cylinder, 0.06, 'Part', Enum.Material.Glass, 0.14), CFrame.new(0, -1.0, 0) * CFrame.Angles(0, 0, math.pi * 0.5))
+        addRelPart(relParts, makePart(model, 'FrostPommelGem', Vector3.new(0.18, 0.18, 0.18), PAL.Cyan, Enum.PartType.Ball, 0.04, 'Part', Enum.Material.Neon, 0), CFrame.new(0, -1.0, 0))
+        -- Frost rune engravings along shaft
+        for fe = 1, 3 do
+            addRelPart(relParts, makePart(model, 'FrostRuneStrip_' .. fe, Vector3.new(0.04, 0.48, 0.06), PAL.Ice, Enum.PartType.Block, 0.08, 'Part', Enum.Material.Neon, 0), CFrame.new(0.06, 0.60 + fe * 0.75, 0))
+        end
+        -- Archmage grip cage wrapping
+        for gc = 1, 2 do
+            addRelPart(relParts, makePart(model, 'FrostGripCage_' .. gc, Vector3.new(0.06, 0.65, 0.06), PAL.Gold, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.18), CFrame.new(0.06, -0.15, 0) * CFrame.Angles(0, (gc - 1) * (math.pi * 0.5), 0.18))
+        end
         -- Levitating Sapphire Diamond Core + 2 Counter-Rotating Glacial Armillary Rings
         local frostCore = addRelPart(relParts, makePart(model, 'EternalFrostCore', Vector3.new(0.42, 0.62, 0.42), PAL.Cyan, Enum.PartType.Block, 0.06, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 4.15, 0) * CFrame.Angles(0.78, 0, 0.78), 'SpinY', 0)
         addRelPart(relParts, makePart(model, 'GlacialArmillaryA', Vector3.new(0.08, 1.38, 1.38), PAL.Gold, Enum.PartType.Cylinder, 0.12, 'Part', Enum.Material.Metal, 0.20), CFrame.new(0, 4.15, 0) * CFrame.Angles(0.52, 0, math.pi * 0.5), 'SpinX', 0)
         addRelPart(relParts, makePart(model, 'GlacialArmillaryB', Vector3.new(0.08, 1.12, 1.12), PAL.Ice, Enum.PartType.Cylinder, 0.16, 'Part', Enum.Material.Neon, 0), CFrame.new(0, 4.15, 0) * CFrame.Angles(-0.52, 0, 0), 'SpinZ', 1.2)
+        -- Third armillary ring (smallest, gold, fast spin)
+        addRelPart(relParts, makePart(model, 'GlacialArmillaryC', Vector3.new(0.06, 0.78, 0.78), PAL.Gold, Enum.PartType.Cylinder, 0.18, 'Part', Enum.Material.Metal, 0.22), CFrame.new(0, 4.15, 0) * CFrame.Angles(1.20, 0, math.pi * 0.5), 'SpinY', 0.8)
         addSafePointLight(frostCore, PAL.Cyan, 1.05, 9)
         addAmbientMotes(frostCore, 'EternalFrostMotes', PAL.Ice, PAL.HotWhite, 10, 0.15, NumberRange.new(0.7, 1.8), Vector3.new(0, -1.2, 0), lowFX)
         -- 4 Levitating Icicle Crown Spires
@@ -296,6 +465,13 @@ function M.BuildExpansionWeaponModel(assetName, rawItemId, isLeftHand, lowFX)
             local ang = (i - 1) * (math.pi * 0.5)
             addRelPart(relParts, makePart(model, 'IcicleCrown_' .. i, Vector3.new(0.12, 0.68, 0.16), PAL.Ice, Enum.PartType.Block, 0.10, 'WedgePart', Enum.Material.Glass, 0.10), CFrame.new(math.cos(ang) * 0.58, 4.65, math.sin(ang) * 0.58) * CFrame.Angles(0, -ang, 0), 'BobY', i * 0.8)
         end
+        -- 4 Secondary shorter icicle shards (between the main crown spires)
+        for i = 1, 4 do
+            local ang = (i - 1) * (math.pi * 0.5) + (math.pi * 0.25)
+            addRelPart(relParts, makePart(model, 'IcicleShard_' .. i, Vector3.new(0.08, 0.42, 0.10), PAL.Ice, Enum.PartType.Block, 0.14, 'WedgePart', Enum.Material.Glass, 0.08), CFrame.new(math.cos(ang) * 0.45, 4.52, math.sin(ang) * 0.45) * CFrame.Angles(0, -ang, 0), 'BobY', i * 0.8 + 0.4)
+        end
+        -- Frost aura cylinder around crown
+        addRelPart(relParts, makePart(model, 'FrostCrownAura', Vector3.new(0.06, 1.05, 1.05), PAL.Ice, Enum.PartType.Cylinder, 0.22, 'Part', Enum.Material.ForceField, 0), CFrame.new(0, 4.35, 0) * CFrame.Angles(0, 0, math.pi * 0.5), 'SpinX', 1.5)
 
     -- ------------------------------------------------------------------------
     -- B. 7 EXPANSION RANGED GUNS & BOWS (SHEET 26)
