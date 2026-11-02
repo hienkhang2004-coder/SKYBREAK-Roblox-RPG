@@ -11,6 +11,9 @@ __pycache__/
 # Note: 04_Roblox/SKYBREAK_Playable_v12_PremiumUI.rbxl (79.6 MB) and
 # 04_Roblox/rbxlx_parts/*.part* (<80 MB each + restore_rbxlx.bat) ARE tracked!
 04_Roblox/SKYBREAK_Playable_v12_PremiumUI.rbxlx
-06_Antigravity_Work/SKYBREAK_Playable_v12_PremiumUI.rbxlx
+04_Roblox/src/
+06_Antigravity_Work/
 02_Blender/
 02_Blender_Files/
+02_Concept_Art/
+07_Audio_SFX/

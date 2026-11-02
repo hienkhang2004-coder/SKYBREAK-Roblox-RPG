@@ -1,0 +1,507 @@
+{
+  "version": "27x_9x_final_v1",
+  "notes": {
+    "main_maps_27x": ["GoldenSky", "FrozenCyber", "ShadowRealm"],
+    "expansion_worlds_9x": [
+      "SunshardSkySanctuary",
+      "WestGardenPirateBastion",
+      "CyberportCafeTradingHub",
+      "PermafrostGarrisonFortress",
+      "MicrochipAwakeningRaidLab",
+      "GlacialWreckageDangerSea",
+      "CastleOnTheVoidMansion",
+      "UmbralCrystalSanctumForest",
+      "TempleOfTheCoreRaceV4",
+      "MirageSkyIslandLeviathanAbyss"
+    ],
+    "deck_offset_y_for_all_10_9x_worlds": 0.0,
+    "deck_offset_y_shrines": {
+      "ZiolesGachaShrine": 2.0,
+      "AetherShrinesAndRaidConsole": 1.0
+    },
+    "remove_archipelago_wing_clones": true,
+    "remove_mega_continent_clones": true,
+    "max_part_and_mesh_aabb_studs": 1750.0,
+    "max_luau_script_bytes": 195000
+  },
+  "realms": {
+    "GoldenSky": {
+      "Origin": [0, 0, 0],
+      "Spawn": [-2484, 54, 4131],
+      "DeckY": 50.5,
+      "SkybornSpawnPartPos": [-2484, 51.5, 4131]
+    },
+    "FrozenCyber": {
+      "Origin": [48000, 0, 0],
+      "Spawn": [45030, 58, 4185],
+      "DeckY": 54.1
+    },
+    "ShadowRealm": {
+      "Origin": [-48000, 0, 0],
+      "Spawn": [-52644, 58, 3240],
+      "DeckY": 54.1
+    },
+    "VerdantCrown": {
+      "Asset": "UmbralCrystalSanctumForest",
+      "Origin": [0, 120, -34000],
+      "Spawn": [0, 173, -33940],
+      "DeckY": 168.7,
+      "Islands": {
+        "VerdantCrown": [0, 173, -33940],
+        "VerdantWestBough": [-1845, 173, -34405],
+        "VerdantEastGrove": [1845, 173, -34405],
+        "VerdantNorthSpire": [0, 173, -32335]
+      },
+      "Boss": {
+        "Name": "Sylvaris",
+        "Spawn": [35, 172, -33930],
+        "PlayerPos": [0, 173, -33950]
+      },
+      "WorldGateExit": [0, 168.7, -32280]
+    },
+    "EmberforgeWastes": {
+      "Asset": "WestGardenPirateBastion",
+      "Origin": [48000, 120, -34000],
+      "Spawn": [48000, 172, -34850],
+      "DeckY": 167.5,
+      "Islands": {
+        "EmberforgeWastes": [48000, 172, -34850],
+        "EmberforgeWestFoundry": [46560, 172, -34525],
+        "EmberforgeEastCaldera": [49440, 172, -34525],
+        "EmberforgeNorthCitadel": [48000, 172, -32935]
+      },
+      "Boss": {
+        "Name": "Ignivar",
+        "Spawn": [48000, 171, -34890],
+        "PlayerPos": [48000, 172, -34830]
+      },
+      "WorldGateExit": [48000, 167.5, -34790]
+    },
+    "AbyssalTides": {
+      "Asset": "MirageSkyIslandLeviathanAbyss",
+      "Origin": [-48000, 120, -34000],
+      "Spawn": [-48000, 173, -33870],
+      "DeckY": 168.7,
+      "Islands": {
+        "AbyssalTides": [-48000, 173, -33870],
+        "AbyssalWestReef": [-49815, 173, -34285],
+        "AbyssalEastTrench": [-46185, 173, -34285],
+        "AbyssalNorthSpire": [-48000, 173, -32395]
+      },
+      "Boss": {
+        "Name": "Nerith",
+        "Spawn": [-47965, 172, -33880],
+        "PlayerPos": [-48000, 173, -33860]
+      },
+      "WorldGateExit": [-48000, 168.7, -32340]
+    },
+    "ChronosBastion": {
+      "Asset": "TempleOfTheCoreRaceV4",
+      "Origin": [0, 180, -48000],
+      "Spawn": [0, 233, -47935],
+      "DeckY": 228.7,
+      "Islands": {
+        "ChronosBastion": [0, 233, -47935],
+        "ChronosWestDial": [-1875, 233, -48525],
+        "ChronosEastDial": [1875, 233, -48525],
+        "ChronosNorthSpire": [0, 233, -46245]
+      },
+      "Boss": {
+        "Name": "Chronovex",
+        "Spawn": [0, 232, -47975],
+        "PlayerPos": [0, 233, -47915]
+      },
+      "WorldGateExit": [0, 228.7, -46200]
+    },
+    "VeilsEnd": {
+      "Asset": "CastleOnTheVoidMansion",
+      "Origin": [0, 260, -62000],
+      "Spawn": [0, 313, -60380],
+      "DeckY": 308.7,
+      "Islands": {
+        "VeilsEnd": [0, 313, -60380],
+        "VeilsWestHorizon": [-1785, 313, -62135],
+        "VeilsEastHorizon": [1785, 313, -62135],
+        "VeilsNorthThrone": [0, 313, -62900]
+      },
+      "Boss": {
+        "Name": "VeyrTheArchitect",
+        "Spawn": [0, 312, -62940],
+        "PlayerPos": [0, 313, -62870]
+      },
+      "WorldGateExit": [0, 308.7, -62840]
+    }
+  },
+  "grand_sky_islands_streaming": [
+    {
+      "Name": "ZiolesGachaShrine",
+      "Asset": "ZiolesGachaShrine",
+      "Sea": 1,
+      "Origin": [-3600, 50, 6600],
+      "DeckY": 50.0,
+      "DeckOffsetY": 2.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "AetherShrineIsland",
+      "Asset": "ZiolesGachaShrine",
+      "Sea": 1,
+      "Origin": [1200, 50, 6600],
+      "DeckY": 50.0,
+      "DeckOffsetY": 2.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "WestGardenPirateBastion",
+      "Asset": "WestGardenPirateBastion",
+      "Sea": 1,
+      "Origin": [-14500, 0, 1500],
+      "DeckY": 47.5,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "SunshardSkySanctuary",
+      "Asset": "SunshardSkySanctuary",
+      "Sea": 1,
+      "Origin": [14500, 0, -1500],
+      "DeckY": 47.5,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "CyberportCafeTradingHub",
+      "Asset": "CyberportCafeTradingHub",
+      "Sea": 2,
+      "Origin": [35000, 0, 8500],
+      "DeckY": 48.7,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "PermafrostGarrisonFortress",
+      "Asset": "PermafrostGarrisonFortress",
+      "Sea": 2,
+      "Origin": [35000, 0, -5500],
+      "DeckY": 48.7,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "MicrochipAwakeningRaidLab",
+      "Asset": "MicrochipAwakeningRaidLab",
+      "Sea": 2,
+      "Origin": [62000, 0, 8500],
+      "DeckY": 48.7,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "GlacialWreckageDangerSea",
+      "Asset": "GlacialWreckageDangerSea",
+      "Sea": 2,
+      "Origin": [62000, 0, -5500],
+      "DeckY": 48.7,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "CastleOnTheVoidMansion",
+      "Asset": "CastleOnTheVoidMansion",
+      "Sea": 3,
+      "Origin": [-62500, 0, 8500],
+      "DeckY": 48.7,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "UmbralCrystalSanctumForest",
+      "Asset": "UmbralCrystalSanctumForest",
+      "Sea": 3,
+      "Origin": [-34500, 0, 8500],
+      "DeckY": 48.7,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "TempleOfTheCoreRaceV4",
+      "Asset": "TempleOfTheCoreRaceV4",
+      "Sea": 3,
+      "Origin": [-62500, 0, -5500],
+      "DeckY": 48.7,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    },
+    {
+      "Name": "MirageSkyIslandLeviathanAbyss",
+      "Asset": "MirageSkyIslandLeviathanAbyss",
+      "Sea": 3,
+      "Origin": [-48000, 0, -16500],
+      "DeckY": 48.7,
+      "DeckOffsetY": 0.0,
+      "StreamDist": 25000
+    }
+  ],
+  "fast_travel_islands": {
+    "SkyHub": { "Realm": "GoldenSky", "Sea": 1, "Pos": [-2484, 54, 4131], "DeckY": 50.5 },
+    "ZiolesGachaShrine": { "Realm": "GoldenSky", "Sea": 1, "Pos": [-3600, 54, 6616], "DeckY": 50.0 },
+    "AetherShrines": { "Realm": "GoldenSky", "Sea": 1, "Pos": [1200, 54, 6616], "DeckY": 50.0 },
+    "QuestCheckpoint": { "Realm": "GoldenSky", "Sea": 1, "Pos": [-2457, 54, 1647], "DeckY": 50.5 },
+    "WestGarden": { "Realm": "GoldenSky", "Sea": 1, "Pos": [-14500, 52, 650], "DeckY": 47.5 },
+    "LumenPlaza": { "Realm": "GoldenSky", "Sea": 1, "Pos": [0, 54, 180], "DeckY": 50.5 },
+    "SunshardSanctuary": { "Realm": "GoldenSky", "Sea": 1, "Pos": [14500, 52, -980], "DeckY": 47.5 },
+    "BossForecourt": { "Realm": "GoldenSky", "Sea": 1, "Pos": [0, 54, -2420], "DeckY": 50.5 },
+
+    "FrozenCyber": { "Realm": "FrozenCyber", "Sea": 2, "Pos": [45030, 58, 4185], "DeckY": 54.1 },
+    "CyberportCafe": { "Realm": "FrozenCyber", "Sea": 2, "Pos": [35000, 53, 8560], "DeckY": 48.7 },
+    "PermafrostGarrison": { "Realm": "FrozenCyber", "Sea": 2, "Pos": [35000, 53, -6285], "DeckY": 48.7 },
+    "MicrochipRaidLab": { "Realm": "FrozenCyber", "Sea": 2, "Pos": [62000, 53, 8640], "DeckY": 48.7 },
+    "GlacialDangerSea": { "Realm": "FrozenCyber", "Sea": 2, "Pos": [62000, 53, -5530], "DeckY": 48.7 },
+    "CryonArena": { "Realm": "FrozenCyber", "Sea": 2, "Pos": [48000, 58, -2450], "DeckY": 54.1 },
+
+    "ShadowRealm": { "Realm": "ShadowRealm", "Sea": 3, "Pos": [-52644, 58, 3240], "DeckY": 54.1 },
+    "CastleOnTheVoid": { "Realm": "ShadowRealm", "Sea": 3, "Pos": [-62500, 53, 10120], "DeckY": 48.7 },
+    "UmbralCrystalForest": { "Realm": "ShadowRealm", "Sea": 3, "Pos": [-34500, 53, 8555], "DeckY": 48.7 },
+    "TempleOfTheCore": { "Realm": "ShadowRealm", "Sea": 3, "Pos": [-62500, 53, -5435], "DeckY": 48.7 },
+    "LeviathanAbyss": { "Realm": "ShadowRealm", "Sea": 3, "Pos": [-48000, 53, -16370], "DeckY": 48.7 },
+    "NoxarArena": { "Realm": "ShadowRealm", "Sea": 3, "Pos": [-45435, 58, -1120], "DeckY": 54.1 }
+  },
+  "landmarks_and_gameplay": {
+    "GoldenSky": {
+      "SkyHub": {
+        "SkybornSpawn": [-2484, 51.5, 4131],
+        "Lyra": [-2462, 53.0, 4105],
+        "Kael": [-2444, 53.0, 4105],
+        "Zioles_SkyHub": [-2510, 52.7, 4105],
+        "AncientMonk_SkyHub": [-2524, 52.7, 4120],
+        "WorldGate_SkyHub_Plaza": [-2450, 50.5, 4165],
+        "Port_SkyHub_Pedestal": [-2540, 50.7, 4155],
+        "Port_SkyHub_Water": [-2610, 48.0, 4175]
+      },
+      "WestGardenTerrace_W1": {
+        "Center": [-2457, 50.5, 1647],
+        "Radius": 550
+      },
+      "LumenPlaza_W1": {
+        "Center": [0, 50.5, 0],
+        "FastTravel": [0, 54, 180],
+        "ReturnHub": [48, 53.5, 180],
+        "Station1": [-160, 53.5, 140],
+        "Station2": [0, 53.5, 220],
+        "Station3": [160, 53.5, 140],
+        "Citizen1": [-190, 53.5, -40],
+        "Citizen2": [0, 53.5, -210],
+        "Citizen3": [190, 53.5, -40],
+        "Switch1": [-210, 53.5, -310],
+        "Switch2": [210, 53.5, -310],
+        "ArenaGate": [0, 53.5, -460],
+        "Tree_SolarAether": [240, 50.5, 160]
+      },
+      "SunlitOasis_W1": {
+        "Center": [4428, 50.5, -1134],
+        "Radius": 1350
+      },
+      "BossForecourt_W1": {
+        "Center": [0, 50.5, -2808],
+        "Arena": [0, 53.0, -2808],
+        "ArenaEntry": [0, 54.0, -2380],
+        "BossSpawn_AureonSentinel": [0, 54.0, -2920],
+        "LeaveArena": [120, 53.5, -2420],
+        "FrozenPortal": [80, 50.5, -3420],
+        "WorldGate_Sea1_to_Sea2": [80, 50.5, -3370],
+        "WorldGate_01": [0, 50.5, -3420]
+      }
+    },
+    "ZiolesGachaShrine": {
+      "Origin": [-3600, 50, 6600],
+      "FastTravel": [-3600, 54, 6616],
+      "OrbitCenter": [-3600, 54.5, 6600],
+      "Zioles_IslandShrine": [-3600, 52.2, 6598],
+      "ShrineGuardianBoss": [-3600, 52.5, 6592],
+      "WorldGate_02": [-3600, 50.0, 6576],
+      "SafeRadius": 130
+    },
+    "AetherShrines": {
+      "Origin": [1200, 50, 6600],
+      "FastTravel": [1200, 54, 6616],
+      "ShrineProp": [1200, 50.0, 6604],
+      "NPC_AetherShrineKeeper": [1200, 52.2, 6597],
+      "AetherArchonBoss": [1200, 52.5, 6603],
+      "WorldGate_03": [1200, 50.0, 6576],
+      "SafeRadius": 130
+    },
+    "WestGardenPirateBastion": {
+      "Origin": [-14500, 0, 1500],
+      "DeckY": 47.5,
+      "FastTravel": [-14500, 52, 650],
+      "PirateCaptainVance": [-14500, 50.5, 600],
+      "NPC_WestGardenScout": [-14465, 50.0, 660],
+      "WorldGate_04": [-14500, 47.5, 710],
+      "WestGarrisonCamp": [-15940, 50.5, 975],
+      "EastShipyardCamp": [-13060, 50.5, 975],
+      "LagoonQuaySouth": [-14500, 50.5, 2000]
+    },
+    "SunshardSkySanctuary": {
+      "Origin": [14500, 0, -1500],
+      "DeckY": 47.5,
+      "FastTravel": [14500, 52, -980],
+      "AncientMonk_SunshardSanctuary": [14468, 50.0, -980],
+      "SolarHighPriestBoss": [14500, 50.5, -2380],
+      "WorldGate_05": [14500, 47.5, -2320],
+      "WestObservatoryCamp": [12985, 50.5, -1365],
+      "EastTemplarArenaCamp": [16015, 50.5, -1365]
+    },
+    "FrozenCyber": {
+      "Origin": [48000, 0, 0],
+      "DeckY": 54.1,
+      "SpawnCenter": [45030, 54.1, 4185],
+      "SpawnFastTravel": [45030, 58, 4185],
+      "FrozenReturnHub": [45000, 57, 4160],
+      "WorldGate_Sea2_Plaza": [45065, 54.1, 4155],
+      "Port_FrozenCyber_Pedestal": [44960, 54.3, 4225],
+      "Port_FrozenCyber_Water": [44890, 51.0, 4265],
+      "OutpostCenter": [45462, 54.1, 1755],
+      "CrystalPlazaCenter": [48000, 54.1, 0],
+      "Tree_CryoAether": [48240, 54.1, 160],
+      "GlacialOasisCenter": [52158, 54.1, -540],
+      "CryonArenaCenter": [48000, 54.1, -2808],
+      "CryonArenaFastTravel": [48000, 58, -2450],
+      "CryonPrime": [48000, 57.5, -2808],
+      "NPC_CryonCitadelSentinel": [47965, 56.5, -2420],
+      "WorldGate_06": [48000, 54.1, -3200],
+      "RightPortalLandingCenter": [52968, 54.1, -4158],
+      "ShadowPortal": [52968, 54.1, -4158],
+      "WorldGate_Sea2_to_Sea3": [52968, 54.1, -4105]
+    },
+    "CyberportCafeTradingHub": {
+      "Origin": [35000, 0, 8500],
+      "DeckY": 48.7,
+      "FastTravel": [35000, 53, 8560],
+      "SafeZoneCenter": [35000, 50, 8560],
+      "SafeRadius": 450,
+      "CyberSyndicateBoss": [36905, 51.5, 8005],
+      "Cyberport_Patron_Lin": [34972, 51.0, 8555],
+      "WestZiolesPlaza": [33095, 48.7, 8005],
+      "EastForgePlaza": [36905, 48.7, 8005],
+      "SouthArrivalSkyport": [35000, 48.7, 10165],
+      "Port_Cyberport_Pedestal": [35000, 48.9, 10430],
+      "Port_Cyberport_Water": [35000, 45.5, 10520],
+      "WorldGate_07": [35000, 48.7, 8635]
+    },
+    "PermafrostGarrisonFortress": {
+      "Origin": [35000, 0, -5500],
+      "DeckY": 48.7,
+      "FastTravel": [35000, 53, -6285],
+      "PermafrostWardenBoss": [35000, 51.5, -6330],
+      "SouthBarbicanCamp": [35000, 51.5, -4105],
+      "EastCryoColosseumCamp": [36725, 51.5, -5065],
+      "WestHelipadDepotCamp": [33275, 51.5, -5065],
+      "WorldGate_08": [35000, 48.7, -6235]
+    },
+    "MicrochipAwakeningRaidLab": {
+      "Origin": [62000, 0, 8500],
+      "DeckY": 48.7,
+      "FastTravel": [62000, 53, 8640],
+      "RaidConsole": [62000, 48.7, 8600],
+      "Shrine_CryoAether": [62060, 48.7, 8600],
+      "OrderCyborgBoss": [62000, 51.5, 8720],
+      "SouthAirlock": [62000, 48.7, 10180],
+      "QuadNodes": [
+        [63635, 51.5, 6415],
+        [60365, 51.5, 6415],
+        [63635, 51.5, 9535],
+        [60365, 51.5, 9535]
+      ],
+      "RaidSpirePlatforms": [
+        [62000, 124, 8620],
+        [62000, 128, 8545],
+        [62000, 132, 8470],
+        [62000, 136, 8395],
+        [62000, 140, 8315]
+      ],
+      "WorldGate_09": [62000, 48.7, 8790]
+    },
+    "GlacialWreckageDangerSea": {
+      "Origin": [62000, 0, -5500],
+      "DeckY": 48.7,
+      "FastTravel": [62000, 53, -5530],
+      "DangerSeaCenter": [62000, 48.7, -6205],
+      "DangerSeaRadius": 2400,
+      "FrostSeaBeastSpawn": [62000, 51.5, -5585],
+      "WestRibcageCamp": [60215, 51.5, -5845],
+      "EastGraveyardCamp": [63785, 51.5, -5845],
+      "WorldGate_10": [62000, 48.7, -5475]
+    },
+    "ShadowRealm": {
+      "Origin": [-48000, 0, 0],
+      "DeckY": 54.1,
+      "SpawnCenter": [-52644, 54.1, 3240],
+      "SpawnFastTravel": [-52644, 58, 3240],
+      "ShadowReturnHub": [-52610, 57, 3215],
+      "WorldGate_Sea3_Plaza": [-52680, 54.1, 3215],
+      "NPC_ShadowVanguard": [-52620, 56.5, 3260],
+      "Port_ShadowRealm_Pedestal": [-52730, 54.3, 3280],
+      "Port_ShadowRealm_Water": [-52810, 51.0, 3320],
+      "RuinedOutpostCenter": [-49890, 54.1, 3375],
+      "VoidPlazaCenter": [-47865, 54.1, 945],
+      "Tree_VoidAether": [-47640, 54.1, 1080],
+      "UmbralOasisCenter": [-51780, 54.1, -378],
+      "LeftVoidGateCenter": [-53508, 54.1, -3618],
+      "NoxarArenaCenter": [-45435, 54.1, -1485],
+      "NoxarArenaFastTravel": [-45435, 58, -1120],
+      "Noxar": [-45435, 58.0, -1485],
+      "AbyssalSovereignDragon": [-45360, 58.0, -1560],
+      "NPC_NoxarThroneKeeper": [-45470, 56.5, -1100],
+      "WorldGate_11": [-45435, 54.1, -1880]
+    },
+    "CastleOnTheVoidMansion": {
+      "Origin": [-62500, 0, 8500],
+      "DeckY": 48.7,
+      "FastTravel": [-62500, 53, 10120],
+      "MansionSafeZoneCenter": [-62500, 50, 10120],
+      "SafeRadius": 380,
+      "CastleVoid_Sentinel_Korr": [-62475, 51.0, 10105],
+      "AltarPos": [-62500, 48.7, 10060],
+      "CastleForecourtArena": [-62500, 48.7, 7600],
+      "VoidCastellanBoss": [-62500, 51.5, 7560],
+      "WorldGate_12": [-62500, 48.7, 7660]
+    },
+    "UmbralCrystalSanctumForest": {
+      "Origin": [-34500, 0, 8500],
+      "DeckY": 48.7,
+      "FastTravel": [-34500, 53, 8555],
+      "UmbralArchfiendBoss": [-34500, 51.5, 8590],
+      "SouthToriiPlaza": [-34500, 51.5, 10165],
+      "WestAmethystGrove": [-36345, 51.5, 8095],
+      "EastCyanPrismGrove": [-32655, 51.5, 8095],
+      "WorldGate_13": [-34500, 48.7, 8620]
+    },
+    "TempleOfTheCoreRaceV4": {
+      "Origin": [-62500, 0, -5500],
+      "DeckY": 48.7,
+      "FastTravel": [-62500, 53, -5435],
+      "Shrine_VoidAether": [-62440, 48.7, -5435],
+      "SoulReaperRift": [-62500, 51.5, -5480],
+      "SouthTimeGearGate": [-62500, 51.5, -3745],
+      "TrialIslands": [
+        [-60625, 51.5, -6025],
+        [-64375, 51.5, -6025],
+        [-63437.5, 51.5, -7648.8],
+        [-61562.5, 51.5, -4401.2]
+      ],
+      "WorldGate_14": [-62500, 48.7, -5375]
+    },
+    "MirageSkyIslandLeviathanAbyss": {
+      "Origin": [-48000, 0, -16500],
+      "DeckY": 48.7,
+      "FastTravel": [-48000, 53, -16370],
+      "DangerSeaCenter": [-48000, 48.7, -16935],
+      "DangerSeaRadius": 2400,
+      "AbyssalLeviathan": [-48000, 51.5, -16405],
+      "SouthMirageGate": [-48000, 51.5, -14895],
+      "WestMirageTholos": [-49815, 51.5, -16785],
+      "EastGalleonHarbor": [-46185, 51.5, -16785],
+      "WorldGate_15": [-48000, 48.7, -14850]
+    }
+  }
+}
