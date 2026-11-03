@@ -3299,3 +3299,64 @@ task.spawn(function()
 		purgeRemovedWorldClutter()
 	end
 end)
+
+-- Dynamic Dual-Form Dragon Skill Bar Synchronizer (Form 1: Bán Long Nhân vs Form 2: Thái Cổ Long Hoàng)
+task.spawn(function()
+	local DRAGON_HUD_CAPTIONS = {
+		[0] = { Z = "Hỏa Long Đạn", X = "Bán Long Trảo", C = "Cuồng Long Xoáy", V = "Hóa Dạng 1", F = "Long Ảnh Bộ" },
+		[1] = { Z = "Hỏa Long Đạn", X = "Bán Long Trảo", C = "Cuồng Long Xoáy", V = "Hóa Dạng 2", F = "Long Ảnh Bộ" },
+		[2] = { Z = "Thái Cổ Long Tức", X = "Long Hoàng Giáng", C = "Vạn Long Hỏa Vũ", V = "Thu Hồi Rồng", F = "Long Vũ Cửu Thiên" },
+	}
+	local DEFAULT_HUD_CAPTIONS = { Z = "Thiên Trảm", X = "Khiên Thánh", C = "Phán Quyết", V = "Thức Tỉnh", F = "Thiên Vũ" }
+
+	local function syncDragonFormSkillBar()
+		local ch = player.Character
+		local rawTier = tonumber((ch and ch:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
+		local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
+		local tier = 0
+		if rawTier >= 2 or tf == "AbyssalSovereign" then
+			tier = 2
+		elseif rawTier == 1 or tf == "AbyssalDragonHybrid" then
+			tier = 1
+		end
+
+		if C and C.AetherFruits and C.AetherFruits.AbyssalSovereignCore and type(C.GetDragonFormMoves) == "function" then
+			local activeMoves = C.GetDragonFormMoves(tier)
+			if activeMoves then
+				C.AetherFruits.AbyssalSovereignCore.Moves = activeMoves
+			end
+		end
+
+		local eqFruit = string.lower(tostring((ch and ch:GetAttribute("EquippedFruit")) or player:GetAttribute("EquippedFruit") or ""))
+		local isDragonEquipped = (eqFruit == "abyssalsovereigncore" or eqFruit == "dragon" or eqFruit == "abyssal_dragon" or tier > 0)
+		local curSlot = tonumber((ch and ch:GetAttribute("ActiveSlot")) or player:GetAttribute("ActiveSlot")) or 1
+		local pgui = player:FindFirstChild("PlayerGui")
+		local skyUI = pgui and pgui:FindFirstChild("SkybreakUI")
+		local dock = skyUI and skyUI:FindFirstChild("AbilityHotbar", true)
+		if dock then
+			local captions = (isDragonEquipped and (curSlot == 2 or tier > 0)) and (DRAGON_HUD_CAPTIONS[tier] or DRAGON_HUD_CAPTIONS[1]) or DEFAULT_HUD_CAPTIONS
+			for key, labelText in pairs(captions) do
+				local card = dock:FindFirstChild("SkillCard_" .. key, true)
+				local capPill = card and card:FindFirstChild("CaptionPill")
+				local capLbl = capPill and capPill:FindFirstChild("Caption")
+				if capLbl and capLbl:IsA("TextLabel") then
+					capLbl.Text = labelText
+				end
+			end
+		end
+	end
+
+	player:GetAttributeChangedSignal("DragonFormTier"):Connect(syncDragonFormSkillBar)
+	player:GetAttributeChangedSignal("FruitTransform"):Connect(syncDragonFormSkillBar)
+	player:GetAttributeChangedSignal("ActiveSlot"):Connect(syncDragonFormSkillBar)
+	player:GetAttributeChangedSignal("EquippedFruit"):Connect(syncDragonFormSkillBar)
+	player.CharacterAdded:Connect(function(ch)
+		ch:GetAttributeChangedSignal("DragonFormTier"):Connect(syncDragonFormSkillBar)
+		ch:GetAttributeChangedSignal("FruitTransform"):Connect(syncDragonFormSkillBar)
+		task.defer(syncDragonFormSkillBar)
+	end)
+	while player.Parent do
+		syncDragonFormSkillBar()
+		task.wait(0.4)
+	end
+end)

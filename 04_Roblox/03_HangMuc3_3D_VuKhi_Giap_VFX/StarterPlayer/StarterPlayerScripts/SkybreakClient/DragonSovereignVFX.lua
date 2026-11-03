@@ -1391,27 +1391,273 @@ function DragonSovereignVFX.SpawnSoaringRush(actorChar, startPos, endPos, lookDi
 end
 
 -- ============================================================================
+-- 8B. DISTINCT FORM 1 (HYBRID) vs FORM 2 (SOVEREIGN) SKILL SET VFX
+--   Form 1 [Z]: Hỏa Long Liên Đạn (SpawnHybridFireballVolley)
+--   Form 1 [C]: Cuồng Long Lốc Xoáy (SpawnHybridInfernoCyclone)
+--   Form 1 [F]: Long Ảnh Bộ (SpawnHybridWingDash)
+--   Form 2 [X]: Long Hoàng Giáng Thế (SpawnSovereignSkyfallDive)
+-- ============================================================================
+function DragonSovereignVFX.SpawnHybridFireballVolley(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
+	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
+	local scale = (baseScale or 1.0) * 1.08
+	local origin = anchors.MawCF.Position
+	local rawVec = endPos - origin
+	local dist = math.clamp(rawVec.Magnitude, 18 * scale, 34 * scale)
+	local dir = (rawVec.Magnitude > 2) and rawVec.Unit or anchors.LookDir
+
+	local folder = Instance.new("Folder")
+	folder.Name = "DragonForm1_Z_FireballVolley"
+	folder.Parent = (getTempFolder())
+	Debris:AddItem(folder, 1.45)
+
+	for shot = 1, 3 do
+		task.delay((shot - 1) * 0.11, function()
+			if not folder.Parent then return end
+			local side = (shot == 1 and -1) or (shot == 2 and 1) or 0
+			local launchPos = origin + anchors.BaseCF.RightVector * (side * 1.4 * scale) + Vector3.new(0, 0.4 * scale, 0)
+			local targetPos = findGroundPos(origin + dir * (dist * (0.55 + shot * 0.15)), actorChar) + Vector3.new(0, 0.8, 0)
+			local orbSz = (1.85 + shot * 0.25) * scale
+
+			local core = makePart("HybridFireballCore_" .. shot, Enum.PartType.Ball, Vector3.new(orbSz, orbSz, orbSz), CFrame.lookAt(launchPos, targetPos), PALETTE.Magma, 0.04, Enum.Material.Neon, folder)
+			local shell = makePart("HybridFireballShell_" .. shot, Enum.PartType.Ball, Vector3.new(orbSz * 1.42, orbSz * 1.42, orbSz * 1.42), core.CFrame, PALETTE.Crimson, 0.22, Enum.Material.ForceField, folder)
+			if not isLowFX() then
+				attachRibbonTrail(core, PALETTE.Magma, PALETTE.Crimson, orbSz * 0.9, 0.22)
+			end
+			spawnShockRing(launchPos, CFrame.lookAt(launchPos, targetPos), PALETTE.Magma, 1.2 * scale, 5.2 * scale, 0.18 * scale, 0.24, Enum.Material.ForceField, folder)
+
+			local flyDur = 0.22
+			TweenService:Create(core, TweenInfo.new(flyDur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(targetPos) }):Play()
+			TweenService:Create(shell, TweenInfo.new(flyDur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(targetPos) }):Play()
+
+			task.delay(flyDur, function()
+				if core.Parent then core:Destroy() end
+				if shell.Parent then shell:Destroy() end
+				if not folder.Parent then return end
+				DragonSovereignVFX.EmitPrefab("Dragon_Z_SovereignBreath", CFrame.new(targetPos), scale * 0.82)
+				spawnShockRing(targetPos, nil, (shot == 3) and PALETTE.AwakenedGold or PALETTE.Magma, 2.0 * scale, (11 + shot * 3) * scale, 0.28 * scale, 0.38, Enum.Material.ForceField, folder)
+				local dome = makePart("FireballBlast_" .. shot, Enum.PartType.Ball, Vector3.new(2.5, 2.5, 2.5) * scale, CFrame.new(targetPos), PALETTE.Crimson, 0.12, Enum.Material.ForceField, folder)
+				makeSafeLight(dome, PALETTE.Magma, 1.32, 14, 0.35)
+				TweenService:Create(dome, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(10 + shot * 2.5, 10 + shot * 2.5, 10 + shot * 2.5) * scale,
+					Transparency = 1,
+				}):Play()
+				if isLocal then
+					emitCameraTrauma(0.22 + shot * 0.05, 1.5, dir)
+				end
+			end)
+		end)
+	end
+end
+
+function DragonSovereignVFX.SpawnHybridInfernoCyclone(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
+	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
+	local scale = (baseScale or 1.0) * 1.12
+	local centerPos = anchors.CenterPos
+	local gPos = findGroundPos(centerPos, actorChar)
+
+	local folder = Instance.new("Folder")
+	folder.Name = "DragonForm1_C_InfernoCyclone"
+	folder.Parent = (getTempFolder())
+	Debris:AddItem(folder, 1.25)
+
+	DragonSovereignVFX.EmitPrefab("Dragon_X_VoidTalons", CFrame.new(centerPos), scale * 1.15)
+	makeSafeLight(makePart("CycloneCoreLight", Enum.PartType.Ball, Vector3.new(1.5, 1.5, 1.5), CFrame.new(centerPos), PALETTE.Magma, 0.2, Enum.Material.ForceField, folder), PALETTE.Magma, 1.38, 16, 0.85)
+
+	local blades = {}
+	local ringLayers = isLowFX() and 3 or 5
+	for i = 1, ringLayers do
+		local col = (i % 2 == 0) and PALETTE.Magma or PALETTE.Crimson
+		local ring = makePart("CycloneRing_" .. i, Enum.PartType.Cylinder, Vector3.new(0.26 * scale, (6 + i * 2.4) * scale, (6 + i * 2.4) * scale), CFrame.new(gPos + Vector3.new(0, i * 1.8 * scale, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), col, 0.16, Enum.Material.ForceField, folder)
+		if not isLowFX() then
+			attachRibbonTrail(ring, PALETTE.HotCore, col, 1.1 * scale, 0.24)
+		end
+		table.insert(blades, { Part = ring, Index = i })
+	end
+
+	for pulse = 1, 4 do
+		task.delay((pulse - 1) * 0.14, function()
+			if not folder.Parent then return end
+			spawnShockRing(gPos + Vector3.new(0, 0.2, 0), nil, (pulse % 2 == 0) and PALETTE.Magma or PALETTE.Crimson, 16 * scale, 3.5 * scale, 0.26 * scale, 0.28, Enum.Material.ForceField, folder)
+		end)
+	end
+
+	local t0 = os.clock()
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		local el = os.clock() - t0
+		if el >= 0.72 or not folder.Parent then
+			if conn then conn:Disconnect() end
+			return
+		end
+		local u = el / 0.72
+		local curRoot = actorChar and actorChar:FindFirstChild("HumanoidRootPart")
+		local cPos = (curRoot and curRoot.Position) or centerPos
+		for _, b in ipairs(blades) do
+			if b.Part and b.Part.Parent then
+				local idx = b.Index
+				local ang = el * 18 * ((idx % 2 == 0) and 1 or -1) + idx * 1.1
+				local rad = (6 + idx * 2.6 + math.sin(el * 12 + idx) * 1.5) * scale * (1 + u * 0.35)
+				local yOff = (-1.2 + idx * 1.75) * scale
+				b.Part.Size = Vector3.new(0.24 * scale, rad, rad)
+				b.Part.CFrame = CFrame.new(cPos + Vector3.new(math.cos(ang) * 0.8, yOff, math.sin(ang) * 0.8))
+					* CFrame.Angles(math.sin(ang) * 0.18, ang, math.pi * 0.5)
+				if u > 0.65 then
+					b.Part.Transparency = 0.16 + ((u - 0.65) / 0.35) * 0.84
+				end
+			end
+		end
+	end)
+
+	if isLocal then
+		emitCameraTrauma(0.36, 3.2)
+	end
+end
+
+function DragonSovereignVFX.SpawnHybridWingDash(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
+	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
+	local scale = (baseScale or 1.0) * 1.05
+	local p0 = anchors.CenterPos
+	local rawVec = endPos - p0
+	local dist = math.clamp(rawVec.Magnitude, 18 * scale, 36 * scale)
+	local dir = (rawVec.Magnitude > 2) and rawVec.Unit or anchors.LookDir
+	local p1 = p0 + dir * dist
+
+	local folder = Instance.new("Folder")
+	folder.Name = "DragonForm1_F_HybridWingDash"
+	folder.Parent = (getTempFolder())
+	Debris:AddItem(folder, 0.75)
+
+	DragonSovereignVFX.EmitPrefab("Dragon_F_SoarRush", CFrame.lookAt(p0, p1), scale * 0.9)
+	for i = 1, 4 do
+		local frac = (i - 1) / 3
+		task.delay((i - 1) * 0.03, function()
+			if not folder.Parent then return end
+			local pt = p0:Lerp(p1, frac)
+			for side = -1, 1, 2 do
+				local wingSlash = makePart(
+					"HybridWingAfterimage_" .. i .. "_" .. side,
+					Enum.PartType.Wedge,
+					Vector3.new(0.18 * scale, 1.4 * scale, 4.8 * scale),
+					CFrame.lookAt(pt, pt + dir) * CFrame.new(side * 2.4 * scale, 0.5 * scale, 0) * CFrame.Angles(0, side * 0.55, side * 0.25),
+					(i % 2 == 0) and PALETTE.Magma or PALETTE.Crimson,
+					0.14,
+					Enum.Material.ForceField,
+					folder
+				)
+				TweenService:Create(wingSlash, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(0.05, 0.4, 6.2 * scale),
+					Transparency = 1,
+				}):Play()
+			end
+		end)
+	end
+	if isLocal then
+		emitCameraTrauma(0.24, 2.2, dir)
+	end
+end
+
+function DragonSovereignVFX.SpawnSovereignSkyfallDive(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
+	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
+	local scale = (baseScale or 1.0) * 1.32
+	local p0 = anchors.CenterPos
+	local rawVec = endPos - p0
+	local dist = math.clamp(rawVec.Magnitude, 18 * scale, 34 * scale)
+	local dir = (rawVec.Magnitude > 2) and rawVec.Unit or anchors.LookDir
+	local impactPos = findGroundPos(p0 + dir * dist, actorChar)
+	local apexPos = p0 + dir * (dist * 0.35) + Vector3.new(0, 18 * scale, 0)
+
+	local folder = Instance.new("Folder")
+	folder.Name = "DragonForm2_X_SovereignSkyfallDive"
+	folder.Parent = (getTempFolder())
+	Debris:AddItem(folder, 1.45)
+
+	-- Stage 1: Ascending Sovereign Halo & Dive Spear
+	spawnShockRing(apexPos, nil, PALETTE.AwakenedGold, 2.5 * scale, 18 * scale, 0.32 * scale, 0.42, Enum.Material.ForceField, folder)
+	local diveVec = impactPos - apexPos
+	local diveLen = math.max(8, diveVec.Magnitude)
+	local diveMid = (apexPos + impactPos) * 0.5
+	local diveBeam = makePart("SovereignDiveLance", Enum.PartType.Cylinder, Vector3.new(diveLen, 3.8 * scale, 3.8 * scale), CFrame.lookAt(diveMid, impactPos) * CFrame.Angles(0, math.pi * 0.5, 0), PALETTE.Violet, 0.08, Enum.Material.ForceField, folder)
+	local diveCore = makePart("SovereignDiveCore", Enum.PartType.Cylinder, Vector3.new(diveLen, 1.8 * scale, 1.8 * scale), diveBeam.CFrame, PALETTE.AwakenedGold, 0.04, Enum.Material.Neon, folder)
+	TweenService:Create(diveBeam, TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(diveLen, 0.2, 0.2), Transparency = 1 }):Play()
+	TweenService:Create(diveCore, TweenInfo.new(0.42, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(diveLen, 0.1, 0.1), Transparency = 1 }):Play()
+
+	-- Stage 2: 3 Tectonic Sovereign Shockwaves & Void-Gold Pillars at impactPos
+	DragonSovereignVFX.EmitPrefab("Dragon_V_Ascension", CFrame.new(impactPos + Vector3.new(0, 1.0, 0)), scale * 1.15)
+	makeSafeLight(makePart("SkyfallImpactLight", Enum.PartType.Ball, Vector3.new(3, 3, 3) * scale, CFrame.new(impactPos), PALETTE.AwakenedGold, 0.1, Enum.Material.ForceField, folder), PALETTE.Violet, 1.42, 16, 0.65)
+
+	for wave = 1, 3 do
+		task.delay((wave - 1) * 0.12, function()
+			if not folder.Parent then return end
+			local col = (wave == 2) and PALETTE.AwakenedGold or ((wave == 1) and PALETTE.Violet or PALETTE.Crimson)
+			spawnShockRing(impactPos + Vector3.new(0, 0.25, 0), nil, col, 3.0 * scale, (18 + wave * 7) * scale, 0.38 * scale, 0.52, Enum.Material.ForceField, folder)
+			local pillar = makePart("SkyfallTectonicPillar_" .. wave, Enum.PartType.Cylinder, Vector3.new(22 * scale, (4.5 + wave * 1.8) * scale, (4.5 + wave * 1.8) * scale), CFrame.new(impactPos + Vector3.new(0, 11 * scale, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), col, 0.14, Enum.Material.ForceField, folder)
+			TweenService:Create(pillar, TweenInfo.new(0.48, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = Vector3.new(30 * scale, 0.4, 0.4),
+				Transparency = 1,
+			}):Play()
+		end)
+	end
+
+	if isLocal then
+		emitCameraTrauma(0.54, 5.2, dir)
+	end
+end
+
+-- ============================================================================
 -- 9. UNIFIED DISPATCHER FOR ALL DRAGON MOVES & TRANSFORMATIONS
+--    Routes to Form 1 (Hybrid) vs Form 2 (Sovereign) Skill Sets automatically!
 -- ============================================================================
 function DragonSovereignVFX.DispatchMove(moveKey, actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal, fx)
 	local k = tostring(moveKey or "Z"):upper()
-	if k == "Z" then
-		DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
-	elseif k == "X" then
-		DragonSovereignVFX.SpawnVoidTalons(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
-	elseif k == "C" then
-		DragonSovereignVFX.SpawnCataclysmicStarshower(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
-	elseif k == "V" then
-		local tier = tonumber(fx and fx.DragonFormTier)
-		if not tier then
+	local tier = tonumber(fx and fx.DragonFormTier)
+	if not tier then
+		local subMode = tostring(fx and fx.SubMode or "")
+		if subMode == "AbyssalSovereign" then
+			tier = 2
+		elseif subMode == "AbyssalDragonHybrid" then
+			tier = 1
+		else
 			local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-			tier = (anchors.Tier > 0) and anchors.Tier or 2
+			tier = anchors.Tier
 		end
-		DragonSovereignVFX.SpawnTransformAscension(actorChar, startPos, tier, isAwakened, isLocal)
-	elseif k == "F" then
-		DragonSovereignVFX.SpawnSoaringRush(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
+	end
+
+	if k == "V" then
+		local vTier = tier
+		if not vTier or vTier < 0 then
+			local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
+			vTier = (anchors.Tier > 0) and anchors.Tier or 1
+		end
+		DragonSovereignVFX.SpawnTransformAscension(actorChar, startPos, vTier, isAwakened, isLocal)
+		return
+	end
+
+	if (tier or 0) >= 2 then
+		-- === FORM 2: CHÂN THÂN THÁI CỔ LONG HOÀNG (Sovereign Dragon Skill Set) ===
+		if k == "Z" then
+			DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lookDir, scale, true, isLocal)
+		elseif k == "X" then
+			DragonSovereignVFX.SpawnSovereignSkyfallDive(actorChar, startPos, endPos, lookDir, scale, true, isLocal)
+		elseif k == "C" then
+			DragonSovereignVFX.SpawnCataclysmicStarshower(actorChar, startPos, endPos, lookDir, scale, true, isLocal)
+		elseif k == "F" then
+			DragonSovereignVFX.SpawnSoaringRush(actorChar, startPos, endPos, lookDir, scale, true, isLocal)
+		else
+			DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lookDir, scale, true, isLocal)
+		end
 	else
-		DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
+		-- === FORM 1: BÁN LONG NHÂN / NHÂN DẠNG (Hybrid Dragon Skill Set) ===
+		if k == "Z" then
+			DragonSovereignVFX.SpawnHybridFireballVolley(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
+		elseif k == "X" then
+			DragonSovereignVFX.SpawnVoidTalons(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
+		elseif k == "C" then
+			DragonSovereignVFX.SpawnHybridInfernoCyclone(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
+		elseif k == "F" then
+			DragonSovereignVFX.SpawnHybridWingDash(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
+		else
+			DragonSovereignVFX.SpawnHybridFireballVolley(actorChar, startPos, endPos, lookDir, scale, isAwakened, isLocal)
+		end
 	end
 end
 

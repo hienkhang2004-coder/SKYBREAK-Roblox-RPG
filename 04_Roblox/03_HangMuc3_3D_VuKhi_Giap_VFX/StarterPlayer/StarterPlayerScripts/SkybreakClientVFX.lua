@@ -1713,16 +1713,18 @@ local function stepDragonFormAndHUD(dt)
 	if hud then
 		hud.Enabled = isEquipped and not photoOn
 		if hud.Enabled then
-			dragonFuryFill.Size = UDim2.fromScale(math.clamp(fury / 100, 0.02, 1), 1)
-			dragonFuryLabel.Text = string.format("DRAGON FURY  %d%%", math.floor(fury + 0.5))
+			dragonFuryFill.Size = UDim2.fromScale(1, 1)
 			if tier == 2 then
-				dragonTierBadge.Text = "SOVEREIGN"
+				dragonFuryLabel.Text = "DẠNG 2: THÁI CỔ LONG HOÀNG"
+				dragonTierBadge.Text = "BỘ SKILL 2"
 				dragonTierBadge.TextColor3 = Color3.fromRGB(255, 218, 92)
 			elseif tier == 1 then
-				dragonTierBadge.Text = "HYBRID"
-				dragonTierBadge.TextColor3 = Color3.fromRGB(196, 132, 255)
+				dragonFuryLabel.Text = "DẠNG 1: BÁN LONG NHÂN"
+				dragonTierBadge.Text = "BỘ SKILL 1"
+				dragonTierBadge.TextColor3 = Color3.fromRGB(255, 112, 148)
 			else
-				dragonTierBadge.Text = "HUMAN"
+				dragonFuryLabel.Text = "NHẤN [V]: ĐỔI 2 DẠNG RỒNG"
+				dragonTierBadge.Text = "BỘ SKILL 1"
 				dragonTierBadge.TextColor3 = Color3.fromRGB(168, 198, 232)
 			end
 		end
