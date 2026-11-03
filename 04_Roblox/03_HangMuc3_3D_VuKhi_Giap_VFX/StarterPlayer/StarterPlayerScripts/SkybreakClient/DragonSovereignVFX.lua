@@ -22,11 +22,13 @@ local MAX_PARTICLE_EMISSION = 0.78
 
 local PALETTE = {
 	Crimson = Color3.fromRGB(255, 46, 150),
+	BloodFlame = Color3.fromRGB(255, 36, 68),
+	SolarGold = Color3.fromRGB(255, 196, 56),
 	Violet = Color3.fromRGB(168, 38, 255),
 	Magma = Color3.fromRGB(255, 116, 42),
 	Obsidian = Color3.fromRGB(20, 12, 36),
 	SlateArmor = Color3.fromRGB(48, 38, 76),
-	HotCore = Color3.fromRGB(255, 216, 248),
+	HotCore = Color3.fromRGB(255, 232, 248),
 	AwakenedGold = Color3.fromRGB(255, 212, 88),
 }
 
@@ -190,6 +192,204 @@ local function spawnShockRing(pos, upCF, color, startR, endR, thickness, dur, ma
 	}):Play()
 	Debris:AddItem(ring, d + 0.05)
 	return ring
+end
+
+local function spawnDraconicLightningArc(p0, p1, colMain, colCore, thickness, segments, dur, parent)
+	if isLowFX() then return end
+	local span = p1 - p0
+	local dist = span.Magnitude
+	if dist < 1.2 then return end
+	local segCount = math.clamp(segments or 6, 3, 10)
+	local baseCF = safeLookAt(p0, p1)
+	local rightV = baseCF.RightVector
+	local upV = baseCF.UpVector
+	local jitterAmp = math.clamp(dist * 0.11, 0.55, 3.2)
+	local th = thickness or 0.26
+	local d = dur or 0.28
+
+	local pts = { p0 }
+	for i = 1, segCount - 1 do
+		local frac = i / segCount
+		local envelope = math.sin(frac * math.pi)
+		local rOff = (math.random() - 0.5) * 2 * jitterAmp * envelope
+		local uOff = (math.random() - 0.5) * 2 * jitterAmp * envelope
+		pts[i + 1] = p0:Lerp(p1, frac) + rightV * rOff + upV * uOff
+	end
+	pts[segCount + 1] = p1
+
+	for i = 1, segCount do
+		local a = pts[i]
+		local b = pts[i + 1]
+		local sLen = (b - a).Magnitude
+		if sLen > 0.05 then
+			local mid = (a + b) * 0.5
+			local sCF = safeLookAt(mid, b)
+			local outer = makePart("DraconicBoltOuter_" .. i, Enum.PartType.Block, Vector3.new(th, th, sLen + th * 0.4), sCF, colMain or PALETTE.Crimson, 0.08, Enum.Material.ForceField, parent)
+			local inner = makePart("DraconicBoltCore_" .. i, Enum.PartType.Block, Vector3.new(th * 0.48, th * 0.48, sLen + th * 0.2), sCF, colCore or PALETTE.HotCore, 0.02, Enum.Material.Neon, parent)
+			TweenService:Create(outer, TweenInfo.new(d, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = Vector3.new(0.03, 0.03, sLen),
+				Transparency = 1,
+			}):Play()
+			TweenService:Create(inner, TweenInfo.new(d * 0.88, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = Vector3.new(0.01, 0.01, sLen),
+				Transparency = 1,
+			}):Play()
+			Debris:AddItem(outer, d + 0.04)
+			Debris:AddItem(inner, d + 0.04)
+		end
+	end
+end
+
+local function spawnRunicMagicCircle(centerCF, radius, colPrimary, colSecondary, dur, parent, spinSpeed)
+	local d = dur or 0.75
+	local r = radius or 12
+	local spd = spinSpeed or 4.2
+	local sealModel = Instance.new("Model")
+	sealModel.Name = "DraconicRunicCircle"
+	sealModel.Parent = parent or (getTempFolder())
+	Debris:AddItem(sealModel, d + 0.08)
+
+	local outerRing = makePart("RunicOuterRing", Enum.PartType.Cylinder, Vector3.new(0.18, r * 0.2, r * 0.2), centerCF * CFrame.Angles(0, 0, math.pi * 0.5), colPrimary or PALETTE.Crimson, 0.10, Enum.Material.ForceField, sealModel)
+	local innerRing = makePart("RunicInnerRing", Enum.PartType.Cylinder, Vector3.new(0.22, r * 0.14, r * 0.14), centerCF * CFrame.Angles(0, 0, math.pi * 0.5), colSecondary or PALETTE.SolarGold, 0.12, Enum.Material.ForceField, sealModel)
+	TweenService:Create(outerRing, TweenInfo.new(math.min(0.24, d * 0.35), Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.18, r * 2.0, r * 2.0),
+	}):Play()
+	TweenService:Create(innerRing, TweenInfo.new(math.min(0.26, d * 0.38), Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.22, r * 1.32, r * 1.32),
+	}):Play()
+
+	local spokes = {}
+	local glyphCount = isLowFX() and 4 or 8
+	for i = 1, glyphCount do
+		local ang = (i - 1) * ((math.pi * 2) / glyphCount)
+		local col = (i % 2 == 0) and (colPrimary or PALETTE.Crimson) or (colSecondary or PALETTE.SolarGold)
+		local spoke = makePart("RunicSpoke_" .. i, Enum.PartType.Block, Vector3.new(0.18, 0.14, r * 1.85), centerCF * CFrame.Angles(0, ang, 0), col, 0.14, Enum.Material.ForceField, sealModel)
+		local fangGlyph = makePart("RunicFangGlyph_" .. i, Enum.PartType.Wedge, Vector3.new(0.32, r * 0.22, r * 0.32), centerCF * CFrame.Angles(0, ang, 0) * CFrame.new(0, 0, -r * 1.05) * CFrame.Angles(math.pi * 0.5, 0, 0), col, 0.08, Enum.Material.Neon, sealModel)
+		table.insert(spokes, { Spoke = spoke, Glyph = fangGlyph, Angle = ang })
+	end
+
+	local t0 = os.clock()
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		local el = os.clock() - t0
+		if el >= d or not sealModel.Parent then
+			if conn then conn:Disconnect() end
+			return
+		end
+		local u = el / d
+		local rotCF = centerCF * CFrame.Angles(0, el * spd, 0)
+		local fade = (u > 0.68) and ((u - 0.68) / 0.32) or 0
+		if outerRing.Parent then
+			outerRing.CFrame = rotCF * CFrame.Angles(0, 0, math.pi * 0.5)
+			outerRing.Transparency = 0.10 + fade * 0.90
+		end
+		if innerRing.Parent then
+			innerRing.CFrame = (centerCF * CFrame.Angles(0, -el * spd * 1.35, 0)) * CFrame.Angles(0, 0, math.pi * 0.5)
+			innerRing.Transparency = 0.12 + fade * 0.88
+		end
+		for _, sp in ipairs(spokes) do
+			local aCF = rotCF * CFrame.Angles(0, sp.Angle, 0)
+			if sp.Spoke and sp.Spoke.Parent then
+				sp.Spoke.CFrame = aCF
+				sp.Spoke.Transparency = 0.14 + fade * 0.86
+			end
+			if sp.Glyph and sp.Glyph.Parent then
+				sp.Glyph.CFrame = aCF * CFrame.new(0, 0, -r * (0.95 + 0.12 * math.sin(el * 10 + sp.Angle))) * CFrame.Angles(math.pi * 0.5, 0, 0)
+				sp.Glyph.Transparency = 0.08 + fade * 0.92
+			end
+		end
+	end)
+	return sealModel
+end
+
+local function spawnSpectralDragonHeadConstruct(startCF, endCF, scale, colPrimary, colSecondary, colEye, dur, parent, snapJaws)
+	local s = scale or 1.35
+	local d = dur or 0.36
+	local headFolder = Instance.new("Folder")
+	headFolder.Name = "SpectralDragonHeadConstruct"
+	headFolder.Parent = parent or (getTempFolder())
+	Debris:AddItem(headFolder, d + 0.12)
+
+	local cranium = makePart("DragonHeadCranium", Enum.PartType.Block, Vector3.new(2.2, 1.35, 2.8) * s, startCF, colPrimary or PALETTE.Crimson, 0.08, Enum.Material.ForceField, headFolder)
+	local snout = makePart("DragonHeadSnout", Enum.PartType.Wedge, Vector3.new(1.75, 1.05, 2.6) * s, startCF * CFrame.new(0, 0.15 * s, -2.4 * s), colPrimary or PALETTE.Crimson, 0.06, Enum.Material.ForceField, headFolder)
+	local innerCore = makePart("DragonHeadInnerCore", Enum.PartType.Ball, Vector3.new(1.55, 1.15, 2.4) * s, startCF * CFrame.new(0, 0, -0.8 * s), colSecondary or PALETTE.SolarGold, 0.04, Enum.Material.Neon, headFolder)
+	local lowerJaw = makePart("DragonHeadLowerJaw", Enum.PartType.Wedge, Vector3.new(1.55, 0.72, 2.8) * s, startCF * CFrame.new(0, -0.75 * s, -1.8 * s) * CFrame.Angles(math.pi + 0.38, 0, 0), colPrimary or PALETTE.Crimson, 0.08, Enum.Material.ForceField, headFolder)
+
+	local hornL = makePart("DragonHornL", Enum.PartType.Wedge, Vector3.new(0.42, 0.85, 3.2) * s, startCF * CFrame.new(-1.05 * s, 0.95 * s, 1.1 * s) * CFrame.Angles(0.42, -0.28, -0.2), colSecondary or PALETTE.SolarGold, 0.04, Enum.Material.Neon, headFolder)
+	local hornR = makePart("DragonHornR", Enum.PartType.Wedge, Vector3.new(0.42, 0.85, 3.2) * s, startCF * CFrame.new(1.05 * s, 0.95 * s, 1.1 * s) * CFrame.Angles(0.42, 0.28, 0.2), colSecondary or PALETTE.SolarGold, 0.04, Enum.Material.Neon, headFolder)
+	local eyeL = makePart("DragonEyeL", Enum.PartType.Ball, Vector3.new(0.42, 0.34, 0.65) * s, startCF * CFrame.new(-0.88 * s, 0.38 * s, -1.05 * s), colEye or PALETTE.HotCore, 0.0, Enum.Material.Neon, headFolder)
+	local eyeR = makePart("DragonEyeR", Enum.PartType.Ball, Vector3.new(0.42, 0.34, 0.65) * s, startCF * CFrame.new(0.88 * s, 0.38 * s, -1.05 * s), colEye or PALETTE.HotCore, 0.0, Enum.Material.Neon, headFolder)
+
+	if not isLowFX() then
+		attachRibbonTrail(hornL, colEye or PALETTE.HotCore, colPrimary or PALETTE.Crimson, 0.75 * s, 0.24)
+		attachRibbonTrail(hornR, colEye or PALETTE.HotCore, colPrimary or PALETTE.Crimson, 0.75 * s, 0.24)
+	end
+
+	local fangs = {}
+	for f = -1, 1 do
+		local xOff = f * 0.56 * s
+		local uFang = makePart("DragonUpperFang_" .. f, Enum.PartType.Wedge, Vector3.new(0.26, 0.88, 0.36) * s, startCF * CFrame.new(xOff, -0.35 * s, -2.65 * s) * CFrame.Angles(math.pi, 0, 0), colEye or PALETTE.HotCore, 0.02, Enum.Material.Neon, headFolder)
+		local lFang = makePart("DragonLowerFang_" .. f, Enum.PartType.Wedge, Vector3.new(0.24, 0.78, 0.34) * s, startCF * CFrame.new(xOff, -0.95 * s, -2.45 * s), colSecondary or PALETTE.SolarGold, 0.02, Enum.Material.Neon, headFolder)
+		table.insert(fangs, { Upper = uFang, Lower = lFang, X = xOff })
+	end
+
+	local t0 = os.clock()
+	local conn
+	conn = RunService.Heartbeat:Connect(function()
+		local el = os.clock() - t0
+		if el >= d or not headFolder.Parent then
+			if conn then conn:Disconnect() end
+			return
+		end
+		local u = math.clamp(el / d, 0, 1)
+		local curCF = startCF:Lerp(endCF, u)
+		local jawAngle = snapJaws and (0.45 * (1 - math.min(1, u * 1.35))) or (0.28 + 0.14 * math.sin(el * 24))
+		local fade = (u > 0.74) and ((u - 0.74) / 0.26) or 0
+
+		if cranium.Parent then
+			cranium.CFrame = curCF * CFrame.Angles(-jawAngle * 0.35, 0, 0)
+			cranium.Transparency = 0.08 + fade * 0.92
+		end
+		if snout.Parent then
+			snout.CFrame = curCF * CFrame.Angles(-jawAngle * 0.35, 0, 0) * CFrame.new(0, 0.15 * s, -2.4 * s)
+			snout.Transparency = 0.06 + fade * 0.94
+		end
+		if innerCore.Parent then
+			innerCore.CFrame = curCF * CFrame.new(0, 0, -0.8 * s)
+			innerCore.Transparency = 0.04 + fade * 0.96
+		end
+		if lowerJaw.Parent then
+			lowerJaw.CFrame = curCF * CFrame.new(0, -0.58 * s, -1.75 * s) * CFrame.Angles(math.pi + jawAngle, 0, 0)
+			lowerJaw.Transparency = 0.08 + fade * 0.92
+		end
+		if hornL.Parent then
+			hornL.CFrame = curCF * CFrame.Angles(-jawAngle * 0.35, 0, 0) * CFrame.new(-1.05 * s, 0.95 * s, 1.1 * s) * CFrame.Angles(0.42, -0.28, -0.2)
+			hornL.Transparency = 0.04 + fade * 0.96
+		end
+		if hornR.Parent then
+			hornR.CFrame = curCF * CFrame.Angles(-jawAngle * 0.35, 0, 0) * CFrame.new(1.05 * s, 0.95 * s, 1.1 * s) * CFrame.Angles(0.42, 0.28, 0.2)
+			hornR.Transparency = 0.04 + fade * 0.96
+		end
+		if eyeL.Parent then
+			eyeL.CFrame = curCF * CFrame.Angles(-jawAngle * 0.35, 0, 0) * CFrame.new(-0.88 * s, 0.38 * s, -1.05 * s)
+			eyeL.Transparency = fade
+		end
+		if eyeR.Parent then
+			eyeR.CFrame = curCF * CFrame.Angles(-jawAngle * 0.35, 0, 0) * CFrame.new(0.88 * s, 0.38 * s, -1.05 * s)
+			eyeR.Transparency = fade
+		end
+		for _, fg in ipairs(fangs) do
+			if fg.Upper and fg.Upper.Parent then
+				fg.Upper.CFrame = curCF * CFrame.Angles(-jawAngle * 0.35, 0, 0) * CFrame.new(fg.X, -0.32 * s, -2.65 * s) * CFrame.Angles(math.pi, 0, 0)
+				fg.Upper.Transparency = 0.02 + fade * 0.98
+			end
+			if fg.Lower and fg.Lower.Parent then
+				fg.Lower.CFrame = curCF * CFrame.Angles(jawAngle * 0.65, 0, 0) * CFrame.new(fg.X, -0.78 * s, -2.45 * s)
+				fg.Lower.Transparency = 0.02 + fade * 0.98
+			end
+		end
+	end)
+	return headFolder
 end
 
 -- ============================================================================
@@ -521,21 +721,31 @@ function DragonSovereignVFX.SpawnTransformAscension(actorChar, pos, tier, isAwak
 	end
 
 	local isSovereign = (tonumber(tier) or 2) >= 2
-	local scale = (isSovereign and 1.42 or 1.05) * (isAwakened and 1.22 or 1.0)
+	local scale = (isSovereign and 1.48 or 1.12) * (isAwakened and 1.22 or 1.0)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, pos, nil)
 	local gPos = anchors.GroundPos
 	local cPos = anchors.CenterPos
 	local folder = Instance.new("Folder")
 	folder.Name = isSovereign and "SovereignDragon_AscensionVFX" or "HybridDragon_AscensionVFX"
 	folder.Parent = (getTempFolder())
-	Debris:AddItem(folder, 1.45)
+	Debris:AddItem(folder, 1.55)
+
+	local primaryCol = isSovereign and PALETTE.Crimson or PALETTE.BloodFlame
+	local secondaryCol = isSovereign and PALETTE.AwakenedGold or PALETTE.SolarGold
+	local accentCol = isSovereign and PALETTE.Violet or PALETTE.Magma
 
 	DragonSovereignVFX.EmitPrefab("Dragon_V_Ascension", CFrame.new(cPos + Vector3.new(0, 2.2 * scale, 0)), scale)
 
-	-- Stage 1 (0.00s): Abyssal Gravity Implosion Sphere + 3 Counter-Rotating Draconic Ground Seals + 8 Obsidian Monolith Fangs
+	-- Multi-Ring Rotating Draconic Runic Magic Circle on the ground
+	spawnRunicMagicCircle(CFrame.new(gPos + Vector3.new(0, 0.18, 0)), (isSovereign and 18 or 13) * scale, primaryCol, secondaryCol, 1.15, folder, isSovereign and 5.2 or 4.4)
+	if isSovereign then
+		spawnRunicMagicCircle(CFrame.new(gPos + Vector3.new(0, 0.28, 0)), 11.5 * scale, accentCol, PALETTE.HotCore, 1.05, folder, -6.4)
+	end
+
+	-- Stage 1 (0.00s): Abyssal Gravity Implosion Sphere + 3 Counter-Rotating Draconic Ground Seals + Monolith Fangs
 	local implosion = makePart("AbyssalImplosionSphere", Enum.PartType.Ball, Vector3.new(15, 15, 15) * scale, CFrame.new(cPos + Vector3.new(0, 2.5 * scale, 0)), PALETTE.Obsidian, 0.18, Enum.Material.ForceField, folder)
-	local implosionRim = makePart("AbyssalImplosionRim", Enum.PartType.Ball, Vector3.new(17.5, 17.5, 17.5) * scale, implosion.CFrame, PALETTE.Crimson, 0.35, Enum.Material.ForceField, folder)
-	makeSafeLight(implosion, PALETTE.Crimson, 1.38, 16, 0.95)
+	local implosionRim = makePart("AbyssalImplosionRim", Enum.PartType.Ball, Vector3.new(17.5, 17.5, 17.5) * scale, implosion.CFrame, primaryCol, 0.35, Enum.Material.ForceField, folder)
+	makeSafeLight(implosion, primaryCol, 1.38, 16, 0.95)
 	TweenService:Create(implosion, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
 		Size = Vector3.new(1.8, 1.8, 1.8) * scale,
 		Transparency = 0.04,
@@ -549,7 +759,7 @@ function DragonSovereignVFX.SpawnTransformAscension(actorChar, pos, tier, isAwak
 
 	for rIdx = 1, 3 do
 		local sealR = (6 + rIdx * 5.2) * scale
-		local col = (rIdx == 1 and PALETTE.HotCore) or (rIdx == 2 and PALETTE.Crimson or PALETTE.Violet)
+		local col = (rIdx == 1 and secondaryCol) or (rIdx == 2 and primaryCol or accentCol)
 		local seal = makePart("DraconicSealRing_" .. rIdx, Enum.PartType.Cylinder, Vector3.new(0.16, 2, 2), CFrame.new(gPos + Vector3.new(0, 0.12 + rIdx * 0.05, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), col, 0.12, Enum.Material.ForceField, folder)
 		TweenService:Create(seal, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Size = Vector3.new(0.16, sealR, sealR),
@@ -564,18 +774,18 @@ function DragonSovereignVFX.SpawnTransformAscension(actorChar, pos, tier, isAwak
 		end)
 	end
 
-	local fangCount = isLowFX() and 5 or (isSovereign and 10 or 7)
+	local fangCount = isLowFX() and 6 or (isSovereign and 12 or 9)
 	for i = 1, fangCount do
 		local ang = (i - 1) * ((math.pi * 2) / fangCount)
-		local distR = (isSovereign and 9.5 or 6.8) * scale
+		local distR = (isSovereign and 9.8 or 7.2) * scale
 		local fPos = gPos + Vector3.new(math.cos(ang) * distR, -1.2, math.sin(ang) * distR)
-		local h = (isSovereign and 9.6 or 6.4) * scale
+		local h = (isSovereign and 10.2 or 7.0) * scale
 		local fang = makePart(
 			"AscensionObsidianFang_" .. i,
 			Enum.PartType.Wedge,
-			Vector3.new(1.5 * scale, h, 2.1 * scale),
+			Vector3.new(1.55 * scale, h, 2.15 * scale),
 			CFrame.lookAt(fPos, gPos + Vector3.new(0, h * 0.85, 0)) * CFrame.Angles(-0.28, 0, 0),
-			(i % 2 == 0) and PALETTE.SlateArmor or PALETTE.Crimson,
+			(i % 3 == 0) and secondaryCol or ((i % 2 == 0) and PALETTE.SlateArmor or primaryCol),
 			0.06,
 			(i % 2 == 0) and Enum.Material.Slate or Enum.Material.ForceField,
 			folder
@@ -593,41 +803,61 @@ function DragonSovereignVFX.SpawnTransformAscension(actorChar, pos, tier, isAwak
 		end)
 	end
 
-	-- Stage 2 (0.14s): Towering Sovereign Ascension Pillar + Coiling Spectral Dragon Helices + Conqueror Blast Dome
+	-- Stage 2 (0.14s): Towering Sovereign Ascension Pillar + 3 Coiling Spectral Dragon Spirits + Conqueror Lightning Dome
 	task.delay(0.14, function()
 		if not folder.Parent then return end
-		local pillarH = (isSovereign and 42 or 28) * scale
-		local pillarR = (isSovereign and 8.4 or 5.8) * scale
+		local pillarH = (isSovereign and 48 or 32) * scale
+		local pillarR = (isSovereign and 9.2 or 6.4) * scale
 		local pCenter = gPos + Vector3.new(0, pillarH * 0.5, 0)
 
-		local corePillar = makePart("SovereignPillarCore", Enum.PartType.Cylinder, Vector3.new(pillarH, 1.2, 1.2), CFrame.new(pCenter) * CFrame.Angles(0, 0, math.pi * 0.5), PALETTE.HotCore, 0.04, Enum.Material.SmoothPlastic, folder)
-		local plasmaPillar = makePart("SovereignPillarPlasma", Enum.PartType.Cylinder, Vector3.new(pillarH, 2.2, 2.2), corePillar.CFrame, PALETTE.Crimson, 0.14, Enum.Material.ForceField, folder)
-		local voidSheath = makePart("SovereignPillarVoid", Enum.PartType.Cylinder, Vector3.new(pillarH, 3.0, 3.0), corePillar.CFrame, PALETTE.Obsidian, 0.28, Enum.Material.ForceField, folder)
+		local corePillar = makePart("SovereignPillarCore", Enum.PartType.Cylinder, Vector3.new(pillarH, 1.2, 1.2), CFrame.new(pCenter) * CFrame.Angles(0, 0, math.pi * 0.5), secondaryCol, 0.04, Enum.Material.Neon, folder)
+		local plasmaPillar = makePart("SovereignPillarPlasma", Enum.PartType.Cylinder, Vector3.new(pillarH, 2.2, 2.2), corePillar.CFrame, primaryCol, 0.14, Enum.Material.ForceField, folder)
+		local voidSheath = makePart("SovereignPillarVoid", Enum.PartType.Cylinder, Vector3.new(pillarH, 3.0, 3.0), corePillar.CFrame, accentCol, 0.26, Enum.Material.ForceField, folder)
 
 		TweenService:Create(corePillar, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(pillarH, pillarR * 0.52, pillarR * 0.52) }):Play()
 		TweenService:Create(plasmaPillar, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(pillarH, pillarR, pillarR) }):Play()
 		TweenService:Create(voidSheath, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(pillarH, pillarR * 1.32, pillarR * 1.32) }):Play()
 
-		local domeR = (isSovereign and 44 or 28) * (isAwakened and 1.18 or 1.0)
-		local dome = makePart("SovereignConquerorDome", Enum.PartType.Ball, Vector3.new(4, 4, 4), CFrame.new(cPos + Vector3.new(0, 2.4, 0)), PALETTE.Crimson, 0.16, Enum.Material.ForceField, folder)
+		local domeR = (isSovereign and 48 or 32) * (isAwakened and 1.18 or 1.0)
+		local dome = makePart("SovereignConquerorDome", Enum.PartType.Ball, Vector3.new(4, 4, 4), CFrame.new(cPos + Vector3.new(0, 2.4, 0)), primaryCol, 0.16, Enum.Material.ForceField, folder)
 		local innerVoidDome = makePart("SovereignVoidDome", Enum.PartType.Ball, Vector3.new(3, 3, 3), dome.CFrame, PALETTE.Obsidian, 0.14, Enum.Material.ForceField, folder)
 		TweenService:Create(dome, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(domeR, domeR, domeR), Transparency = 1 }):Play()
 		TweenService:Create(innerVoidDome, TweenInfo.new(0.46, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(domeR * 0.82, domeR * 0.82, domeR * 0.82), Transparency = 1 }):Play()
 
-		spawnShockRing(gPos + Vector3.new(0, 0.25, 0), nil, PALETTE.Crimson, 4, domeR * 1.12, 0.38, 0.58, Enum.Material.ForceField, folder)
-		spawnShockRing(gPos + Vector3.new(0, 0.55, 0), nil, PALETTE.Violet, 3, domeR * 0.86, 0.28, 0.48, Enum.Material.ForceField, folder)
-		if isAwakened then
-			spawnShockRing(gPos + Vector3.new(0, 0.85, 0), nil, PALETTE.AwakenedGold, 3, domeR * 0.98, 0.24, 0.52, Enum.Material.ForceField, folder)
+		spawnShockRing(gPos + Vector3.new(0, 0.25, 0), nil, primaryCol, 4, domeR * 1.15, 0.38, 0.58, Enum.Material.ForceField, folder)
+		spawnShockRing(gPos + Vector3.new(0, 0.55, 0), nil, accentCol, 3, domeR * 0.88, 0.28, 0.48, Enum.Material.ForceField, folder)
+		spawnShockRing(gPos + Vector3.new(0, 0.85, 0), nil, secondaryCol, 3, domeR * 1.02, 0.24, 0.52, Enum.Material.ForceField, folder)
+
+		-- Radial Conqueror / Draconic Lightning Bolts erupting outward
+		local boltCount = isLowFX() and 0 or (isSovereign and 12 or 8)
+		for b = 1, boltCount do
+			local bAng = (b - 1) * ((math.pi * 2) / boltCount)
+			local bStart = gPos + Vector3.new(math.cos(bAng) * 2.2 * scale, (1.5 + (b % 3) * 3.5) * scale, math.sin(bAng) * 2.2 * scale)
+			local bEnd = gPos + Vector3.new(math.cos(bAng) * (15 + (b % 2) * 5) * scale, (0.4 + (b % 2) * 4.5) * scale, math.sin(bAng) * (15 + (b % 2) * 5) * scale)
+			spawnDraconicLightningArc(bStart, bEnd, (b % 2 == 0) and primaryCol or accentCol, secondaryCol, 0.34 * scale, 6, 0.38, folder)
 		end
 
-		-- 2 Live Coiling Spectral Dragon Helices spiraling up the Ascension Pillar
+		-- Rising 3D Spectral Dragon Head Construct ascending up the pillar!
+		spawnSpectralDragonHeadConstruct(
+			CFrame.lookAt(gPos + Vector3.new(0, 2.5 * scale, 0), gPos + Vector3.new(0, pillarH, 0)),
+			CFrame.lookAt(gPos + Vector3.new(0, pillarH * 0.72, 0), gPos + Vector3.new(0, pillarH * 1.2, 0)),
+			(isSovereign and 2.1 or 1.45) * scale,
+			primaryCol,
+			secondaryCol,
+			PALETTE.HotCore,
+			0.62,
+			folder,
+			false
+		)
+
+		-- 3 Live Coiling Spectral Dragon Helices spiraling up the Ascension Pillar
 		if not isLowFX() then
 			local helices = {}
-			for h = 1, 2 do
-				local col = (h == 1) and PALETTE.Crimson or PALETTE.Violet
-				local node = makePart("CoilingDragonSpirit_" .. h, Enum.PartType.Ball, Vector3.new(1.3, 1.3, 2.2) * scale, CFrame.new(gPos), col, 0.06, Enum.Material.ForceField, folder)
-				attachRibbonTrail(node, (h == 1) and PALETTE.HotCore or PALETTE.Crimson, col, 1.85 * scale, 0.34)
-				table.insert(helices, { Node = node, Phase = (h - 1) * math.pi })
+			for h = 1, 3 do
+				local col = (h == 1 and primaryCol) or (h == 2 and secondaryCol) or accentCol
+				local node = makePart("CoilingDragonSpirit_" .. h, Enum.PartType.Ball, Vector3.new(1.4, 1.4, 2.4) * scale, CFrame.new(gPos), col, 0.06, Enum.Material.ForceField, folder)
+				attachRibbonTrail(node, PALETTE.HotCore, col, 1.95 * scale, 0.36)
+				table.insert(helices, { Node = node, Phase = (h - 1) * ((math.pi * 2) / 3) })
 			end
 			local t0 = os.clock()
 			local conn
@@ -640,8 +870,8 @@ function DragonSovereignVFX.SpawnTransformAscension(actorChar, pos, tier, isAwak
 				local u = el / 0.72
 				for _, h in ipairs(helices) do
 					if h.Node and h.Node.Parent then
-						local ang = el * 15 + h.Phase
-						local rad = (pillarR * 0.72) * (1 - u * 0.28)
+						local ang = el * 16 + h.Phase
+						local rad = (pillarR * 0.78) * (1 - u * 0.25)
 						local y = u * pillarH * 0.92
 						local p = gPos + Vector3.new(math.cos(ang) * rad, y, math.sin(ang) * rad)
 						local tangent = Vector3.new(-math.sin(ang) * rad, pillarH * 0.16, math.cos(ang) * rad).Unit
@@ -655,7 +885,7 @@ function DragonSovereignVFX.SpawnTransformAscension(actorChar, pos, tier, isAwak
 					local f = (el - 0.34) / 0.38
 					corePillar.Size = Vector3.new(pillarH, pillarR * 0.52 * (1 - f), pillarR * 0.52 * (1 - f))
 					plasmaPillar.Transparency = 0.14 + f * 0.86
-					voidSheath.Transparency = 0.28 + f * 0.72
+					voidSheath.Transparency = 0.26 + f * 0.74
 					corePillar.Transparency = f
 				end
 			end)
@@ -670,7 +900,7 @@ function DragonSovereignVFX.SpawnTransformAscension(actorChar, pos, tier, isAwak
 		end
 
 		if isLocal then
-			emitCameraTrauma(isSovereign and 0.54 or 0.38, isSovereign and 6.0 or 3.5)
+			emitCameraTrauma(isSovereign and 0.58 or 0.42, isSovereign and 6.5 or 4.0)
 		end
 	end)
 
@@ -678,55 +908,72 @@ function DragonSovereignVFX.SpawnTransformAscension(actorChar, pos, tier, isAwak
 	task.delay(0.38, function()
 		if not folder.Parent then return end
 		local liveAnchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, cPos, nil)
-		spawnShockRing(liveAnchors.WingL_CF.Position, liveAnchors.WingL_CF, PALETTE.Violet, 1.8, 12.5 * scale, 0.22, 0.36, Enum.Material.ForceField, folder)
-		spawnShockRing(liveAnchors.WingR_CF.Position, liveAnchors.WingR_CF, PALETTE.Violet, 1.8, 12.5 * scale, 0.22, 0.36, Enum.Material.ForceField, folder)
-		spawnShockRing(liveAnchors.MawCF.Position, liveAnchors.MawCF * CFrame.Angles(math.pi * 0.5, 0, 0), PALETTE.HotCore, 1.6, 15.0 * scale, 0.26, 0.40, Enum.Material.ForceField, folder)
+		spawnShockRing(liveAnchors.WingL_CF.Position, liveAnchors.WingL_CF, accentCol, 1.8, 13.5 * scale, 0.24, 0.38, Enum.Material.ForceField, folder)
+		spawnShockRing(liveAnchors.WingR_CF.Position, liveAnchors.WingR_CF, accentCol, 1.8, 13.5 * scale, 0.24, 0.38, Enum.Material.ForceField, folder)
+		spawnShockRing(liveAnchors.MawCF.Position, liveAnchors.MawCF * CFrame.Angles(math.pi * 0.5, 0, 0), secondaryCol, 1.6, 16.0 * scale, 0.28, 0.42, Enum.Material.ForceField, folder)
 	end)
 end
 
 -- ============================================================================
 -- 4. [M1] DRACONIC QUAD-TALON REND & ABYSSAL FANG SNAP-BITE FINISHER
+--    Distinct Form 1 (Crimson-Magma Martial Claws + Fire Dragon Bite) vs
+--    Form 2 (Colossal Sovereign Gold-Violet Spatial Rends + Abyssal Skull Crunch)
 -- ============================================================================
 function DragonSovereignVFX.SpawnDragonM1(actorChar, startPos, lookDir, combo, isHeavy, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
 	local tier = math.max(1, anchors.Tier)
-	local scale = ((tier >= 2) and 1.38 or 1.0) * (isAwakened and 1.2 or 1.0)
+	local isSovereign = (tier >= 2)
+	local scale = (isSovereign and 1.46 or 1.08) * (isAwakened and 1.2 or 1.0)
 	local idx = tonumber(combo) or 1
 	local folder = Instance.new("Folder")
 	folder.Name = "Dragon_M1_VFX"
 	folder.Parent = (getTempFolder())
-	Debris:AddItem(folder, 0.65)
+	Debris:AddItem(folder, 0.75)
+
+	local primaryCol = isSovereign and PALETTE.Crimson or PALETTE.BloodFlame
+	local secondaryCol = isSovereign and PALETTE.AwakenedGold or PALETTE.SolarGold
+	local accentCol = isSovereign and PALETTE.Violet or PALETTE.Magma
 
 	local isBiteFinisher = isHeavy or (idx % 4 == 0)
 	local side = (idx % 2 == 0) and 1 or -1
 	local originCF = isBiteFinisher and anchors.MawCF or ((side > 0) and anchors.ClawR_CF or anchors.ClawL_CF)
-	local strikeCenter = originCF.Position + anchors.LookDir * (3.8 * scale)
+	local strikeCenter = originCF.Position + anchors.LookDir * (4.2 * scale)
 
 	DragonSovereignVFX.EmitPrefab("Dragon_M1_TalonRend", CFrame.lookAt(strikeCenter, strikeCenter + anchors.LookDir), scale)
 
 	if not isBiteFinisher then
-		-- 4 Parallel Curved Crimson-Obsidian Dragon Talon Crescent Slashes
+		-- 4 Parallel Curved Dragon Talon Crescent Slashes + 3D Claw Blades + Draconic Lightning Arcs
 		local slashTilt = side * 0.52 + ((idx == 3) and -side * 0.25 or 0)
-		local sweepCF = CFrame.lookAt(originCF.Position + anchors.LookDir * (1.8 * scale), originCF.Position + anchors.LookDir * (12 * scale))
+		local sweepCF = CFrame.lookAt(originCF.Position + anchors.LookDir * (1.8 * scale), originCF.Position + anchors.LookDir * (14 * scale))
 			* CFrame.Angles(0, 0, slashTilt)
 
 		for claw = 1, 4 do
-			local lane = (claw - 2.5) * 0.72 * scale
-			local col = (claw == 2 or claw == 3) and PALETTE.Crimson or PALETTE.Violet
+			local lane = (claw - 2.5) * 0.78 * scale
+			local col = (claw == 2 or claw == 3) and primaryCol or ((claw == 1) and secondaryCol or accentCol)
 			local arc = makePart(
 				"DragonTalonArc_" .. claw,
 				Enum.PartType.Cylinder,
-				Vector3.new(0.22 * scale, (5.4 + claw * 0.35) * scale, (5.4 + claw * 0.35) * scale),
+				Vector3.new(0.26 * scale, (6.0 + claw * 0.4) * scale, (6.0 + claw * 0.4) * scale),
 				sweepCF * CFrame.new(0, lane, 0) * CFrame.Angles(0, 0, math.pi * 0.5),
 				col,
-				0.08,
+				0.06,
 				Enum.Material.ForceField,
+				folder
+			)
+			local clawWedge = makePart(
+				"DragonTalonBlade_" .. claw,
+				Enum.PartType.Wedge,
+				Vector3.new(0.28 * scale, 0.52 * scale, 5.8 * scale),
+				sweepCF * CFrame.new(0, lane, -1.6 * scale) * CFrame.Angles(0, side * 0.18, 0),
+				(claw == 2) and secondaryCol or col,
+				0.04,
+				Enum.Material.Neon,
 				folder
 			)
 			local darkCore = makePart(
 				"DragonTalonVoidCore_" .. claw,
 				Enum.PartType.Block,
-				Vector3.new(6.8 * scale, 0.16 * scale, 0.34 * scale),
+				Vector3.new(7.4 * scale, 0.18 * scale, 0.38 * scale),
 				sweepCF * CFrame.new(0, lane, -1.2 * scale) * CFrame.Angles(0, side * 0.22, 0),
 				(claw == 2) and PALETTE.HotCore or PALETTE.Obsidian,
 				0.04,
@@ -734,59 +981,86 @@ function DragonSovereignVFX.SpawnDragonM1(actorChar, startPos, lookDir, combo, i
 				folder
 			)
 			if claw == 2 then
-				makeSafeLight(arc, PALETTE.Crimson, 1.2, 13, 0.24)
+				makeSafeLight(arc, primaryCol, 1.25, 14, 0.26)
 			end
-			TweenService:Create(arc, TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				CFrame = arc.CFrame * CFrame.new(0, 0, -4.4 * scale),
-				Size = Vector3.new(0.06, 9.8 * scale, 9.8 * scale),
+			TweenService:Create(arc, TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = arc.CFrame * CFrame.new(0, 0, -5.2 * scale),
+				Size = Vector3.new(0.06, 11.2 * scale, 11.2 * scale),
+				Transparency = 1,
+			}):Play()
+			TweenService:Create(clawWedge, TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = clawWedge.CFrame * CFrame.new(0, 0, -5.8 * scale),
+				Size = Vector3.new(0.08, 0.16, 9.2 * scale),
 				Transparency = 1,
 			}):Play()
 			TweenService:Create(darkCore, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				CFrame = darkCore.CFrame * CFrame.new(0, 0, -4.8 * scale),
-				Size = Vector3.new(11.2 * scale, 0.06, 0.12),
+				CFrame = darkCore.CFrame * CFrame.new(0, 0, -5.4 * scale),
+				Size = Vector3.new(12.4 * scale, 0.06, 0.12),
 				Transparency = 1,
 			}):Play()
 		end
+
+		-- Crackling Draconic Lightning across the claw slash
+		local boltTotal = isSovereign and 4 or 3
+		for b = 1, boltTotal do
+			local bOff = (b - 2) * 1.4 * scale
+			local pA = (sweepCF * CFrame.new(-3.8 * scale, bOff, -1.5 * scale)).Position
+			local pB = (sweepCF * CFrame.new(3.8 * scale, -bOff, -5.2 * scale)).Position
+			spawnDraconicLightningArc(pA, pB, (b % 2 == 0) and primaryCol or accentCol, secondaryCol, 0.24 * scale, 5, 0.24, folder)
+		end
+		spawnShockRing(strikeCenter, sweepCF, secondaryCol, 1.6 * scale, 8.5 * scale, 0.18 * scale, 0.24, Enum.Material.ForceField, folder)
+
 		if isLocal then
-			emitCameraTrauma(0.18, 1.2, anchors.LookDir)
+			emitCameraTrauma(isSovereign and 0.22 or 0.18, isSovereign and 1.6 or 1.2, anchors.LookDir)
 		end
 	else
-		-- Combo 4 / Heavy: Abyssal Sovereign Snap-Bite Jaws slamming shut at FX_BreathCore!
-		local biteCF = CFrame.lookAt(anchors.MawCF.Position + anchors.LookDir * (2.6 * scale), anchors.MawCF.Position + anchors.LookDir * (14 * scale))
-		makeSafeLight(makePart("BiteFlashAnchor", Enum.PartType.Ball, Vector3.new(1.4, 1.4, 1.4) * scale, biteCF, PALETTE.HotCore, 0.1, Enum.Material.ForceField, folder), PALETTE.Crimson, 1.35, 15, 0.32)
+		-- Combo 4 / Heavy: 3D Spectral Dragon Head Construct lunging & snapping its jaws shut!
+		local biteStartCF = CFrame.lookAt(anchors.MawCF.Position + anchors.LookDir * (1.2 * scale), anchors.MawCF.Position + anchors.LookDir * (16 * scale))
+		local biteEndCF = biteStartCF * CFrame.new(0, 0, -4.8 * scale)
+		makeSafeLight(makePart("BiteFlashAnchor", Enum.PartType.Ball, Vector3.new(1.6, 1.6, 1.6) * scale, biteStartCF, PALETTE.HotCore, 0.1, Enum.Material.ForceField, folder), primaryCol, 1.38, 15, 0.36)
+
+		spawnSpectralDragonHeadConstruct(
+			biteStartCF,
+			biteEndCF,
+			(isSovereign and 1.65 or 1.25) * scale,
+			primaryCol,
+			secondaryCol,
+			PALETTE.HotCore,
+			0.32,
+			folder,
+			true
+		)
 
 		for fangIdx = -2, 2 do
-			local xOff = fangIdx * 1.05 * scale
-			local fangLen = (3.4 - math.abs(fangIdx) * 0.42) * scale
-			-- Upper Fang slamming down
+			local xOff = fangIdx * 1.15 * scale
+			local fangLen = (3.8 - math.abs(fangIdx) * 0.42) * scale
 			local upFang = makePart(
 				"UpperAbyssFang_" .. fangIdx,
 				Enum.PartType.Wedge,
-				Vector3.new(0.58 * scale, fangLen, 0.82 * scale),
-				biteCF * CFrame.new(xOff, 2.8 * scale, -1.2 * scale) * CFrame.Angles(math.pi, 0, 0),
-				(fangIdx == 0) and PALETTE.HotCore or PALETTE.Crimson,
+				Vector3.new(0.62 * scale, fangLen, 0.88 * scale),
+				biteStartCF * CFrame.new(xOff, 3.0 * scale, -1.2 * scale) * CFrame.Angles(math.pi, 0, 0),
+				(fangIdx == 0) and secondaryCol or primaryCol,
 				0.04,
 				Enum.Material.ForceField,
 				folder
 			)
-			-- Lower Fang slamming up
 			local lowFang = makePart(
 				"LowerAbyssFang_" .. fangIdx,
 				Enum.PartType.Wedge,
-				Vector3.new(0.54 * scale, fangLen * 0.9, 0.78 * scale),
-				biteCF * CFrame.new(xOff, -2.6 * scale, -1.2 * scale),
-				(math.abs(fangIdx) == 1) and PALETTE.Violet or PALETTE.Crimson,
+				Vector3.new(0.58 * scale, fangLen * 0.9, 0.82 * scale),
+				biteStartCF * CFrame.new(xOff, -2.8 * scale, -1.2 * scale),
+				(math.abs(fangIdx) == 1) and accentCol or primaryCol,
 				0.04,
 				Enum.Material.ForceField,
 				folder
 			)
 			TweenService:Create(upFang, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-				CFrame = biteCF * CFrame.new(xOff * 0.85, 0.35 * scale, -3.4 * scale) * CFrame.Angles(math.pi - 0.25, 0, 0),
+				CFrame = biteStartCF * CFrame.new(xOff * 0.85, 0.35 * scale, -4.2 * scale) * CFrame.Angles(math.pi - 0.25, 0, 0),
 			}):Play()
 			TweenService:Create(lowFang, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-				CFrame = biteCF * CFrame.new(xOff * 0.85, -0.35 * scale, -3.4 * scale) * CFrame.Angles(0.25, 0, 0),
+				CFrame = biteStartCF * CFrame.new(xOff * 0.85, -0.35 * scale, -4.2 * scale) * CFrame.Angles(0.25, 0, 0),
 			}):Play()
-			task.delay(0.17, function()
+			task.delay(0.18, function()
 				if upFang.Parent then TweenService:Create(upFang, TweenInfo.new(0.18), { Transparency = 1 }):Play() end
 				if lowFang.Parent then TweenService:Create(lowFang, TweenInfo.new(0.18), { Transparency = 1 }):Play() end
 			end)
@@ -794,28 +1068,37 @@ function DragonSovereignVFX.SpawnDragonM1(actorChar, startPos, lookDir, combo, i
 
 		task.delay(0.15, function()
 			if not folder.Parent then return end
-			local crunchPos = (biteCF * CFrame.new(0, 0, -3.4 * scale)).Position
-			spawnShockRing(crunchPos, biteCF * CFrame.Angles(math.pi * 0.5, 0, 0), PALETTE.Crimson, 1.8, 12.5 * scale, 0.28, 0.32, Enum.Material.ForceField, folder)
-			spawnShockRing(crunchPos, biteCF * CFrame.Angles(math.pi * 0.5, 0, 0), PALETTE.HotCore, 1.2, 8.5 * scale, 0.18, 0.24, Enum.Material.ForceField, folder)
+			local crunchPos = biteEndCF.Position
+			local gCrunch = findGroundPos(crunchPos, actorChar)
+			spawnShockRing(crunchPos, biteStartCF * CFrame.Angles(math.pi * 0.5, 0, 0), primaryCol, 1.8, 14.5 * scale, 0.30, 0.34, Enum.Material.ForceField, folder)
+			spawnShockRing(crunchPos, biteStartCF * CFrame.Angles(math.pi * 0.5, 0, 0), secondaryCol, 1.2, 10.2 * scale, 0.20, 0.26, Enum.Material.ForceField, folder)
+			spawnShockRing(gCrunch + Vector3.new(0, 0.16, 0), nil, accentCol, 2.0, 13.0 * scale, 0.24, 0.36, Enum.Material.ForceField, folder)
+
+			local boltNum = isLowFX() and 0 or (isSovereign and 7 or 5)
+			for b = 1, boltNum do
+				local ang = (b - 1) * ((math.pi * 2) / boltNum)
+				local pEnd = crunchPos + Vector3.new(math.cos(ang) * 7.5 * scale, math.sin(ang * 2) * 2.5 * scale, math.sin(ang) * 7.5 * scale)
+				spawnDraconicLightningArc(crunchPos, pEnd, (b % 2 == 0) and primaryCol or accentCol, secondaryCol, 0.28 * scale, 5, 0.28, folder)
+			end
 			if isLocal then
-				emitCameraTrauma(0.32, 2.4, anchors.LookDir)
+				emitCameraTrauma(isSovereign and 0.38 or 0.32, isSovereign and 3.0 or 2.4, anchors.LookDir)
 			end
 		end)
 	end
 end
 
 -- ============================================================================
--- 5. [Z] SOVEREIGN ABYSSAL BREATH (TRIPLE-CORE HELICAL BOLO HYPER-BEAM)
+-- 5. [Z] SOVEREIGN ABYSSAL BREATH (QUAD-CORE HELICAL BOLO HYPER-BEAM)
 -- Locked directly to Bone `FX_BreathCore` (`Jaw`) on the 3D Blender Dragon!
 -- ============================================================================
 function DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-	local tierMult = (anchors.Tier >= 2 and 1.32) or (anchors.Tier == 1 and 1.12 or 1.0)
+	local tierMult = (anchors.Tier >= 2 and 1.38) or (anchors.Tier == 1 and 1.15 or 1.0)
 	local scale = (baseScale or 1.0) * tierMult
 	local mawOrigin = anchors.MawCF.Position
 
 	local rawVec = endPos - mawOrigin
-	local beamLen = math.clamp(rawVec.Magnitude, 24 * scale, 48 * scale)
+	local beamLen = math.clamp(rawVec.Magnitude, 28 * scale, 54 * scale)
 	local beamDir = (rawVec.Magnitude > 3) and rawVec.Unit or anchors.LookDir
 	local impactPos = mawOrigin + beamDir * beamLen
 	local beamAimCF = CFrame.lookAt(mawOrigin, impactPos)
@@ -823,61 +1106,99 @@ function DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lo
 	local folder = Instance.new("Folder")
 	folder.Name = "Dragon_Z_SovereignBreath"
 	folder.Parent = (getTempFolder())
-	local totalDur = 0.88
-	Debris:AddItem(folder, totalDur + 0.35)
+	local totalDur = 0.92
+	Debris:AddItem(folder, totalDur + 0.38)
 
 	DragonSovereignVFX.EmitPrefab("Dragon_Z_SovereignBreath", beamAimCF, scale)
 
-	-- Stage 1 (0.00s - 0.10s): Maw Vacuum Compression Orb & Double Runic Muzzle Halos at FX_BreathCore
-	local mawOrb = makePart("MawCompressionCore", Enum.PartType.Ball, Vector3.new(1.4, 1.4, 1.4) * scale, beamAimCF, PALETTE.HotCore, 0.02, Enum.Material.SmoothPlastic, folder)
-	local mawShell = makePart("MawCompressionShell", Enum.PartType.Ball, Vector3.new(2.6, 2.6, 2.6) * scale, beamAimCF, PALETTE.Crimson, 0.18, Enum.Material.ForceField, folder)
-	local muzzleRing1 = makePart("MawRunicHalo1", Enum.PartType.Cylinder, Vector3.new(0.24 * scale, 5.6 * scale, 5.6 * scale), beamAimCF * CFrame.Angles(0, math.pi * 0.5, 0), PALETTE.Crimson, 0.12, Enum.Material.ForceField, folder)
-	local muzzleRing2 = makePart("MawRunicHalo2", Enum.PartType.Cylinder, Vector3.new(0.18 * scale, 7.8 * scale, 7.8 * scale), beamAimCF * CFrame.Angles(0, math.pi * 0.5, 0), PALETTE.Violet, 0.18, Enum.Material.ForceField, folder)
+	-- Rotating Sovereign Runic Muzzle Magic Circle in front of FX_BreathCore
+	spawnRunicMagicCircle(beamAimCF * CFrame.new(0, 0, -1.5 * scale) * CFrame.Angles(math.pi * 0.5, 0, 0), 5.8 * scale, PALETTE.Crimson, PALETTE.AwakenedGold, totalDur, folder, 7.5)
+
+	-- Colossal 3D Spectral Dragon Skull Construct rocketing down the Bolo Breath beam!
+	spawnSpectralDragonHeadConstruct(
+		beamAimCF * CFrame.new(0, 0, -2.0 * scale),
+		CFrame.lookAt(impactPos, impactPos + beamDir),
+		1.95 * scale,
+		PALETTE.Crimson,
+		PALETTE.AwakenedGold,
+		PALETTE.HotCore,
+		0.42,
+		folder,
+		true
+	)
+
+	-- Stage 1 (0.00s - 0.10s): Maw Vacuum Compression Orb & Triple Runic Muzzle Halos at FX_BreathCore
+	local mawOrb = makePart("MawCompressionCore", Enum.PartType.Ball, Vector3.new(1.6, 1.6, 1.6) * scale, beamAimCF, PALETTE.HotCore, 0.02, Enum.Material.Neon, folder)
+	local mawShell = makePart("MawCompressionShell", Enum.PartType.Ball, Vector3.new(3.0, 3.0, 3.0) * scale, beamAimCF, PALETTE.Crimson, 0.16, Enum.Material.ForceField, folder)
+	local muzzleRing1 = makePart("MawRunicHalo1", Enum.PartType.Cylinder, Vector3.new(0.26 * scale, 6.2 * scale, 6.2 * scale), beamAimCF * CFrame.Angles(0, math.pi * 0.5, 0), PALETTE.Crimson, 0.10, Enum.Material.ForceField, folder)
+	local muzzleRing2 = makePart("MawRunicHalo2", Enum.PartType.Cylinder, Vector3.new(0.20 * scale, 8.8 * scale, 8.8 * scale), beamAimCF * CFrame.Angles(0, math.pi * 0.5, 0), PALETTE.Violet, 0.16, Enum.Material.ForceField, folder)
+	local muzzleRing3 = makePart("MawRunicHalo3", Enum.PartType.Cylinder, Vector3.new(0.16 * scale, 10.8 * scale, 10.8 * scale), beamAimCF * CFrame.Angles(0, math.pi * 0.5, 0), PALETTE.AwakenedGold, 0.18, Enum.Material.ForceField, folder)
 	makeSafeLight(mawOrb, PALETTE.Crimson, 1.42, 16, totalDur)
 
-	TweenService:Create(mawOrb, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(3.2, 3.2, 3.2) * scale }):Play()
-	TweenService:Create(mawShell, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(4.8, 4.8, 4.8) * scale }):Play()
+	TweenService:Create(mawOrb, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(3.6, 3.6, 3.6) * scale }):Play()
+	TweenService:Create(mawShell, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(5.4, 5.4, 5.4) * scale }):Play()
 
-	-- Stage 2: Triple-Core Coaxial Bolo Hyper-Beam + Helical Dragon Ribbons + 8 Mach Compression Rings + Scorched Magma Trench
+	-- Stage 2: Quad-Core Coaxial Bolo Hyper-Beam + 3 Helical Dragon Spirits + 10 Mach Rings + Conqueror Lightning
 	local midCF = CFrame.lookAt((mawOrigin + impactPos) * 0.5, impactPos) * CFrame.Angles(0, math.pi * 0.5, 0)
-	local rInner = 1.65 * scale
-	local rPlasma = 3.6 * scale
-	local rVoid = 5.2 * scale
+	local rInner = 1.85 * scale
+	local rGold = 2.85 * scale
+	local rPlasma = 4.2 * scale
+	local rVoid = 6.0 * scale
 
-	local innerBeam = makePart("BoloHotCore", Enum.PartType.Cylinder, Vector3.new(beamLen, 0.4, 0.4), midCF, PALETTE.HotCore, 0.02, Enum.Material.SmoothPlastic, folder)
+	local innerBeam = makePart("BoloHotCore", Enum.PartType.Cylinder, Vector3.new(beamLen, 0.4, 0.4), midCF, PALETTE.HotCore, 0.02, Enum.Material.Neon, folder)
+	local goldBeam = makePart("BoloGoldCore", Enum.PartType.Cylinder, Vector3.new(beamLen, 0.65, 0.65), midCF, PALETTE.AwakenedGold, 0.08, Enum.Material.ForceField, folder)
 	local plasmaBeam = makePart("BoloCrimsonPlasma", Enum.PartType.Cylinder, Vector3.new(beamLen, 0.9, 0.9), midCF, PALETTE.Crimson, 0.14, Enum.Material.ForceField, folder)
-	local voidMantle = makePart("BoloObsidianMantle", Enum.PartType.Cylinder, Vector3.new(beamLen, 1.4, 1.4), midCF, PALETTE.Obsidian, 0.28, Enum.Material.ForceField, folder)
+	local voidMantle = makePart("BoloObsidianMantle", Enum.PartType.Cylinder, Vector3.new(beamLen, 1.4, 1.4), midCF, PALETTE.Obsidian, 0.26, Enum.Material.ForceField, folder)
 
-	TweenService:Create(innerBeam, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(beamLen, rInner, rInner) }):Play()
+	TweenService:Create(innerBeam, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(beamLen, rInner, rInner) }):Play()
+	TweenService:Create(goldBeam, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(beamLen, rGold, rGold) }):Play()
 	TweenService:Create(plasmaBeam, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(beamLen, rPlasma, rPlasma) }):Play()
 	TweenService:Create(voidMantle, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(beamLen, rVoid, rVoid) }):Play()
 
-	local machCount = isLowFX() and 4 or 8
+	local machCount = isLowFX() and 5 or 10
 	local machRings = {}
 	for i = 1, machCount do
-		local col = (i % 2 == 0) and PALETTE.Crimson or PALETTE.Violet
-		local mr = makePart("BoloMachRing_" .. i, Enum.PartType.Cylinder, Vector3.new(0.26 * scale, rPlasma * 1.15, rPlasma * 1.15), beamAimCF * CFrame.new(0, 0, -(i / machCount) * beamLen) * CFrame.Angles(0, math.pi * 0.5, 0), col, 0.14, Enum.Material.ForceField, folder)
+		local col = (i % 3 == 0 and PALETTE.AwakenedGold) or ((i % 2 == 0) and PALETTE.Crimson or PALETTE.Violet)
+		local mr = makePart("BoloMachRing_" .. i, Enum.PartType.Cylinder, Vector3.new(0.28 * scale, rPlasma * 1.2, rPlasma * 1.2), beamAimCF * CFrame.new(0, 0, -(i / machCount) * beamLen) * CFrame.Angles(0, math.pi * 0.5, 0), col, 0.12, Enum.Material.ForceField, folder)
 		table.insert(machRings, { Part = mr, Index = i })
 	end
 
+	-- Crackling Conqueror & Void-Gold Lightning Bolts along the beam shaft
+	if not isLowFX() then
+		for wave = 1, 3 do
+			task.delay((wave - 1) * 0.18, function()
+				if not folder.Parent then return end
+				for b = 1, 3 do
+					local f0 = (b - 1) / 3
+					local f1 = b / 3
+					local ang0 = (wave + b) * 1.7
+					local ang1 = ang0 + 2.1
+					local pA = (beamAimCF * CFrame.new(math.cos(ang0) * rPlasma * 0.55, math.sin(ang0) * rPlasma * 0.55, -f0 * beamLen)).Position
+					local pB = (beamAimCF * CFrame.new(math.cos(ang1) * rPlasma * 0.65, math.sin(ang1) * rPlasma * 0.65, -f1 * beamLen)).Position
+					spawnDraconicLightningArc(pA, pB, (b % 2 == 0) and PALETTE.Crimson or PALETTE.Violet, PALETTE.AwakenedGold, 0.32 * scale, 6, 0.24, folder)
+				end
+			end)
+		end
+	end
+
 	-- Scorched Molten Magma Ground Trench beneath beam
-	local trenchCount = isLowFX() and 3 or 6
+	local trenchCount = isLowFX() and 4 or 7
 	for t = 1, trenchCount do
 		local p = mawOrigin:Lerp(impactPos, t / trenchCount)
 		local gp = findGroundPos(p, actorChar)
-		if math.abs(p.Y - gp.Y) < 16 then
+		if math.abs(p.Y - gp.Y) < 18 then
 			local seam = makePart(
 				"ScorchedMagmaTrench_" .. t,
 				Enum.PartType.Block,
-				Vector3.new(2.4 * scale, 0.16, (beamLen / trenchCount) * 0.88),
+				Vector3.new(2.8 * scale, 0.18, (beamLen / trenchCount) * 0.92),
 				CFrame.lookAt(gp + Vector3.new(0, 0.08, 0), gp + Vector3.new(0, 0.08, 0) + Vector3.new(beamDir.X, 0, beamDir.Z) + Vector3.new(0, 0, 0.001)),
 				(t % 2 == 0) and PALETTE.Magma or PALETTE.Crimson,
-				0.18,
+				0.14,
 				Enum.Material.ForceField,
 				folder
 			)
-			TweenService:Create(seam, TweenInfo.new(0.85, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				Size = Vector3.new(0.5, 0.05, (beamLen / trenchCount) * 0.88),
+			TweenService:Create(seam, TweenInfo.new(0.88, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Size = Vector3.new(0.5, 0.05, (beamLen / trenchCount) * 0.92),
 				Transparency = 1,
 			}):Play()
 		end
@@ -885,51 +1206,63 @@ function DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lo
 
 	local helixNodes = {}
 	if not isLowFX() then
-		for h = 1, 2 do
-			local col = (h == 1) and PALETTE.HotCore or PALETTE.Violet
-			local hn = makePart("BoloHelixSpirit_" .. h, Enum.PartType.Ball, Vector3.new(0.85, 0.85, 1.4) * scale, beamAimCF, col, 0.06, Enum.Material.ForceField, folder)
-			attachRibbonTrail(hn, col, (h == 1) and PALETTE.Crimson or PALETTE.Magma, 1.25 * scale, 0.24)
-			table.insert(helixNodes, { Node = hn, Phase = (h - 1) * math.pi })
+		for h = 1, 3 do
+			local col = (h == 1 and PALETTE.HotCore) or (h == 2 and PALETTE.AwakenedGold) or PALETTE.Violet
+			local hn = makePart("BoloHelixSpirit_" .. h, Enum.PartType.Ball, Vector3.new(0.95, 0.95, 1.6) * scale, beamAimCF, col, 0.04, Enum.Material.ForceField, folder)
+			attachRibbonTrail(hn, col, (h == 1) and PALETTE.Crimson or PALETTE.Violet, 1.45 * scale, 0.26)
+			table.insert(helixNodes, { Node = hn, Phase = (h - 1) * ((math.pi * 2) / 3) })
 		end
 	end
 
-	-- Stage 3 (0.14s): Terminal Abyssal Singularity & Obsidian Fang Crater at Impact
+	-- Stage 3 (0.14s): Terminal Abyssal Singularity, Ground Runic Seal, Conqueror Lightning & Obsidian Fang Crater at Impact
 	task.delay(0.14, function()
 		if not folder.Parent then return end
 		local gImpact = findGroundPos(impactPos, actorChar)
-		DragonSovereignVFX.EmitPrefab("Dragon_Z_SovereignBreath", CFrame.new(impactPos), scale * 1.15)
+		DragonSovereignVFX.EmitPrefab("Dragon_Z_SovereignBreath", CFrame.new(impactPos), scale * 1.25)
 
-		local singCore = makePart("TerminalSingularityCore", Enum.PartType.Ball, Vector3.new(3.2, 3.2, 3.2) * scale, CFrame.new(impactPos), PALETTE.Obsidian, 0.04, Enum.Material.SmoothPlastic, folder)
-		local singCorona = makePart("TerminalSingularityCorona", Enum.PartType.Ball, Vector3.new(5.2, 5.2, 5.2) * scale, CFrame.new(impactPos), PALETTE.Crimson, 0.14, Enum.Material.ForceField, folder)
-		local singOuter = makePart("TerminalSingularityViolet", Enum.PartType.Ball, Vector3.new(6.8, 6.8, 6.8) * scale, CFrame.new(impactPos), PALETTE.Violet, 0.26, Enum.Material.ForceField, folder)
-		makeSafeLight(singCore, PALETTE.Crimson, 1.42, 16, 0.68)
+		spawnRunicMagicCircle(CFrame.new(gImpact + Vector3.new(0, 0.2, 0)), 14 * scale, PALETTE.Crimson, PALETTE.AwakenedGold, 0.78, folder, -6.5)
 
-		TweenService:Create(singCore, TweenInfo.new(0.56, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(18, 18, 18) * scale, Transparency = 1 }):Play()
-		TweenService:Create(singCorona, TweenInfo.new(0.64, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(25, 25, 25) * scale, Transparency = 1 }):Play()
-		TweenService:Create(singOuter, TweenInfo.new(0.70, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(31, 31, 31) * scale, Transparency = 1 }):Play()
+		local singCore = makePart("TerminalSingularityCore", Enum.PartType.Ball, Vector3.new(3.6, 3.6, 3.6) * scale, CFrame.new(impactPos), PALETTE.Obsidian, 0.04, Enum.Material.SmoothPlastic, folder)
+		local singGold = makePart("TerminalSingularityGold", Enum.PartType.Ball, Vector3.new(4.8, 4.8, 4.8) * scale, CFrame.new(impactPos), PALETTE.AwakenedGold, 0.10, Enum.Material.Neon, folder)
+		local singCorona = makePart("TerminalSingularityCorona", Enum.PartType.Ball, Vector3.new(6.0, 6.0, 6.0) * scale, CFrame.new(impactPos), PALETTE.Crimson, 0.14, Enum.Material.ForceField, folder)
+		local singOuter = makePart("TerminalSingularityViolet", Enum.PartType.Ball, Vector3.new(7.6, 7.6, 7.6) * scale, CFrame.new(impactPos), PALETTE.Violet, 0.24, Enum.Material.ForceField, folder)
+		makeSafeLight(singCore, PALETTE.Crimson, 1.42, 16, 0.72)
 
-		spawnShockRing(gImpact + Vector3.new(0, 0.2, 0), nil, PALETTE.Crimson, 4, 30 * scale, 0.34, 0.58, Enum.Material.ForceField, folder)
-		spawnShockRing(gImpact + Vector3.new(0, 0.45, 0), nil, PALETTE.Magma, 3, 22 * scale, 0.24, 0.48, Enum.Material.ForceField, folder)
+		TweenService:Create(singCore, TweenInfo.new(0.56, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(20, 20, 20) * scale, Transparency = 1 }):Play()
+		TweenService:Create(singGold, TweenInfo.new(0.60, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(24, 24, 24) * scale, Transparency = 1 }):Play()
+		TweenService:Create(singCorona, TweenInfo.new(0.66, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(29, 29, 29) * scale, Transparency = 1 }):Play()
+		TweenService:Create(singOuter, TweenInfo.new(0.72, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(35, 35, 35) * scale, Transparency = 1 }):Play()
 
-		local craterSpikes = isLowFX() and 5 or 9
+		spawnShockRing(gImpact + Vector3.new(0, 0.2, 0), nil, PALETTE.Crimson, 4, 34 * scale, 0.36, 0.60, Enum.Material.ForceField, folder)
+		spawnShockRing(gImpact + Vector3.new(0, 0.45, 0), nil, PALETTE.AwakenedGold, 3, 26 * scale, 0.28, 0.50, Enum.Material.ForceField, folder)
+		spawnShockRing(gImpact + Vector3.new(0, 0.70, 0), nil, PALETTE.Violet, 3, 20 * scale, 0.22, 0.44, Enum.Material.ForceField, folder)
+
+		local boltNum = isLowFX() and 0 or 8
+		for b = 1, boltNum do
+			local bAng = (b - 1) * ((math.pi * 2) / boltNum)
+			local bEnd = gImpact + Vector3.new(math.cos(bAng) * 14 * scale, (1.5 + (b % 3) * 3.5) * scale, math.sin(bAng) * 14 * scale)
+			spawnDraconicLightningArc(impactPos, bEnd, (b % 2 == 0) and PALETTE.Crimson or PALETTE.Violet, PALETTE.AwakenedGold, 0.34 * scale, 6, 0.36, folder)
+		end
+
+		local craterSpikes = isLowFX() and 6 or 12
 		for s = 1, craterSpikes do
 			local ang = (s - 1) * ((math.pi * 2) / craterSpikes)
-			local cr = 7.4 * scale
+			local cr = 8.4 * scale
 			local spPos = gImpact + Vector3.new(math.cos(ang) * cr, -0.6, math.sin(ang) * cr)
 			local shard = makePart(
 				"BreathCraterSpike_" .. s,
 				Enum.PartType.Wedge,
-				Vector3.new(1.4 * scale, 5.2 * scale, 1.9 * scale),
-				CFrame.lookAt(spPos, gImpact + Vector3.new(0, 4.5 * scale, 0)) * CFrame.Angles(-0.35, 0, 0),
-				(s % 3 == 0) and PALETTE.Magma or ((s % 2 == 0) and PALETTE.SlateArmor or PALETTE.Crimson),
-				0.08,
+				Vector3.new(1.55 * scale, 6.2 * scale, 2.1 * scale),
+				CFrame.lookAt(spPos, gImpact + Vector3.new(0, 5.2 * scale, 0)) * CFrame.Angles(-0.35, 0, 0),
+				(s % 3 == 0) and PALETTE.AwakenedGold or ((s % 2 == 0) and PALETTE.SlateArmor or PALETTE.Crimson),
+				0.06,
 				(s % 2 == 0) and Enum.Material.Slate or Enum.Material.ForceField,
 				folder
 			)
 			TweenService:Create(shard, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-				CFrame = shard.CFrame * CFrame.new(0, 2.2 * scale, 0),
+				CFrame = shard.CFrame * CFrame.new(0, 2.6 * scale, 0),
 			}):Play()
-			task.delay(0.45, function()
+			task.delay(0.48, function()
 				if shard.Parent then
 					TweenService:Create(shard, TweenInfo.new(0.28), { Transparency = 1 }):Play()
 				end
@@ -946,9 +1279,8 @@ function DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lo
 			return
 		end
 		local u = el / totalDur
-		local pulse = 1 + 0.16 * math.sin(el * 36)
+		local pulse = 1 + 0.18 * math.sin(el * 38)
 
-		-- Follow live FX_BreathCore bone while roaring!
 		local liveMawPos = mawOrigin
 		if anchors.Model and anchors.Model.Parent then
 			local b = anchors.Bones["FX_BreathCore"] or anchors.Bones["Jaw"] or anchors.Bones["Head"]
@@ -967,46 +1299,53 @@ function DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lo
 		mawShell.CFrame = liveAim
 		muzzleRing1.CFrame = liveAim * CFrame.Angles(el * 12, math.pi * 0.5, 0)
 		muzzleRing2.CFrame = liveAim * CFrame.Angles(-el * 9, math.pi * 0.5, 0)
-		muzzleRing1.Size = Vector3.new(0.24 * scale, 5.8 * scale * pulse, 5.8 * scale * pulse)
-		muzzleRing2.Size = Vector3.new(0.18 * scale, 8.0 * scale * pulse, 8.0 * scale * pulse)
+		muzzleRing3.CFrame = liveAim * CFrame.Angles(el * 15, math.pi * 0.5, 0)
+		muzzleRing1.Size = Vector3.new(0.26 * scale, 6.2 * scale * pulse, 6.2 * scale * pulse)
+		muzzleRing2.Size = Vector3.new(0.20 * scale, 8.8 * scale * pulse, 8.8 * scale * pulse)
+		muzzleRing3.Size = Vector3.new(0.16 * scale, 10.8 * scale * pulse, 10.8 * scale * pulse)
 
 		innerBeam.CFrame = liveMid
+		goldBeam.CFrame = liveMid
 		plasmaBeam.CFrame = liveMid
 		voidMantle.CFrame = liveMid
 
-		if el > 0.22 and el <= 0.58 then
+		if el > 0.20 and el <= 0.60 then
 			innerBeam.Size = Vector3.new(liveLen, rInner * pulse, rInner * pulse)
+			goldBeam.Size = Vector3.new(liveLen, rGold * pulse, rGold * pulse)
 			plasmaBeam.Size = Vector3.new(liveLen, rPlasma * pulse, rPlasma * pulse)
 			voidMantle.Size = Vector3.new(liveLen, rVoid * (2 - pulse * 0.9), rVoid * (2 - pulse * 0.9))
-		elseif el > 0.58 then
-			local fade = (el - 0.58) / (totalDur - 0.58)
+		elseif el > 0.60 then
+			local fade = (el - 0.60) / (totalDur - 0.60)
 			innerBeam.Size = Vector3.new(liveLen, rInner * (1 - fade), rInner * (1 - fade))
+			goldBeam.Size = Vector3.new(liveLen, rGold * (1 - fade * 0.85), rGold * (1 - fade * 0.85))
 			plasmaBeam.Size = Vector3.new(liveLen, rPlasma * (1 - fade * 0.72), rPlasma * (1 - fade * 0.72))
 			voidMantle.Size = Vector3.new(liveLen, rVoid * (1 - fade * 0.5), rVoid * (1 - fade * 0.5))
 			innerBeam.Transparency = fade
+			goldBeam.Transparency = 0.08 + fade * 0.92
 			plasmaBeam.Transparency = 0.14 + fade * 0.86
-			voidMantle.Transparency = 0.28 + fade * 0.72
+			voidMantle.Transparency = 0.26 + fade * 0.74
 			mawOrb.Transparency = fade
-			mawShell.Transparency = 0.18 + fade * 0.82
-			muzzleRing1.Transparency = 0.12 + fade * 0.88
-			muzzleRing2.Transparency = 0.18 + fade * 0.82
+			mawShell.Transparency = 0.16 + fade * 0.84
+			muzzleRing1.Transparency = 0.10 + fade * 0.90
+			muzzleRing2.Transparency = 0.16 + fade * 0.84
+			muzzleRing3.Transparency = 0.18 + fade * 0.82
 		end
 
 		for _, mr in ipairs(machRings) do
 			if mr.Part and mr.Part.Parent then
-				local travel = ((el * 48 + (mr.Index - 1) * (liveLen / machCount)) % liveLen)
-				local rSz = (rPlasma * 1.28 + math.sin(el * 22 + mr.Index) * 1.1 * scale) * (1 - u * 0.35)
-				mr.Part.CFrame = liveAim * CFrame.new(0, 0, -travel) * CFrame.Angles(el * 14 + mr.Index, math.pi * 0.5, 0)
-				mr.Part.Size = Vector3.new(0.24 * scale, rSz, rSz)
-				mr.Part.Transparency = math.clamp(0.12 + u * 0.88, 0.12, 1)
+				local travel = ((el * 54 + (mr.Index - 1) * (liveLen / machCount)) % liveLen)
+				local rSz = (rPlasma * 1.32 + math.sin(el * 24 + mr.Index) * 1.2 * scale) * (1 - u * 0.35)
+				mr.Part.CFrame = liveAim * CFrame.new(0, 0, -travel) * CFrame.Angles(el * 15 + mr.Index, math.pi * 0.5, 0)
+				mr.Part.Size = Vector3.new(0.26 * scale, rSz, rSz)
+				mr.Part.Transparency = math.clamp(0.10 + u * 0.90, 0.10, 1)
 			end
 		end
 
 		for _, hn in ipairs(helixNodes) do
 			if hn.Node and hn.Node.Parent then
-				local zTravel = ((el * 62) % liveLen)
-				local ang = el * 26 + hn.Phase
-				local hRad = rPlasma * 0.68
+				local zTravel = ((el * 68) % liveLen)
+				local ang = el * 28 + hn.Phase
+				local hRad = rPlasma * 0.74
 				hn.Node.CFrame = liveAim * CFrame.new(math.cos(ang) * hRad, math.sin(ang) * hRad, -zTravel)
 				if u > 0.72 then
 					hn.Node.Transparency = (u - 0.72) / 0.28
@@ -1016,22 +1355,22 @@ function DragonSovereignVFX.SpawnSovereignBreath(actorChar, startPos, endPos, lo
 	end)
 
 	if isLocal then
-		emitCameraTrauma(0.50, 4.5, beamDir)
+		emitCameraTrauma(0.55, 5.0, beamDir)
 	end
 end
 
 -- ============================================================================
--- 6. [X] VOID TALONS CATACLYSMIC POUNCE (TWIN 4-CLAW X-CROSS & MOLTEN GOUGES)
+-- 6. [X] BÁN LONG HƯ KHÔNG TRẢO (TWIN 4-CLAW X-CROSS, DRAGON JAW & MOLTEN GOUGES)
 -- Locked to `Paw_FL` & `Paw_FR` (`LeftHand`/`RightHand` on Hybrid)!
 -- ============================================================================
 function DragonSovereignVFX.SpawnVoidTalons(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-	local tierMult = (anchors.Tier >= 2 and 1.30) or (anchors.Tier == 1 and 1.12 or 1.0)
+	local tierMult = (anchors.Tier >= 2 and 1.34) or (anchors.Tier == 1 and 1.18 or 1.05)
 	local scale = (baseScale or 1.0) * tierMult
 
 	local originMid = (anchors.ClawL_CF.Position + anchors.ClawR_CF.Position) * 0.5
 	local rawVec = endPos - originMid
-	local lungeDist = math.clamp(rawVec.Magnitude, 18 * scale, 34 * scale)
+	local lungeDist = math.clamp(rawVec.Magnitude, 20 * scale, 36 * scale)
 	local dir = (rawVec.Magnitude > 3) and rawVec.Unit or anchors.LookDir
 	local dstPos = originMid + dir * lungeDist
 	local pathCF = CFrame.lookAt(originMid, dstPos)
@@ -1039,104 +1378,121 @@ function DragonSovereignVFX.SpawnVoidTalons(actorChar, startPos, endPos, lookDir
 	local folder = Instance.new("Folder")
 	folder.Name = "Dragon_X_VoidTalons"
 	folder.Parent = (getTempFolder())
-	Debris:AddItem(folder, 1.05)
+	Debris:AddItem(folder, 1.15)
 
 	DragonSovereignVFX.EmitPrefab("Dragon_X_VoidTalons", pathCF * CFrame.new(0, 0, -2.5 * scale), scale)
+
+	-- Ground Draconic Launch Seal + Lunging 3D Spectral Fire-Dragon Head Construct
+	local gStart = findGroundPos(originMid, actorChar)
+	spawnRunicMagicCircle(CFrame.new(gStart + Vector3.new(0, 0.16, 0)), 8.5 * scale, PALETTE.BloodFlame, PALETTE.SolarGold, 0.55, folder, 6.2)
+	spawnSpectralDragonHeadConstruct(
+		pathCF * CFrame.new(0, 0.8 * scale, -1.5 * scale),
+		CFrame.lookAt(dstPos + Vector3.new(0, 0.8 * scale, 0), dstPos + dir * 5),
+		1.48 * scale,
+		PALETTE.BloodFlame,
+		PALETTE.SolarGold,
+		PALETTE.HotCore,
+		0.34,
+		folder,
+		true
+	)
 
 	-- Twin Colossal 4-Clawed Obsidian-Crimson Spectral Dragon Talons raking in X-Cross
 	for _, side in ipairs({ -1, 1 }) do
 		local pawStart = (side < 0) and anchors.ClawL_CF.Position or anchors.ClawR_CF.Position
-		local startClawCF = safeLookAt(pawStart, dstPos, dir) * CFrame.new(side * 2.2 * scale, 1.8 * scale, 0) * CFrame.Angles(math.rad(-16), math.rad(-side * 24), math.rad(side * 38))
-		local endClawCF = safeLookAt(dstPos, dstPos + dir, dir) * CFrame.new(-side * 2.8 * scale, -0.4 * scale, 1.2 * scale) * CFrame.Angles(math.rad(22), math.rad(side * 28), math.rad(-side * 42))
+		local startClawCF = safeLookAt(pawStart, dstPos, dir) * CFrame.new(side * 2.4 * scale, 2.0 * scale, 0) * CFrame.Angles(math.rad(-16), math.rad(-side * 24), math.rad(side * 38))
+		local endClawCF = safeLookAt(dstPos, dstPos + dir, dir) * CFrame.new(-side * 3.0 * scale, -0.4 * scale, 1.4 * scale) * CFrame.Angles(math.rad(22), math.rad(side * 28), math.rad(-side * 42))
 
-		local gauntlet = makePart("SpectralDragonPaw_" .. side, Enum.PartType.Block, Vector3.new(2.8, 1.0, 2.6) * scale, startClawCF, PALETTE.SlateArmor, 0.08, Enum.Material.Slate, folder)
-		TweenService:Create(gauntlet, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		local gauntlet = makePart("SpectralDragonPaw_" .. side, Enum.PartType.Block, Vector3.new(3.1, 1.15, 2.9) * scale, startClawCF, PALETTE.SlateArmor, 0.08, Enum.Material.Slate, folder)
+		TweenService:Create(gauntlet, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 			CFrame = endClawCF,
 			Transparency = 1,
 		}):Play()
 
 		for finger = 1, 4 do
-			local fOff = (finger - 2.5) * 0.78 * scale
-			local col = (finger % 2 == 0) and PALETTE.Crimson or PALETTE.Violet
-			local blade = makePart("SpectralClawBlade_" .. side .. "_" .. finger, Enum.PartType.Wedge, Vector3.new(0.38, 0.62, 6.6) * scale, startClawCF * CFrame.new(fOff, 0, -3.0 * scale), col, 0.04, Enum.Material.ForceField, folder)
-			local core = makePart("SpectralClawCore_" .. side .. "_" .. finger, Enum.PartType.Block, Vector3.new(0.20, 0.32, 7.2) * scale, startClawCF * CFrame.new(fOff, 0, -3.3 * scale), (finger == 2) and PALETTE.HotCore or PALETTE.Obsidian, 0.02, Enum.Material.SmoothPlastic, folder)
+			local fOff = (finger - 2.5) * 0.84 * scale
+			local col = (finger % 2 == 0) and PALETTE.BloodFlame or PALETTE.SolarGold
+			local blade = makePart("SpectralClawBlade_" .. side .. "_" .. finger, Enum.PartType.Wedge, Vector3.new(0.42, 0.68, 7.4) * scale, startClawCF * CFrame.new(fOff, 0, -3.2 * scale), col, 0.04, Enum.Material.ForceField, folder)
+			local core = makePart("SpectralClawCore_" .. side .. "_" .. finger, Enum.PartType.Block, Vector3.new(0.22, 0.36, 8.0) * scale, startClawCF * CFrame.new(fOff, 0, -3.5 * scale), (finger == 2) and PALETTE.HotCore or PALETTE.Obsidian, 0.02, Enum.Material.Neon, folder)
 			if not isLowFX() and (finger == 1 or finger == 4) then
-				attachRibbonTrail(blade, PALETTE.HotCore, col, 0.75 * scale, 0.22)
+				attachRibbonTrail(blade, PALETTE.HotCore, col, 0.85 * scale, 0.24)
 			end
-			TweenService:Create(blade, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				CFrame = endClawCF * CFrame.new(fOff * 1.35, 0, -4.2 * scale),
-				Size = Vector3.new(0.18, 0.30, 10.4) * scale,
+			TweenService:Create(blade, TweenInfo.new(0.36, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = endClawCF * CFrame.new(fOff * 1.4, 0, -4.6 * scale),
+				Size = Vector3.new(0.18, 0.30, 11.6) * scale,
 				Transparency = 1,
 			}):Play()
-			TweenService:Create(core, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				CFrame = endClawCF * CFrame.new(fOff * 1.35, 0, -4.5 * scale),
-				Size = Vector3.new(0.10, 0.16, 11.0) * scale,
+			TweenService:Create(core, TweenInfo.new(0.36, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = endClawCF * CFrame.new(fOff * 1.4, 0, -4.9 * scale),
+				Size = Vector3.new(0.10, 0.16, 12.2) * scale,
 				Transparency = 1,
 			}):Play()
 		end
 	end
 
-	-- 8 Suspended Spatial Void Rift Slash Gashes forming a blazing X-Cross
-	local midRiftCF = pathCF * CFrame.new(0, 0.6 * scale, -lungeDist * 0.55)
-	local gashTotal = isLowFX() and 4 or 8
+	-- 10 Suspended Spatial Void-Flame Rift Slash Gashes forming a blazing X-Cross
+	local midRiftCF = pathCF * CFrame.new(0, 0.8 * scale, -lungeDist * 0.55)
+	local gashTotal = isLowFX() and 4 or 10
 	for g = 1, gashTotal do
 		local side = (g <= gashTotal * 0.5) and -1 or 1
-		local lane = ((g - 1) % math.max(1, gashTotal * 0.5)) - 1.5
-		local gCF = midRiftCF * CFrame.Angles(0, 0, math.rad(side * 38)) * CFrame.new(0, lane * 0.95 * scale, -(g % 2) * 0.5)
-		local gash = makePart("VoidRiftGash_" .. g, Enum.PartType.Block, Vector3.new(14.5 * scale, 0.28 * scale, 0.9 * scale), gCF, (g % 2 == 0) and PALETTE.Crimson or PALETTE.Violet, 0.04, Enum.Material.ForceField, folder)
-		local gashCore = makePart("VoidRiftCore_" .. g, Enum.PartType.Block, Vector3.new(12.2 * scale, 0.42 * scale, 0.45 * scale), gCF, PALETTE.Obsidian, 0.02, Enum.Material.SmoothPlastic, folder)
-		TweenService:Create(gash, TweenInfo.new(0.48, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			Size = Vector3.new(22.0 * scale, 0.10, 1.8 * scale),
-			CFrame = gCF * CFrame.new(0, 0, -2.8 * scale),
+		local lane = ((g - 1) % math.max(1, gashTotal * 0.5)) - 2.0
+		local gCF = midRiftCF * CFrame.Angles(0, 0, math.rad(side * 38)) * CFrame.new(0, lane * 0.92 * scale, -(g % 2) * 0.5)
+		local gash = makePart("VoidRiftGash_" .. g, Enum.PartType.Block, Vector3.new(16.0 * scale, 0.32 * scale, 0.95 * scale), gCF, (g % 2 == 0) and PALETTE.BloodFlame or PALETTE.SolarGold, 0.04, Enum.Material.ForceField, folder)
+		local gashCore = makePart("VoidRiftCore_" .. g, Enum.PartType.Block, Vector3.new(13.5 * scale, 0.45 * scale, 0.48 * scale), gCF, PALETTE.Obsidian, 0.02, Enum.Material.SmoothPlastic, folder)
+		TweenService:Create(gash, TweenInfo.new(0.50, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = Vector3.new(24.5 * scale, 0.10, 1.9 * scale),
+			CFrame = gCF * CFrame.new(0, 0, -3.2 * scale),
 			Transparency = 1,
 		}):Play()
-		TweenService:Create(gashCore, TweenInfo.new(0.44, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			Size = Vector3.new(18.5 * scale, 0.15, 0.9 * scale),
-			CFrame = gCF * CFrame.new(0, 0, -2.8 * scale),
+		TweenService:Create(gashCore, TweenInfo.new(0.46, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = Vector3.new(20.5 * scale, 0.15, 0.95 * scale),
+			CFrame = gCF * CFrame.new(0, 0, -3.2 * scale),
 			Transparency = 1,
 		}):Play()
 	end
 
-	-- 4 Parallel Molten Magma Claw-Gouge Trenches carved into ground + 8 Erupting Obsidian Fang Spires at Impact
+	-- 4 Parallel Molten Magma Claw-Gouge Trenches + 10 Erupting Obsidian-Magma Fang Spires + Draconic Lightning at Impact
 	task.delay(0.18, function()
 		if not folder.Parent then return end
 		local gDst = findGroundPos(dstPos, actorChar)
-		DragonSovereignVFX.EmitPrefab("Dragon_X_VoidTalons", CFrame.new(gDst + Vector3.new(0, 1.2, 0)), scale * 1.15)
-		makeSafeLight(makePart("TalonImpactNode", Enum.PartType.Ball, Vector3.new(2.2, 2.2, 2.2) * scale, CFrame.new(gDst + Vector3.new(0, 1.4, 0)), PALETTE.HotCore, 0.15, Enum.Material.ForceField, folder), PALETTE.Crimson, 1.38, 16, 0.55)
+		DragonSovereignVFX.EmitPrefab("Dragon_X_VoidTalons", CFrame.new(gDst + Vector3.new(0, 1.2, 0)), scale * 1.2)
+		makeSafeLight(makePart("TalonImpactNode", Enum.PartType.Ball, Vector3.new(2.4, 2.4, 2.4) * scale, CFrame.new(gDst + Vector3.new(0, 1.4, 0)), PALETTE.HotCore, 0.15, Enum.Material.ForceField, folder), PALETTE.BloodFlame, 1.40, 16, 0.58)
+
+		spawnRunicMagicCircle(CFrame.new(gDst + Vector3.new(0, 0.18, 0)), 12.5 * scale, PALETTE.BloodFlame, PALETTE.SolarGold, 0.68, folder, -5.8)
 
 		local flatDir = Vector3.new(dir.X, 0, dir.Z)
 		flatDir = (flatDir.Magnitude > 0.05) and flatDir.Unit or Vector3.new(0, 0, -1)
 		local gougeCF = CFrame.lookAt(gDst + Vector3.new(0, 0.10, 0), gDst + Vector3.new(0, 0.10, 0) + flatDir)
 
 		for c = 1, 4 do
-			local xOff = (c - 2.5) * 1.65 * scale
+			local xOff = (c - 2.5) * 1.75 * scale
 			local gouge = makePart(
 				"MoltenClawGouge_" .. c,
 				Enum.PartType.Block,
-				Vector3.new(0.65 * scale, 0.16, 13.5 * scale),
-				gougeCF * CFrame.new(xOff, 0, 2.2 * scale),
-				(c % 2 == 0) and PALETTE.Magma or PALETTE.Crimson,
-				0.10,
+				Vector3.new(0.72 * scale, 0.18, 15.0 * scale),
+				gougeCF * CFrame.new(xOff, 0, 2.4 * scale),
+				(c % 2 == 0) and PALETTE.Magma or PALETTE.BloodFlame,
+				0.08,
 				Enum.Material.ForceField,
 				folder
 			)
-			TweenService:Create(gouge, TweenInfo.new(0.68, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				Size = Vector3.new(0.14, 0.05, 15.5 * scale),
+			TweenService:Create(gouge, TweenInfo.new(0.72, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Size = Vector3.new(0.14, 0.05, 17.0 * scale),
 				Transparency = 1,
 			}):Play()
 		end
 
-		local spireCount = isLowFX() and 4 or 8
+		local spireCount = isLowFX() and 5 or 10
 		for f = 1, spireCount do
 			local ang = (f - 1) * ((math.pi * 2) / spireCount)
-			local spPos = gDst + Vector3.new(math.cos(ang) * 5.8 * scale, -0.8, math.sin(ang) * 5.8 * scale)
-			local h = 7.8 * scale
+			local spPos = gDst + Vector3.new(math.cos(ang) * 6.4 * scale, -0.8, math.sin(ang) * 6.4 * scale)
+			local h = 8.6 * scale
 			local spire = makePart(
 				"TalonObsidianSpire_" .. f,
 				Enum.PartType.Wedge,
-				Vector3.new(1.45 * scale, h, 1.95 * scale),
+				Vector3.new(1.55 * scale, h, 2.1 * scale),
 				CFrame.lookAt(spPos, gDst + Vector3.new(0, h, 0)) * CFrame.Angles(-0.30, 0, 0),
-				(f % 2 == 0) and PALETTE.SlateArmor or PALETTE.Crimson,
+				(f % 3 == 0) and PALETTE.SolarGold or ((f % 2 == 0) and PALETTE.SlateArmor or PALETTE.BloodFlame),
 				0.06,
 				(f % 2 == 0) and Enum.Material.Slate or Enum.Material.ForceField,
 				folder
@@ -1144,39 +1500,46 @@ function DragonSovereignVFX.SpawnVoidTalons(actorChar, startPos, endPos, lookDir
 			TweenService:Create(spire, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 				CFrame = spire.CFrame * CFrame.new(0, h * 0.44, 0),
 			}):Play()
-			task.delay(0.42, function()
+			task.delay(0.45, function()
 				if spire.Parent then
 					TweenService:Create(spire, TweenInfo.new(0.28), { Transparency = 1 }):Play()
 				end
 			end)
 		end
 
-		spawnShockRing(gDst + Vector3.new(0, 0.22, 0), nil, PALETTE.Crimson, 3.5, 26 * scale, 0.30, 0.50, Enum.Material.ForceField, folder)
-		spawnShockRing(gDst + Vector3.new(0, 0.45, 0), nil, PALETTE.Violet, 2.5, 19 * scale, 0.22, 0.42, Enum.Material.ForceField, folder)
+		local boltNum = isLowFX() and 0 or 8
+		for b = 1, boltNum do
+			local bAng = (b - 1) * ((math.pi * 2) / boltNum)
+			local bEnd = gDst + Vector3.new(math.cos(bAng) * 12.5 * scale, (1.2 + (b % 3) * 2.8) * scale, math.sin(bAng) * 12.5 * scale)
+			spawnDraconicLightningArc(gDst + Vector3.new(0, 1.5 * scale, 0), bEnd, (b % 2 == 0) and PALETTE.BloodFlame or PALETTE.Magma, PALETTE.SolarGold, 0.30 * scale, 5, 0.32, folder)
+		end
+
+		spawnShockRing(gDst + Vector3.new(0, 0.22, 0), nil, PALETTE.BloodFlame, 3.5, 28 * scale, 0.32, 0.52, Enum.Material.ForceField, folder)
+		spawnShockRing(gDst + Vector3.new(0, 0.45, 0), nil, PALETTE.SolarGold, 2.5, 21 * scale, 0.24, 0.44, Enum.Material.ForceField, folder)
 		if isLocal then
-			emitCameraTrauma(0.44, 3.4, dir)
+			emitCameraTrauma(0.48, 3.8, dir)
 		end
 	end)
 end
 
 -- ============================================================================
 -- 7. [C] CATACLYSMIC STARSHOWER & SERPENTINE ABYSSAL MAELSTROM
--- Projects from `FX_CrownHalo` -> Overhead Eclipse Stargate -> 10 Trailing Meteors!
+-- Projects from `FX_CrownHalo` -> Overhead Eclipse Stargate -> 12 Dragon-Skull Meteors!
 -- ============================================================================
 function DragonSovereignVFX.SpawnCataclysmicStarshower(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-	local tierMult = (anchors.Tier >= 2 and 1.32) or (anchors.Tier == 1 and 1.12 or 1.0)
+	local tierMult = (anchors.Tier >= 2 and 1.38) or (anchors.Tier == 1 and 1.15 or 1.0)
 	local scale = (baseScale or 1.0) * tierMult
 
 	local targetCenter = ((endPos - anchors.CenterPos).Magnitude > 3) and endPos or (anchors.CenterPos + anchors.LookDir * (20 * scale))
 	local gCenter = findGroundPos(targetCenter, actorChar)
-	local skyCenter = gCenter + Vector3.new(0, 28 * scale, 0)
+	local skyCenter = gCenter + Vector3.new(0, 32 * scale, 0)
 
 	local folder = Instance.new("Folder")
 	folder.Name = "Dragon_C_CataclysmicStarshower"
 	folder.Parent = (getTempFolder())
-	local totalDur = 1.18
-	Debris:AddItem(folder, totalDur + 0.4)
+	local totalDur = 1.25
+	Debris:AddItem(folder, totalDur + 0.45)
 
 	-- Skyward Beacon Beam shooting from Dragon's `FX_CrownHalo` to Overhead Eclipse Stargate!
 	local crownPos = anchors.CrownCF.Position
@@ -1185,40 +1548,43 @@ function DragonSovereignVFX.SpawnCataclysmicStarshower(actorChar, startPos, endP
 	local beaconPart = makePart(
 		"CrownSkyBeacon",
 		Enum.PartType.Cylinder,
-		Vector3.new(beaconLen, 1.4 * scale, 1.4 * scale),
+		Vector3.new(beaconLen, 1.8 * scale, 1.8 * scale),
 		CFrame.lookAt((crownPos + skyCenter) * 0.5, skyCenter) * CFrame.Angles(0, math.pi * 0.5, 0),
-		PALETTE.Crimson,
-		0.12,
-		Enum.Material.ForceField,
+		PALETTE.AwakenedGold,
+		0.08,
+		Enum.Material.Neon,
 		folder
 	)
-	TweenService:Create(beaconPart, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+	TweenService:Create(beaconPart, TweenInfo.new(0.36, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 		Size = Vector3.new(beaconLen, 0.12, 0.12),
 		Transparency = 1,
 	}):Play()
 
-	-- Overhead Sovereign Eclipse Stargate (Obsidian Core + Crimson Runic Halo + Violet Outer Ring)
+	-- Overhead Sovereign Eclipse Stargate + Rotating Runic Sky Circle + Rotating Ground Seal
+	spawnRunicMagicCircle(CFrame.new(skyCenter), 18 * scale, PALETTE.AwakenedGold, PALETTE.Crimson, totalDur, folder, 5.2)
+	spawnRunicMagicCircle(CFrame.new(gCenter + Vector3.new(0, 0.22, 0)), 16 * scale, PALETTE.Crimson, PALETTE.Violet, totalDur, folder, -4.8)
+
 	local eclipseCore = makePart("SovereignEclipseCore", Enum.PartType.Cylinder, Vector3.new(0.55, 4, 4), CFrame.new(skyCenter) * CFrame.Angles(0, 0, math.pi * 0.5), PALETTE.Obsidian, 0.04, Enum.Material.SmoothPlastic, folder)
 	local eclipseCrimson = makePart("SovereignEclipseCrimson", Enum.PartType.Cylinder, Vector3.new(0.42, 6, 6), eclipseCore.CFrame, PALETTE.Crimson, 0.12, Enum.Material.ForceField, folder)
 	local eclipseViolet = makePart("SovereignEclipseViolet", Enum.PartType.Cylinder, Vector3.new(0.28, 8, 8), eclipseCore.CFrame, PALETTE.Violet, 0.20, Enum.Material.ForceField, folder)
 
-	TweenService:Create(eclipseCore, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.55, 19 * scale, 19 * scale) }):Play()
-	TweenService:Create(eclipseCrimson, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.42, 26 * scale, 26 * scale) }):Play()
-	TweenService:Create(eclipseViolet, TweenInfo.new(0.36, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.28, 33 * scale, 33 * scale) }):Play()
+	TweenService:Create(eclipseCore, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.55, 22 * scale, 22 * scale) }):Play()
+	TweenService:Create(eclipseCrimson, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.42, 30 * scale, 30 * scale) }):Play()
+	TweenService:Create(eclipseViolet, TweenInfo.new(0.36, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = Vector3.new(0.28, 38 * scale, 38 * scale) }):Play()
 
-	-- Ground Target Abyssal Seal + Live Swirling Serpentine Fire-Vortex Maelstrom
+	-- Ground Target Abyssal Seal + 3 Swirling Serpentine Fire-Vortex Maelstrom Dragons
 	local groundSeal = makePart("StarfallGroundSeal", Enum.PartType.Cylinder, Vector3.new(0.16, 4, 4), CFrame.new(gCenter + Vector3.new(0, 0.14, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), PALETTE.Crimson, 0.18, Enum.Material.ForceField, folder)
 	TweenService:Create(groundSeal, TweenInfo.new(0.30, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Size = Vector3.new(0.16, 26 * scale, 26 * scale),
+		Size = Vector3.new(0.16, 30 * scale, 30 * scale),
 	}):Play()
 
 	local vortexNodes = {}
 	if not isLowFX() then
-		for v = 1, 2 do
-			local col = (v == 1) and PALETTE.Crimson or PALETTE.Violet
-			local vn = makePart("MaelstromSerpent_" .. v, Enum.PartType.Ball, Vector3.new(1.3, 1.3, 2.0) * scale, CFrame.new(gCenter), col, 0.06, Enum.Material.ForceField, folder)
-			attachRibbonTrail(vn, (v == 1) and PALETTE.HotCore or PALETTE.Magma, col, 1.75 * scale, 0.30)
-			table.insert(vortexNodes, { Node = vn, Phase = (v - 1) * math.pi })
+		for v = 1, 3 do
+			local col = (v == 1 and PALETTE.Crimson) or (v == 2 and PALETTE.AwakenedGold) or PALETTE.Violet
+			local vn = makePart("MaelstromSerpent_" .. v, Enum.PartType.Ball, Vector3.new(1.4, 1.4, 2.2) * scale, CFrame.new(gCenter), col, 0.06, Enum.Material.ForceField, folder)
+			attachRibbonTrail(vn, PALETTE.HotCore, col, 1.9 * scale, 0.32)
+			table.insert(vortexNodes, { Node = vn, Phase = (v - 1) * ((math.pi * 2) / 3) })
 		end
 	end
 
@@ -1237,9 +1603,9 @@ function DragonSovereignVFX.SpawnCataclysmicStarshower(actorChar, startPos, endP
 
 		for _, vn in ipairs(vortexNodes) do
 			if vn.Node and vn.Node.Parent then
-				local ang = el * 14 + vn.Phase
-				local vRad = (4.5 + math.sin(el * 6 + vn.Phase) * 3.8) * scale
-				local vY = ((el * 20 + vn.Phase * 2) % (18 * scale))
+				local ang = el * 15 + vn.Phase
+				local vRad = (5.0 + math.sin(el * 6 + vn.Phase) * 4.2) * scale
+				local vY = ((el * 22 + vn.Phase * 2) % (20 * scale))
 				local p = gCenter + Vector3.new(math.cos(ang) * vRad, vY, math.sin(ang) * vRad)
 				local tan = Vector3.new(-math.sin(ang), 0.38, math.cos(ang)).Unit
 				vn.Node.CFrame = CFrame.lookAt(p, p + tan)
@@ -1258,25 +1624,40 @@ function DragonSovereignVFX.SpawnCataclysmicStarshower(actorChar, startPos, endP
 		end
 	end)
 
-	-- 10 Diagonal Obsidian-Crimson Draconic Starfall Meteors raining from Eclipse Stargate!
-	local meteorCount = isLowFX() and 5 or 10
+	-- 12 Diagonal Obsidian-Crimson-Gold Draconic Starfall Meteors raining from Eclipse Stargate!
+	local meteorCount = isLowFX() and 6 or 12
 	for m = 1, meteorCount do
-		task.delay(0.08 + (m - 1) * 0.068, function()
+		task.delay(0.06 + (m - 1) * 0.062, function()
 			if not folder.Parent then return end
 			local isFinal = (m == meteorCount)
-			local ang = (m - 1) * 2.39996 -- Golden angle distribution for natural meteor spread
-			local spreadR = isFinal and 0 or (math.sqrt(m / meteorCount) * 11.5 * scale)
+			local ang = (m - 1) * 2.39996
+			local spreadR = isFinal and 0 or (math.sqrt(m / meteorCount) * 13.0 * scale)
 			local hitPos = gCenter + Vector3.new(math.cos(ang) * spreadR, 0, math.sin(ang) * spreadR)
-			local spawnPos = skyCenter + Vector3.new(math.cos(ang) * (spreadR * 0.45) - 4.2 * scale, 1.5, math.sin(ang) * (spreadR * 0.45) - 3.0 * scale)
+			local spawnPos = skyCenter + Vector3.new(math.cos(ang) * (spreadR * 0.45) - 4.5 * scale, 1.5, math.sin(ang) * (spreadR * 0.45) - 3.2 * scale)
 
-			local mSz = (isFinal and 5.4 or 2.8) * scale
+			local mSz = (isFinal and 6.2 or 3.1) * scale
+			local mCol = (isFinal and PALETTE.AwakenedGold) or ((m % 2 == 0) and PALETTE.Crimson or PALETTE.Violet)
 			local rock = makePart("DraconicMeteorCore_" .. m, Enum.PartType.Ball, Vector3.new(mSz, mSz, mSz), CFrame.lookAt(spawnPos, hitPos), PALETTE.SlateArmor, 0.04, Enum.Material.Slate, folder)
-			local corona = makePart("DraconicMeteorCorona_" .. m, Enum.PartType.Ball, Vector3.new(mSz * 1.32, mSz * 1.32, mSz * 1.32), rock.CFrame, (m % 2 == 0) and PALETTE.Crimson or PALETTE.Magma, 0.20, Enum.Material.ForceField, folder)
+			local corona = makePart("DraconicMeteorCorona_" .. m, Enum.PartType.Ball, Vector3.new(mSz * 1.38, mSz * 1.38, mSz * 1.38), rock.CFrame, mCol, 0.18, Enum.Material.ForceField, folder)
 			if not isLowFX() then
-				attachRibbonTrail(rock, PALETTE.HotCore, (m % 2 == 0) and PALETTE.Crimson or PALETTE.Magma, mSz * 0.85, 0.26)
+				attachRibbonTrail(rock, PALETTE.HotCore, mCol, mSz * 0.92, 0.28)
 			end
 
 			local fallDur = isFinal and 0.30 or 0.24
+			if isFinal or (m % 3 == 0) then
+				spawnSpectralDragonHeadConstruct(
+					CFrame.lookAt(spawnPos, hitPos),
+					CFrame.lookAt(hitPos, hitPos + (hitPos - spawnPos)),
+					(isFinal and 2.15 or 1.15) * scale,
+					mCol,
+					PALETTE.AwakenedGold,
+					PALETTE.HotCore,
+					fallDur + 0.06,
+					folder,
+					true
+				)
+			end
+
 			TweenService:Create(rock, TweenInfo.new(fallDur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.lookAt(hitPos, hitPos + (hitPos - spawnPos)) }):Play()
 			TweenService:Create(corona, TweenInfo.new(fallDur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.lookAt(hitPos, hitPos + (hitPos - spawnPos)) }):Play()
 
@@ -1285,22 +1666,41 @@ function DragonSovereignVFX.SpawnCataclysmicStarshower(actorChar, startPos, endP
 				if corona.Parent then corona:Destroy() end
 				if not folder.Parent then return end
 
-				spawnShockRing(hitPos + Vector3.new(0, 0.18, 0), nil, (m % 2 == 0) and PALETTE.Crimson or PALETTE.Violet, 1.8, (isFinal and 30 or 12.5) * scale, isFinal and 0.36 or 0.22, isFinal and 0.56 or 0.34, Enum.Material.ForceField, folder)
+				spawnShockRing(hitPos + Vector3.new(0, 0.18, 0), nil, mCol, 2.0, (isFinal and 34 or 14.0) * scale, isFinal and 0.40 or 0.24, isFinal and 0.58 or 0.36, Enum.Material.ForceField, folder)
+				if m % 2 == 1 or isFinal then
+					spawnDraconicLightningArc(hitPos + Vector3.new(0, 12 * scale, 0), hitPos, mCol, PALETTE.AwakenedGold, (isFinal and 0.48 or 0.26) * scale, 6, 0.30, folder)
+				end
 				if m % 3 == 1 or isFinal then
-					DragonSovereignVFX.EmitPrefab("Dragon_C_CataclysmicStarshower", CFrame.new(hitPos + Vector3.new(0, 0.8, 0)), isFinal and (scale * 1.25) or (scale * 0.8))
+					DragonSovereignVFX.EmitPrefab("Dragon_C_CataclysmicStarshower", CFrame.new(hitPos + Vector3.new(0, 0.8, 0)), isFinal and (scale * 1.35) or (scale * 0.85))
 				end
 				if isFinal then
-					local blast = makePart("FinalStarfallSupernova", Enum.PartType.Ball, Vector3.new(4, 4, 4) * scale, CFrame.new(hitPos), PALETTE.Crimson, 0.14, Enum.Material.ForceField, folder)
-					makeSafeLight(blast, PALETTE.Crimson, 1.42, 16, 0.58)
-					TweenService:Create(blast, TweenInfo.new(0.50, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-						Size = Vector3.new(26, 26, 26) * scale,
+					local blast = makePart("FinalStarfallSupernova", Enum.PartType.Ball, Vector3.new(4.5, 4.5, 4.5) * scale, CFrame.new(hitPos), PALETTE.Crimson, 0.12, Enum.Material.ForceField, folder)
+					local goldBlast = makePart("FinalStarfallGoldCore", Enum.PartType.Ball, Vector3.new(3.5, 3.5, 3.5) * scale, CFrame.new(hitPos), PALETTE.AwakenedGold, 0.08, Enum.Material.Neon, folder)
+					makeSafeLight(blast, PALETTE.Crimson, 1.42, 16, 0.62)
+					TweenService:Create(blast, TweenInfo.new(0.52, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+						Size = Vector3.new(30, 30, 30) * scale,
 						Transparency = 1,
 					}):Play()
+					TweenService:Create(goldBlast, TweenInfo.new(0.44, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+						Size = Vector3.new(23, 23, 23) * scale,
+						Transparency = 1,
+					}):Play()
+
+					local spireNum = isLowFX() and 5 or 10
+					for s = 1, spireNum do
+						local sAng = (s - 1) * ((math.pi * 2) / spireNum)
+						local sPos = hitPos + Vector3.new(math.cos(sAng) * 9.5 * scale, -0.6, math.sin(sAng) * 9.5 * scale)
+						local sp = makePart("SupernovaMonolith_" .. s, Enum.PartType.Wedge, Vector3.new(1.6 * scale, 7.5 * scale, 2.2 * scale), CFrame.lookAt(sPos, hitPos + Vector3.new(0, 6.5 * scale, 0)) * CFrame.Angles(-0.32, 0, 0), (s % 2 == 0) and PALETTE.AwakenedGold or PALETTE.Crimson, 0.06, Enum.Material.ForceField, folder)
+						TweenService:Create(sp, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = sp.CFrame * CFrame.new(0, 3.2 * scale, 0) }):Play()
+						task.delay(0.42, function()
+							if sp.Parent then TweenService:Create(sp, TweenInfo.new(0.26), { Transparency = 1 }):Play() end
+						end)
+					end
 					if isLocal then
-						emitCameraTrauma(0.56, 5.5)
+						emitCameraTrauma(0.60, 6.0)
 					end
 				elseif isLocal and m % 2 == 0 then
-					emitCameraTrauma(0.18, 0.8)
+					emitCameraTrauma(0.18, 0.9)
 				end
 			end)
 		end)
@@ -1308,16 +1708,16 @@ function DragonSovereignVFX.SpawnCataclysmicStarshower(actorChar, startPos, endP
 end
 
 -- ============================================================================
--- 8. [F] SOARING SOVEREIGN SLIPSTREAM RUSH (MACH CONES & WINGTIP VORTEX)
+-- 8. [F] SOARING SOVEREIGN SLIPSTREAM RUSH (3D DRAGON HEAD SPEARHEAD, MACH CONES & LIGHTNING)
 -- ============================================================================
 function DragonSovereignVFX.SpawnSoaringRush(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-	local tierMult = (anchors.Tier >= 2 and 1.30) or (anchors.Tier == 1 and 1.12 or 1.0)
+	local tierMult = (anchors.Tier >= 2 and 1.35) or (anchors.Tier == 1 and 1.15 or 1.0)
 	local scale = (baseScale or 1.0) * tierMult
 
 	local p0 = anchors.CenterPos
 	local rawVec = endPos - p0
-	local rushDist = math.clamp(rawVec.Magnitude, 20 * scale, 36 * scale)
+	local rushDist = math.clamp(rawVec.Magnitude, 22 * scale, 38 * scale)
 	local dir = (rawVec.Magnitude > 3) and rawVec.Unit or anchors.LookDir
 	local p1 = p0 + dir * rushDist
 	local rushCF = CFrame.lookAt(p0, p1)
@@ -1325,60 +1725,77 @@ function DragonSovereignVFX.SpawnSoaringRush(actorChar, startPos, endPos, lookDi
 	local folder = Instance.new("Folder")
 	folder.Name = "Dragon_F_SoaringRush"
 	folder.Parent = (getTempFolder())
-	Debris:AddItem(folder, 0.85)
+	Debris:AddItem(folder, 0.90)
 
 	DragonSovereignVFX.EmitPrefab("Dragon_F_SoarRush", rushCF, scale)
-	makeSafeLight(makePart("RushSonicCore", Enum.PartType.Ball, Vector3.new(1.8, 1.8, 1.8) * scale, rushCF, PALETTE.HotCore, 0.14, Enum.Material.ForceField, folder), PALETTE.Violet, 1.30, 15, 0.42)
+	makeSafeLight(makePart("RushSonicCore", Enum.PartType.Ball, Vector3.new(2.0, 2.0, 2.0) * scale, rushCF, PALETTE.HotCore, 0.14, Enum.Material.ForceField, folder), PALETTE.Violet, 1.35, 15, 0.45)
 
-	-- 6 Expanding Supersonic Mach Cones along flight path
-	local coneCount = isLowFX() and 3 or 6
+	-- Colossal 3D Spectral Sovereign Dragon Head Spearhead leading the flight rush!
+	spawnSpectralDragonHeadConstruct(
+		rushCF * CFrame.new(0, 0.5 * scale, -1.5 * scale),
+		CFrame.lookAt(p1, p1 + dir * 5),
+		1.85 * scale,
+		PALETTE.Violet,
+		PALETTE.AwakenedGold,
+		PALETTE.HotCore,
+		0.38,
+		folder,
+		false
+	)
+
+	-- 8 Expanding Supersonic Mach Cones + Conqueror Lightning Arcs along flight path
+	local coneCount = isLowFX() and 4 or 8
 	for i = 1, coneCount do
 		local frac = (i - 1) / math.max(1, coneCount - 1)
-		task.delay((i - 1) * 0.028, function()
+		task.delay((i - 1) * 0.026, function()
 			if not folder.Parent then return end
 			local pt = p0:Lerp(p1, frac)
-			local col = (i % 2 == 0) and PALETTE.Crimson or PALETTE.Violet
+			local col = (i % 3 == 0 and PALETTE.AwakenedGold) or ((i % 2 == 0) and PALETTE.Crimson or PALETTE.Violet)
 			local ring = makePart(
 				"SupersonicMachRing_" .. i,
 				Enum.PartType.Cylinder,
-				Vector3.new(0.32 * scale, (3.6 + frac * 2.2) * scale, (3.6 + frac * 2.2) * scale),
+				Vector3.new(0.34 * scale, (4.0 + frac * 2.5) * scale, (4.0 + frac * 2.5) * scale),
 				CFrame.lookAt(pt, pt + dir) * CFrame.Angles(0, math.pi * 0.5, i * 0.6),
 				col,
-				0.12,
+				0.10,
 				Enum.Material.ForceField,
 				folder
 			)
-			TweenService:Create(ring, TweenInfo.new(0.38, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = Vector3.new(0.08, (11.5 + frac * 3.5) * scale, (11.5 + frac * 3.5) * scale),
+			TweenService:Create(ring, TweenInfo.new(0.40, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = Vector3.new(0.08, (13.0 + frac * 4.0) * scale, (13.0 + frac * 4.0) * scale),
 				Transparency = 1,
 			}):Play()
+			if i > 1 and not isLowFX() then
+				local prevPt = p0:Lerp(p1, (i - 2) / math.max(1, coneCount - 1))
+				spawnDraconicLightningArc(prevPt, pt + Vector3.new(0, (i % 2 == 0 and 1.5 or -1.5) * scale, 0), col, PALETTE.AwakenedGold, 0.28 * scale, 4, 0.28, folder)
+			end
 		end)
 	end
 
-	-- Dual Helical Wingtip Slipstream Ribbons racing from `WingForearm_L/R` to `p1`
+	-- Triple Helical Wingtip & Tail Slipstream Ribbons racing from `WingForearm_L/R` to `p1`
 	if not isLowFX() then
 		local spirits = {}
-		for idx, side in ipairs({ -1, 1 }) do
-			local wStart = (side < 0) and anchors.WingL_CF.Position or anchors.WingR_CF.Position
-			local col = (idx == 1) and PALETTE.Crimson or PALETTE.Violet
-			local sp = makePart("WingtipSlipstream_" .. idx, Enum.PartType.Ball, Vector3.new(0.8, 0.8, 1.4) * scale, safeLookAt(wStart, p1, dir), col, 0.06, Enum.Material.ForceField, folder)
-			attachRibbonTrail(sp, PALETTE.HotCore, col, 1.35 * scale, 0.28)
-			table.insert(spirits, { Node = sp, Phase = (idx - 1) * math.pi })
+		for idx = 1, 3 do
+			local wStart = (idx == 1 and anchors.WingL_CF.Position) or (idx == 2 and anchors.WingR_CF.Position) or anchors.Tail_CF.Position
+			local col = (idx == 1 and PALETTE.Crimson) or (idx == 2 and PALETTE.Violet) or PALETTE.AwakenedGold
+			local sp = makePart("WingtipSlipstream_" .. idx, Enum.PartType.Ball, Vector3.new(0.9, 0.9, 1.6) * scale, safeLookAt(wStart, p1, dir), col, 0.04, Enum.Material.ForceField, folder)
+			attachRibbonTrail(sp, PALETTE.HotCore, col, 1.55 * scale, 0.30)
+			table.insert(spirits, { Node = sp, Phase = (idx - 1) * ((math.pi * 2) / 3) })
 		end
 
 		local t0 = os.clock()
 		local conn
 		conn = RunService.Heartbeat:Connect(function()
 			local el = os.clock() - t0
-			if el >= 0.36 or not folder.Parent then
+			if el >= 0.38 or not folder.Parent then
 				if conn then conn:Disconnect() end
 				return
 			end
-			local u = el / 0.36
+			local u = el / 0.38
 			for _, sp in ipairs(spirits) do
 				if sp.Node and sp.Node.Parent then
-					local ang = u * math.pi * 3.5 + sp.Phase
-					local rad = (3.8 * (1 - u * 0.45)) * scale
+					local ang = u * math.pi * 4.0 + sp.Phase
+					local rad = (4.2 * (1 - u * 0.45)) * scale
 					sp.Node.CFrame = rushCF * CFrame.new(math.cos(ang) * rad, math.sin(ang) * rad, -u * rushDist)
 				end
 			end
@@ -1386,46 +1803,64 @@ function DragonSovereignVFX.SpawnSoaringRush(actorChar, startPos, endPos, lookDi
 	end
 
 	if isLocal then
-		emitCameraTrauma(0.28, 3.0, dir)
+		emitCameraTrauma(0.32, 3.4, dir)
 	end
 end
 
 -- ============================================================================
 -- 8B. DISTINCT FORM 1 (HYBRID) vs FORM 2 (SOVEREIGN) SKILL SET VFX
---   Form 1 [Z]: Hỏa Long Liên Đạn (SpawnHybridFireballVolley)
---   Form 1 [C]: Cuồng Long Lốc Xoáy (SpawnHybridInfernoCyclone)
---   Form 1 [F]: Long Ảnh Bộ (SpawnHybridWingDash)
---   Form 2 [X]: Long Hoàng Giáng Thế (SpawnSovereignSkyfallDive)
+--   Form 1 [Z]: Hỏa Long Liên Đạn (SpawnHybridFireballVolley — 5 Dragon-Head Magma Barrage)
+--   Form 1 [C]: Cuồng Long Lốc Xoáy (SpawnHybridInfernoCyclone — Coiling Dragon Fire Tornado)
+--   Form 1 [F]: Long Ảnh Bộ (SpawnHybridWingDash — Dragon Spearhead & 6 Twin-Wing Slash Rush)
+--   Form 2 [X]: Long Hoàng Giáng Thế (SpawnSovereignSkyfallDive — Sky Stargate & Sovereign Dragon Dive)
 -- ============================================================================
 function DragonSovereignVFX.SpawnHybridFireballVolley(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-	local scale = (baseScale or 1.0) * 1.08
+	local scale = (baseScale or 1.0) * 1.15
 	local origin = anchors.MawCF.Position
 	local rawVec = endPos - origin
-	local dist = math.clamp(rawVec.Magnitude, 18 * scale, 34 * scale)
+	local dist = math.clamp(rawVec.Magnitude, 20 * scale, 36 * scale)
 	local dir = (rawVec.Magnitude > 2) and rawVec.Unit or anchors.LookDir
+	local aimCF = CFrame.lookAt(origin, origin + dir * dist)
 
 	local folder = Instance.new("Folder")
 	folder.Name = "DragonForm1_Z_FireballVolley"
 	folder.Parent = (getTempFolder())
-	Debris:AddItem(folder, 1.45)
+	Debris:AddItem(folder, 1.65)
 
-	for shot = 1, 3 do
-		task.delay((shot - 1) * 0.11, function()
+	-- Rotating Crimson-Solar Draconic Muzzle Seal in front of caster
+	spawnRunicMagicCircle(aimCF * CFrame.new(0, 0, -1.6 * scale) * CFrame.Angles(math.pi * 0.5, 0, 0), 4.5 * scale, PALETTE.BloodFlame, PALETTE.SolarGold, 0.78, folder, 8.0)
+
+	local shotCount = isLowFX() and 3 or 5
+	for shot = 1, shotCount do
+		task.delay((shot - 1) * 0.085, function()
 			if not folder.Parent then return end
-			local side = (shot == 1 and -1) or (shot == 2 and 1) or 0
-			local launchPos = origin + anchors.BaseCF.RightVector * (side * 1.4 * scale) + Vector3.new(0, 0.4 * scale, 0)
-			local targetPos = findGroundPos(origin + dir * (dist * (0.55 + shot * 0.15)), actorChar) + Vector3.new(0, 0.8, 0)
-			local orbSz = (1.85 + shot * 0.25) * scale
+			local laneOffset = (shot - (shotCount + 1) * 0.5) * 1.25 * scale
+			local launchPos = origin + anchors.BaseCF.RightVector * laneOffset + Vector3.new(0, (0.35 + (shot % 2) * 0.45) * scale, 0)
+			local targetPos = findGroundPos(origin + dir * (dist * (0.48 + (shot / shotCount) * 0.56)) + anchors.BaseCF.RightVector * (laneOffset * 0.65), actorChar) + Vector3.new(0, 0.6, 0)
+			local orbSz = (1.95 + shot * 0.22) * scale
 
-			local core = makePart("HybridFireballCore_" .. shot, Enum.PartType.Ball, Vector3.new(orbSz, orbSz, orbSz), CFrame.lookAt(launchPos, targetPos), PALETTE.Magma, 0.04, Enum.Material.Neon, folder)
-			local shell = makePart("HybridFireballShell_" .. shot, Enum.PartType.Ball, Vector3.new(orbSz * 1.42, orbSz * 1.42, orbSz * 1.42), core.CFrame, PALETTE.Crimson, 0.22, Enum.Material.ForceField, folder)
+			local core = makePart("HybridFireballCore_" .. shot, Enum.PartType.Ball, Vector3.new(orbSz, orbSz, orbSz), CFrame.lookAt(launchPos, targetPos), PALETTE.SolarGold, 0.02, Enum.Material.Neon, folder)
+			local shell = makePart("HybridFireballShell_" .. shot, Enum.PartType.Ball, Vector3.new(orbSz * 1.48, orbSz * 1.48, orbSz * 1.48), core.CFrame, PALETTE.BloodFlame, 0.18, Enum.Material.ForceField, folder)
 			if not isLowFX() then
-				attachRibbonTrail(core, PALETTE.Magma, PALETTE.Crimson, orbSz * 0.9, 0.22)
+				attachRibbonTrail(core, PALETTE.SolarGold, PALETTE.BloodFlame, orbSz * 1.05, 0.25)
 			end
-			spawnShockRing(launchPos, CFrame.lookAt(launchPos, targetPos), PALETTE.Magma, 1.2 * scale, 5.2 * scale, 0.18 * scale, 0.24, Enum.Material.ForceField, folder)
+			spawnShockRing(launchPos, CFrame.lookAt(launchPos, targetPos), PALETTE.SolarGold, 1.2 * scale, 5.8 * scale, 0.20 * scale, 0.24, Enum.Material.ForceField, folder)
 
 			local flyDur = 0.22
+			-- 3D Sculpted Fire-Dragon Head Construct leading each fireball!
+			spawnSpectralDragonHeadConstruct(
+				CFrame.lookAt(launchPos, targetPos),
+				CFrame.lookAt(targetPos, targetPos + (targetPos - launchPos)),
+				(0.92 + shot * 0.08) * scale,
+				PALETTE.BloodFlame,
+				PALETTE.SolarGold,
+				PALETTE.HotCore,
+				flyDur + 0.05,
+				folder,
+				true
+			)
+
 			TweenService:Create(core, TweenInfo.new(flyDur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(targetPos) }):Play()
 			TweenService:Create(shell, TweenInfo.new(flyDur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(targetPos) }):Play()
 
@@ -1433,16 +1868,34 @@ function DragonSovereignVFX.SpawnHybridFireballVolley(actorChar, startPos, endPo
 				if core.Parent then core:Destroy() end
 				if shell.Parent then shell:Destroy() end
 				if not folder.Parent then return end
-				DragonSovereignVFX.EmitPrefab("Dragon_Z_SovereignBreath", CFrame.new(targetPos), scale * 0.82)
-				spawnShockRing(targetPos, nil, (shot == 3) and PALETTE.AwakenedGold or PALETTE.Magma, 2.0 * scale, (11 + shot * 3) * scale, 0.28 * scale, 0.38, Enum.Material.ForceField, folder)
-				local dome = makePart("FireballBlast_" .. shot, Enum.PartType.Ball, Vector3.new(2.5, 2.5, 2.5) * scale, CFrame.new(targetPos), PALETTE.Crimson, 0.12, Enum.Material.ForceField, folder)
-				makeSafeLight(dome, PALETTE.Magma, 1.32, 14, 0.35)
-				TweenService:Create(dome, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = Vector3.new(10 + shot * 2.5, 10 + shot * 2.5, 10 + shot * 2.5) * scale,
+				DragonSovereignVFX.EmitPrefab("Dragon_Z_SovereignBreath", CFrame.new(targetPos), scale * 0.90)
+				spawnShockRing(targetPos, nil, (shot == shotCount) and PALETTE.SolarGold or PALETTE.Magma, 2.2 * scale, (12 + shot * 2.8) * scale, 0.30 * scale, 0.40, Enum.Material.ForceField, folder)
+				spawnShockRing(targetPos + Vector3.new(0, 0.25, 0), nil, PALETTE.BloodFlame, 1.8 * scale, (9 + shot * 2.2) * scale, 0.22 * scale, 0.32, Enum.Material.ForceField, folder)
+
+				-- Rising Volcanic Magma Geyser Pillar + Erupting Fangs + Flame Lightning
+				local geyserH = (11 + shot * 2.4) * scale
+				local geyser = makePart("VolcanicGeyser_" .. shot, Enum.PartType.Cylinder, Vector3.new(geyserH, (3.2 + shot * 0.45) * scale, (3.2 + shot * 0.45) * scale), CFrame.new(targetPos + Vector3.new(0, geyserH * 0.45, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), (shot % 2 == 0) and PALETTE.SolarGold or PALETTE.BloodFlame, 0.10, Enum.Material.ForceField, folder)
+				TweenService:Create(geyser, TweenInfo.new(0.38, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(geyserH * 1.35, 0.25, 0.25),
 					Transparency = 1,
 				}):Play()
+
+				local dome = makePart("FireballBlast_" .. shot, Enum.PartType.Ball, Vector3.new(2.8, 2.8, 2.8) * scale, CFrame.new(targetPos), PALETTE.BloodFlame, 0.12, Enum.Material.ForceField, folder)
+				makeSafeLight(dome, PALETTE.Magma, 1.36, 15, 0.38)
+				TweenService:Create(dome, TweenInfo.new(0.36, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(11 + shot * 2.4, 11 + shot * 2.4, 11 + shot * 2.4) * scale,
+					Transparency = 1,
+				}):Play()
+
+				if not isLowFX() then
+					for b = 1, 3 do
+						local bAng = (b - 1) * ((math.pi * 2) / 3) + shot
+						local bEnd = targetPos + Vector3.new(math.cos(bAng) * 7.5 * scale, (2.2 + b * 1.4) * scale, math.sin(bAng) * 7.5 * scale)
+						spawnDraconicLightningArc(targetPos, bEnd, PALETTE.BloodFlame, PALETTE.SolarGold, 0.26 * scale, 5, 0.26, folder)
+					end
+				end
 				if isLocal then
-					emitCameraTrauma(0.22 + shot * 0.05, 1.5, dir)
+					emitCameraTrauma(0.22 + shot * 0.04, 1.6, dir)
 				end
 			end)
 		end)
@@ -1451,155 +1904,294 @@ end
 
 function DragonSovereignVFX.SpawnHybridInfernoCyclone(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-	local scale = (baseScale or 1.0) * 1.12
+	local scale = (baseScale or 1.0) * 1.18
 	local centerPos = anchors.CenterPos
 	local gPos = findGroundPos(centerPos, actorChar)
 
 	local folder = Instance.new("Folder")
 	folder.Name = "DragonForm1_C_InfernoCyclone"
 	folder.Parent = (getTempFolder())
-	Debris:AddItem(folder, 1.25)
+	Debris:AddItem(folder, 1.38)
 
-	DragonSovereignVFX.EmitPrefab("Dragon_X_VoidTalons", CFrame.new(centerPos), scale * 1.15)
-	makeSafeLight(makePart("CycloneCoreLight", Enum.PartType.Ball, Vector3.new(1.5, 1.5, 1.5), CFrame.new(centerPos), PALETTE.Magma, 0.2, Enum.Material.ForceField, folder), PALETTE.Magma, 1.38, 16, 0.85)
+	DragonSovereignVFX.EmitPrefab("Dragon_X_VoidTalons", CFrame.new(centerPos), scale * 1.2)
+	makeSafeLight(makePart("CycloneCoreLight", Enum.PartType.Ball, Vector3.new(1.8, 1.8, 1.8), CFrame.new(centerPos), PALETTE.Magma, 0.18, Enum.Material.ForceField, folder), PALETTE.Magma, 1.40, 16, 0.92)
+
+	-- Double-Ring Rotating Crimson-Gold Draconic Magic Seal on the ground
+	spawnRunicMagicCircle(CFrame.new(gPos + Vector3.new(0, 0.18, 0)), 14.5 * scale, PALETTE.BloodFlame, PALETTE.SolarGold, 0.95, folder, 6.8)
+
+	-- Central Towering Firestorm Funnel Core + Outer Crimson Vortex
+	local funnelH = 24 * scale
+	local coreFunnel = makePart("CycloneCoreFunnel", Enum.PartType.Cylinder, Vector3.new(funnelH, 3.8 * scale, 3.8 * scale), CFrame.new(gPos + Vector3.new(0, funnelH * 0.5, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), PALETTE.SolarGold, 0.10, Enum.Material.Neon, folder)
+	local outerFunnel = makePart("CycloneOuterFunnel", Enum.PartType.Cylinder, Vector3.new(funnelH, 7.6 * scale, 7.6 * scale), coreFunnel.CFrame, PALETTE.BloodFlame, 0.22, Enum.Material.ForceField, folder)
 
 	local blades = {}
-	local ringLayers = isLowFX() and 3 or 5
+	local ringLayers = isLowFX() and 4 or 6
 	for i = 1, ringLayers do
-		local col = (i % 2 == 0) and PALETTE.Magma or PALETTE.Crimson
-		local ring = makePart("CycloneRing_" .. i, Enum.PartType.Cylinder, Vector3.new(0.26 * scale, (6 + i * 2.4) * scale, (6 + i * 2.4) * scale), CFrame.new(gPos + Vector3.new(0, i * 1.8 * scale, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), col, 0.16, Enum.Material.ForceField, folder)
+		local col = (i % 3 == 0 and PALETTE.SolarGold) or ((i % 2 == 0) and PALETTE.Magma or PALETTE.BloodFlame)
+		local ring = makePart("CycloneRing_" .. i, Enum.PartType.Cylinder, Vector3.new(0.28 * scale, (6.5 + i * 2.5) * scale, (6.5 + i * 2.5) * scale), CFrame.new(gPos + Vector3.new(0, i * 2.1 * scale, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), col, 0.14, Enum.Material.ForceField, folder)
 		if not isLowFX() then
-			attachRibbonTrail(ring, PALETTE.HotCore, col, 1.1 * scale, 0.24)
+			attachRibbonTrail(ring, PALETTE.HotCore, col, 1.25 * scale, 0.26)
 		end
 		table.insert(blades, { Part = ring, Index = i })
+	end
+
+	-- 3 Coiling Fire-Dragon Spirits spiraling up the Cyclone
+	local dragonSpirits = {}
+	if not isLowFX() then
+		for d = 1, 3 do
+			local col = (d == 1 and PALETTE.BloodFlame) or (d == 2 and PALETTE.SolarGold) or PALETTE.Magma
+			local sp = makePart("CycloneFireDragon_" .. d, Enum.PartType.Ball, Vector3.new(1.35, 1.35, 2.2) * scale, CFrame.new(gPos), col, 0.04, Enum.Material.Neon, folder)
+			attachRibbonTrail(sp, PALETTE.HotCore, col, 1.85 * scale, 0.32)
+			table.insert(dragonSpirits, { Node = sp, Phase = (d - 1) * ((math.pi * 2) / 3) })
+		end
 	end
 
 	for pulse = 1, 4 do
 		task.delay((pulse - 1) * 0.14, function()
 			if not folder.Parent then return end
-			spawnShockRing(gPos + Vector3.new(0, 0.2, 0), nil, (pulse % 2 == 0) and PALETTE.Magma or PALETTE.Crimson, 16 * scale, 3.5 * scale, 0.26 * scale, 0.28, Enum.Material.ForceField, folder)
+			spawnShockRing(gPos + Vector3.new(0, 0.2, 0), nil, (pulse % 2 == 0) and PALETTE.SolarGold or PALETTE.BloodFlame, 18 * scale, 3.5 * scale, 0.28 * scale, 0.28, Enum.Material.ForceField, folder)
+			if not isLowFX() then
+				for b = 1, 2 do
+					local bAng = (pulse * 1.7) + b * math.pi
+					local pA = gPos + Vector3.new(math.cos(bAng) * 8.5 * scale, 0.5, math.sin(bAng) * 8.5 * scale)
+					local pB = gPos + Vector3.new(math.cos(bAng + 1.1) * 4.5 * scale, 16 * scale, math.sin(bAng + 1.1) * 4.5 * scale)
+					spawnDraconicLightningArc(pA, pB, PALETTE.BloodFlame, PALETTE.SolarGold, 0.28 * scale, 5, 0.24, folder)
+				end
+			end
 		end)
 	end
+
+	-- Final Outward Inferno Detonation at 0.58s
+	task.delay(0.58, function()
+		if not folder.Parent then return end
+		local curRoot = actorChar and actorChar:FindFirstChild("HumanoidRootPart")
+		local finPos = findGroundPos((curRoot and curRoot.Position) or centerPos, actorChar)
+		spawnShockRing(finPos + Vector3.new(0, 0.25, 0), nil, PALETTE.BloodFlame, 3.0 * scale, 26 * scale, 0.36 * scale, 0.45, Enum.Material.ForceField, folder)
+		spawnShockRing(finPos + Vector3.new(0, 0.55, 0), nil, PALETTE.SolarGold, 2.5 * scale, 20 * scale, 0.26 * scale, 0.38, Enum.Material.ForceField, folder)
+		local blastDome = makePart("CycloneFinalBlastDome", Enum.PartType.Ball, Vector3.new(4, 4, 4) * scale, CFrame.new(finPos + Vector3.new(0, 2.0 * scale, 0)), PALETTE.BloodFlame, 0.14, Enum.Material.ForceField, folder)
+		TweenService:Create(blastDome, TweenInfo.new(0.42, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = Vector3.new(24, 24, 24) * scale,
+			Transparency = 1,
+		}):Play()
+	end)
 
 	local t0 = os.clock()
 	local conn
 	conn = RunService.Heartbeat:Connect(function()
 		local el = os.clock() - t0
-		if el >= 0.72 or not folder.Parent then
+		if el >= 0.78 or not folder.Parent then
 			if conn then conn:Disconnect() end
 			return
 		end
-		local u = el / 0.72
+		local u = el / 0.78
 		local curRoot = actorChar and actorChar:FindFirstChild("HumanoidRootPart")
 		local cPos = (curRoot and curRoot.Position) or centerPos
+		local curG = Vector3.new(cPos.X, gPos.Y, cPos.Z)
+
+		if coreFunnel.Parent then
+			coreFunnel.CFrame = CFrame.new(curG + Vector3.new(0, funnelH * 0.5, 0)) * CFrame.Angles(0, el * 14, math.pi * 0.5)
+			outerFunnel.CFrame = CFrame.new(curG + Vector3.new(0, funnelH * 0.5, 0)) * CFrame.Angles(0, -el * 10, math.pi * 0.5)
+			if u > 0.65 then
+				local f = (u - 0.65) / 0.35
+				coreFunnel.Transparency = 0.10 + f * 0.90
+				outerFunnel.Transparency = 0.22 + f * 0.78
+			end
+		end
+
 		for _, b in ipairs(blades) do
 			if b.Part and b.Part.Parent then
 				local idx = b.Index
-				local ang = el * 18 * ((idx % 2 == 0) and 1 or -1) + idx * 1.1
-				local rad = (6 + idx * 2.6 + math.sin(el * 12 + idx) * 1.5) * scale * (1 + u * 0.35)
-				local yOff = (-1.2 + idx * 1.75) * scale
-				b.Part.Size = Vector3.new(0.24 * scale, rad, rad)
-				b.Part.CFrame = CFrame.new(cPos + Vector3.new(math.cos(ang) * 0.8, yOff, math.sin(ang) * 0.8))
-					* CFrame.Angles(math.sin(ang) * 0.18, ang, math.pi * 0.5)
+				local ang = el * 20 * ((idx % 2 == 0) and 1 or -1) + idx * 1.1
+				local rad = (6.5 + idx * 2.8 + math.sin(el * 14 + idx) * 1.6) * scale * (1 + u * 0.38)
+				local yOff = (-1.2 + idx * 2.05) * scale
+				b.Part.Size = Vector3.new(0.26 * scale, rad, rad)
+				b.Part.CFrame = CFrame.new(cPos + Vector3.new(math.cos(ang) * 0.85, yOff, math.sin(ang) * 0.85))
+					* CFrame.Angles(math.sin(ang) * 0.20, ang, math.pi * 0.5)
 				if u > 0.65 then
-					b.Part.Transparency = 0.16 + ((u - 0.65) / 0.35) * 0.84
+					b.Part.Transparency = 0.14 + ((u - 0.65) / 0.35) * 0.86
+				end
+			end
+		end
+
+		for _, ds in ipairs(dragonSpirits) do
+			if ds.Node and ds.Node.Parent then
+				local ang = el * 18 + ds.Phase
+				local sRad = (5.2 + u * 4.5) * scale
+				local sY = ((el * 26 + ds.Phase * 3) % funnelH)
+				local p = curG + Vector3.new(math.cos(ang) * sRad, sY, math.sin(ang) * sRad)
+				local tan = Vector3.new(-math.sin(ang), 0.45, math.cos(ang)).Unit
+				ds.Node.CFrame = CFrame.lookAt(p, p + tan)
+				if u > 0.70 then
+					ds.Node.Transparency = (u - 0.70) / 0.30
 				end
 			end
 		end
 	end)
 
 	if isLocal then
-		emitCameraTrauma(0.36, 3.2)
+		emitCameraTrauma(0.42, 3.6)
 	end
 end
 
 function DragonSovereignVFX.SpawnHybridWingDash(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-	local scale = (baseScale or 1.0) * 1.05
+	local scale = (baseScale or 1.0) * 1.12
 	local p0 = anchors.CenterPos
 	local rawVec = endPos - p0
-	local dist = math.clamp(rawVec.Magnitude, 18 * scale, 36 * scale)
+	local dist = math.clamp(rawVec.Magnitude, 20 * scale, 36 * scale)
 	local dir = (rawVec.Magnitude > 2) and rawVec.Unit or anchors.LookDir
 	local p1 = p0 + dir * dist
+	local dashCF = CFrame.lookAt(p0, p1)
 
 	local folder = Instance.new("Folder")
 	folder.Name = "DragonForm1_F_HybridWingDash"
 	folder.Parent = (getTempFolder())
-	Debris:AddItem(folder, 0.75)
+	Debris:AddItem(folder, 0.82)
 
-	DragonSovereignVFX.EmitPrefab("Dragon_F_SoarRush", CFrame.lookAt(p0, p1), scale * 0.9)
-	for i = 1, 4 do
-		local frac = (i - 1) / 3
-		task.delay((i - 1) * 0.03, function()
+	DragonSovereignVFX.EmitPrefab("Dragon_F_SoarRush", dashCF, scale)
+
+	-- 3D Spectral Fire-Dragon Head Spearhead leading the Wing Dash!
+	spawnSpectralDragonHeadConstruct(
+		dashCF * CFrame.new(0, 0.4 * scale, -1.2 * scale),
+		CFrame.lookAt(p1, p1 + dir * 5),
+		1.35 * scale,
+		PALETTE.BloodFlame,
+		PALETTE.SolarGold,
+		PALETTE.HotCore,
+		0.34,
+		folder,
+		false
+	)
+
+	local stepCount = isLowFX() and 3 or 6
+	for i = 1, stepCount do
+		local frac = (i - 1) / math.max(1, stepCount - 1)
+		task.delay((i - 1) * 0.025, function()
 			if not folder.Parent then return end
 			local pt = p0:Lerp(p1, frac)
+			spawnShockRing(pt, CFrame.lookAt(pt, pt + dir), (i % 2 == 0) and PALETTE.SolarGold or PALETTE.BloodFlame, 2.2 * scale, 8.8 * scale, 0.22 * scale, 0.30, Enum.Material.ForceField, folder)
 			for side = -1, 1, 2 do
 				local wingSlash = makePart(
 					"HybridWingAfterimage_" .. i .. "_" .. side,
 					Enum.PartType.Wedge,
-					Vector3.new(0.18 * scale, 1.4 * scale, 4.8 * scale),
-					CFrame.lookAt(pt, pt + dir) * CFrame.new(side * 2.4 * scale, 0.5 * scale, 0) * CFrame.Angles(0, side * 0.55, side * 0.25),
-					(i % 2 == 0) and PALETTE.Magma or PALETTE.Crimson,
-					0.14,
+					Vector3.new(0.22 * scale, 1.65 * scale, 5.6 * scale),
+					CFrame.lookAt(pt, pt + dir) * CFrame.new(side * 2.6 * scale, 0.5 * scale, 0) * CFrame.Angles(0, side * 0.55, side * 0.25),
+					(i % 2 == 0) and PALETTE.SolarGold or PALETTE.BloodFlame,
+					0.10,
 					Enum.Material.ForceField,
 					folder
 				)
-				TweenService:Create(wingSlash, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = Vector3.new(0.05, 0.4, 6.2 * scale),
+				TweenService:Create(wingSlash, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(0.05, 0.4, 7.4 * scale),
 					Transparency = 1,
 				}):Play()
+			end
+			if i > 1 and not isLowFX() then
+				local prevPt = p0:Lerp(p1, (i - 2) / math.max(1, stepCount - 1))
+				spawnDraconicLightningArc(prevPt, pt + Vector3.new(0, (i % 2 == 0 and 1.2 or -1.2) * scale, 0), PALETTE.BloodFlame, PALETTE.SolarGold, 0.24 * scale, 4, 0.26, folder)
 			end
 		end)
 	end
 	if isLocal then
-		emitCameraTrauma(0.24, 2.2, dir)
+		emitCameraTrauma(0.28, 2.6, dir)
 	end
 end
 
 function DragonSovereignVFX.SpawnSovereignSkyfallDive(actorChar, startPos, endPos, lookDir, baseScale, isAwakened, isLocal)
 	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
-	local scale = (baseScale or 1.0) * 1.32
+	local scale = (baseScale or 1.0) * 1.38
 	local p0 = anchors.CenterPos
 	local rawVec = endPos - p0
-	local dist = math.clamp(rawVec.Magnitude, 18 * scale, 34 * scale)
+	local dist = math.clamp(rawVec.Magnitude, 20 * scale, 36 * scale)
 	local dir = (rawVec.Magnitude > 2) and rawVec.Unit or anchors.LookDir
 	local impactPos = findGroundPos(p0 + dir * dist, actorChar)
-	local apexPos = p0 + dir * (dist * 0.35) + Vector3.new(0, 18 * scale, 0)
+	local apexPos = p0 + dir * (dist * 0.35) + Vector3.new(0, 22 * scale, 0)
 
 	local folder = Instance.new("Folder")
 	folder.Name = "DragonForm2_X_SovereignSkyfallDive"
 	folder.Parent = (getTempFolder())
-	Debris:AddItem(folder, 1.45)
+	Debris:AddItem(folder, 1.55)
 
-	-- Stage 1: Ascending Sovereign Halo & Dive Spear
-	spawnShockRing(apexPos, nil, PALETTE.AwakenedGold, 2.5 * scale, 18 * scale, 0.32 * scale, 0.42, Enum.Material.ForceField, folder)
+	-- Stage 1: Overhead Sovereign Runic Stargate + Target Ground Runic Seal + Colossal 3D Spectral Dragon Dive!
+	spawnRunicMagicCircle(CFrame.new(apexPos), 12.5 * scale, PALETTE.AwakenedGold, PALETTE.Violet, 0.65, folder, 7.2)
+	spawnRunicMagicCircle(CFrame.new(impactPos + Vector3.new(0, 0.20, 0)), 16.5 * scale, PALETTE.AwakenedGold, PALETTE.Crimson, 0.95, folder, -6.4)
+	spawnShockRing(apexPos, nil, PALETTE.AwakenedGold, 2.8 * scale, 20 * scale, 0.34 * scale, 0.44, Enum.Material.ForceField, folder)
+
 	local diveVec = impactPos - apexPos
 	local diveLen = math.max(8, diveVec.Magnitude)
 	local diveMid = (apexPos + impactPos) * 0.5
-	local diveBeam = makePart("SovereignDiveLance", Enum.PartType.Cylinder, Vector3.new(diveLen, 3.8 * scale, 3.8 * scale), CFrame.lookAt(diveMid, impactPos) * CFrame.Angles(0, math.pi * 0.5, 0), PALETTE.Violet, 0.08, Enum.Material.ForceField, folder)
-	local diveCore = makePart("SovereignDiveCore", Enum.PartType.Cylinder, Vector3.new(diveLen, 1.8 * scale, 1.8 * scale), diveBeam.CFrame, PALETTE.AwakenedGold, 0.04, Enum.Material.Neon, folder)
-	TweenService:Create(diveBeam, TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(diveLen, 0.2, 0.2), Transparency = 1 }):Play()
+	local diveBeam = makePart("SovereignDiveLance", Enum.PartType.Cylinder, Vector3.new(diveLen, 4.4 * scale, 4.4 * scale), CFrame.lookAt(diveMid, impactPos) * CFrame.Angles(0, math.pi * 0.5, 0), PALETTE.Violet, 0.08, Enum.Material.ForceField, folder)
+	local diveCrimson = makePart("SovereignDiveCrimson", Enum.PartType.Cylinder, Vector3.new(diveLen, 3.0 * scale, 3.0 * scale), diveBeam.CFrame, PALETTE.Crimson, 0.06, Enum.Material.ForceField, folder)
+	local diveCore = makePart("SovereignDiveCore", Enum.PartType.Cylinder, Vector3.new(diveLen, 1.9 * scale, 1.9 * scale), diveBeam.CFrame, PALETTE.AwakenedGold, 0.02, Enum.Material.Neon, folder)
+	TweenService:Create(diveBeam, TweenInfo.new(0.48, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(diveLen, 0.2, 0.2), Transparency = 1 }):Play()
+	TweenService:Create(diveCrimson, TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(diveLen, 0.15, 0.15), Transparency = 1 }):Play()
 	TweenService:Create(diveCore, TweenInfo.new(0.42, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(diveLen, 0.1, 0.1), Transparency = 1 }):Play()
 
-	-- Stage 2: 3 Tectonic Sovereign Shockwaves & Void-Gold Pillars at impactPos
-	DragonSovereignVFX.EmitPrefab("Dragon_V_Ascension", CFrame.new(impactPos + Vector3.new(0, 1.0, 0)), scale * 1.15)
-	makeSafeLight(makePart("SkyfallImpactLight", Enum.PartType.Ball, Vector3.new(3, 3, 3) * scale, CFrame.new(impactPos), PALETTE.AwakenedGold, 0.1, Enum.Material.ForceField, folder), PALETTE.Violet, 1.42, 16, 0.65)
+	-- Colossal 3D Spectral Sovereign Dragon Skull diving down the Spear Lance!
+	spawnSpectralDragonHeadConstruct(
+		CFrame.lookAt(apexPos, impactPos),
+		CFrame.lookAt(impactPos, impactPos + diveVec),
+		2.25 * scale,
+		PALETTE.Crimson,
+		PALETTE.AwakenedGold,
+		PALETTE.HotCore,
+		0.32,
+		folder,
+		true
+	)
 
-	for wave = 1, 3 do
-		task.delay((wave - 1) * 0.12, function()
+	-- Stage 2: 4 Tectonic Sovereign Shockwaves, Void-Gold Pillars, 10 Erupting Monolith Spires & 10 Conqueror Lightning Bolts
+	DragonSovereignVFX.EmitPrefab("Dragon_V_Ascension", CFrame.new(impactPos + Vector3.new(0, 1.0, 0)), scale * 1.25)
+	makeSafeLight(makePart("SkyfallImpactLight", Enum.PartType.Ball, Vector3.new(3.2, 3.2, 3.2) * scale, CFrame.new(impactPos), PALETTE.AwakenedGold, 0.1, Enum.Material.ForceField, folder), PALETTE.Violet, 1.42, 16, 0.72)
+
+	local spireTotal = isLowFX() and 5 or 10
+	for s = 1, spireTotal do
+		local sAng = (s - 1) * ((math.pi * 2) / spireTotal)
+		local sPos = impactPos + Vector3.new(math.cos(sAng) * 8.2 * scale, -0.8, math.sin(sAng) * 8.2 * scale)
+		local h = 9.2 * scale
+		local monolith = makePart(
+			"SkyfallMonolith_" .. s,
+			Enum.PartType.Wedge,
+			Vector3.new(1.6 * scale, h, 2.2 * scale),
+			CFrame.lookAt(sPos, impactPos + Vector3.new(0, h, 0)) * CFrame.Angles(-0.32, 0, 0),
+			(s % 3 == 0) and PALETTE.AwakenedGold or ((s % 2 == 0) and PALETTE.Violet or PALETTE.Crimson),
+			0.06,
+			Enum.Material.ForceField,
+			folder
+		)
+		TweenService:Create(monolith, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			CFrame = monolith.CFrame * CFrame.new(0, h * 0.46, 0),
+		}):Play()
+		task.delay(0.48, function()
+			if monolith.Parent then
+				TweenService:Create(monolith, TweenInfo.new(0.28), { Transparency = 1 }):Play()
+			end
+		end)
+	end
+
+	if not isLowFX() then
+		for b = 1, 10 do
+			local bAng = (b - 1) * ((math.pi * 2) / 10)
+			local bEnd = impactPos + Vector3.new(math.cos(bAng) * 15 * scale, (1.5 + (b % 3) * 4.2) * scale, math.sin(bAng) * 15 * scale)
+			spawnDraconicLightningArc(impactPos + Vector3.new(0, 1.5 * scale, 0), bEnd, (b % 2 == 0) and PALETTE.Crimson or PALETTE.Violet, PALETTE.AwakenedGold, 0.36 * scale, 6, 0.38, folder)
+		end
+	end
+
+	for wave = 1, 4 do
+		task.delay((wave - 1) * 0.11, function()
 			if not folder.Parent then return end
-			local col = (wave == 2) and PALETTE.AwakenedGold or ((wave == 1) and PALETTE.Violet or PALETTE.Crimson)
-			spawnShockRing(impactPos + Vector3.new(0, 0.25, 0), nil, col, 3.0 * scale, (18 + wave * 7) * scale, 0.38 * scale, 0.52, Enum.Material.ForceField, folder)
-			local pillar = makePart("SkyfallTectonicPillar_" .. wave, Enum.PartType.Cylinder, Vector3.new(22 * scale, (4.5 + wave * 1.8) * scale, (4.5 + wave * 1.8) * scale), CFrame.new(impactPos + Vector3.new(0, 11 * scale, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), col, 0.14, Enum.Material.ForceField, folder)
+			local col = (wave == 2 or wave == 4) and PALETTE.AwakenedGold or ((wave == 1) and PALETTE.Violet or PALETTE.Crimson)
+			spawnShockRing(impactPos + Vector3.new(0, 0.25, 0), nil, col, 3.0 * scale, (18 + wave * 6.5) * scale, 0.38 * scale, 0.52, Enum.Material.ForceField, folder)
+			local pillar = makePart("SkyfallTectonicPillar_" .. wave, Enum.PartType.Cylinder, Vector3.new(25 * scale, (4.8 + wave * 1.8) * scale, (4.8 + wave * 1.8) * scale), CFrame.new(impactPos + Vector3.new(0, 12.5 * scale, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), col, 0.14, Enum.Material.ForceField, folder)
 			TweenService:Create(pillar, TweenInfo.new(0.48, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = Vector3.new(30 * scale, 0.4, 0.4),
+				Size = Vector3.new(34 * scale, 0.4, 0.4),
 				Transparency = 1,
 			}):Play()
 		end)
 	end
 
 	if isLocal then
-		emitCameraTrauma(0.54, 5.2, dir)
+		emitCameraTrauma(0.58, 5.6, dir)
 	end
 end
 

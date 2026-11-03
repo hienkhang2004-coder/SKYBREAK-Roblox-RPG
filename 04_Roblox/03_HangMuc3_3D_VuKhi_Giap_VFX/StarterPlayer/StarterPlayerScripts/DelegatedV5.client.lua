@@ -1042,14 +1042,16 @@ local function stepFruitTransformFX(s, now)
             else
                 v5Clip = fx.V5Clips[curKey]
                 if not v5Clip then
-                    if curKey == 'SkySlash' or curKey == 'FrostBolt' or curKey == 'ArcCut' then
+                    if curKey == 'SkillZ' or curKey == 'FruitZ' or curKey == 'SkySlash' or curKey == 'FrostBolt' or curKey == 'ArcCut' then
                         v5Clip = fx.V5Clips.FruitZ or fx.V5Clips.ElementalSurge or fx.V5Clips.Attack
-                    elseif curKey == 'Dash' or curKey == 'Dodge' or curKey == 'FlashStep' or curKey == 'AirDash' then
-                        v5Clip = fx.V5Clips.AirDash or fx.V5Clips.Dash or fx.V5Clips.FruitF
-                    elseif curKey == 'JudgmentStrike' or curKey == 'ArcaneCircle' or curKey == 'StormBlitz' then
+                    elseif curKey == 'SkillF' or curKey == 'FruitF' or curKey == 'Dash' or curKey == 'Dodge' or curKey == 'FlashStep' or curKey == 'AirDash' then
+                        v5Clip = fx.V5Clips.FruitF or fx.V5Clips.AirDash or fx.V5Clips.Dash
+                    elseif curKey == 'SkillX' or curKey == 'FruitX' or curKey == 'JudgmentStrike' or curKey == 'ArcaneCircle' or curKey == 'StormBlitz' then
                         v5Clip = fx.V5Clips.FruitX or fx.V5Clips.HeroicKata or fx.V5Clips.Heavy
-                    elseif curKey == 'CelestialAegis' or curKey == 'FrostNova' or curKey == 'ThunderJudgement' or curKey == 'HakiAwaken' then
+                    elseif curKey == 'SkillC' or curKey == 'FruitC' or curKey == 'CelestialAegis' or curKey == 'FrostNova' or curKey == 'ThunderJudgement' or curKey == 'HakiAwaken' then
                         v5Clip = fx.V5Clips.FruitC or fx.V5Clips.UltimateAwakening or fx.V5Clips.Ultimate
+                    elseif curKey == 'SkillV' or curKey == 'FruitV' then
+                        v5Clip = fx.V5Clips.FruitV or fx.V5Clips.Ascend or fx.V5Clips.Ultimate
                     elseif curKey == 'DaggerCombo' or curKey:sub(1, 6) == 'Attack' then
                         v5Clip = fx.V5Clips.Attack
                     elseif curKey:sub(1, 10) == 'DoubleJump' then
