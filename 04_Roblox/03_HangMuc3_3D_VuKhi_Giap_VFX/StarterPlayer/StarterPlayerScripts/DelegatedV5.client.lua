@@ -168,11 +168,11 @@ local function isInsideManagedFXContainer(inst, ch)
     return false
 end
 
-local function restoreNativeAvatarVisibility(ch)
+local function restoreNativeAvatarVisibility(ch, allowFallbackFace)
     if not ch or not ch.Parent then
         return
     end
-    for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual' }) do
+    for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual', 'CharacterAccessories3D' }) do
         local oldVis = ch:FindFirstChild(oldVisName)
         if oldVis then
             oldVis:Destroy()
@@ -200,18 +200,27 @@ local function restoreNativeAvatarVisibility(ch)
                 if o.Transparency ~= 0 then
                     o.Transparency = 0
                 end
-                if o:IsA('Decal') and o.Name == 'face' and (not o.Texture or o.Texture == '') then
-                    o.Texture = 'rbxasset://textures/face.png'
-                end
             end
         end
     end
     local headPart = ch:FindFirstChild('Head')
     if headPart and headPart:IsA('BasePart') then
-        local hasFace = headPart:FindFirstChildOfClass('Decal') or headPart:FindFirstChildOfClass('SurfaceAppearance')
-        if not hasFace then
+        local fallbackFace = headPart:FindFirstChild('SkybreakFallbackFace')
+        local hasRealFace = false
+        for _, child in ipairs(headPart:GetChildren()) do
+            if (child:IsA('Decal') and child.Name ~= 'SkybreakFallbackFace' and child.Texture ~= '')
+                or child:IsA('SurfaceAppearance') then
+                hasRealFace = true
+                break
+            end
+        end
+        if hasRealFace then
+            if fallbackFace then
+                fallbackFace:Destroy()
+            end
+        elseif allowFallbackFace and not fallbackFace then
             local faceDecal = Instance.new('Decal')
-            faceDecal.Name = 'face'
+            faceDecal.Name = 'SkybreakFallbackFace'
             faceDecal.Face = Enum.NormalId.Front
             faceDecal.Texture = 'rbxasset://textures/face.png'
             faceDecal.Transparency = 0
@@ -3392,13 +3401,11 @@ local function boot()
 
         local isBeastNow = s.TransformFX and s.TransformFX.V5Model and s.TransformFX.V5Model.Parent ~= nil
         if not isBeastNow then
-            if (now - (s.SpawnedAt or 0)) < 10.0 then
-                restoreNativeAvatarVisibility(ch)
-            else
-                local headPart = ch:FindFirstChild('Head')
-                if headPart and headPart:IsA('BasePart') and headPart.Transparency > 0.5 then
-                    restoreNativeAvatarVisibility(ch)
-                end
+            local age = now - (s.SpawnedAt or 0)
+            local allowFallback = (age > 3.5) or (s.Owner ~= nil and s.Owner:HasAppearanceLoaded())
+            if age < 10.0 or now >= (s.NextVisCheckAt or 0) then
+                s.NextVisCheckAt = now + 0.2
+                restoreNativeAvatarVisibility(ch, allowFallback)
             end
         end
 
