@@ -1416,6 +1416,20 @@ end
 
 if game:GetService("RunService"):IsServer() then
     task.spawn(function()
+        local function isDisabledRailOrCompanionInstance(inst)
+            if not inst then
+                return false
+            end
+            local n = inst.Name
+            if n == "SkyRailPad" or string.sub(n, 1, 10) == "RailTrack_" or string.sub(n, 1, 14) == "AetherSkyRail_" then
+                return true
+            end
+            if inst:GetAttribute("CompanionId") ~= nil then
+                return true
+            end
+            return false
+        end
+
         local function purgeDisabledWorldFeatures()
             for _, fname in ipairs({ "JumpPads", "AetherSkyRails", "ActiveCompanions" }) do
                 local f = workspace:FindFirstChild(fname)
@@ -1423,12 +1437,17 @@ if game:GetService("RunService"):IsServer() then
                     f:ClearAllChildren()
                 end
             end
-            for _, folderName in ipairs({ "ActiveEnemies", "SkybreakWorldObjects" }) do
+            for _, folderName in ipairs({ "ActiveEnemies", "SkybreakWorldObjects", "SkybreakExpansionWorld" }) do
                 local ef = workspace:FindFirstChild(folderName)
                 if ef then
                     for _, d in ipairs(ef:GetDescendants()) do
                         if d.Name == "DummyFloorRing" and d:IsA("BasePart") then
                             d.Transparency = 1
+                            d.CanCollide = false
+                            d.CanQuery = false
+                            d.CanTouch = false
+                        elseif isDisabledRailOrCompanionInstance(d) then
+                            pcall(function() d:Destroy() end)
                         end
                     end
                 end
@@ -1445,15 +1464,34 @@ if game:GetService("RunService"):IsServer() then
                 child.ChildAdded:Connect(function(sub)
                     task.defer(function()
                         if sub and sub.Parent then
-                            sub:Destroy()
+                            pcall(function() sub:Destroy() end)
                         end
                     end)
                 end)
             end
         end)
 
-        for _ = 1, 20 do
-            task.wait(0.25)
+        workspace.DescendantAdded:Connect(function(desc)
+            if isDisabledRailOrCompanionInstance(desc) then
+                task.defer(function()
+                    if desc and desc.Parent then
+                        pcall(function() desc:Destroy() end)
+                    end
+                end)
+            elseif desc.Name == "DummyFloorRing" and desc:IsA("BasePart") then
+                task.defer(function()
+                    desc.Transparency = 1
+                    desc.CanCollide = false
+                    desc.CanQuery = false
+                    desc.CanTouch = false
+                end)
+            end
+        end)
+
+        local tickIdx = 0
+        while true do
+            tickIdx += 1
+            task.wait(tickIdx <= 40 and 0.25 or 0.5)
             purgeDisabledWorldFeatures()
             local sss = game:GetService("ServerScriptService")
             local services = sss and sss:FindFirstChild("Services")
@@ -1483,13 +1521,61 @@ if game:GetService("RunService"):IsServer() then
                     end
                     G.TickCompanions = function() end
 
-                    -- Hook Dual-Form Dragon (Dạng 1: Bán Long Nhân vs Dạng 2: Thái Cổ Long Hoàng) with 2 Distinct Skill Sets
-                    if not G._DragonDualFormsHooked and type(G.UseSlotMove) == "function" then
-                        -- Wait until SkybreakCombatExpansion has installed its wrapper around G.UseSlotMove
-                        local expMod = services and services:FindFirstChild("SkybreakCombatExpansion")
-                        if expMod then
-                            pcall(require, expMod)
+                    if not G._CompanionNotifyFiltered and type(G.Notify) == "function" then
+                        G._CompanionNotifyFiltered = true
+                        local prevNotify = G.Notify
+                        G.Notify = function(p, msg, ...)
+                            if type(msg) == "string" and string.find(msg, "Đồng Hành", 1, true) then
+                                msg = string.gsub(msg, "%s*•%s*Mở khóa Đồng Hành.*", "")
+                            end
+                            return prevNotify(p, msg, ...)
                         end
+                    end
+
+                    if not G._CompanionSyncFiltered and G.SocialEconomy ~= nil then
+                        G._CompanionSyncFiltered = true
+                        local prevBeforeSync = G.OnBeforeSync
+                        G.OnBeforeSync = function(p, profile, rt, stats, statePayload)
+                            if prevBeforeSync then
+                                prevBeforeSync(p, profile, rt, stats, statePayload)
+                            end
+                            if type(profile) == "table" then
+                                profile.PartySize = "Solo"
+                            end
+                            if type(statePayload) == "table" then
+                                statePayload.PartySize = "Solo"
+                                statePayload.Companions = {}
+                            end
+                        end
+                    end
+
+                    if type(G.Runtime) == "table" then
+                        for plr, rt in pairs(G.Runtime) do
+                            if type(rt) == "table" then
+                                rt.FuryMeter = 100
+                                if type(rt.Companions) == "table" then
+                                    for k, comp in pairs(rt.Companions) do
+                                        if comp and comp.Model then
+                                            pcall(function() comp.Model:Destroy() end)
+                                        end
+                                        rt.Companions[k] = nil
+                                    end
+                                end
+                            end
+                            if plr and plr.Parent then
+                                if (plr:GetAttribute("FuryMeter") or 0) < 100 then
+                                    plr:SetAttribute("FuryMeter", 100)
+                                end
+                                local prof = okD and D and type(D.Get) == "function" and D.Get(plr) or nil
+                                if type(prof) == "table" and prof.PartySize ~= "Solo" then
+                                    prof.PartySize = "Solo"
+                                end
+                            end
+                        end
+                    end
+
+                    -- Hook Dual-Form Dragon (Dạng 1: Bán Long Nhân vs Dạng 2: Thái Cổ Long Hoàng) AFTER expansion services initialize
+                    if not G._DragonDualFormsHooked and type(G.UseSlotMove) == "function" and (G.SocialEconomy ~= nil or tickIdx >= 16) then
                         G._DragonDualFormsHooked = true
                         local prevUseSlotMove = G.UseSlotMove
                         local prevAction = G.Action

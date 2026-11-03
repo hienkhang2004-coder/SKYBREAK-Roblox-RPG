@@ -3253,6 +3253,18 @@ end
 
 -- Client-side cleanup for JumpPads, AetherSkyRails, DummyFloorRing, and 3 AI Companions UI
 task.spawn(function()
+	local function isRemovedWorldDescendant(inst)
+		if not inst then return false end
+		local n = inst.Name
+		if n == "SkyRailPad" or string.sub(n, 1, 10) == "RailTrack_" or string.sub(n, 1, 14) == "AetherSkyRail_" then
+			return true
+		end
+		if inst:GetAttribute("CompanionId") ~= nil then
+			return true
+		end
+		return false
+	end
+
 	local function purgeRemovedWorldClutter()
 		for _, folderName in ipairs({"JumpPads", "AetherSkyRails", "ActiveCompanions"}) do
 			local f = workspace:FindFirstChild(folderName)
@@ -3260,15 +3272,19 @@ task.spawn(function()
 				f:ClearAllChildren()
 			end
 		end
-		local activeEnemies = workspace:FindFirstChild("ActiveEnemies")
-		if activeEnemies then
-			for _, desc in ipairs(activeEnemies:GetDescendants()) do
-				if desc:IsA("BasePart") and desc.Name == "DummyFloorRing" then
-					desc.Transparency = 1
-					desc.LocalTransparencyModifier = 1
-					desc.CanCollide = false
-					desc.CanQuery = false
-					desc.CanTouch = false
+		for _, containerName in ipairs({"ActiveEnemies", "SkybreakWorldObjects", "SkybreakExpansionWorld"}) do
+			local container = workspace:FindFirstChild(containerName)
+			if container then
+				for _, desc in ipairs(container:GetDescendants()) do
+					if desc:IsA("BasePart") and desc.Name == "DummyFloorRing" then
+						desc.Transparency = 1
+						desc.LocalTransparencyModifier = 1
+						desc.CanCollide = false
+						desc.CanQuery = false
+						desc.CanTouch = false
+					elseif isRemovedWorldDescendant(desc) then
+						pcall(function() desc:Destroy() end)
+					end
 				end
 			end
 		end
@@ -3294,8 +3310,25 @@ task.spawn(function()
 			end)
 		end
 	end)
+	workspace.DescendantAdded:Connect(function(desc)
+		if isRemovedWorldDescendant(desc) then
+			task.defer(function()
+				if desc and desc.Parent then
+					pcall(function() desc:Destroy() end)
+				end
+			end)
+		elseif desc:IsA("BasePart") and desc.Name == "DummyFloorRing" then
+			task.defer(function()
+				desc.Transparency = 1
+				desc.LocalTransparencyModifier = 1
+				desc.CanCollide = false
+				desc.CanQuery = false
+				desc.CanTouch = false
+			end)
+		end
+	end)
 	while player.Parent do
-		task.wait(1.5)
+		task.wait(0.75)
 		purgeRemovedWorldClutter()
 	end
 end)
