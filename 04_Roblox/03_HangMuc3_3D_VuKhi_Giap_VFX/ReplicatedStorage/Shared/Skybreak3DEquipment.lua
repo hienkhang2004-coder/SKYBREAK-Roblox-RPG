@@ -489,8 +489,8 @@ local function computeBindBasis(s)
     s._EquipLLeg = lLeg
 
     if s.IsNativeAvatar or (rHand and rHand:IsA('BasePart')) or (torso and torso:IsA('BasePart')) then
-        s._RightSwordRot = CFrame.Angles(-math.rad(80), 0, 0)
-        s._LeftSwordRot = CFrame.Angles(-math.rad(80), 0, 0)
+        s._RightSwordRot = CFrame.Angles(-math.rad(90), 0, 0)
+        s._LeftSwordRot = CFrame.Angles(-math.rad(90), 0, 0)
         s._RightGunRot = CFrame.Angles(-math.rad(90), 0, 0)
         s._LeftGunRot = CFrame.Angles(-math.rad(90), 0, 0)
         s._TorsoModelBasis = CFrame.identity
@@ -667,7 +667,10 @@ local function ensureCachedWeapon(Renderer, s, cacheKey, assetName, isGun)
         elseif assetName == 'Wep_SoulGuitarVoid' then
             targetSpan = 4.30
         end
-        local scaleFactor = math.clamp(targetSpan / rawMax, 0.45, 3.6)
+        if s.IsNativeAvatar then
+            targetSpan = targetSpan * 0.76
+        end
+        local scaleFactor = math.clamp(targetSpan / rawMax, 0.38, 3.6)
         pcall(function()
             clone:ScaleTo(scaleFactor)
         end)
@@ -791,7 +794,7 @@ function M.StepCharacterWeapons(Renderer, s, now)
         return
     end
 
-    local scaleRatio = (s.CurrentScale or 2.6) / 2.6
+    local scaleRatio = s.IsNativeAvatar and 0.62 or ((s.CurrentScale or 2.6) / 2.6)
     local rHandCF = getBoneWorldCF(s, s._EquipRHand, CFrame.new(1.25, 0.25, -0.55))
     local lHandCF = getBoneWorldCF(s, s._EquipLHand, CFrame.new(-1.25, 0.25, -0.55))
     local torsoCF = getBoneWorldCF(s, s._EquipTorso, CFrame.new(0, 0.85, 0))
@@ -920,6 +923,9 @@ function M.BuildRaceV4Wings(Renderer, s, raceName)
     if type(raceName) ~= 'string' or raceName == '' then
         return
     end
+    if s.IsNativeAvatar and not s.NativeRaceV4Toggled then
+        return
+    end
 
     computeBindBasis(s)
     local wingAsset = (Renderer.GetRaceWingAsset and Renderer.GetRaceWingAsset(raceName)) or 'Wing_Skyborn'
@@ -958,9 +964,9 @@ function M.BuildRaceV4Wings(Renderer, s, raceName)
         clone.Name = wingAsset .. '_Skinned3D'
         local _, rawSize = clone:GetBoundingBox()
         local rawSpan = math.max(rawSize.X, rawSize.Y, 1.0)
-        local targetWingSpan = 7.4
+        local targetWingSpan = s.IsNativeAvatar and 4.5 or 7.4
         pcall(function()
-            clone:ScaleTo(math.clamp(targetWingSpan / rawSpan, 0.9, 2.8))
+            clone:ScaleTo(math.clamp(targetWingSpan / rawSpan, 0.55, 2.8))
         end)
 
         -- Keep RootPart Anchored=true and skinned MeshParts Anchored=false + welded to RootPart
@@ -1290,6 +1296,9 @@ function M.BuildCharacterAccessories(s, rawKey)
     end
     s.AccessoryFX = nil
     s.AccessoryKey = rawKey or ''
+    if s.IsNativeAvatar then
+        return
+    end
     if s.AccessoryKey == '' or s.AccessoryKey:gsub('|', '') == '' then
         return
     end
@@ -1630,6 +1639,14 @@ end
 
 function M.StepCharacterAccessories(s, now, capeWind)
     if not s or not s.Visual or not s.Visual.Parent or not s.Root or not s.Root.Parent then
+        return
+    end
+    if s.IsNativeAvatar then
+        local old = s.Visual:FindFirstChild('CharacterAccessories3D')
+        if old then
+            old:Destroy()
+        end
+        s.AccessoryFX = nil
         return
     end
     local key = readAccessoryKey(s.Character, s.Owner)

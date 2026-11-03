@@ -518,6 +518,17 @@ local function performCombatLunge(actorChar,isHeavy)
 	local root=actorChar and actorChar:FindFirstChild("HumanoidRootPart")
 	local hum=actorChar and actorChar:FindFirstChildOfClass("Humanoid")
 	if not root or not hum or hum.Health<=0 then return end
+	local now=os.clock()
+	local prevAt=tonumber(actorChar:GetAttribute("LastClientAttackAt")) or 0
+	local curCombo=tonumber(actorChar:GetAttribute("LastClientAttackCombo")) or 0
+	if now-prevAt>1.15 then
+		curCombo=1
+	else
+		curCombo=(curCombo%3)+1
+	end
+	actorChar:SetAttribute("LastClientAttackCombo",curCombo)
+	actorChar:SetAttribute("LastClientAttackHeavy",isHeavy==true)
+	actorChar:SetAttribute("LastClientAttackAt",now)
 	local look=root.CFrame.LookVector
 	local flatLook=Vector3.new(look.X,0,look.Z)
 	if flatLook.Magnitude<0.05 then return end
@@ -2732,6 +2743,10 @@ end)
 local function fireSlotMove(keyLetter)
 	if UI.BlocksCombat() or UIS:GetFocusedTextBox() then return end
 	faceLockedTarget()
+	if player.Character then
+		player.Character:SetAttribute("LastClientSkillKey",tostring(keyLetter or "Z"))
+		player.Character:SetAttribute("LastClientSkillAt",os.clock())
+	end
 	remotes.AbilityRequest:FireServer({action="SlotMove",key=keyLetter})
 end
 
@@ -2928,23 +2943,19 @@ UIS.InputBegan:Connect(function(input,processed)
 	local kc=input.KeyCode
 	if kc==Enum.KeyCode.Z then
 		if not UI.BlocksCombat() then
-			faceLockedTarget()
-			remotes.AbilityRequest:FireServer({action="SlotMove",key="Z"})
+			fireSlotMove("Z")
 		end
 	elseif kc==Enum.KeyCode.X then
 		if not UI.BlocksCombat() then
-			faceLockedTarget()
-			remotes.AbilityRequest:FireServer({action="SlotMove",key="X"})
+			fireSlotMove("X")
 		end
 	elseif kc==Enum.KeyCode.C then
 		if not UI.BlocksCombat() then
-			faceLockedTarget()
-			remotes.AbilityRequest:FireServer({action="SlotMove",key="C"})
+			fireSlotMove("C")
 		end
 	elseif kc==Enum.KeyCode.T then
 		if not UI.BlocksCombat() then
-			faceLockedTarget()
-			remotes.AbilityRequest:FireServer({action="SlotMove",key="V"})
+			fireSlotMove("V")
 		end
 	elseif kc==Enum.KeyCode.U then
 		if not UI.BlocksCombat() then
@@ -2957,6 +2968,9 @@ UIS.InputBegan:Connect(function(input,processed)
 		end
 	elseif kc==Enum.KeyCode.Y then
 		if not UI.BlocksCombat() then
+			if player.Character then
+				player.Character:SetAttribute("NativeRaceV4Toggled",true)
+			end
 			remotes.EquipmentRequest:FireServer({action="ActivateRaceV4"})
 		end
 	elseif kc==Enum.KeyCode.Four then
@@ -3228,56 +3242,6 @@ local function handleCombatFX(fx)
 		elseif animAction=="CelestialAegis" then animAction="SkySlash" end
 		if animAction and not ((kind=="DragonTransform" or action=="DragonTransform") and tonumber(fx.DragonFormTier)==0) then
 			GuardianAnimator.Action(actorChar,animAction,fx.Combo)
-		end
-	end
-
-	if actorChar and not actorChar:GetAttribute("BlenderGuardian") and (kind=="Swing" or kind=="StyleMove" or kind=="GunShot" or kind=="ChargedSlash" or kind=="Skill" or kind=="FruitMove") then
-		local rJoint=actorChar:FindFirstChild("RightShoulder",true) or actorChar:FindFirstChild("Right Shoulder",true)
-		local lJoint=actorChar:FindFirstChild("LeftShoulder",true) or actorChar:FindFirstChild("Left Shoulder",true)
-		local wJoint=actorChar:FindFirstChild("Waist",true) or actorChar:FindFirstChild("RootJoint",true)
-		if rJoint and rJoint:IsA("Motor6D") then
-			if not rJoint:GetAttribute("SkybreakBaseC0") then rJoint:SetAttribute("SkybreakBaseC0",rJoint.C0) end
-			local rBase=rJoint:GetAttribute("SkybreakBaseC0")
-			local isGun=(kind=="GunShot" or tonumber(fx.slot)==4)
-			local isHeavy=(action=="Heavy" or kind=="ChargedSlash" or kind=="Skill" or kind=="FruitMove" or action=="JudgmentStrike" or action=="CelestialAegis")
-			local comboIdx=tonumber(fx.Combo or fx.combo) or 1
-			local rOffset
-			if isGun then
-				rOffset=CFrame.Angles(math.rad(88),0,math.rad(-8))
-			elseif isHeavy then
-				rOffset=CFrame.Angles(math.rad(135),math.rad(-18),math.rad(-24))
-			elseif comboIdx%2==0 then
-				rOffset=CFrame.Angles(math.rad(95),math.rad(25),math.rad(38))
-			else
-				rOffset=CFrame.Angles(math.rad(102),math.rad(-22),math.rad(-36))
-			end
-			local marker=(rJoint:GetAttribute("SwingSequence") or 0)+1
-			rJoint:SetAttribute("SwingSequence",marker)
-			Tween:Create(rJoint,TweenInfo.new(isGun and .08 or .11,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{C0=rBase*rOffset}):Play()
-			if lJoint and lJoint:IsA("Motor6D") and (isHeavy or comboIdx%2==0) then
-				if not lJoint:GetAttribute("SkybreakBaseC0") then lJoint:SetAttribute("SkybreakBaseC0",lJoint.C0) end
-				local lBase=lJoint:GetAttribute("SkybreakBaseC0")
-				local lOffset=isHeavy and CFrame.Angles(math.rad(118),math.rad(18),math.rad(22)) or CFrame.Angles(math.rad(85),math.rad(15),math.rad(26))
-				Tween:Create(lJoint,TweenInfo.new(.12,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{C0=lBase*lOffset}):Play()
-			end
-			if wJoint and wJoint:IsA("Motor6D") and wJoint.Name=="Waist" then
-				if not wJoint:GetAttribute("SkybreakBaseC0") then wJoint:SetAttribute("SkybreakBaseC0",wJoint.C0) end
-				local wBase=wJoint:GetAttribute("SkybreakBaseC0")
-				local yaw=(isGun and -0.15) or (comboIdx%2==0 and 0.34 or -0.34)
-				Tween:Create(wJoint,TweenInfo.new(.11,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{C0=wBase*CFrame.Angles(isHeavy and -0.14 or -0.06,yaw,0)}):Play()
-			end
-			local holdDur=isHeavy and .34 or (isGun and .24 or .18)
-			task.delay(holdDur,function()
-				if rJoint.Parent and rJoint:GetAttribute("SwingSequence")==marker then
-					Tween:Create(rJoint,TweenInfo.new(.18,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{C0=rBase}):Play()
-					if lJoint and lJoint.Parent and lJoint:GetAttribute("SkybreakBaseC0") then
-						Tween:Create(lJoint,TweenInfo.new(.18,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{C0=lJoint:GetAttribute("SkybreakBaseC0")}):Play()
-					end
-					if wJoint and wJoint.Parent and wJoint:GetAttribute("SkybreakBaseC0") then
-						Tween:Create(wJoint,TweenInfo.new(.18,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{C0=wJoint:GetAttribute("SkybreakBaseC0")}):Play()
-					end
-				end
-			end)
 		end
 	end
 
