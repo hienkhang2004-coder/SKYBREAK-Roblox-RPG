@@ -586,4 +586,1619 @@ function VFXStudioLibrary.EmitElement(elementName, worldCF, scale, tintPrimary, 
 	return VFXStudioLibrary.Emit("Elements", prefabName, worldCF, scale, tintPrimary, tintSecondary)
 end
 
+-- ============================================================================
+-- VIBEGG (@vibeggvn) 7-SYSTEM x 5-STEP GAME JUICE & FINISHER SUITE
+-- Each of the 7 VFX systems has per-step on/off toggles (Step1..Step5, Finisher)
+-- and tunable parameters, plus live Workspace attribute overrides.
+--   1. MeleeSlash   (Đòn chém cận chiến: 5 bước + Death Pop)
+--   2. Fireball     (Phép Cầu lửa: 5 bước + Cháy thành tro & Vết đen)
+--   3. Gunplay      (Bắn súng: 5 bước + 0.3s Slow-mo & Ragdoll văng xa)
+--   4. IceSpikes    (Phép Băng: 5 bước + Đóng băng trong khối băng lớn)
+--   5. Lightning    (Phép Tia sét: 5 bước + Giật điện đen thui & Bốc khói)
+--   6. GravitySpell (Phép Trọng lực: 5 bước + Đè bẹp 55% / Bẹp như tờ giấy rồi bật lên)
+--   7. MagmaSpell   (Phép Dung nham: 5 bước + Chìm tới thắt lưng & Bỏng chân nhảy tưng tưng)
+-- ============================================================================
+local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
+
+VFXStudioLibrary.VibeGGConfig = {
+	MeleeSlash = {
+		Step1_HitFlash = true,
+		Step2_RandomPitchSound = true,
+		Step3_DirectionalSparks = true,
+		Step4_Knockback = true,
+		Step5_HitStopAndShake = true,
+		Finisher_DeathPop = true,
+		FlashDuration = 0.055,
+		PitchMin = 0.88,
+		PitchMax = 1.16,
+		KnockbackDist = 1.35,
+		HitStopDuration = 0.080,
+	},
+	Fireball = {
+		Step1_ChargeUp = true,
+		Step2_ProjectileTrail = true,
+		Step3_ImpactBurst = true,
+		Step4_DamageCritPop = true,
+		Step5_BurnDoT = true,
+		Finisher_AshAndScorch = true,
+		ChargeDuration = 0.34,
+		FlightDuration = 0.24,
+		BurnTicks = 4,
+		BurnInterval = 0.36,
+	},
+	Gunplay = {
+		Step1_MuzzleFlash = true,
+		Step2_SpreadAndTracer = true,
+		Step3_Recoil = true,
+		Step4_ShellEjection = true,
+		Step5_ImpactDecalAndSparks = true,
+		Finisher_SlowMoRagdoll = true,
+		SpreadDeg = 2.4,
+		SlowMoDuration = 0.30,
+	},
+	IceSpikes = {
+		Step1_GroundSpikes = true,
+		Step2_ProgressiveGrow = true,
+		Step3_FanOut = true,
+		Step4_GroundCracksAndDebris = true,
+		Step5_TopDownShatter = true,
+		Finisher_GiantIceBlock = true,
+		ClusterCount = 6,
+		SideSpikeAngleDeg = 32,
+	},
+	Lightning = {
+		Step1_ZigzagAndBranches = true,
+		Step2_Taper = true,
+		Step3_DualLayerGlow = true,
+		Step4_WhiteCore = true,
+		Step5_MultiFrameFlicker = true,
+		Finisher_ElectroCharSmoke = true,
+		FlickerFrames = 4,
+		FlickerStepTime = 0.038,
+	},
+	GravitySpell = {
+		Step1_TelegraphRing = true,
+		Step2_DownwardStreaks = true,
+		Step3_SquashAndStretch = true,
+		Step4_CraterAndRadialCracks = true,
+		Step5_HitStop3FramesAndShake = true,
+		Finisher_PaperFlatBounce = true,
+		TelegraphDuration = 0.50,
+		SquashYRatio = 0.55,
+		SquashXZRatio = 1.38,
+		PaperFlatYRatio = 0.10,
+		PaperFlatXZRatio = 1.68,
+		HitStop3Frames = 0.050,
+	},
+	MagmaSpell = {
+		Step1_RedFissuresPreTremor = true,
+		Step2_RockDomeEruption = true,
+		Step3_ParabolicLavaSplats = true,
+		Step4_BubblingPoolWaistSink = true,
+		Step5_BlackSmokeAndEmbers = true,
+		Finisher_HotFootHopping = true,
+		PreCrackDuration = 0.60,
+		WaistSinkDepth = 1.85,
+		HopCount = 5,
+	},
+}
+
+local function isStepEnabled(sysName, stepKey)
+	local attrName = "VibeGG_" .. sysName .. "_" .. stepKey
+	local wsOverride = Workspace:GetAttribute(attrName)
+	if wsOverride ~= nil then
+		return wsOverride == true
+	end
+	local sys = VFXStudioLibrary.VibeGGConfig[sysName]
+	return (sys and sys[stepKey] ~= false) or false
+end
+
+function VFXStudioLibrary.FindNearestTargetModel(pos, radius, ignoreChar)
+	if typeof(pos) ~= "Vector3" then return nil end
+	local bestModel = nil
+	local bestDist = radius or 16
+	local lp = Players.LocalPlayer
+	local lpChar = lp and lp.Character
+
+	local function scanFolder(folder)
+		if not folder then return end
+		for _, child in ipairs(folder:GetChildren()) do
+			if child:IsA("Model") and child ~= ignoreChar and child ~= lpChar and child.Name ~= "EnergyPylon" then
+				local root = child:FindFirstChild("HumanoidRootPart") or child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
+				if root then
+					local d = (root.Position - pos).Magnitude
+					if d <= bestDist then
+						bestDist = d
+						bestModel = child
+					end
+				end
+			end
+		end
+	end
+
+	scanFolder(Workspace:FindFirstChild("ActiveEnemies"))
+	scanFolder(Workspace:FindFirstChild("ActiveBosses"))
+	return bestModel
+end
+
+local function getModelPivotAndParts(targetModel)
+	if not targetModel or not targetModel.Parent then return nil, nil, nil end
+	local root = targetModel:FindFirstChild("HumanoidRootPart") or targetModel.PrimaryPart or targetModel:FindFirstChildWhichIsA("BasePart")
+	if not root then return nil, nil, nil end
+	local gPos = VFXStudioLibrary.FindGround(root.Position, targetModel)
+	local parts = {}
+	for _, d in ipairs(targetModel:GetDescendants()) do
+		if d:IsA("BasePart") then
+			if not d:GetAttribute("_OrigSizeVibeGG") then
+				d:SetAttribute("_OrigSizeVibeGG", d.Size)
+			end
+			table.insert(parts, {
+				Part = d,
+				OrigSize = d:GetAttribute("_OrigSizeVibeGG") or d.Size,
+				RelFromGround = d.Position - gPos,
+				RelFromRoot = d.Position - root.Position,
+			})
+		end
+	end
+	return root, gPos, parts
+end
+
+function VFXStudioLibrary.PulseTargetHighlight(targetModel, fillCol, outlineCol, dur)
+	if not targetModel or not targetModel.Parent then return end
+	local hl = targetModel:FindFirstChild("VibeGGStatusHighlight")
+	if not hl then
+		hl = Instance.new("Highlight")
+		hl.Name = "VibeGGStatusHighlight"
+		hl.Adornee = targetModel
+		hl.DepthMode = Enum.HighlightDepthMode.Occluded
+		hl.Parent = targetModel
+	end
+	hl.FillColor = fillCol or PAL.HotWhite
+	hl.OutlineColor = outlineCol or fillCol or PAL.HotWhite
+	hl.FillTransparency = 0.08
+	hl.OutlineTransparency = 0.0
+	hl.Enabled = true
+	local d = dur or 0.06
+	local tok = (targetModel:GetAttribute("_VibeGGHlTok") or 0) + 1
+	targetModel:SetAttribute("_VibeGGHlTok", tok)
+	TweenService:Create(hl, TweenInfo.new(d, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		FillTransparency = 1,
+		OutlineTransparency = 1,
+	}):Play()
+	task.delay(d + 0.02, function()
+		if targetModel and targetModel.Parent and targetModel:GetAttribute("_VibeGGHlTok") == tok and hl and hl.Parent then
+			hl.Enabled = false
+		end
+	end)
+end
+
+function VFXStudioLibrary.PlayRandomPitchSound(soundId, pos, pitchMin, pitchMax, vol)
+	if VFXStudioLibrary.IsLowFX() then return end
+	local host = VFXStudioLibrary.MakePart("VibeGGSoundHost", Enum.PartType.Block, Vector3.new(0.2, 0.2, 0.2), CFrame.new(pos or Vector3.zero), PAL.Cyan, 1, Enum.Material.SmoothPlastic)
+	local snd = Instance.new("Sound")
+	snd.SoundId = soundId or "rbxassetid://9119713951"
+	local pMin = pitchMin or 0.88
+	local pMax = pitchMax or 1.16
+	snd.PlaybackSpeed = pMin + math.random() * (pMax - pMin)
+	snd.Volume = vol or 0.45
+	snd.RollOffMaxDistance = 90
+	snd.Parent = host
+	pcall(function()
+		snd:Play()
+	end)
+	Debris:AddItem(host, 1.2)
+end
+
+function VFXStudioLibrary.TriggerLocalHitStop(freezeDur)
+	local lp = Players.LocalPlayer
+	local ch = lp and lp.Character
+	if not ch then return end
+	local d = math.clamp(tonumber(freezeDur) or 0.055, 0.02, 0.16)
+	local hum = ch:FindFirstChildOfClass("Humanoid")
+	local animator = hum and hum:FindFirstChildOfClass("Animator")
+	local paused = {}
+	if animator then
+		for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do
+			if tr.IsPlaying and tr.Speed > 0.08 then
+				table.insert(paused, { Track = tr, Speed = tr.Speed })
+				pcall(function() tr:AdjustSpeed(0.02) end)
+			end
+		end
+	end
+	task.delay(d, function()
+		for _, item in ipairs(paused) do
+			if item.Track and item.Track.IsPlaying then
+				pcall(function() item.Track:AdjustSpeed(item.Speed) end)
+			end
+		end
+	end)
+end
+
+function VFXStudioLibrary.SpawnPopTextBillboard(pos, text, primaryCol, strokeCol, scaleMult)
+	if VFXStudioLibrary.IsLowFX() then return end
+	local anchor = VFXStudioLibrary.MakePart("VibeGGPopTextAnchor", Enum.PartType.Block, Vector3.new(0.2, 0.2, 0.2), CFrame.new(pos + Vector3.new(0, 2.2, 0)), primaryCol, 1, Enum.Material.SmoothPlastic)
+	local bg = Instance.new("BillboardGui")
+	bg.Name = "VibeGGPopBillboard"
+	bg.Size = UDim2.fromOffset(180, 56)
+	bg.StudsOffset = Vector3.new(0, 0.5, 0)
+	bg.AlwaysOnTop = true
+	bg.Parent = anchor
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.fromScale(1, 1)
+	lbl.BackgroundTransparency = 1
+	lbl.Font = Enum.Font.GothamBlack
+	lbl.Text = text or "💥 CRIT!"
+	lbl.TextColor3 = primaryCol or PAL.Gold
+	lbl.TextScaled = true
+	lbl.Parent = bg
+
+	local st = Instance.new("UIStroke")
+	st.Color = strokeCol or PAL.Obsidian
+	st.Thickness = 2.5
+	st.Parent = lbl
+
+	local sc = Instance.new("UIScale")
+	sc.Scale = 0.25
+	sc.Parent = lbl
+
+	TweenService:Create(sc, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Scale = math.clamp(scaleMult or 1.25, 0.8, 1.8),
+	}):Play()
+	TweenService:Create(anchor, TweenInfo.new(0.65, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		Position = pos + Vector3.new((math.random() - 0.5) * 2.2, 5.2, (math.random() - 0.5) * 2.2),
+	}):Play()
+	task.delay(0.38, function()
+		if lbl and lbl.Parent then
+			TweenService:Create(lbl, TweenInfo.new(0.26), { TextTransparency = 1 }):Play()
+			TweenService:Create(st, TweenInfo.new(0.26), { Transparency = 1 }):Play()
+		end
+	end)
+	Debris:AddItem(anchor, 0.70)
+end
+
+-- ============================================================================
+-- 1. ĐÒN CHÉM CẬN CHIẾN (5 BƯỚC + FINISHER DEATH POP)
+-- ============================================================================
+function VFXStudioLibrary.VibeGG_MeleeHit5Steps(hitPos, slashDir, isCrit, isHeavy, targetModel, isLocal)
+	local cfg = VFXStudioLibrary.VibeGGConfig.MeleeSlash
+	local dir = (typeof(slashDir) == "Vector3" and slashDir.Magnitude > 0.05) and slashDir.Unit or Vector3.new(0, 0, -1)
+	local target = targetModel or VFXStudioLibrary.FindNearestTargetModel(hitPos, 10)
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+
+	-- Bước 1: Hit flash (Target chớp trắng 2-3 frame)
+	if isStepEnabled("MeleeSlash", "Step1_HitFlash") and target then
+		VFXStudioLibrary.PulseTargetHighlight(target, PAL.HotWhite, PAL.Gold, cfg.FlashDuration)
+	end
+
+	-- Bước 2: Impact sound với Random Pitch (0.88 - 1.16)
+	if isStepEnabled("MeleeSlash", "Step2_RandomPitchSound") then
+		VFXStudioLibrary.PlayRandomPitchSound("rbxassetid://9119713951", hitPos, cfg.PitchMin, cfg.PitchMax, isCrit and 0.52 or 0.38)
+	end
+
+	-- Bước 3: Hit particles bay đúng theo hướng chém
+	if isStepEnabled("MeleeSlash", "Step3_DirectionalSparks") then
+		local count = VFXStudioLibrary.IsLowFX() and 4 or (isCrit and 9 or 6)
+		local basisCF = VFXStudioLibrary.SafeLookAt(hitPos, hitPos + dir, dir)
+		for i = 1, count do
+			local yaw = (math.random() - 0.5) * 0.85
+			local pitch = (math.random() - 0.5) * 0.65
+			local sCF = basisCF * CFrame.Angles(pitch, yaw, 0)
+			local sparkLen = (isCrit and 2.8 or 1.9) + math.random() * 1.4
+			local spark = VFXStudioLibrary.MakePart(
+				"VibeGG_SlashSpark_" .. i,
+				Enum.PartType.Block,
+				Vector3.new(0.14, 0.14, sparkLen),
+				sCF * CFrame.new(0, 0, -sparkLen * 0.5),
+				(i % 2 == 0) and PAL.HotWhite or (isCrit and PAL.Gold or PAL.Cyan),
+				0.04,
+				Enum.Material.ForceField,
+				folder
+			)
+			local travel = (4.2 + math.random() * 4.5) * (isCrit and 1.3 or 1.0)
+			TweenService:Create(spark, TweenInfo.new(0.20, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = sCF * CFrame.new(0, 0, -travel),
+				Size = Vector3.new(0.03, 0.03, sparkLen * 0.35),
+				Transparency = 1,
+			}):Play()
+			Debris:AddItem(spark, 0.24)
+		end
+	end
+
+	-- Bước 4: Knockback đẩy lùi mục tiêu theo hướng chém
+	if isStepEnabled("MeleeSlash", "Step4_Knockback") and target then
+		local root = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
+		if root and root.Parent then
+			local pushVec = Vector3.new(dir.X, 0, dir.Z)
+			pushVec = (pushVec.Magnitude > 0.05) and pushVec.Unit or dir
+			local kbDist = cfg.KnockbackDist * ((isCrit or isHeavy) and 1.45 or 1.0)
+			local origCF = root.CFrame
+			local pushedCF = origCF + pushVec * kbDist
+			TweenService:Create(root, TweenInfo.new(0.08, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = pushedCF,
+			}):Play()
+		end
+	end
+
+	-- Bước 5: Hit-stop (~80ms) + Screen shake theo hướng đánh
+	if isStepEnabled("MeleeSlash", "Step5_HitStopAndShake") and isLocal then
+		if isCrit or isHeavy then
+			VFXStudioLibrary.TriggerLocalHitStop(cfg.HitStopDuration)
+		end
+		VFXStudioLibrary.EmitCameraTrauma((isCrit or isHeavy) and 0.36 or 0.20, isCrit and 2.2 or 0.8, dir)
+	end
+end
+
+function VFXStudioLibrary.VibeGG_MeleeDeathPopFinisher(enemyModel, centerPos, isBoss)
+	if not isStepEnabled("MeleeSlash", "Finisher_DeathPop") then return end
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local sc = isBoss and 1.85 or 1.0
+
+	-- Phình nhẹ trước khi nổ tung thành mảnh sáng (Death Pop)
+	local swellOrb = VFXStudioLibrary.MakePart("VibeGG_DeathPopSwell", Enum.PartType.Ball, Vector3.new(2.2, 2.2, 2.2) * sc, CFrame.new(centerPos), PAL.HotWhite, 0.12, Enum.Material.ForceField, folder)
+	TweenService:Create(swellOrb, TweenInfo.new(0.09, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = Vector3.new(5.6, 5.6, 5.6) * sc,
+		Transparency = 0.02,
+	}):Play()
+	task.delay(0.09, function()
+		if swellOrb and swellOrb.Parent then
+			TweenService:Create(swellOrb, TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = Vector3.new(9.5, 9.5, 9.5) * sc,
+				Transparency = 1,
+			}):Play()
+		end
+		local shardCount = VFXStudioLibrary.IsLowFX() and 6 or (isBoss and 16 or 12)
+		for i = 1, shardCount do
+			local u = (math.random() - 0.5) * 2
+			local theta = math.random() * math.pi * 2
+			local r = math.sqrt(math.max(0, 1 - u * u))
+			local dir = Vector3.new(r * math.cos(theta), math.abs(u) * 0.85 + 0.25, r * math.sin(theta)).Unit
+			local shard = VFXStudioLibrary.MakePart(
+				"DeathPopShard_" .. i,
+				(i % 2 == 0) and Enum.PartType.Wedge or Enum.PartType.Block,
+				Vector3.new(0.65, 0.85, 1.05) * sc,
+				CFrame.new(centerPos),
+				(i % 3 == 0) and PAL.HotWhite or ((i % 2 == 0) and PAL.Gold or PAL.Cyan),
+				0.04,
+				Enum.Material.ForceField,
+				folder
+			)
+			local dist = (5.5 + math.random() * 6.5) * sc
+			TweenService:Create(shard, TweenInfo.new(0.42, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = CFrame.new(centerPos + dir * dist - Vector3.new(0, 1.8, 0)) * CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
+				Size = Vector3.new(0.12, 0.12, 0.12),
+				Transparency = 1,
+			}):Play()
+			Debris:AddItem(shard, 0.46)
+		end
+	end)
+	Debris:AddItem(swellOrb, 0.28)
+end
+
+-- ============================================================================
+-- 2. PHÉP CẦU LỬA (5 BƯỚC + FINISHER CHÁY THÀNH TRO & VẾT ĐEN TRÊN ĐẤT)
+-- ============================================================================
+function VFXStudioLibrary.VibeGG_Fireball5Steps(startPos, endPos, scale, isFinisher, isLocal, ignoreChar)
+	local cfg = VFXStudioLibrary.VibeGGConfig.Fireball
+	local sc = math.clamp(tonumber(scale) or 1, 0.6, 2.4)
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local chargeTime = isStepEnabled("Fireball", "Step1_ChargeUp") and cfg.ChargeDuration or 0.02
+
+	-- Bước 1: Charge-up (Tụ lực ở tay 0.3-0.5s trước khi bắn)
+	if isStepEnabled("Fireball", "Step1_ChargeUp") then
+		local chargeCore = VFXStudioLibrary.MakePart("Fireball_ChargeCore", Enum.PartType.Ball, Vector3.new(0.4, 0.4, 0.4) * sc, CFrame.new(startPos), PAL.HotWhite, 0.06, Enum.Material.ForceField, folder)
+		local chargeShell = VFXStudioLibrary.MakePart("Fireball_ChargeShell", Enum.PartType.Ball, Vector3.new(0.8, 0.8, 0.8) * sc, CFrame.new(startPos), PAL.Solar, 0.24, Enum.Material.ForceField, folder)
+		VFXStudioLibrary.SafeLight(chargeCore, PAL.Solar, 1.35, 12, chargeTime + 0.1)
+		TweenService:Create(chargeCore, TweenInfo.new(chargeTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = Vector3.new(2.2, 2.2, 2.2) * sc,
+		}):Play()
+		TweenService:Create(chargeShell, TweenInfo.new(chargeTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Size = Vector3.new(3.4, 3.4, 3.4) * sc,
+			Transparency = 0.55,
+		}):Play()
+		local moteCount = VFXStudioLibrary.IsLowFX() and 4 or 7
+		for m = 1, moteCount do
+			local ang = m * ((math.pi * 2) / moteCount)
+			local mOrigin = startPos + Vector3.new(math.cos(ang) * 3.8 * sc, (m % 2 == 0 and 1.2 or -1.0) * sc, math.sin(ang) * 3.8 * sc)
+			local mote = VFXStudioLibrary.MakePart("FireChargeMote_" .. m, Enum.PartType.Ball, Vector3.new(0.55, 0.55, 0.55) * sc, CFrame.new(mOrigin), (m % 2 == 0) and PAL.Gold or PAL.Magma, 0.08, Enum.Material.ForceField, folder)
+			TweenService:Create(mote, TweenInfo.new(chargeTime * 0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Position = startPos,
+				Size = Vector3.new(0.15, 0.15, 0.15),
+				Transparency = 0.8,
+			}):Play()
+			Debris:AddItem(mote, chargeTime)
+		end
+		Debris:AddItem(chargeCore, chargeTime + 0.05)
+		Debris:AddItem(chargeShell, chargeTime + 0.05)
+	end
+
+	-- Bước 2: Projectile trail (Đuôi lửa dày + hạt tàn rơi dọc đường bay)
+	task.delay(chargeTime * 0.75, function()
+		local fbCore = VFXStudioLibrary.MakePart("VibeGG_FireballCore", Enum.PartType.Ball, Vector3.new(2.4, 2.4, 2.4) * sc, CFrame.new(startPos), PAL.HotWhite, 0.04, Enum.Material.ForceField, folder)
+		local fbMantle = VFXStudioLibrary.MakePart("VibeGG_FireballMantle", Enum.PartType.Ball, Vector3.new(3.5, 3.5, 3.5) * sc, CFrame.new(startPos), PAL.Solar, 0.18, Enum.Material.ForceField, folder)
+		if isStepEnabled("Fireball", "Step2_ProjectileTrail") then
+			VFXStudioLibrary.AttachRibbonTrail(fbCore, PAL.HotWhite, PAL.Solar, PAL.Magma, 2.4 * sc, 0.30)
+		end
+		local flightDur = cfg.FlightDuration
+		local t0 = os.clock()
+		local lastEmberAt = 0
+		local conn
+		conn = RunService.Heartbeat:Connect(function()
+			local a = math.clamp((os.clock() - t0) / flightDur, 0, 1)
+			local arcY = math.sin(a * math.pi) * 2.2 * sc
+			local curPos = startPos:Lerp(endPos, a) + Vector3.new(0, arcY, 0)
+			if fbCore.Parent then fbCore.CFrame = CFrame.new(curPos) end
+			if fbMantle.Parent then fbMantle.CFrame = CFrame.new(curPos) end
+
+			-- Hạt tàn lửa rơi xuống dọc đường bay
+			if isStepEnabled("Fireball", "Step2_ProjectileTrail") and not VFXStudioLibrary.IsLowFX() and (os.clock() - lastEmberAt >= 0.04) then
+				lastEmberAt = os.clock()
+				local ember = VFXStudioLibrary.MakePart("DroppingEmber", Enum.PartType.Ball, Vector3.new(0.42, 0.42, 0.42) * sc, CFrame.new(curPos + Vector3.new((math.random() - 0.5) * 1.2, -0.3, (math.random() - 0.5) * 1.2)), PAL.Gold, 0.06, Enum.Material.ForceField, folder)
+				TweenService:Create(ember, TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					Position = ember.Position - Vector3.new(0, 3.4 * sc, 0),
+					Size = Vector3.new(0.08, 0.08, 0.08),
+					Color = PAL.Magma,
+					Transparency = 1,
+				}):Play()
+				Debris:AddItem(ember, 0.35)
+			end
+
+			if a >= 1 then
+				conn:Disconnect()
+				if fbCore.Parent then fbCore.Transparency = 1 end
+				if fbMantle.Parent then fbMantle.Transparency = 1 end
+
+				-- Bước 3: Impact burst (Chớp sáng + Vòng sóng xung kích)
+				local gPos = VFXStudioLibrary.FindGround(endPos)
+				if isStepEnabled("Fireball", "Step3_ImpactBurst") then
+					VFXStudioLibrary.Emit("Elements", "Elem_Flame", CFrame.new(endPos), sc * 1.25, PAL.Solar, PAL.Magma)
+					local flash = VFXStudioLibrary.MakePart("Fireball_ImpactFlash", Enum.PartType.Ball, Vector3.new(3.2, 3.2, 3.2) * sc, CFrame.new(endPos), PAL.HotWhite, 0.04, Enum.Material.ForceField, folder)
+					VFXStudioLibrary.SafeLight(flash, PAL.Solar, 1.45, 16, 0.38)
+					TweenService:Create(flash, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+						Size = Vector3.new(13.5, 13.5, 13.5) * sc,
+						Color = PAL.Magma,
+						Transparency = 1,
+					}):Play()
+					Debris:AddItem(flash, 0.36)
+					VFXStudioLibrary.SpawnShockRing(gPos + Vector3.new(0, 0.2, 0), nil, PAL.Gold, 1.6 * sc, 14.5 * sc, 0.32, 0.42, Enum.Material.ForceField, folder)
+					VFXStudioLibrary.SpawnShockRing(gPos + Vector3.new(0, 0.4, 0), nil, PAL.Magma, 1.2 * sc, 10.5 * sc, 0.24, 0.34, Enum.Material.ForceField, folder)
+					if isLocal then
+						VFXStudioLibrary.EmitCameraTrauma(0.35, 2.2)
+					end
+				end
+
+				-- Bước 4: Damage numbers / Crit pop nảy lên
+				if isStepEnabled("Fireball", "Step4_DamageCritPop") then
+					VFXStudioLibrary.SpawnPopTextBillboard(endPos, isFinisher and "🔥 SOLAR CRIT!" or "🔥 BURN!", PAL.Gold, PAL.Magma, isFinisher and 1.45 or 1.18)
+				end
+
+				-- Bước 5: Burn DoT (Mục tiêu bốc cháy nhấp nháy theo nhịp)
+				local target = VFXStudioLibrary.FindNearestTargetModel(endPos, 14 * sc, ignoreChar)
+				if isStepEnabled("Fireball", "Step5_BurnDoT") then
+					local burnCenter = (target and target:FindFirstChild("HumanoidRootPart") and target.HumanoidRootPart.Position) or endPos
+					for tickIdx = 1, cfg.BurnTicks do
+						task.delay((tickIdx - 1) * cfg.BurnInterval, function()
+							local curPosTick = (target and target.Parent and target:FindFirstChild("HumanoidRootPart") and target.HumanoidRootPart.Position) or burnCenter
+							if target and target.Parent then
+								VFXStudioLibrary.PulseTargetHighlight(target, PAL.Solar, PAL.Gold, 0.16)
+							end
+							local burnRing = VFXStudioLibrary.MakePart("BurnDoTPulse_" .. tickIdx, Enum.PartType.Cylinder, Vector3.new(0.24, 2.6 * sc, 2.6 * sc), CFrame.new(curPosTick - Vector3.new(0, 1.2, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), (tickIdx % 2 == 0) and PAL.Solar or PAL.Gold, 0.12, Enum.Material.ForceField, folder)
+							TweenService:Create(burnRing, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+								Position = curPosTick + Vector3.new(0, 2.2, 0),
+								Size = Vector3.new(0.08, 4.4 * sc, 4.4 * sc),
+								Transparency = 1,
+							}):Play()
+							Debris:AddItem(burnRing, 0.32)
+						end)
+					end
+				end
+
+				-- Finisher: Cháy thành tro + Để lại vết đen trên đất
+				if isFinisher and isStepEnabled("Fireball", "Finisher_AshAndScorch") then
+					local scorch = VFXStudioLibrary.MakePart("Fireball_ScorchMark", Enum.PartType.Cylinder, Vector3.new(0.08, 1.5 * sc, 1.5 * sc), CFrame.new(gPos + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), PAL.Obsidian, 0.10, Enum.Material.Slate, folder)
+					local emberRim = VFXStudioLibrary.MakePart("Fireball_ScorchRim", Enum.PartType.Cylinder, Vector3.new(0.06, 1.8 * sc, 1.8 * sc), CFrame.new(gPos + Vector3.new(0, 0.04, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), PAL.Magma, 0.25, Enum.Material.ForceField, folder)
+					TweenService:Create(scorch, TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+						Size = Vector3.new(0.08, 9.2 * sc, 9.2 * sc),
+					}):Play()
+					TweenService:Create(emberRim, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+						Size = Vector3.new(0.06, 10.4 * sc, 10.4 * sc),
+						Transparency = 0.85,
+					}):Play()
+					task.delay(1.8, function()
+						if scorch and scorch.Parent then
+							TweenService:Create(scorch, TweenInfo.new(0.8), { Transparency = 1 }):Play()
+						end
+					end)
+					Debris:AddItem(scorch, 2.7)
+					Debris:AddItem(emberRim, 1.2)
+
+					local ashCount = VFXStudioLibrary.IsLowFX() and 5 or 10
+					for aIdx = 1, ashCount do
+						local ash = VFXStudioLibrary.MakePart("BurnAshFlake_" .. aIdx, Enum.PartType.Block, Vector3.new(0.38, 0.12, 0.38) * sc, CFrame.new(gPos + Vector3.new((math.random() - 0.5) * 4.5 * sc, 0.6 + math.random() * 2.5, (math.random() - 0.5) * 4.5 * sc)), (aIdx % 3 == 0) and PAL.Solar or PAL.Obsidian, 0.12, Enum.Material.Slate, folder)
+						TweenService:Create(ash, TweenInfo.new(0.95, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+							CFrame = CFrame.new(ash.Position + Vector3.new((math.random() - 0.5) * 2.4, 3.8 * sc, (math.random() - 0.5) * 2.4)) * CFrame.Angles(math.random() * 4, math.random() * 4, 0),
+							Transparency = 1,
+						}):Play()
+						Debris:AddItem(ash, 1.0)
+					end
+				end
+			end
+		end)
+		Debris:AddItem(fbCore, flightDur + 0.35)
+		Debris:AddItem(fbMantle, flightDur + 0.15)
+	end)
+end
+
+-- ============================================================================
+-- 3. BẮN SÚNG (5 BƯỚC + FINISHER 0.3S SLOW-MOTION & RAGDOLL VĂNG XA)
+-- ============================================================================
+function VFXStudioLibrary.VibeGG_Gunplay5Steps(muzzlePos, targetPos, lookDir, primaryCol, secondaryCol, scale, isFinisher, isLocal, actorChar)
+	local cfg = VFXStudioLibrary.VibeGGConfig.Gunplay
+	local sc = math.clamp(tonumber(scale) or 1, 0.6, 2.2)
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local pCol = primaryCol or PAL.Gold
+	local sCol = secondaryCol or PAL.Cyan
+	local aimCF = VFXStudioLibrary.SafeLookAt(muzzlePos, targetPos, lookDir)
+
+	-- Bước 1: Muzzle flash (Tia lửa đầu nòng đa cánh + PointLight lóe 2-3 frame)
+	if isStepEnabled("Gunplay", "Step1_MuzzleFlash") then
+		local flashCore = VFXStudioLibrary.MakePart("Gun_MuzzleCore", Enum.PartType.Ball, Vector3.new(1.1, 1.1, 1.1) * sc, aimCF, PAL.HotWhite, 0.02, Enum.Material.ForceField, folder)
+		VFXStudioLibrary.SafeLight(flashCore, pCol, 1.42, 12, 0.06)
+		TweenService:Create(flashCore, TweenInfo.new(0.06), { Size = Vector3.new(2.2, 2.2, 2.2) * sc, Transparency = 1 }):Play()
+		Debris:AddItem(flashCore, 0.08)
+		for prong = 1, 3 do
+			local pCF = aimCF * CFrame.Angles(0, 0, (prong - 1) * (math.pi / 3))
+			local spike = VFXStudioLibrary.MakePart("Gun_MuzzleProng_" .. prong, Enum.PartType.Block, Vector3.new(0.22 * sc, 2.4 * sc, 0.22 * sc), pCF, (prong % 2 == 0) and pCol or PAL.HotWhite, 0.04, Enum.Material.ForceField, folder)
+			TweenService:Create(spike, TweenInfo.new(0.065), { Size = Vector3.new(0.05, 3.6 * sc, 0.05), Transparency = 1 }):Play()
+			Debris:AddItem(spike, 0.08)
+		end
+	end
+
+	-- Bước 2: Bullet spread nhẹ + đường đạn sáng (Tracer)
+	local actualDst = targetPos
+	if isStepEnabled("Gunplay", "Step2_SpreadAndTracer") then
+		local dist = math.max(2, (targetPos - muzzlePos).Magnitude)
+		local spreadRad = math.rad(cfg.SpreadDeg)
+		local spreadCF = aimCF * CFrame.Angles((math.random() - 0.5) * spreadRad, (math.random() - 0.5) * spreadRad, 0)
+		actualDst = muzzlePos + spreadCF.LookVector * dist
+		local tracerBullet = VFXStudioLibrary.MakePart("Gun_SpreadTracer", Enum.PartType.Block, Vector3.new(0.18 * sc, 0.18 * sc, 2.8 * sc), spreadCF, PAL.HotWhite, 0.02, Enum.Material.ForceField, folder)
+		VFXStudioLibrary.AttachRibbonTrail(tracerBullet, PAL.HotWhite, pCol, sCol, 0.55 * sc, 0.14)
+		TweenService:Create(tracerBullet, TweenInfo.new(0.09, Enum.EasingStyle.Linear), {
+			CFrame = CFrame.new(actualDst) * (spreadCF - spreadCF.Position),
+		}):Play()
+		Debris:AddItem(tracerBullet, 0.22)
+	end
+
+	-- Bước 3: Recoil (Giật lùi vũ khí/nhân vật & giật camera hồi lại mượt)
+	if isStepEnabled("Gunplay", "Step3_Recoil") then
+		if isLocal then
+			VFXStudioLibrary.EmitCameraTrauma(isFinisher and 0.38 or 0.22, isFinisher and 2.8 or 1.4, -aimCF.LookVector)
+		end
+		local root = actorChar and actorChar:FindFirstChild("HumanoidRootPart")
+		if root and root.Parent then
+			local backVec = Vector3.new(-aimCF.LookVector.X, 0, -aimCF.LookVector.Z)
+			if backVec.Magnitude > 0.05 then
+				local recoilCF = root.CFrame + backVec.Unit * (0.35 * sc)
+				TweenService:Create(root, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = recoilCF }):Play()
+			end
+		end
+	end
+
+	-- Bước 4: Shell ejection (Vỏ đạn đồng văng vòng cung sang bên phải và nảy trên sàn)
+	if isStepEnabled("Gunplay", "Step4_ShellEjection") and not VFXStudioLibrary.IsLowFX() then
+		local shellOrigin = muzzlePos - aimCF.LookVector * 0.9 + aimCF.RightVector * 0.45
+		local shell = VFXStudioLibrary.MakePart("Gun_BrassShell", Enum.PartType.Cylinder, Vector3.new(0.42 * sc, 0.16 * sc, 0.16 * sc), CFrame.new(shellOrigin), PAL.Gold, 0.0, Enum.Material.Metal, folder)
+		local floorPos = VFXStudioLibrary.FindGround(shellOrigin, actorChar)
+		local landPos = Vector3.new(shellOrigin.X, floorPos.Y + 0.08, shellOrigin.Z) + aimCF.RightVector * (2.6 + math.random() * 1.4) - aimCF.LookVector * (0.6 + math.random() * 0.8)
+		local t0 = os.clock()
+		local dur = 0.48
+		local conn
+		conn = RunService.Heartbeat:Connect(function()
+			local a = math.clamp((os.clock() - t0) / dur, 0, 1)
+			local xz = shellOrigin:Lerp(landPos, a)
+			local bounceY
+			if a < 0.65 then
+				local u = a / 0.65
+				bounceY = shellOrigin.Y * (1 - u) + landPos.Y * u + math.sin(u * math.pi) * 1.85
+			else
+				local u = (a - 0.65) / 0.35
+				bounceY = landPos.Y + math.abs(math.sin(u * math.pi * 2)) * (0.55 * (1 - u))
+			end
+			if shell.Parent then
+				shell.CFrame = CFrame.new(xz.X, bounceY, xz.Z) * CFrame.Angles(a * 18, a * 12, a * 22)
+			end
+			if a >= 1 then
+				conn:Disconnect()
+				task.delay(0.45, function()
+					if shell and shell.Parent then
+						TweenService:Create(shell, TweenInfo.new(0.25), { Transparency = 1 }):Play()
+					end
+				end)
+			end
+		end)
+		Debris:AddItem(shell, 1.25)
+	end
+
+	-- Bước 5: Decals (Vết đạn đen + tia lửa bắn ra ở điểm trúng)
+	if isStepEnabled("Gunplay", "Step5_ImpactDecalAndSparks") then
+		task.delay(0.06, function()
+			local hole = VFXStudioLibrary.MakePart("Gun_BulletHoleDecal", Enum.PartType.Cylinder, Vector3.new(0.06, 0.85 * sc, 0.85 * sc), VFXStudioLibrary.SafeLookAt(actualDst, actualDst + aimCF.LookVector, aimCF.LookVector) * CFrame.Angles(0, math.pi * 0.5, 0), PAL.Obsidian, 0.08, Enum.Material.Slate, folder)
+			local rim = VFXStudioLibrary.MakePart("Gun_BulletHoleRim", Enum.PartType.Cylinder, Vector3.new(0.04, 1.35 * sc, 1.35 * sc), hole.CFrame, pCol, 0.18, Enum.Material.ForceField, folder)
+			TweenService:Create(rim, TweenInfo.new(0.35), { Size = Vector3.new(0.04, 2.2 * sc, 2.2 * sc), Transparency = 1 }):Play()
+			task.delay(1.2, function()
+				if hole and hole.Parent then
+					TweenService:Create(hole, TweenInfo.new(0.45), { Transparency = 1 }):Play()
+				end
+			end)
+			Debris:AddItem(hole, 1.7)
+			Debris:AddItem(rim, 0.4)
+
+			local spCount = VFXStudioLibrary.IsLowFX() and 3 or 6
+			for s = 1, spCount do
+				local rDir = (-aimCF.LookVector + Vector3.new((math.random() - 0.5) * 1.4, math.random() * 1.1, (math.random() - 0.5) * 1.4)).Unit
+				local sp = VFXStudioLibrary.MakePart("BulletHitSpark_" .. s, Enum.PartType.Block, Vector3.new(0.12, 0.12, 1.4 * sc), VFXStudioLibrary.SafeLookAt(actualDst, actualDst + rDir, rDir), (s % 2 == 0) and PAL.HotWhite or pCol, 0.04, Enum.Material.ForceField, folder)
+				TweenService:Create(sp, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					CFrame = CFrame.new(actualDst + rDir * (3.2 * sc)) * (sp.CFrame - sp.CFrame.Position),
+					Size = Vector3.new(0.03, 0.03, 0.4),
+					Transparency = 1,
+				}):Play()
+				Debris:AddItem(sp, 0.22)
+			end
+		end)
+	end
+
+	-- Finisher: 0.3s Slow-motion + Ragdoll / Văng xa mục tiêu
+	if isFinisher and isStepEnabled("Gunplay", "Finisher_SlowMoRagdoll") then
+		if isLocal then
+			VFXStudioLibrary.TriggerLocalHitStop(cfg.SlowMoDuration * 0.35)
+			local cam = Workspace.CurrentCamera
+			if cam then
+				local baseFov = cam.FieldOfView
+				TweenService:Create(cam, TweenInfo.new(0.08, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { FieldOfView = math.max(52, baseFov - 8) }):Play()
+				task.delay(cfg.SlowMoDuration, function()
+					if cam then
+						TweenService:Create(cam, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FieldOfView = baseFov }):Play()
+					end
+				end)
+			end
+		end
+		local target = VFXStudioLibrary.FindNearestTargetModel(actualDst, 12 * sc, actorChar)
+		if target then
+			local root = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
+			if root and root.Parent then
+				local launchDir = Vector3.new(aimCF.LookVector.X, 0, aimCF.LookVector.Z)
+				launchDir = (launchDir.Magnitude > 0.05) and launchDir.Unit or Vector3.new(0, 0, -1)
+				local startCF = root.CFrame
+				local endGround = VFXStudioLibrary.FindGround( startCF.Position + launchDir * (6.5 * sc), target)
+				local finalPos = Vector3.new(endGround.X, startCF.Position.Y, endGround.Z)
+				local t0 = os.clock()
+				local conn
+				conn = RunService.Heartbeat:Connect(function()
+					local a = math.clamp((os.clock() - t0) / cfg.SlowMoDuration, 0, 1)
+					if not root or not root.Parent then
+						conn:Disconnect()
+						return
+					end
+					local p = startCF.Position:Lerp(finalPos, a) + Vector3.new(0, math.sin(a * math.pi) * 3.4 * sc, 0)
+					root.CFrame = CFrame.new(p) * (startCF - startCF.Position) * CFrame.Angles(-a * 0.55 * (1 - a), 0, 0)
+					if a >= 1 then
+						conn:Disconnect()
+					end
+				end)
+			end
+		end
+	end
+end
+
+-- ============================================================================
+-- 4. PHÉP BĂNG (5 BƯỚC + FINISHER ĐÓNG BĂNG MỤC TIÊU TRONG KHỐI BĂNG LỚN)
+-- ============================================================================
+function VFXStudioLibrary.VibeGG_IceSpikes5Steps(startPos, endPos, lookDir, scale, isFinisher, isLocal, ignoreChar)
+	local cfg = VFXStudioLibrary.VibeGGConfig.IceSpikes
+	local sc = math.clamp(tonumber(scale) or 1, 0.6, 2.4)
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local dir = (typeof(lookDir) == "Vector3" and lookDir.Magnitude > 0.05) and lookDir.Unit or Vector3.new(0, 0, -1)
+	local count = VFXStudioLibrary.IsLowFX() and 4 or cfg.ClusterCount
+
+	-- Bước 1: Ground spikes trồi lên tuần tự từ đất về phía mục tiêu
+	for i = 1, count do
+		task.delay((i - 1) * 0.055, function()
+			local frac = i / count
+			local clusterPos = startPos:Lerp(endPos, frac)
+			local gPos = VFXStudioLibrary.FindGround(clusterPos, ignoreChar)
+			local basisCF = VFXStudioLibrary.SafeLookAt(gPos, gPos + dir, dir)
+
+			-- Bước 2: Grow (Càng gần mục tiêu gai băng càng to và cao hơn)
+			local growMult = isStepEnabled("IceSpikes", "Step2_ProgressiveGrow") and (0.55 + frac * 1.05) or 1.0
+			local h = 5.4 * sc * growMult
+			local w = 1.65 * sc * growMult
+
+			-- Bước 4: Ground cracks (Vết nứt băng dưới đất + đá/băng vụn văng lên)
+			if isStepEnabled("IceSpikes", "Step4_GroundCracksAndDebris") then
+				for c = 1, 3 do
+					local cAng = (c - 2) * 0.85 + (i % 2 == 0 and 0.2 or -0.2)
+					local crack = VFXStudioLibrary.MakePart("IceGroundCrack_" .. c, Enum.PartType.Block, Vector3.new(0.18 * sc, 0.08, 3.6 * sc * growMult), basisCF * CFrame.Angles(0, cAng, 0) * CFrame.new(0, 0.05, -1.2 * sc), PAL.Cyan, 0.08, Enum.Material.ForceField, folder)
+					TweenService:Create(crack, TweenInfo.new(0.65), { Transparency = 1 }):Play()
+					Debris:AddItem(crack, 0.70)
+				end
+				if not VFXStudioLibrary.IsLowFX() then
+					for d = 1, 2 do
+						local chunk = VFXStudioLibrary.MakePart("IceDebrisChunk_" .. d, Enum.PartType.Wedge, Vector3.new(0.55, 0.55, 0.75) * sc * growMult, CFrame.new(gPos + Vector3.new(0, 0.3, 0)), (d == 1) and PAL.Ice or PAL.Slate, 0.08, (d == 1) and Enum.Material.Glass or Enum.Material.Slate, folder)
+						local dVel = Vector3.new((math.random() - 0.5) * 4.5, 2.8 + math.random() * 2.2, (math.random() - 0.5) * 4.5) * sc
+						TweenService:Create(chunk, TweenInfo.new(0.38, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							CFrame = CFrame.new(gPos + dVel) * CFrame.Angles(math.random() * 5, math.random() * 5, 0),
+							Transparency = 1,
+						}):Play()
+						Debris:AddItem(chunk, 0.42)
+					end
+				end
+			end
+
+			-- Bước 3: Fan out (Gai chính ở giữa + 2 gai phụ nghiêng sang hai bên)
+			local fanSpecs = { { Side = 0, Scale = 1.0, Roll = 0 } }
+			if isStepEnabled("IceSpikes", "Step3_FanOut") then
+				local radAng = math.rad(cfg.SideSpikeAngleDeg)
+				table.insert(fanSpecs, { Side = -1, Scale = 0.68, Roll = radAng })
+				table.insert(fanSpecs, { Side = 1, Scale = 0.68, Roll = -radAng })
+			end
+
+			-- Xây mỗi gai băng gồm 3 tầng (Base, Mid, Tip) để Bước 5 vỡ từ ngọn xuống gốc!
+			for _, fSpec in ipairs(fanSpecs) do
+				local spikeCF = basisCF * CFrame.new(fSpec.Side * w * 0.65, 0, 0) * CFrame.Angles(-0.18, fSpec.Side * 0.22, fSpec.Roll)
+				local sH = h * fSpec.Scale
+				local sW = w * fSpec.Scale
+				local tiers = {
+					{ Name = "Base", Y0 = 0.0, Y1 = 0.38, W = 1.00, Delay = 0.14 },
+					{ Name = "Mid",  Y0 = 0.38, Y1 = 0.72, W = 0.68, Delay = 0.07 },
+					{ Name = "Tip",  Y0 = 0.72, Y1 = 1.00, W = 0.36, Delay = 0.00 },
+				}
+				for _, t in ipairs(tiers) do
+					local segH = sH * (t.Y1 - t.Y0)
+					local midY = sH * ((t.Y0 + t.Y1) * 0.5)
+					local segPart = VFXStudioLibrary.MakePart(
+						"IceSpike_" .. t.Name,
+						(t.Name == "Tip") and Enum.PartType.Wedge or Enum.PartType.Block,
+						Vector3.new(sW * t.W, segH, sW * t.W),
+						spikeCF * CFrame.new(0, -segH, 0),
+						(t.Name == "Tip") and PAL.HotWhite or ((t.Name == "Mid") and PAL.Ice or PAL.Cyan),
+						0.12,
+						Enum.Material.Glass,
+						folder
+					)
+					local targetSegCF = spikeCF * CFrame.new(0, midY, 0)
+					TweenService:Create(segPart, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+						CFrame = targetSegCF,
+					}):Play()
+
+					-- Bước 5: Shatter (Vỡ tuần tự từ ngọn Tip -> Mid -> Base thành mảnh băng rơi xuống)
+					task.delay(0.36 + (isStepEnabled("IceSpikes", "Step5_TopDownShatter") and t.Delay or 0), function()
+						if segPart and segPart.Parent then
+							local fallOffset = Vector3.new((math.random() - 0.5) * 2.4 * sc, -midY * 0.85, (math.random() - 0.5) * 2.4 * sc)
+							TweenService:Create(segPart, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+								CFrame = targetSegCF * CFrame.new(fallOffset) * CFrame.Angles(math.random() * 3, math.random() * 3, math.random() * 3),
+								Size = segPart.Size * 0.25,
+								Transparency = 1,
+							}):Play()
+						end
+					end)
+					Debris:AddItem(segPart, 0.82)
+				end
+			end
+		end)
+	end
+
+	-- Finisher: Đóng băng mục tiêu trong khối băng lớn (Giant Ice Block)
+	if isFinisher and isStepEnabled("IceSpikes", "Finisher_GiantIceBlock") then
+		task.delay(count * 0.055 + 0.08, function()
+			local target = VFXStudioLibrary.FindNearestTargetModel(endPos, 14 * sc, ignoreChar)
+			local freezePos = (target and target:FindFirstChild("HumanoidRootPart") and target.HumanoidRootPart.Position) or endPos
+			local gPos = VFXStudioLibrary.FindGround(freezePos, ignoreChar)
+			if target then
+				VFXStudioLibrary.PulseTargetHighlight(target, PAL.Ice, PAL.HotWhite, 0.95)
+			end
+			local iceBlock = VFXStudioLibrary.MakePart(
+				"VibeGG_GiantIceBlock",
+				Enum.PartType.Block,
+				Vector3.new(1.2, 1.2, 1.2) * sc,
+				CFrame.new(gPos + Vector3.new(0, 3.8 * sc, 0)) * CFrame.Angles(0, 0.35, 0),
+				PAL.Ice,
+				0.28,
+				Enum.Material.Glass,
+				folder
+			)
+			local innerPrism = VFXStudioLibrary.MakePart(
+				"VibeGG_IceBlockCore",
+				Enum.PartType.Block,
+				Vector3.new(0.8, 0.8, 0.8) * sc,
+				iceBlock.CFrame * CFrame.Angles(0.15, 0.78, 0),
+				PAL.HotWhite,
+				0.42,
+				Enum.Material.ForceField,
+				folder
+			)
+			VFXStudioLibrary.Emit("Elements", "Elem_Ice", CFrame.new(gPos + Vector3.new(0, 3.2 * sc, 0)), sc * 1.35, PAL.Ice, PAL.Cyan)
+			TweenService:Create(iceBlock, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Size = Vector3.new(6.2, 7.8, 6.2) * sc,
+			}):Play()
+			TweenService:Create(innerPrism, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Size = Vector3.new(4.8, 6.4, 4.8) * sc,
+			}):Play()
+			task.delay(0.85, function()
+				if iceBlock and iceBlock.Parent then
+					TweenService:Create(iceBlock, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+						Size = Vector3.new(8.2, 9.2, 8.2) * sc,
+						Transparency = 1,
+					}):Play()
+				end
+				if innerPrism and innerPrism.Parent then
+					TweenService:Create(innerPrism, TweenInfo.new(0.26), { Transparency = 1 }):Play()
+				end
+			end)
+			Debris:AddItem(iceBlock, 1.22)
+			Debris:AddItem(innerPrism, 1.18)
+		end)
+	end
+end
+
+-- ============================================================================
+-- 5. PHÉP TIA SÉT (5 BƯỚC + FINISHER GIẬT ĐIỆN ĐEN THUI & BỐC KHÓI)
+-- ============================================================================
+function VFXStudioLibrary.VibeGG_Lightning5Steps(p0, p1, scale, primaryCol, secondaryCol, isFinisher, isLocal, ignoreChar)
+	local cfg = VFXStudioLibrary.VibeGGConfig.Lightning
+	local sc = math.clamp(tonumber(scale) or 1, 0.6, 2.5)
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local c1 = primaryCol or PAL.Thunder
+	local c2 = secondaryCol or PAL.Violet
+	local aimCF = VFXStudioLibrary.SafeLookAt(p0, p1)
+	local segs = VFXStudioLibrary.IsLowFX() and 5 or 7
+	local poses = isStepEnabled("Lightning", "Step5_MultiFrameFlicker") and cfg.FlickerFrames or 1
+	local stepTime = cfg.FlickerStepTime
+
+	-- Bước 5: Flicker (Đổi hình dáng tia sét liên tục mỗi 2 frame rồi tắt)
+	for poseIdx = 1, poses do
+		task.delay((poseIdx - 1) * stepTime, function()
+			local prev = p0
+			for s = 1, segs do
+				local frac = s / segs
+				local nxt = p0:Lerp(p1, frac)
+				if s < segs and isStepEnabled("Lightning", "Step1_ZigzagAndBranches") then
+					local amp = (1.65 + math.sin(frac * math.pi) * 1.45) * sc
+					local jx = (math.random() - 0.5) * 2 * amp
+					local jy = (math.random() - 0.5) * 2 * amp
+					nxt = nxt + aimCF.RightVector * jx + aimCF.UpVector * jy
+				end
+
+				-- Bước 2: Taper (Phình to ở khúc gãy giữa và thon nhỏ ở 2 đầu)
+				local midWeight = math.sin(frac * math.pi)
+				local taperMult = isStepEnabled("Lightning", "Step2_Taper") and (0.45 + midWeight * 0.95) or 1.0
+				local baseThick = 0.42 * sc * taperMult
+				local segLen = math.max(0.2, (nxt - prev).Magnitude)
+				local segCF = VFXStudioLibrary.SafeLookAt((prev + nxt) * 0.5, nxt, aimCF.LookVector)
+
+				-- Bước 3: Glow 2 lớp (Lớp ngoài ForceField rộng + Lớp trong sáng mạnh)
+				if isStepEnabled("Lightning", "Step3_DualLayerGlow") then
+					local outerGlow = VFXStudioLibrary.MakePart(
+						"BoltOuterGlow",
+						Enum.PartType.Block,
+						Vector3.new(baseThick * 2.35, baseThick * 2.35, segLen + baseThick),
+						segCF,
+						(s % 2 == 0) and c2 or c1,
+						0.45,
+						Enum.Material.ForceField,
+						folder
+					)
+					TweenService:Create(outerGlow, TweenInfo.new(stepTime * 1.6), { Transparency = 1 }):Play()
+					Debris:AddItem(outerGlow, stepTime * 1.8)
+				end
+
+				-- Bước 4: White core (Lõi trắng rực chạy dọc chính giữa)
+				local coreCol = isStepEnabled("Lightning", "Step4_WhiteCore") and PAL.HotWhite or c1
+				local innerCore = VFXStudioLibrary.MakePart(
+					"BoltWhiteCore",
+					Enum.PartType.Block,
+					Vector3.new(baseThick * 0.52, baseThick * 0.52, segLen + baseThick * 0.3),
+					segCF,
+					coreCol,
+					0.02,
+					Enum.Material.SmoothPlastic,
+					folder
+				)
+				TweenService:Create(innerCore, TweenInfo.new(stepTime * 1.5), {
+					Size = Vector3.new(baseThick * 0.12, baseThick * 0.12, segLen),
+					Transparency = 1,
+				}):Play()
+				Debris:AddItem(innerCore, stepTime * 1.7)
+
+				-- Bước 1 (Nhánh phụ Sub-branches tẽ ra từ các khúc gãy giữa)
+				if isStepEnabled("Lightning", "Step1_ZigzagAndBranches") and (s == 2 or s == 4 or s == 5) and not VFXStudioLibrary.IsLowFX() then
+					local branchDir = (aimCF.LookVector + aimCF.RightVector * ((s % 2 == 0 and 0.85 or -0.85)) + aimCF.UpVector * ((math.random() - 0.5) * 0.6)).Unit
+					local bMid = nxt + branchDir * (2.6 * sc)
+					local bTip = bMid + (branchDir + aimCF.RightVector * ((math.random() - 0.5) * 0.8)).Unit * (2.2 * sc)
+					for bSeg, pair in ipairs({ { nxt, bMid, 0.24 * sc }, { bMid, bTip, 0.12 * sc } }) do
+						local bLen = (pair[2] - pair[1]).Magnitude
+						local bPart = VFXStudioLibrary.MakePart("BoltSubBranch_" .. bSeg, Enum.PartType.Block, Vector3.new(pair[3], pair[3], bLen), VFXStudioLibrary.SafeLookAt((pair[1] + pair[2]) * 0.5, pair[2], branchDir), (bSeg == 1) and PAL.HotWhite or c1, 0.08, Enum.Material.ForceField, folder)
+						TweenService:Create(bPart, TweenInfo.new(stepTime * 1.5), { Transparency = 1 }):Play()
+						Debris:AddItem(bPart, stepTime * 1.7)
+					end
+				end
+
+				prev = nxt
+			end
+		end)
+	end
+
+	VFXStudioLibrary.SafeLight(VFXStudioLibrary.MakePart("LightningFlashNode", Enum.PartType.Ball, Vector3.new(0.5, 0.5, 0.5), CFrame.new(p1), PAL.HotWhite, 1, Enum.Material.SmoothPlastic, folder), c1, 1.45, 16, poses * stepTime + 0.08)
+	if isLocal then
+		VFXStudioLibrary.EmitCameraTrauma(0.32, 1.8)
+	end
+
+	-- Finisher: Mục tiêu giật điện rung lắc, cháy đen thui và bốc khói đen
+	if isFinisher and isStepEnabled("Lightning", "Finisher_ElectroCharSmoke") then
+		local target = VFXStudioLibrary.FindNearestTargetModel(p1, 13 * sc, ignoreChar)
+		local charCenter = (target and target:FindFirstChild("HumanoidRootPart") and target.HumanoidRootPart.Position) or p1
+		if target then
+			local root = target:FindFirstChild("HumanoidRootPart") or target.PrimaryPart
+			local baseCF = root and root.CFrame
+			for j = 1, 6 do
+				task.delay((j - 1) * 0.045, function()
+					if target and target.Parent then
+						VFXStudioLibrary.PulseTargetHighlight(
+							target,
+							(j % 2 == 1) and PAL.HotWhite or PAL.Obsidian,
+							(j % 2 == 1) and c1 or PAL.Obsidian,
+							0.06
+						)
+						if root and root.Parent and baseCF then
+							root.CFrame = baseCF * CFrame.new((math.random() - 0.5) * 0.85, (math.random() - 0.5) * 0.45, (math.random() - 0.5) * 0.85)
+						end
+					end
+				end)
+			end
+			task.delay(0.28, function()
+				if target and target.Parent then
+					VFXStudioLibrary.PulseTargetHighlight(target, PAL.Obsidian, c2, 0.65)
+					if root and root.Parent and baseCF then
+						root.CFrame = baseCF
+					end
+				end
+			end)
+		end
+
+		-- Khói đen bốc lên từ mục tiêu bị giật sét cháy đen
+		local smokeCount = VFXStudioLibrary.IsLowFX() and 4 or 7
+		for sm = 1, smokeCount do
+			task.delay(0.12 + (sm - 1) * 0.055, function()
+				local puff = VFXStudioLibrary.MakePart(
+					"LightningCharSmoke_" .. sm,
+					Enum.PartType.Ball,
+					Vector3.new(1.1, 1.1, 1.1) * sc,
+					CFrame.new(charCenter + Vector3.new((math.random() - 0.5) * 2.2 * sc, 0.5, (math.random() - 0.5) * 2.2 * sc)),
+					PAL.Obsidian,
+					0.22,
+					Enum.Material.Slate,
+					folder
+				)
+				TweenService:Create(puff, TweenInfo.new(0.75, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+					Position = puff.Position + Vector3.new((math.random() - 0.5) * 1.8, 5.4 * sc, (math.random() - 0.5) * 1.8),
+					Size = Vector3.new(2.8, 2.8, 2.8) * sc,
+					Transparency = 1,
+				}):Play()
+				Debris:AddItem(puff, 0.80)
+			end)
+		end
+	end
+end
+
+-- ============================================================================
+-- 6. PHÉP TRỌNG LỰC - 5 BƯỚC (VIBEGG ẢNH 1: VÒNG BÁO -> VỆT ĐỔ XUỐNG ->
+--    ĐÈ BẸP 55% -> ĐẤT LÚN TIA NỨT -> DỪNG 3 FRAME & LẮC + BẸP NHƯ TỜ GIẤY)
+-- ============================================================================
+function VFXStudioLibrary.VibeGG_GravitySpell5Steps(targetPos, scale, isOvercrushFinisher, isLocal, ignoreChar)
+	local cfg = VFXStudioLibrary.VibeGGConfig.GravitySpell
+	local sc = math.clamp(tonumber(scale) or 1, 0.65, 2.5)
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local target = VFXStudioLibrary.FindNearestTargetModel(targetPos, 15 * sc, ignoreChar)
+	local centerPos = (target and target:FindFirstChild("HumanoidRootPart") and target.HumanoidRootPart.Position) or targetPos
+	local gPos = VFXStudioLibrary.FindGround(centerPos, ignoreChar)
+	local teleDur = isStepEnabled("GravitySpell", "Step1_TelegraphRing") and cfg.TelegraphDuration or 0.04
+
+	-- Bước 1: Vòng báo (Vòng phép tím hiện dưới chân mục tiêu, xoay chậm ~0.5 giây trước khi đè)
+	if isStepEnabled("GravitySpell", "Step1_TelegraphRing") then
+		local outerRing = VFXStudioLibrary.MakePart("Gravity_TelegraphRing", Enum.PartType.Cylinder, Vector3.new(0.14, 2.4 * sc, 2.4 * sc), CFrame.new(gPos + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), PAL.Gravity, 0.14, Enum.Material.ForceField, folder)
+		local innerRing = VFXStudioLibrary.MakePart("Gravity_TelegraphInner", Enum.PartType.Cylinder, Vector3.new(0.18, 1.4 * sc, 1.4 * sc), CFrame.new(gPos + Vector3.new(0, 0.15, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), PAL.Violet, 0.18, Enum.Material.ForceField, folder)
+		VFXStudioLibrary.SafeLight(outerRing, PAL.Gravity, 1.25, 14, teleDur + 0.2)
+		TweenService:Create(outerRing, TweenInfo.new(teleDur, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			Size = Vector3.new(0.14, 13.5 * sc, 13.5 * sc),
+		}):Play()
+		TweenService:Create(innerRing, TweenInfo.new(teleDur, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			Size = Vector3.new(0.18, 8.2 * sc, 8.2 * sc),
+		}):Play()
+
+		local runes = {}
+		for r = 1, 4 do
+			local bar = VFXStudioLibrary.MakePart("Gravity_RuneSpoke_" .. r, Enum.PartType.Block, Vector3.new(0.24 * sc, 0.12, 11.2 * sc), CFrame.new(gPos + Vector3.new(0, 0.16, 0)) * CFrame.Angles(0, (r - 1) * (math.pi * 0.25), 0), PAL.HotWhite, 0.22, Enum.Material.ForceField, folder)
+			table.insert(runes, bar)
+			Debris:AddItem(bar, teleDur + 0.15)
+		end
+		local t0 = os.clock()
+		local conn
+		conn = RunService.Heartbeat:Connect(function(dt)
+			if os.clock() - t0 >= teleDur then
+				conn:Disconnect()
+				return
+			end
+			for _, bar in ipairs(runes) do
+				if bar.Parent then
+					bar.CFrame = bar.CFrame * CFrame.Angles(0, dt * 1.45, 0)
+				end
+			end
+		end)
+		Debris:AddItem(outerRing, teleDur + 0.15)
+		Debris:AddItem(innerRing, teleDur + 0.15)
+	end
+
+	-- Sau ~0.5s vòng báo: Cột sáng tím + Vệt đổ xuống + Đè bẹp + Đất lún + Dừng 3 frame & Lắc
+	task.delay(teleDur, function()
+		local curTarget = target and target.Parent and target or VFXStudioLibrary.FindNearestTargetModel(gPos, 15 * sc, ignoreChar)
+		local root, curGround, modelParts = getModelPivotAndParts(curTarget)
+		local hitGround = curGround or gPos
+
+		-- Bước 2: Vệt đổ xuống (Một cột sáng tím và nhiều vệt mảnh lao từ trên cao xuống mục tiêu)
+		if isStepEnabled("GravitySpell", "Step2_DownwardStreaks") then
+			local pillarH = 28 * sc
+			local pillar = VFXStudioLibrary.MakePart(
+				"Gravity_CrushPillar",
+				Enum.PartType.Cylinder,
+				Vector3.new(pillarH, 9.5 * sc, 9.5 * sc),
+				CFrame.new(hitGround + Vector3.new(0, pillarH * 0.5, 0)) * CFrame.Angles(0, 0, math.pi * 0.5),
+				PAL.Gravity,
+				0.22,
+				Enum.Material.ForceField,
+				folder
+			)
+			local corePillar = VFXStudioLibrary.MakePart(
+				"Gravity_CrushPillarCore",
+				Enum.PartType.Cylinder,
+				Vector3.new(pillarH, 4.2 * sc, 4.2 * sc),
+				pillar.CFrame,
+				PAL.Violet,
+				0.14,
+				Enum.Material.ForceField,
+				folder
+			)
+			TweenService:Create(pillar, TweenInfo.new(0.38, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = Vector3.new(pillarH, 14.5 * sc, 14.5 * sc),
+				Transparency = 1,
+			}):Play()
+			TweenService:Create(corePillar, TweenInfo.new(0.30, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = Vector3.new(pillarH, 0.4, 0.4),
+				Transparency = 1,
+			}):Play()
+			Debris:AddItem(pillar, 0.42)
+			Debris:AddItem(corePillar, 0.34)
+
+			local streakCount = VFXStudioLibrary.IsLowFX() and 6 or 12
+			for s = 1, streakCount do
+				local ang = (s - 1) * ((math.pi * 2) / streakCount) + (math.random() - 0.5) * 0.25
+				local rOff = (1.2 + (s % 3) * 1.85) * sc
+				local topPos = hitGround + Vector3.new(math.cos(ang) * rOff, (20 + (s % 4) * 3.5) * sc, math.sin(ang) * rOff)
+				local botPos = hitGround + Vector3.new(math.cos(ang) * rOff, 1.2 * sc, math.sin(ang) * rOff)
+				local streak = VFXStudioLibrary.MakePart(
+					"Gravity_DownStreak_" .. s,
+					Enum.PartType.Block,
+					Vector3.new(0.16 * sc, 6.8 * sc, 0.16 * sc),
+					CFrame.new(topPos),
+					(s % 2 == 0) and PAL.HotWhite or PAL.Gravity,
+					0.04,
+					Enum.Material.ForceField,
+					folder
+				)
+				TweenService:Create(streak, TweenInfo.new(0.14, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+					Position = botPos,
+					Size = Vector3.new(0.06, 2.2 * sc, 0.06),
+					Transparency = 0.85,
+				}):Play()
+				Debris:AddItem(streak, 0.18)
+			end
+		end
+
+		-- Bước 3 & Finisher: Đè bẹp mục tiêu (Còn ~55% chiều cao, bè ra 2 bên rồi bật lại;
+		-- nếu Đè quá mạnh / Finisher thì bẹp mỏng như tờ giấy 10% rồi bật vọt lên!)
+		if isStepEnabled("GravitySpell", "Step3_SquashAndStretch") then
+			local targetYRatio = (isOvercrushFinisher and isStepEnabled("GravitySpell", "Finisher_PaperFlatBounce")) and cfg.PaperFlatYRatio or cfg.SquashYRatio
+			local targetXZRatio = (isOvercrushFinisher and isStepEnabled("GravitySpell", "Finisher_PaperFlatBounce")) and cfg.PaperFlatXZRatio or cfg.SquashXZRatio
+
+			if curTarget and modelParts and #modelParts > 0 then
+				VFXStudioLibrary.PulseTargetHighlight(curTarget, PAL.Gravity, PAL.HotWhite, 0.35)
+				for _, entry in ipairs(modelParts) do
+					local p = entry.Part
+					if p and p.Parent then
+						local newRel = Vector3.new(entry.RelFromGround.X * targetXZRatio, entry.RelFromGround.Y * targetYRatio, entry.RelFromGround.Z * targetXZRatio)
+						TweenService:Create(p, TweenInfo.new(0.09, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+							Size = Vector3.new(entry.OrigSize.X * targetXZRatio, math.max(0.08, entry.OrigSize.Y * targetYRatio), entry.OrigSize.Z * targetXZRatio),
+							Position = hitGround + newRel,
+						}):Play()
+					end
+				end
+
+				-- Giữ trạng thái bẹp trong 3 frame hit-stop + 0.16s rồi bật nảy đàn hồi lại!
+				task.delay(0.24, function()
+					if isOvercrushFinisher and isStepEnabled("GravitySpell", "Finisher_PaperFlatBounce") then
+						-- Bẹp như tờ giấy rồi bật vọt lên cao!
+						for _, entry in ipairs(modelParts) do
+							local p = entry.Part
+							if p and p.Parent then
+								local stretchRel = Vector3.new(entry.RelFromGround.X * 0.82, entry.RelFromGround.Y * 1.25 + 6.8 * sc, entry.RelFromGround.Z * 0.82)
+								TweenService:Create(p, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+									Size = Vector3.new(entry.OrigSize.X * 0.85, entry.OrigSize.Y * 1.22, entry.OrigSize.Z * 0.85),
+									Position = hitGround + stretchRel,
+								}):Play()
+							end
+						end
+						task.delay(0.24, function()
+							for _, entry in ipairs(modelParts) do
+								local p = entry.Part
+								if p and p.Parent then
+									TweenService:Create(p, TweenInfo.new(0.22, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {
+										Size = entry.OrigSize,
+										Position = hitGround + entry.RelFromGround,
+									}):Play()
+								end
+							end
+						end)
+					else
+						-- Đè 55% rồi đàn hồi trở lại 100%
+						for _, entry in ipairs(modelParts) do
+							local p = entry.Part
+							if p and p.Parent then
+								TweenService:Create(p, TweenInfo.new(0.26, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
+									Size = entry.OrigSize,
+									Position = hitGround + entry.RelFromGround,
+								}):Play()
+							end
+						end
+					end
+				end)
+			else
+				-- Nếu đánh xuống mặt đất trống, tạo khối cầu trọng lực bị đè bẹp 55% / tờ giấy rồi bật lên để vẫn thấy rõ hiệu ứng!
+				local proxy = VFXStudioLibrary.MakePart("Gravity_SquashProxy", Enum.PartType.Ball, Vector3.new(4.2, 4.2, 4.2) * sc, CFrame.new(hitGround + Vector3.new(0, 2.1 * sc, 0)), PAL.Gravity, 0.14, Enum.Material.ForceField, folder)
+				TweenService:Create(proxy, TweenInfo.new(0.09, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(4.2 * targetXZRatio, 4.2 * targetYRatio, 4.2 * targetXZRatio) * sc,
+					Position = hitGround + Vector3.new(0, 2.1 * targetYRatio * sc, 0),
+				}):Play()
+				task.delay(0.24, function()
+					if proxy and proxy.Parent then
+						TweenService:Create(proxy, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+							Size = Vector3.new(3.2, 5.4, 3.2) * sc,
+							Position = hitGround + Vector3.new(0, (isOvercrushFinisher and 8.5 or 3.6) * sc, 0),
+							Transparency = 1,
+						}):Play()
+					end
+				end)
+				Debris:AddItem(proxy, 0.58)
+			end
+		end
+
+		-- Bước 4: Đất lún (Mặt đất lún thành hố, có vết nứt hình tia và đá vụn văng ra)
+		if isStepEnabled("GravitySpell", "Step4_CraterAndRadialCracks") then
+			local craterPit = VFXStudioLibrary.MakePart(
+				"Gravity_DepressedCrater",
+				Enum.PartType.Cylinder,
+				Vector3.new(0.18, 2.0 * sc, 2.0 * sc),
+				CFrame.new(hitGround + Vector3.new(0, 0.04, 0)) * CFrame.Angles(0, 0, math.pi * 0.5),
+				PAL.Obsidian,
+				0.08,
+				Enum.Material.Slate,
+				folder
+			)
+			TweenService:Create(craterPit, TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = Vector3.new(0.18, 11.8 * sc, 11.8 * sc),
+			}):Play()
+			task.delay(0.95, function()
+				if craterPit and craterPit.Parent then
+					TweenService:Create(craterPit, TweenInfo.new(0.45), { Transparency = 1 }):Play()
+				end
+			end)
+			Debris:AddItem(craterPit, 1.45)
+
+			local rayCount = VFXStudioLibrary.IsLowFX() and 5 or 8
+			for r = 1, rayCount do
+				local ang = (r - 1) * ((math.pi * 2) / rayCount)
+				local dirVec = Vector3.new(math.cos(ang), 0, math.sin(ang))
+				local crackRay = VFXStudioLibrary.MakePart(
+					"Gravity_RadialCrack_" .. r,
+					Enum.PartType.Block,
+					Vector3.new(0.22 * sc, 0.10, 1.2 * sc),
+					VFXStudioLibrary.SafeLookAt(hitGround + dirVec * (1.5 * sc) + Vector3.new(0, 0.08, 0), hitGround + dirVec * (8.5 * sc) + Vector3.new(0, 0.08, 0), dirVec),
+					(r % 2 == 0) and PAL.Gravity or PAL.Obsidian,
+					0.06,
+					(r % 2 == 0) and Enum.Material.ForceField or Enum.Material.Slate,
+					folder
+				)
+				TweenService:Create(crackRay, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(0.26 * sc, 0.10, 8.6 * sc),
+					Position = hitGround + dirVec * (4.8 * sc) + Vector3.new(0, 0.08, 0),
+				}):Play()
+				task.delay(0.75, function()
+					if crackRay and crackRay.Parent then
+						TweenService:Create(crackRay, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+					end
+				end)
+				Debris:AddItem(crackRay, 1.15)
+
+				-- Đá vụn văng ra từ hố lún
+				local rock = VFXStudioLibrary.MakePart(
+					"Gravity_CraterRock_" .. r,
+					Enum.PartType.Wedge,
+					Vector3.new(0.95, 0.75, 1.25) * sc,
+					CFrame.new(hitGround + dirVec * (2.4 * sc) + Vector3.new(0, 0.2, 0)),
+					(r % 3 == 0) and PAL.Violet or PAL.Slate,
+					0.04,
+					Enum.Material.Slate,
+					folder
+				)
+				TweenService:Create(rock, TweenInfo.new(0.46, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					CFrame = CFrame.new(hitGround + dirVec * (7.5 * sc) + Vector3.new(0, 1.8 * sc, 0)) * CFrame.Angles(math.random() * 5, math.random() * 5, math.random() * 5),
+					Size = rock.Size * 0.35,
+					Transparency = 1,
+				}):Play()
+				Debris:AddItem(rock, 0.50)
+			end
+		end
+
+		-- Bước 5: Dừng và lắc (Lúc chạm đáy đứng hình 3 frame ~0.05s, rồi lắc màn hình mạnh và có vòng sóng lan ra)
+		if isStepEnabled("GravitySpell", "Step5_HitStop3FramesAndShake") then
+			if isLocal then
+				VFXStudioLibrary.TriggerLocalHitStop(cfg.HitStop3Frames)
+			end
+			task.delay(cfg.HitStop3Frames, function()
+				if isLocal then
+					VFXStudioLibrary.EmitCameraTrauma(isOvercrushFinisher and 0.62 or 0.48, isOvercrushFinisher and 4.8 or 3.2, Vector3.new(0, -1, 0))
+				end
+				VFXStudioLibrary.SpawnShockRing(hitGround + Vector3.new(0, 0.22, 0), nil, PAL.Gravity, 2.0 * sc, 18.5 * sc, 0.38, 0.46, Enum.Material.ForceField, folder)
+				VFXStudioLibrary.SpawnShockRing(hitGround + Vector3.new(0, 0.45, 0), nil, PAL.HotWhite, 1.4 * sc, 13.5 * sc, 0.22, 0.36, Enum.Material.ForceField, folder)
+				VFXStudioLibrary.Emit("Elements", "Elem_Gravity", CFrame.new(hitGround + Vector3.new(0, 1.0, 0)), sc * 1.3, PAL.Gravity, PAL.Violet)
+			end)
+		end
+	end)
+end
+
+-- ============================================================================
+-- 7. PHÉP DUNG NHAM - 5 BƯỚC (VIBEGG ẢNH 2: VẾT NỨT ĐỎ 0.6S -> ĐẤT NHÔ VÒM ĐÁ ->
+--    GIỌT BẮN NGUỘI THÀNH ĐEN -> VŨNG NÓNG BONG BÓNG & CHÌM TỚI THẮT LƯNG ->
+--    KHÓI ĐEN & TÀN LỬA + BỎNG CHÂN NHẢY TƯNG TƯNG)
+-- ============================================================================
+function VFXStudioLibrary.VibeGG_MagmaSpell5Steps(targetPos, scale, isHotFootFinisher, isLocal, ignoreChar)
+	local cfg = VFXStudioLibrary.VibeGGConfig.MagmaSpell
+	local sc = math.clamp(tonumber(scale) or 1, 0.65, 2.5)
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local target = VFXStudioLibrary.FindNearestTargetModel(targetPos, 15 * sc, ignoreChar)
+	local centerPos = (target and target:FindFirstChild("HumanoidRootPart") and target.HumanoidRootPart.Position) or targetPos
+	local gPos = VFXStudioLibrary.FindGround(centerPos, ignoreChar)
+	local preDur = isStepEnabled("MagmaSpell", "Step1_RedFissuresPreTremor") and cfg.PreCrackDuration or 0.04
+
+	-- Bước 1: Vết nứt đỏ (Khoảng 0.6 giây trước, vết nứt cam sáng dần lan ra dưới chân mục tiêu, đất rung nhẹ)
+	if isStepEnabled("MagmaSpell", "Step1_RedFissuresPreTremor") then
+		if isLocal then
+			VFXStudioLibrary.EmitCameraTrauma(0.16, 0)
+		end
+		local crackCount = VFXStudioLibrary.IsLowFX() and 5 or 8
+		for c = 1, crackCount do
+			local ang = (c - 1) * ((math.pi * 2) / crackCount) + (math.random() - 0.5) * 0.22
+			local dirVec = Vector3.new(math.cos(ang), 0, math.sin(ang))
+			local fissure = VFXStudioLibrary.MakePart(
+				"Magma_PreFissure_" .. c,
+				Enum.PartType.Block,
+				Vector3.new(0.16 * sc, 0.10, 0.8 * sc),
+				VFXStudioLibrary.SafeLookAt(gPos + dirVec * (0.8 * sc) + Vector3.new(0, 0.06, 0), gPos + dirVec * (7.5 * sc) + Vector3.new(0, 0.06, 0), dirVec),
+				PAL.Magma,
+				0.35,
+				Enum.Material.ForceField,
+				folder
+			)
+			TweenService:Create(fissure, TweenInfo.new(preDur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = Vector3.new(0.34 * sc, 0.12, 8.2 * sc),
+				Position = gPos + dirVec * (4.2 * sc) + Vector3.new(0, 0.07, 0),
+				Color = PAL.Gold,
+				Transparency = 0.02,
+			}):Play()
+			Debris:AddItem(fissure, preDur + 0.35)
+		end
+	end
+
+	-- Sau ~0.6s vết nứt đỏ: Đất nhô lên thành vòm đá rồi vỡ tung -> Giọt bắn -> Vũng nóng -> Khói & Tàn lửa
+	task.delay(preDur, function()
+		local curTarget = target and target.Parent and target or VFXStudioLibrary.FindNearestTargetModel(gPos, 15 * sc, ignoreChar)
+		local root, curGround, modelParts = getModelPivotAndParts(curTarget)
+		local hitGround = curGround or gPos
+
+		-- Bước 2: Đất nhô lên (Đất nhô thành vòm đá bao lấy chân mục tiêu, vân cam nóng dần, rồi vỡ tung thành vòng dung nham và mảnh đá)
+		local domeBreakDelay = 0.24
+		if isStepEnabled("MagmaSpell", "Step2_RockDomeEruption") then
+			local rockDome = VFXStudioLibrary.MakePart(
+				"Magma_RockDome",
+				Enum.PartType.Ball,
+				Vector3.new(2.2, 0.6, 2.2) * sc,
+				CFrame.new(hitGround + Vector3.new(0, 0.2, 0)),
+				PAL.Slate,
+				0.04,
+				Enum.Material.Slate,
+				folder
+			)
+			local veinDome = VFXStudioLibrary.MakePart(
+				"Magma_DomeOrangeVeins",
+				Enum.PartType.Ball,
+				Vector3.new(2.35, 0.65, 2.35) * sc,
+				CFrame.new(hitGround + Vector3.new(0, 0.22, 0)),
+				PAL.Magma,
+				0.32,
+				Enum.Material.ForceField,
+				folder
+			)
+			TweenService:Create(rockDome, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Size = Vector3.new(7.4, 4.6, 7.4) * sc,
+				Position = hitGround + Vector3.new(0, 1.5 * sc, 0),
+			}):Play()
+			TweenService:Create(veinDome, TweenInfo.new(0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Size = Vector3.new(7.65, 4.8, 7.65) * sc,
+				Position = hitGround + Vector3.new(0, 1.55 * sc, 0),
+				Color = PAL.Gold,
+				Transparency = 0.04,
+			}):Play()
+
+			task.delay(domeBreakDelay, function()
+				if rockDome and rockDome.Parent then rockDome:Destroy() end
+				if veinDome and veinDome.Parent then veinDome:Destroy() end
+				if isLocal then
+					VFXStudioLibrary.EmitCameraTrauma(0.44, 3.0)
+				end
+				VFXStudioLibrary.Emit("Elements", "Elem_Magma", CFrame.new(hitGround + Vector3.new(0, 1.2, 0)), sc * 1.35, PAL.Magma, PAL.Gold)
+				VFXStudioLibrary.SpawnShockRing(hitGround + Vector3.new(0, 0.25, 0), nil, PAL.Magma, 2.2 * sc, 15.5 * sc, 0.36, 0.44, Enum.Material.ForceField, folder)
+				VFXStudioLibrary.SpawnShockRing(hitGround + Vector3.new(0, 0.45, 0), nil, PAL.Gold, 1.6 * sc, 11.2 * sc, 0.24, 0.36, Enum.Material.ForceField, folder)
+
+				local fragCount = VFXStudioLibrary.IsLowFX() and 5 or 8
+				for f = 1, fragCount do
+					local fAng = (f - 1) * ((math.pi * 2) / fragCount)
+					local fDir = Vector3.new(math.cos(fAng), 0.55, math.sin(fAng)).Unit
+					local frag = VFXStudioLibrary.MakePart("MagmaDomeRockFrag_" .. f, Enum.PartType.Wedge, Vector3.new(1.1, 0.9, 1.4) * sc, CFrame.new(hitGround + Vector3.new(0, 1.4 * sc, 0)), (f % 2 == 0) and PAL.Slate or PAL.Obsidian, 0.04, Enum.Material.Slate, folder)
+					TweenService:Create(frag, TweenInfo.new(0.44, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						CFrame = CFrame.new(hitGround + fDir * (7.8 * sc)) * CFrame.Angles(math.random() * 6, math.random() * 6, 0),
+						Size = frag.Size * 0.3,
+						Transparency = 1,
+					}):Play()
+					Debris:AddItem(frag, 0.48)
+				end
+			end)
+			Debris:AddItem(rockDome, domeBreakDelay + 0.1)
+			Debris:AddItem(veinDome, domeBreakDelay + 0.1)
+		else
+			domeBreakDelay = 0.02
+		end
+
+		task.delay(domeBreakDelay, function()
+			-- Bước 3: Giọt bắn (Cục dung nham bay vòng cung, chạm đất bẹp thành vệt rồi nguội dần thành đen)
+			if isStepEnabled("MagmaSpell", "Step3_ParabolicLavaSplats") then
+				local globCount = VFXStudioLibrary.IsLowFX() and 4 or 8
+				for g = 1, globCount do
+					local ang = (g - 1) * ((math.pi * 2) / globCount) + (math.random() - 0.5) * 0.35
+					local dist = (4.5 + math.random() * 5.2) * sc
+					local startG = hitGround + Vector3.new(0, 1.6 * sc, 0)
+					local endG = VFXStudioLibrary.FindGround(hitGround + Vector3.new(math.cos(ang) * dist, 2, math.sin(ang) * dist), ignoreChar)
+					local glob = VFXStudioLibrary.MakePart("Magma_LavaGlob_" .. g, Enum.PartType.Ball, Vector3.new(0.95, 0.95, 0.95) * sc, CFrame.new(startG), PAL.Gold, 0.04, Enum.Material.ForceField, folder)
+					local arcDur = 0.34 + (g % 3) * 0.05
+					local t0 = os.clock()
+					local conn
+					conn = RunService.Heartbeat:Connect(function()
+						local a = math.clamp((os.clock() - t0) / arcDur, 0, 1)
+						local p = startG:Lerp(endG, a) + Vector3.new(0, math.sin(a * math.pi) * (3.8 * sc), 0)
+						if glob.Parent then
+							glob.CFrame = CFrame.new(p)
+						end
+						if a >= 1 then
+							conn:Disconnect()
+							if glob.Parent then glob:Destroy() end
+							-- Chạm đất bẹp thành vệt rồi nguội dần từ Cam -> Đỏ -> Đen!
+							local splat = VFXStudioLibrary.MakePart(
+								"Magma_CoolingSplat_" .. g,
+								Enum.PartType.Cylinder,
+								Vector3.new(0.12, 0.8 * sc, 0.8 * sc),
+								CFrame.new(endG + Vector3.new(0, 0.06, 0)) * CFrame.Angles(0, 0, math.pi * 0.5),
+								PAL.Solar,
+								0.06,
+								Enum.Material.ForceField,
+								folder
+							)
+							TweenService:Create(splat, TweenInfo.new(0.14, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+								Size = Vector3.new(0.10, 2.6 * sc, 2.6 * sc),
+								Color = PAL.Magma,
+							}):Play()
+							task.delay(0.16, function()
+								if splat and splat.Parent then
+									splat.Material = Enum.Material.Slate
+									TweenService:Create(splat, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+										Color = PAL.Obsidian,
+									}):Play()
+								end
+							end)
+							task.delay(0.95, function()
+								if splat and splat.Parent then
+									TweenService:Create(splat, TweenInfo.new(0.40), { Transparency = 1 }):Play()
+								end
+							end)
+							Debris:AddItem(splat, 1.40)
+						end
+					end)
+					Debris:AddItem(glob, arcDur + 0.1)
+				end
+			end
+
+			-- Bước 4: Vũng nóng (Vũng dung nham quanh chân mục tiêu, sáng nhấp nháy, nổi bong bóng rồi vỡ; mục tiêu chìm tới thắt lưng)
+			local poolLife = 1.65
+			if isStepEnabled("MagmaSpell", "Step4_BubblingPoolWaistSink") then
+				local outerPool = VFXStudioLibrary.MakePart(
+					"Magma_LavaPoolOuter",
+					Enum.PartType.Cylinder,
+					Vector3.new(0.16, 2.4 * sc, 2.4 * sc),
+					CFrame.new(hitGround + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, 0, math.pi * 0.5),
+					PAL.Magma,
+					0.08,
+					Enum.Material.ForceField,
+					folder
+				)
+				local innerPool = VFXStudioLibrary.MakePart(
+					"Magma_LavaPoolCore",
+					Enum.PartType.Cylinder,
+					Vector3.new(0.20, 1.6 * sc, 1.6 * sc),
+					CFrame.new(hitGround + Vector3.new(0, 0.11, 0)) * CFrame.Angles(0, 0, math.pi * 0.5),
+					PAL.Gold,
+					0.10,
+					Enum.Material.ForceField,
+					folder
+				)
+				VFXStudioLibrary.SafeLight(innerPool, PAL.Solar, 1.40, 15, poolLife)
+				TweenService:Create(outerPool, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(0.16, 11.2 * sc, 11.2 * sc),
+				}):Play()
+				TweenService:Create(innerPool, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(0.20, 7.6 * sc, 7.6 * sc),
+				}):Play()
+
+				-- Sáng nhấp nháy + Nổi bong bóng dung nham rồi vỡ
+				local bubCount = VFXStudioLibrary.IsLowFX() and 4 or 7
+				for b = 1, bubCount do
+					task.delay((b - 1) * 0.18, function()
+						if innerPool and innerPool.Parent then
+							innerPool.Color = (b % 2 == 0) and PAL.Gold or PAL.Solar
+						end
+						local bAng = math.random() * math.pi * 2
+						local bRad = math.random() * 3.8 * sc
+						local bPos = hitGround + Vector3.new(math.cos(bAng) * bRad, 0.18, math.sin(bAng) * bRad)
+						local bubble = VFXStudioLibrary.MakePart("Magma_LavaBubble_" .. b, Enum.PartType.Ball, Vector3.new(0.25, 0.25, 0.25) * sc, CFrame.new(bPos), (b % 2 == 0) and PAL.Gold or PAL.Magma, 0.08, Enum.Material.ForceField, folder)
+						TweenService:Create(bubble, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+							Size = Vector3.new(1.35, 1.35, 1.35) * sc,
+							Position = bPos + Vector3.new(0, 0.45 * sc, 0),
+						}):Play()
+						task.delay(0.24, function()
+							if bubble and bubble.Parent then bubble:Destroy() end
+							VFXStudioLibrary.SpawnShockRing(bPos + Vector3.new(0, 0.16, 0), nil, PAL.Gold, 0.4 * sc, 2.2 * sc, 0.12, 0.18, Enum.Material.ForceField, folder)
+						end)
+						Debris:AddItem(bubble, 0.30)
+					end)
+				end
+
+				task.delay(poolLife - 0.35, function()
+					if outerPool and outerPool.Parent then
+						TweenService:Create(outerPool, TweenInfo.new(0.35), { Color = PAL.Obsidian, Transparency = 1 }):Play()
+					end
+					if innerPool and innerPool.Parent then
+						TweenService:Create(innerPool, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+					end
+				end)
+				Debris:AddItem(outerPool, poolLife + 0.1)
+				Debris:AddItem(innerPool, poolLife + 0.1)
+
+				-- Mục tiêu chìm tới thắt lưng (-1.85 studs) rồi nhảy tưng tưng vì bỏng chân!
+				if curTarget and modelParts and #modelParts > 0 then
+					local sinkDepth = cfg.WaistSinkDepth
+					VFXStudioLibrary.PulseTargetHighlight(curTarget, PAL.Magma, PAL.Gold, 0.45)
+					for _, entry in ipairs(modelParts) do
+						local p = entry.Part
+						if p and p.Parent then
+							TweenService:Create(p, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+								Position = hitGround + entry.RelFromGround - Vector3.new(0, sinkDepth, 0),
+							}):Play()
+						end
+					end
+
+					-- Finisher / Phản ứng đặc biệt: Mục tiêu giẫm phải vũng thì bỏng chân, nhảy tưng tưng!
+					task.delay(0.32, function()
+						if isHotFootFinisher and isStepEnabled("MagmaSpell", "Finisher_HotFootHopping") then
+							VFXStudioLibrary.SpawnPopTextBillboard(hitGround + Vector3.new(0, 3.5, 0), "🔥 BỎNG CHÂN!!", PAL.Solar, PAL.Obsidian, 1.35)
+							local hops = cfg.HopCount
+							local hopDur = 0.18
+							for hIdx = 1, hops do
+								task.delay((hIdx - 1) * hopDur, function()
+									if curTarget and curTarget.Parent then
+										VFXStudioLibrary.PulseTargetHighlight(curTarget, (hIdx % 2 == 1) and PAL.Solar or PAL.Gold, PAL.HotWhite, hopDur * 0.8)
+									end
+									local jitterXZ = Vector3.new((math.random() - 0.5) * 1.4, 0, (math.random() - 0.5) * 1.4)
+									local hopHeight = (2.2 + (hIdx % 2) * 0.8) * sc
+									for _, entry in ipairs(modelParts) do
+										local p = entry.Part
+										if p and p.Parent then
+											TweenService:Create(p, TweenInfo.new(hopDur * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+												Position = hitGround + entry.RelFromGround + jitterXZ + Vector3.new(0, hopHeight, 0),
+											}):Play()
+										end
+									end
+									VFXStudioLibrary.SpawnShockRing(hitGround + Vector3.new(0, 0.2, 0), nil, PAL.Solar, 0.8 * sc, 3.8 * sc, 0.16, 0.18, Enum.Material.ForceField, folder)
+									task.delay(hopDur * 0.5, function()
+										for _, entry in ipairs(modelParts) do
+											local p = entry.Part
+											if p and p.Parent then
+												TweenService:Create(p, TweenInfo.new(hopDur * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+													Position = hitGround + entry.RelFromGround,
+												}):Play()
+											end
+										end
+									end)
+								end)
+							end
+						else
+							-- Trồi lên lại vị trí chuẩn sau khi chìm tới thắt lưng
+							task.delay(0.45, function()
+								for _, entry in ipairs(modelParts) do
+									local p = entry.Part
+									if p and p.Parent then
+										TweenService:Create(p, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+											Position = hitGround + entry.RelFromGround,
+										}):Play()
+									end
+								end
+							end)
+						end
+					end)
+				end
+			end
+
+			-- Bước 5: Khói và tàn lửa (Khói đen bốc lên cuồn cuộn, đốm lửa nhỏ bay lượn lên cao)
+			if isStepEnabled("MagmaSpell", "Step5_BlackSmokeAndEmbers") then
+				local smokeCount = VFXStudioLibrary.IsLowFX() and 4 or 8
+				for sm = 1, smokeCount do
+					task.delay((sm - 1) * 0.08, function()
+						local sAng = math.random() * math.pi * 2
+						local sRad = math.random() * 3.6 * sc
+						local sOrigin = hitGround + Vector3.new(math.cos(sAng) * sRad, 0.6, math.sin(sAng) * sRad)
+						local smoke = VFXStudioLibrary.MakePart("Magma_BillowingBlackSmoke_" .. sm, Enum.PartType.Ball, Vector3.new(1.4, 1.4, 1.4) * sc, CFrame.new(sOrigin), PAL.Obsidian, 0.20, Enum.Material.Slate, folder)
+						TweenService:Create(smoke, TweenInfo.new(0.95, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+							Position = sOrigin + Vector3.new((math.random() - 0.5) * 3.2 * sc, (6.5 + math.random() * 3.5) * sc, (math.random() - 0.5) * 3.2 * sc),
+							Size = Vector3.new(3.8, 3.8, 3.8) * sc,
+							Transparency = 1,
+						}):Play()
+						Debris:AddItem(smoke, 1.0)
+					end)
+				end
+
+				local emberCount = VFXStudioLibrary.IsLowFX() and 5 or 10
+				for em = 1, emberCount do
+					task.delay((em - 1) * 0.06, function()
+						local eAng = math.random() * math.pi * 2
+						local eRad = math.random() * 4.2 * sc
+						local eOrigin = hitGround + Vector3.new(math.cos(eAng) * eRad, 0.4, math.sin(eAng) * eRad)
+						local ember = VFXStudioLibrary.MakePart("Magma_WeavingEmber_" .. em, Enum.PartType.Ball, Vector3.new(0.36, 0.36, 0.36) * sc, CFrame.new(eOrigin), (em % 2 == 0) and PAL.Gold or PAL.Solar, 0.04, Enum.Material.ForceField, folder)
+						TweenService:Create(ember, TweenInfo.new(0.88, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+							Position = eOrigin + Vector3.new(math.sin(em * 1.7) * 2.8 * sc, (7.8 + math.random() * 4.0) * sc, math.cos(em * 1.7) * 2.8 * sc),
+							Size = Vector3.new(0.08, 0.08, 0.08),
+							Color = PAL.Magma,
+							Transparency = 1,
+						}):Play()
+						Debris:AddItem(ember, 0.92)
+					end)
+				end
+			end
+		end)
+	end)
+end
+
 return VFXStudioLibrary

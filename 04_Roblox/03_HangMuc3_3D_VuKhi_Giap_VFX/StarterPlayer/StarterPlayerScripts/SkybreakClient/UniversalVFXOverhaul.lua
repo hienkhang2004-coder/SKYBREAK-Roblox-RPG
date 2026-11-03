@@ -278,6 +278,24 @@ function UniversalVFXOverhaul.ExecuteFruitArchetype(arch, fruitKey, moveKey, sta
 	UniversalVFXOverhaul.SpawnStage1Sigil(Lib.SafeLookAt(startPos, startPos + lookDir, lookDir), prof, sc, isAwakened)
 	Lib.EmitElement(prof.Element, Lib.SafeLookAt(startPos + lookDir * 1.8, endPos, lookDir), sc * 0.85, prof.Primary, prof.Secondary)
 
+	-- ========================================================================
+	-- VIBEGG (@vibeggvn) 5-STEP ELEMENTAL SPELL & FINISHER INTEGRATION
+	-- ========================================================================
+	local isFinisherMove = (moveKey == "V" or moveKey == "C" or moveKey == "X" or isAwakened)
+	local isUltimatePaperCrush = (moveKey == "V" or moveKey == "C" or isAwakened)
+	local elem = tostring(prof and prof.Element or "")
+	if fruitKey == "SolarFlameCore" or elem == "Flame" or elem == "Fire" or elem == "Solar" then
+		Lib.VibeGG_Fireball5Steps(startPos + Vector3.new(0, 1.2, 0), endPos, sc, isFinisherMove, isLocal, actorChar)
+	elseif fruitKey == "GlacierIceCore" or elem == "Frost" or elem == "Ice" then
+		Lib.VibeGG_IceSpikes5Steps(startPos, endPos, lookDir, sc, isFinisherMove, isLocal, actorChar)
+	elseif fruitKey == "ThunderRumbleCore" or elem == "Lightning" or elem == "Thunder" then
+		Lib.VibeGG_Lightning5Steps(startPos + Vector3.new(0, 1.5, 0), endPos, sc, prof.Primary, prof.Secondary, isFinisherMove, isLocal, actorChar)
+	elseif fruitKey == "AstralGravityCore" or elem == "Gravity" or arch == "GravityCrushZone" then
+		Lib.VibeGG_GravitySpell5Steps(endPos, sc, isUltimatePaperCrush, isLocal, actorChar)
+	elseif fruitKey == "StarforgedMagmaCore" or elem == "Magma" then
+		Lib.VibeGG_MagmaSpell5Steps(endPos, sc, isFinisherMove, isLocal, actorChar)
+	end
+
 	if arch == "CrescentWave" then
 		for i = 1, count do
 			local spread = (i - (count + 1) * 0.5) * 0.20
@@ -833,6 +851,9 @@ function UniversalVFXOverhaul.SpawnMeleeCombo(actorChar, startPos, lookDir, comb
 
 	ExpansionVFX.SpawnExpansionM1Extra(Lib, folder, actorChar, startPos, dst, lookDir, cNum, isFinisher, sc)
 
+	-- VibeGG 5-Step Melee Slash Juice (Hit Flash, Random Pitch Sound, Directional Sparks, Knockback, Hit-Stop & Shake)
+	Lib.VibeGG_MeleeHit5Steps(dst, lookDir, isFinisher, isHeavy, nil, isLocal)
+
 	if isFinisher then
 		-- X-Cross Dual Cleave Wave + Ground Shockwave + Sword_SlashWave Prefab
 		spawnLayeredSlashWave(startPos + lookDir * 1.4, dst, 0.56, sc, primary, secondary, 0.28, folder)
@@ -938,6 +959,8 @@ function UniversalVFXOverhaul.SpawnClassOrWeaponSkill(action, kind, moveKey, act
 		local col = PAL.Cyan
 		local sub = PAL.Violet
 		local aimCF = Lib.SafeLookAt(muzzlePos, dst, lookDir)
+		-- VibeGG 5-Step Gunplay (Muzzle Flash + PointLight, Spread & Tracer, Recoil, Brass Shell Ejection, Decals + Slow-Mo Ragdoll Finisher)
+		Lib.VibeGG_Gunplay5Steps(muzzlePos, dst, lookDir, col, sub, sc, (moveKey == "X" or moveKey == "V" or isAwakened), isLocal, actorChar)
 		Lib.Emit("Combat", "Gun_RailBurst", aimCF, sc, col, sub)
 		Lib.SpawnShockRing(muzzlePos, aimCF * CFrame.Angles(math.pi * 0.5, 0, 0), col, 0.8 * sc, 5.2 * sc, 0.18, 0.22, Enum.Material.ForceField, folder)
 
@@ -1042,6 +1065,8 @@ function UniversalVFXOverhaul.SpawnClassOrWeaponSkill(action, kind, moveKey, act
 	if act == "ArcCut" or act == "StormBlitz" or act == "ThunderJudgement" then
 		local prof = { Primary = PAL.Thunder, Secondary = PAL.Violet, Accent = PAL.Slate, Element = "Thunder" }
 		UniversalVFXOverhaul.SpawnStage1Sigil(Lib.SafeLookAt(startPos, dst, lookDir), prof, sc, act == "ThunderJudgement" or isAwakened)
+		-- VibeGG 5-Step Lightning (Zigzag + Sub-branches, Taper, Dual-Layer Glow, White Core, 4-Frame Flicker + Electro-Convulsion & Charred Smoke Finisher)
+		Lib.VibeGG_Lightning5Steps(startPos + Vector3.new(0, 1.5, 0), dst, sc, PAL.Thunder, PAL.Violet, act == "ThunderJudgement" or isAwakened, isLocal, actorChar)
 		if act == "ArcCut" then
 			spawnLayeredSlashWave(startPos + Vector3.new(0, 0.6, 0), dst, 0.48, sc * 1.1, PAL.Thunder, PAL.Violet, 0.26, folder)
 			spawnLayeredSlashWave(startPos + Vector3.new(0, 0.6, 0), dst, -0.48, sc * 1.1, PAL.Violet, PAL.Thunder, 0.26, folder)
@@ -1089,12 +1114,15 @@ end
 -- ============================================================================
 -- 7. HIT-IMPACT POLISH, LOGIA REFLEX, HAKI (BUSO / HAOSHOKU) & RACE V4
 -- ============================================================================
-function UniversalVFXOverhaul.SpawnHitImpact(hitPos, isCrit, breakDmg, knockDir)
+function UniversalVFXOverhaul.SpawnHitImpact(hitPos, isCrit, breakDmg, knockDir, targetModel)
 	local folder = Lib.GetTempFolder("UniversalVFX")
 	local isBreak = (breakDmg and breakDmg >= 35)
 	local heavy = isBreak or isCrit
 	local col = isBreak and PAL.Violet or (isCrit and PAL.Gold or PAL.Cyan)
 	local sub = isBreak and PAL.Crimson or (isCrit and PAL.Solar or PAL.HotWhite)
+
+	-- VibeGG 5-Step Melee Hit Juice (White Hit Flash, Random Pitch Impact Sound, Directional Sparks, Knockback, Hit-Stop & Shake)
+	Lib.VibeGG_MeleeHit5Steps(hitPos, knockDir, isCrit, heavy, targetModel, true)
 
 	local prefabName = isBreak and "Hit_GuardBreak" or (isCrit and "Hit_Crit" or "Hit_Normal")
 	Lib.Emit("Combat", prefabName, CFrame.new(hitPos), heavy and 1.25 or 0.95)
@@ -1459,6 +1487,9 @@ function UniversalVFXOverhaul.SpawnEnemyDeathDissolve(enemyModel, isBoss)
 	local root = enemyModel:FindFirstChild("Body") or enemyModel.PrimaryPart or enemyModel:FindFirstChildWhichIsA("BasePart")
 	local centerPos = root and root.Position or enemyModel:GetPivot().Position
 	local bossFlag = isBoss or (enemyModel.Parent and enemyModel.Parent.Name == "ActiveBosses") or (enemyModel:GetAttribute("IsBoss") == true)
+
+	-- VibeGG Finisher: Death Pop (Phình nhẹ rồi nổ tung thành mảnh sáng văng ra)
+	Lib.VibeGG_MeleeDeathPopFinisher(enemyModel, centerPos, bossFlag)
 
 	if bossFlag then
 		-- Grand Boss Cataclysmic Implosion -> Supernova Shockwave + Soul Pillar!

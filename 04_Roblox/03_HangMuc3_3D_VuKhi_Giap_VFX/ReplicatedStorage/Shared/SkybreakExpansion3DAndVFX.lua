@@ -1099,6 +1099,11 @@ function M.SpawnExpansionGunShot(Lib, Overhaul, folder, actorChar, startPos, dst
     local dist = math.max(1, (dst - muzzlePos).Magnitude)
     local mid = (muzzlePos + dst) * 0.5
 
+    -- VibeGG 5-Step Gunplay (Muzzle Flash + PointLight, Spread & Tracer, Recoil, Brass Shell Ejection, Decals + Slow-Mo Ragdoll Finisher)
+    if Lib.VibeGG_Gunplay5Steps then
+        Lib.VibeGG_Gunplay5Steps(muzzlePos, dst, lookDir, prof.Primary, prof.Secondary, sc, (prof.Style == 'SingularityCannon' or prof.Style == 'HellfireCannon'), isLocal, actorChar)
+    end
+
     if prof.Style == 'SpiritLongbow' then
         -- Sylvaris Spirit Longbow: Emerald Wind-Tunnel Sonic Rings + Giant Spirit Arrow + Verdant Root Burst
         Lib.Emit('Combat', 'Gun_RailBurst', aimCF, sc, PAL.Emerald, PAL.Gold)
@@ -1236,8 +1241,11 @@ function M.SpawnExpansionSkillVFX(Lib, Overhaul, spawnSlashFn, folder, act, kind
         spawnSlashFn(startPos + Vector3.new(0, 0.6, 0), dst, -0.38, sc * 1.12, sProf.Secondary, sProf.Primary, 0.32, folder)
     end
 
-    -- Bespoke Signature Finishers per Expansion Melee Weapon
+    -- Bespoke Signature Finishers + VibeGG 5-Step Elemental Spells per Expansion Melee Weapon
     if sProf.Style == 'ChronoScythe' then
+        if Lib.VibeGG_GravitySpell5Steps then
+            Lib.VibeGG_GravitySpell5Steps(dst, sc, isHeavySkill, isLocal, actorChar)
+        end
         -- Giant Golden Astrolabe Clock Arena + Delayed Time-Echo Rift Burst
         local gPos = Lib.FindGround(dst)
         local dial = Lib.MakePart('ChronoJudgmentDial', Enum.PartType.Cylinder, Vector3.new(0.16, 4.0 * sc, 4.0 * sc), CFrame.new(gPos + Vector3.new(0, 0.22, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), PAL.Gold, 0.14, Enum.Material.ForceField, folder)
@@ -1248,6 +1256,9 @@ function M.SpawnExpansionSkillVFX(Lib, Overhaul, spawnSlashFn, folder, act, kind
         }):Play()
         Debris:AddItem(dial, 0.52)
     elseif sProf.Style == 'ArchitectSeverance' then
+        if Lib.VibeGG_GravitySpell5Steps then
+            Lib.VibeGG_GravitySpell5Steps(dst, sc, isHeavySkill, isLocal, actorChar)
+        end
         -- Descending Reality-Rift Singularity Sphere + Red-Gold Lightning Web
         local bh = Lib.MakePart('SeveranceSkillSingularity', Enum.PartType.Ball, Vector3.new(4.2, 4.2, 4.2) * sc, CFrame.new(dst + Vector3.new(0, 2.2, 0)), PAL.Obsidian, 0.06, Enum.Material.SmoothPlastic, folder)
         local halo = Lib.MakePart('SeveranceSkillHalo', Enum.PartType.Cylinder, Vector3.new(0.18, 8.8 * sc, 8.8 * sc), CFrame.new(dst + Vector3.new(0, 2.2, 0)) * CFrame.Angles(0.42, 0, math.pi * 0.5), PAL.Gold, 0.12, Enum.Material.ForceField, folder)
@@ -1260,10 +1271,19 @@ function M.SpawnExpansionSkillVFX(Lib, Overhaul, spawnSlashFn, folder, act, kind
             Lib.SpawnJaggedLightning(dst + Vector3.new(0, 2.2, 0), dst + Vector3.new(math.cos(ang) * 9.5 * sc, 0.4, math.sin(ang) * 9.5 * sc), 5, 1.1 * sc, 0.26 * sc, PAL.Gold, PAL.Crimson, 0.36, folder)
         end
     elseif sProf.Style == 'MagmaBreaker' or sProf.Style == 'SolarHalberd' then
+        if sProf.Style == 'MagmaBreaker' and Lib.VibeGG_MagmaSpell5Steps then
+            Lib.VibeGG_MagmaSpell5Steps(dst, sc, isHeavySkill, isLocal, actorChar)
+        elseif sProf.Style == 'SolarHalberd' and Lib.VibeGG_Fireball5Steps then
+            Lib.VibeGG_Fireball5Steps(startPos + Vector3.new(0, 1.2, 0), dst, sc, isHeavySkill, isLocal, actorChar)
+        end
         local gPos = Lib.FindGround(dst)
         local col = Lib.MakePart('SolarMagmaPillar', Enum.PartType.Cylinder, Vector3.new(22 * sc, 3.6 * sc, 3.6 * sc), CFrame.new(gPos + Vector3.new(0, 11 * sc, 0)) * CFrame.Angles(0, 0, math.pi * 0.5), sProf.Primary, 0.14, Enum.Material.ForceField, folder)
         TweenService:Create(col, TweenInfo.new(0.42, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(24 * sc, 11.5 * sc, 11.5 * sc), Transparency = 1 }):Play()
         Debris:AddItem(col, 0.46)
+    elseif (sProf.Style == 'EternalFrostStaff' or sProf.Style == 'AbyssalTrident') and Lib.VibeGG_IceSpikes5Steps then
+        Lib.VibeGG_IceSpikes5Steps(startPos, dst, lookDir, sc, isHeavySkill, isLocal, actorChar)
+    elseif sProf.Style == 'QuantumKatana' and Lib.VibeGG_Lightning5Steps then
+        Lib.VibeGG_Lightning5Steps(startPos + Vector3.new(0, 1.2, 0), dst, sc, sProf.Primary, sProf.Secondary, isHeavySkill, isLocal, actorChar)
     end
 
     task.delay(0.24, function()

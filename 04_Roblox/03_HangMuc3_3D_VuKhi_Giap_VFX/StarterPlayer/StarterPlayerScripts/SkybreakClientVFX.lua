@@ -889,8 +889,8 @@ function SkybreakClientVFX.TriggerImpactPolish(hitPos, isCrit, breakDmg, knockDi
 	local now = os.clock()
 	local heavyImpact = (breakDmg and breakDmg >= 35) or isCrit
 
-	-- 1. Overhauled Multi-Axis Anime Impact Star-Cross + Guard-Break Shatter Prisms + VFX Studio Prefab
-	UniversalVFXOverhaul.SpawnHitImpact(hitPos, isCrit, breakDmg, knockDir)
+	-- 1. Overhauled Multi-Axis Anime Impact Star-Cross + Guard-Break Shatter Prisms + VFX Studio Prefab + VibeGG 5-Step Hit Juice
+	UniversalVFXOverhaul.SpawnHitImpact(hitPos, isCrit, breakDmg, knockDir, targetModel)
 
 	-- 2. Crisp 45ms-65ms Local Hit-Stop Freeze-Frame (rate-limited so combos never stutter-lock)
 	if heavyImpact and (now - lastHitStopAt >= 0.24) then
