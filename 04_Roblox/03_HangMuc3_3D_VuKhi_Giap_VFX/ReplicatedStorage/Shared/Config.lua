@@ -605,11 +605,7 @@ C.FightingStyles = {
     },
 }
 
-C.Companions = {
-    Kairo = {Id="Kairo", Name="Kairo • Vanguard", ClassId="SkyGuardian", VisualAsset="Male_SkyGuardian", Role="TANK", HP=1800, MaxHP=1800, ATK=42, Offset=Vector3.new(-6, 0, 5)},
-    Lumen = {Id="Lumen", Name="Lumen • Starweaver", ClassId="ArcaneMage", VisualAsset="ArcaneMage", Role="HEALER", HP=1350, MaxHP=1350, ATK=48, Offset=Vector3.new(6, 0, 6)},
-    Nyx = {Id="Nyx", Name="Nyx • Shadowblitz", ClassId="ThunderStriker", VisualAsset="ThunderStrikerFemale", Role="ASSASSIN", HP=1450, MaxHP=1450, ATK=55, Offset=Vector3.new(0, 0, 8)},
-}
+C.Companions = {}
 
 C.Enemies = {
     -- Sea 1: Golden Sky Mobs & Bosses (Lv. 1 - 700)
@@ -1391,6 +1387,75 @@ do
             end
         end
     end
+end
+
+if game:GetService("RunService"):IsServer() then
+    task.spawn(function()
+        local function purgeDisabledWorldFeatures()
+            for _, fname in ipairs({ "JumpPads", "AetherSkyRails", "ActiveCompanions" }) do
+                local f = workspace:FindFirstChild(fname)
+                if f then
+                    f:ClearAllChildren()
+                end
+            end
+            for _, folderName in ipairs({ "ActiveEnemies", "SkybreakWorldObjects" }) do
+                local ef = workspace:FindFirstChild(folderName)
+                if ef then
+                    for _, d in ipairs(ef:GetDescendants()) do
+                        if d.Name == "DummyFloorRing" and d:IsA("BasePart") then
+                            d.Transparency = 1
+                        end
+                    end
+                end
+            end
+        end
+
+        workspace.ChildAdded:Connect(function(child)
+            if child.Name == "JumpPads" or child.Name == "AetherSkyRails" or child.Name == "ActiveCompanions" then
+                task.defer(function()
+                    if child.Parent then
+                        child:ClearAllChildren()
+                    end
+                end)
+                child.ChildAdded:Connect(function(sub)
+                    task.defer(function()
+                        if sub and sub.Parent then
+                            sub:Destroy()
+                        end
+                    end)
+                end)
+            end
+        end)
+
+        for _ = 1, 20 do
+            task.wait(0.25)
+            purgeDisabledWorldFeatures()
+            local sss = game:GetService("ServerScriptService")
+            local services = sss and sss:FindFirstChild("Services")
+            local gsMod = services and services:FindFirstChild("GameService")
+            if gsMod then
+                local okG, G = pcall(require, gsMod)
+                if okG and type(G) == "table" then
+                    if type(G.JumpPads) == "table" then
+                        table.clear(G.JumpPads)
+                    end
+                    G.SyncCompanions = function(p)
+                        if G.Runtime and G.Runtime[p] and type(G.Runtime[p].Companions) == "table" then
+                            for k, comp in pairs(G.Runtime[p].Companions) do
+                                if comp and comp.Model then
+                                    pcall(function() comp.Model:Destroy() end)
+                                end
+                                G.Runtime[p].Companions[k] = nil
+                            end
+                        end
+                        local ac = workspace:FindFirstChild("ActiveCompanions")
+                        if ac then ac:ClearAllChildren() end
+                    end
+                    G.TickCompanions = function() end
+                end
+            end
+        end
+    end)
 end
 
 return C

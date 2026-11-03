@@ -641,37 +641,9 @@ Run.RenderStepped:Connect(function()
     -- 2. Update Observation Haki (Instinct) Vision Effect
 	updateInstinctVision()
 
-    -- 2b. End-of-World 3D Portal Compass Guide (World n -> World n+1)
-	local nextGatePos=player:GetAttribute("NextWorldGatePos")
-	local nextGateLabel=tostring(player:GetAttribute("NextWorldGateLabel") or "WORLD GATE")
-	local rootPart=ch and ch:FindFirstChild("HumanoidRootPart")
+    -- 2b. End-of-World 3D Portal Compass Guide (disabled for clean HUD/character view)
 	local compass=tempFX:FindFirstChild("WorldGateCompass")
-	if typeof(nextGatePos)=="Vector3" and rootPart then
-		local delta=nextGatePos-rootPart.Position
-		local dist=delta.Magnitude
-		if dist>=14 and dist<=2400 then
-			if not compass then
-				compass=Instance.new("Part")
-				compass.Name="WorldGateCompass"
-				compass.Size=Vector3.new(0.45,0.22,1.15)
-				compass.Color=Color3.fromRGB(95,238,255)
-				compass.Material=Enum.Material.Neon
-				compass.Transparency=0.22
-				compass.Anchored=true
-				compass.CanCollide=false
-				compass.CanQuery=false
-				compass.CanTouch=false
-				compass.Parent=tempFX
-			end
-			local flatDir=Vector3.new(delta.X,0,delta.Z)
-			local dirUnit=flatDir.Magnitude>0.1 and flatDir.Unit or rootPart.CFrame.LookVector
-			local bob=math.sin(os.clock()*3.5)*0.18
-			local cPos=rootPart.Position+dirUnit*5.8+Vector3.new(0,1.6+bob,0)
-			compass.CFrame=safeLook(cPos,cPos+dirUnit)
-		elseif compass then
-			compass:Destroy()
-		end
-	elseif compass then
+	if compass then
 		compass:Destroy()
 	end
 
@@ -3099,6 +3071,8 @@ remotes.StateUpdate.OnClientEvent:Connect(function(payload)
 	end
 	if payload.State then
 		local st=payload.State
+		st.Companions={}
+		st.PartySize="Solo"
 		if lastKnownLevel and st.Level and st.Level>lastKnownLevel then
 			playSFX("level_up",nil,0.01)
 			if ClientVFX and type(ClientVFX.SpawnProgressionVFX)=="function" then
@@ -3276,3 +3250,52 @@ local combatEventRemote=remotes:FindFirstChild("CombatEvent")
 if combatEventRemote and combatEventRemote:IsA("RemoteEvent") then
 	combatEventRemote.OnClientEvent:Connect(handleCombatFX)
 end
+
+-- Client-side cleanup for JumpPads, AetherSkyRails, DummyFloorRing, and 3 AI Companions UI
+task.spawn(function()
+	local function purgeRemovedWorldClutter()
+		for _, folderName in ipairs({"JumpPads", "AetherSkyRails", "ActiveCompanions"}) do
+			local f = workspace:FindFirstChild(folderName)
+			if f then
+				f:ClearAllChildren()
+			end
+		end
+		local activeEnemies = workspace:FindFirstChild("ActiveEnemies")
+		if activeEnemies then
+			for _, desc in ipairs(activeEnemies:GetDescendants()) do
+				if desc:IsA("BasePart") and desc.Name == "DummyFloorRing" then
+					desc.Transparency = 1
+					desc.LocalTransparencyModifier = 1
+					desc.CanCollide = false
+					desc.CanQuery = false
+					desc.CanTouch = false
+				end
+			end
+		end
+		local pgui = player:FindFirstChild("PlayerGui")
+		if pgui then
+			for _, desc in ipairs(pgui:GetDescendants()) do
+				if desc:IsA("GuiObject") and (desc.Name == "CompanionTitle" or desc.Name == "ThreeAICompanionCards" or desc.Name:sub(1, 13) == "CompanionCard") then
+					desc.Visible = false
+				end
+			end
+		end
+	end
+	purgeRemovedWorldClutter()
+	workspace.ChildAdded:Connect(function(ch)
+		if ch.Name == "JumpPads" or ch.Name == "AetherSkyRails" or ch.Name == "ActiveCompanions" then
+			task.defer(function()
+				ch:ClearAllChildren()
+			end)
+			ch.ChildAdded:Connect(function(sub)
+				task.defer(function()
+					pcall(function() sub:Destroy() end)
+				end)
+			end)
+		end
+	end)
+	while player.Parent do
+		task.wait(1.5)
+		purgeRemovedWorldClutter()
+	end
+end)

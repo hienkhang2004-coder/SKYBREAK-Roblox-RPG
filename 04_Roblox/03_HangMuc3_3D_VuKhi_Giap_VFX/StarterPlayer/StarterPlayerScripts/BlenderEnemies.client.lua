@@ -1150,9 +1150,14 @@ local function hide(model, visual)
     for _, o in model:GetDescendants() do
         if not o:IsDescendantOf(visual) then
             if o:IsA('BasePart') then
-                if o.Name ~= 'DummyFloorRing' and o.Name ~= 'VoidRiftPad' and o.Name ~= 'ResonanceFrostRing' then
+                if o.Name ~= 'VoidRiftPad' and o.Name ~= 'ResonanceFrostRing' then
                     o.LocalTransparencyModifier = 1
                     o.Transparency = 1
+                    if o.Name == 'DummyFloorRing' then
+                        o.CanCollide = false
+                        o.CanQuery = false
+                        o.CanTouch = false
+                    end
                 end
             elseif o:IsA('Decal') then
                 o.Transparency = 1
@@ -1206,7 +1211,7 @@ local function register(model)
             return
         end
         for _, o in model:GetDescendants() do
-            if o:IsA('BasePart') and o.Name ~= 'DummyFloorRing' then
+            if o:IsA('BasePart') then
                 o.LocalTransparencyModifier = 1
                 o.Transparency = 1
             end
@@ -1282,7 +1287,7 @@ local function register(model)
         visual.Parent = model
         hide(model, visual)
         local connection = model.DescendantAdded:Connect(function(o)
-            if o:IsA('BasePart') and o.Name ~= 'DummyFloorRing' and not o:IsDescendantOf(visual) then
+            if o:IsA('BasePart') and not o:IsDescendantOf(visual) then
                 o.LocalTransparencyModifier = 1
                 o.Transparency = 1
             end
@@ -1562,78 +1567,10 @@ local function buildCompanionFootRing(visual)
 end
 
 local function registerCompanion(compModel)
-    if not compModel:IsA('Model') or companions[compModel] or pendingCompanions[compModel] then
-        return
-    end
-    local compId = compModel:GetAttribute('CompanionId') or compModel.Name
-    local visualAsset = compModel:GetAttribute('VisualAsset') or COMPANION_DEFAULTS[compId] or 'Male_SkyGuardian'
-    if not Sources:FindFirstChild(visualAsset) then
-        if visualAsset == 'ThunderStrikerFemale' and Sources:FindFirstChild('ThunderStriker') then
-            visualAsset = 'ThunderStriker'
-        else
-            return
-        end
-    end
-    pendingCompanions[compModel] = true
-    local ok, err = xpcall(function()
-        local body = compModel.PrimaryPart
-            or compModel:WaitForChild('Root', 5)
-            or compModel:WaitForChild('Body', 2)
-            or compModel:WaitForChild('HumanoidRootPart', 2)
-            or compModel:FindFirstChildWhichIsA('BasePart')
-        if not body then
-            return
-        end
-        templates[visualAsset] = templates[visualAsset] or Renderer.Build(visualAsset)
-        local scale = 2.6
-        local clips = getClips(visualAsset, scale)
-        if not compModel.Parent then
-            return
-        end
-        local visual = templates[visualAsset]:Clone()
-        visual.Name = 'BlenderCompanionRig'
-        visual:ScaleTo(scale)
-        local floorY = compModel:GetAttribute('CompanionFloorY')
-            or compModel:GetAttribute('EnemyFloorY')
-            or (body.Position.Y - math.max(2.0, body.Size.Y * 0.5))
-        visual:PivotTo(CFrame.new(body.Position.X, floorY, body.Position.Z) * body.CFrame.Rotation)
-        local footRing = buildCompanionFootRing(visual)
-        visual.Parent = compModel
-        hide(compModel, visual)
-
-        local connection = compModel.DescendantAdded:Connect(function(o)
-            if o:IsA('BasePart') and not o:IsDescendantOf(visual) then
-                o.LocalTransparencyModifier = 1
-                o.Transparency = 1
-            end
+    if compModel then
+        pcall(function()
+            compModel:Destroy()
         end)
-
-        local idleClipName = (visualAsset == 'ThunderStrikerFemale' or visualAsset == 'ThunderStriker') and 'TS_Idle'
-            or (visualAsset == 'Male_SkyGuardian' and 'GoldenKnight_Idle' or 'Idle')
-
-        companions[compModel] = {
-            Owner = compModel,
-            CompanionId = compId,
-            VisualAsset = visualAsset,
-            Visual = visual,
-            Body = body,
-            Clips = clips,
-            FootRing = footRing,
-            Scale = scale,
-            Name = idleClipName,
-            Start = os.clock(),
-            Until = 0,
-            AttackNonce = compModel:GetAttribute('CompanionAttackNonce') or compModel:GetAttribute('EnemyAttackAt') or 0,
-            AttackCount = 0,
-            LastPosition = body.Position,
-            Connection = connection,
-            Rate = 1,
-        }
-        compModel:SetAttribute('BlenderCompanionReady', true)
-    end, debug.traceback)
-    pendingCompanions[compModel] = nil
-    if not ok then
-        warn('[SKYBREAK companion]', compModel.Name, visualAsset, err)
     end
 end
 
