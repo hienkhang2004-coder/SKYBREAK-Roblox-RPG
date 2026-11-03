@@ -134,34 +134,137 @@ local function makeAuraPart(parent, name, size, color, shape, transparency, clas
     return p
 end
 
-local function findBone(visual, names)
-    local root = visual and visual.PrimaryPart
-    if not root then
-        return nil
+local LEGACY_SERVER_PLACEHOLDERS = {
+    HumanoidRootPart = true,
+    SkybornBlade = true,
+    GuardianBreastplate = true,
+    GuardianCrest = true,
+    CrimsonCape = true,
+}
+
+local FX_MANAGED_CONTAINERS = {
+    WeaponAwakeningAura = true,
+    FruitTransformFX = true,
+    HakiAuraFX = true,
+    RaceV4FX = true,
+    RaceV4WingsFX = true,
+    HeldFruit3D = true,
+    EquippedWeapons3D = true,
+    CharacterAccessories3D = true,
+    SkyGuardianVisual = true,
+    ArcaneMageVisual = true,
+    ThunderStrikerVisual = true,
+    LegacySkyGuardianVisual = true,
+}
+
+local function isInsideManagedFXContainer(inst, ch)
+    local p = inst and inst.Parent
+    while p and p ~= ch do
+        if FX_MANAGED_CONTAINERS[p.Name] then
+            return true
+        end
+        p = p.Parent
     end
-    for _, name in ipairs(names) do
-        local b = root:FindFirstChild(name, true)
-        if b and b:IsA('Bone') then
-            return b
+    return false
+end
+
+local function restoreNativeAvatarVisibility(ch)
+    if not ch or not ch.Parent then
+        return
+    end
+    for _, o in ipairs(ch:GetDescendants()) do
+        if not isInsideManagedFXContainer(o, ch) then
+            if o:IsA('BasePart') then
+                if LEGACY_SERVER_PLACEHOLDERS[o.Name] or o:GetAttribute('EquipmentRole') == 'Weapon' then
+                    o.Transparency = 1
+                else
+                    o.Transparency = 0
+                    o.LocalTransparencyModifier = 0
+                end
+            elseif o:IsA('Decal') then
+                o.Transparency = 0
+            end
         end
     end
-    return nil
+end
+
+local function setCharacterBaseVisibilityForBeast(s, hidden)
+    if not s or not s.Visual or not s.Visual.Parent then
+        return
+    end
+    local lowFX = Equipment3D.IsLowFX(s.Owner)
+    if hidden then
+        if s.IsNativeAvatar then
+            for _, o in ipairs(s.Visual:GetDescendants()) do
+                if not isInsideManagedFXContainer(o, s.Visual) then
+                    if o:IsA('BasePart') then
+                        o.LocalTransparencyModifier = 1
+                    elseif o:IsA('Decal') then
+                        o.Transparency = 1
+                    end
+                end
+            end
+        else
+            for _, chPart in ipairs(s.Visual:GetChildren()) do
+                if chPart:IsA('BasePart') then
+                    chPart.LocalTransparencyModifier = 1
+                end
+            end
+        end
+        for _, chPart in ipairs(s.Visual:GetChildren()) do
+            if chPart:IsA('Folder') and (chPart.Name == 'RaceV4FX' or chPart.Name == 'RaceV4WingsFX' or chPart.Name == 'CharacterAccessories3D') then
+                for _, sub in ipairs(chPart:GetDescendants()) do
+                    if sub:IsA('BasePart') and sub.LocalTransparencyModifier < 1 then
+                        sub.LocalTransparencyModifier = 1
+                    elseif (sub:IsA('Trail') or sub:IsA('PointLight')) and sub.Enabled then
+                        sub.Enabled = false
+                    end
+                end
+            end
+        end
+    else
+        if s.IsNativeAvatar then
+            restoreNativeAvatarVisibility(s.Visual)
+        else
+            for _, chPart in ipairs(s.Visual:GetChildren()) do
+                if chPart:IsA('BasePart') then
+                    if chPart:GetAttribute('EquipmentRole') == 'Weapon' then
+                        chPart.LocalTransparencyModifier = 1
+                        chPart.Transparency = 1
+                    else
+                        chPart.LocalTransparencyModifier = 0
+                    end
+                end
+            end
+        end
+        for _, chPart in ipairs(s.Visual:GetChildren()) do
+            if chPart:IsA('Folder') and (chPart.Name == 'RaceV4FX' or chPart.Name == 'RaceV4WingsFX' or chPart.Name == 'CharacterAccessories3D') then
+                for _, sub in ipairs(chPart:GetDescendants()) do
+                    if sub:IsA('BasePart') then
+                        sub.LocalTransparencyModifier = 0
+                    elseif sub:IsA('Trail') or sub:IsA('PointLight') then
+                        sub.Enabled = not lowFX
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function findBone(visual, names)
+    return Equipment3D.FindBone(visual, names)
 end
 
 local function getBoneWorldCF(s, bone, fallbackOffset)
-    if bone and bone.Parent then
-        return bone.TransformedWorldCFrame
-    end
-    local ratio = (s.CurrentScale or 2.6) / 2.6
-    if s.Root and s.Root.Parent then
-        local off = fallbackOffset or CFrame.identity
-        return s.Root.CFrame * CFrame.new(off.Position * ratio) * off.Rotation
-    end
-    return CFrame.identity
+    return Equipment3D.GetBoneWorldCF(s, bone, fallbackOffset)
 end
 
 local function setVisualScale(s, targetScale)
     if not s or not s.Visual or not s.Visual.Parent or not s.Root or not s.Root.Parent then
+        return
+    end
+    if s.IsNativeAvatar then
+        s.CurrentScale = 2.6
         return
     end
     if math.abs((s.CurrentScale or 2.6) - targetScale) < 0.01 then
@@ -628,11 +731,7 @@ local function buildFruitTransformFX(s, mode)
                 hl.Adornee = titanClone
                 fxData.V5Model = titanClone
                 fxData.V5Clips = getScaledClips('SolarTitanBuddha', 3.6)
-                for _, chPart in ipairs(s.Visual:GetChildren()) do
-                    if chPart:IsA('BasePart') then
-                        chPart.LocalTransparencyModifier = 1
-                    end
-                end
+                setCharacterBaseVisibilityForBeast(s, true)
             else
                 fxData.ChestCore = makeAuraPart(folder, 'SolarTitanChestCore', Vector3.new(1.15, 1.15, 0.45), sunWhite, Enum.PartType.Ball, 0.02)
                 fxData.TabardFront = makeAuraPart(folder, 'SolarTitanTabard', Vector3.new(1.85, 2.85, 0.24), Color3.fromRGB(36, 92, 215), Enum.PartType.Block, 0.08, 'Part', Enum.Material.SmoothPlastic, 0.15)
@@ -852,11 +951,7 @@ local function buildFruitTransformFX(s, mode)
                 fxData.WingRHost, fxData.WingRTrail = makeDragonBoneTrail('AbyssalWingTrailR', trailW, dragonCrimson, voidPurple)
                 fxData.TailHost, fxData.TailTrail = makeDragonBoneTrail('AbyssalTailTrail', trailW * 0.75, voidPurple, dragonCrimson)
 
-                for _, chPart in ipairs(s.Visual:GetChildren()) do
-                    if chPart:IsA('BasePart') then
-                        chPart.LocalTransparencyModifier = 1
-                    end
-                end
+                setCharacterBaseVisibilityForBeast(s, true)
             else
                 -- Fallback 3 Orbiting Abyssal Flame Orbs only when 3D V5 model is unavailable
                 for i = 1, 3 do
@@ -868,25 +963,7 @@ local function buildFruitTransformFX(s, mode)
     else
         -- Restore default character scale (2.6) & human mesh/wing/accessory visibility (legacy baked weapon sub-meshes stay hidden for 3D Wep_*)
         setVisualScale(s, 2.6)
-        local lowFX = Equipment3D.IsLowFX(s.Owner)
-        for _, chPart in ipairs(s.Visual:GetChildren()) do
-            if chPart:IsA('BasePart') then
-                if chPart:GetAttribute('EquipmentRole') == 'Weapon' then
-                    chPart.LocalTransparencyModifier = 1
-                    chPart.Transparency = 1
-                else
-                    chPart.LocalTransparencyModifier = 0
-                end
-            elseif chPart:IsA('Folder') and (chPart.Name == 'RaceV4FX' or chPart.Name == 'RaceV4WingsFX' or chPart.Name == 'CharacterAccessories3D') then
-                for _, sub in ipairs(chPart:GetDescendants()) do
-                    if sub:IsA('BasePart') then
-                        sub.LocalTransparencyModifier = 0
-                    elseif sub:IsA('Trail') or sub:IsA('PointLight') then
-                        sub.Enabled = not lowFX
-                    end
-                end
-            end
-        end
+        setCharacterBaseVisibilityForBeast(s, false)
     end
 end
 
@@ -901,19 +978,7 @@ local function stepFruitTransformFX(s, now)
 
     -- Step true sculpted 3D V5 Beast Transformation rig (SolarTitanBuddha / AbyssalSovereignDragon / AbyssalDragonHybrid)
     if fx.V5Model and fx.V5Model.Parent then
-        for _, chPart in ipairs(s.Visual:GetChildren()) do
-            if chPart:IsA('BasePart') and chPart.LocalTransparencyModifier < 1 then
-                chPart.LocalTransparencyModifier = 1
-            elseif chPart:IsA('Folder') and (chPart.Name == 'RaceV4FX' or chPart.Name == 'RaceV4WingsFX' or chPart.Name == 'CharacterAccessories3D') then
-                for _, sub in ipairs(chPart:GetDescendants()) do
-                    if sub:IsA('BasePart') and sub.LocalTransparencyModifier < 1 then
-                        sub.LocalTransparencyModifier = 1
-                    elseif (sub:IsA('Trail') or sub:IsA('PointLight')) and sub.Enabled then
-                        sub.Enabled = false
-                    end
-                end
-            end
-        end
+        setCharacterBaseVisibilityForBeast(s, true)
         if fx.V5Clips then
             local curKey = tostring(s.Name or 'Idle'):gsub('^TS_', '')
             local inTimedAction = now < (s.Until or 0)
@@ -2329,9 +2394,20 @@ local function boot()
             end
             s.TransformFX = nil
             if s.Model then
-                pcall(function()
-                    s.Model:Destroy()
-                end)
+                if s.IsNativeAvatar or s.Model == ch then
+                    for _, folderName in ipairs({ 'WeaponAwakeningAura', 'FruitTransformFX', 'HakiAuraFX', 'RaceV4FX', 'HeldFruit3D', 'EquippedWeapons3D', 'CharacterAccessories3D' }) do
+                        local f = ch and ch:FindFirstChild(folderName)
+                        if f then
+                            pcall(function()
+                                f:Destroy()
+                            end)
+                        end
+                    end
+                else
+                    pcall(function()
+                        s.Model:Destroy()
+                    end)
+                end
                 s.Model = nil
                 s.Visual = nil
             end
@@ -2358,16 +2434,22 @@ local function boot()
         local gender = owner and owner:GetAttribute('SkybornGender') or 'Male'
         local class = owner and owner:GetAttribute('ClassId') or 'SkyGuardian'
         local stage = owner and owner:GetAttribute('OutfitStage') or 'Novice'
+        local useCustomClassRig = (ch:GetAttribute('UseCustomClassRig') == true)
+            or (owner and owner:GetAttribute('UseCustomClassRig') == true)
+        local useNativeAvatar = not useCustomClassRig
+
         local template
-        if class == 'SkyGuardian' then
-            local target = sources:FindFirstChild(gender .. '_' .. stage) and (gender .. '_' .. stage) or (gender .. '_SkyGuardian')
-            assert(sources:FindFirstChild(target), 'Missing Guardian appearance ' .. target)
-            template = Renderer.Build(target)
-        elseif class == 'ArcaneMage' then
-            template = Renderer.Build('ArcaneMage', progress)
-        else
-            local tsTarget = (gender == 'Female' and sources:FindFirstChild('ThunderStrikerFemale')) and 'ThunderStrikerFemale' or 'ThunderStriker'
-            template = Renderer.Build(tsTarget, progress)
+        if not useNativeAvatar then
+            if class == 'SkyGuardian' then
+                local target = sources:FindFirstChild(gender .. '_' .. stage) and (gender .. '_' .. stage) or (gender .. '_SkyGuardian')
+                assert(sources:FindFirstChild(target), 'Missing Guardian appearance ' .. target)
+                template = Renderer.Build(target)
+            elseif class == 'ArcaneMage' then
+                template = Renderer.Build('ArcaneMage', progress)
+            else
+                local tsTarget = (gender == 'Female' and sources:FindFirstChild('ThunderStrikerFemale')) and 'ThunderStrikerFemale' or 'ThunderStriker'
+                template = Renderer.Build(tsTarget, progress)
+            end
         end
         if ticket ~= avatarTickets[ch] or not ch.Parent then
             return
@@ -2376,74 +2458,108 @@ local function boot()
             cleanupState(ch, states[ch])
         end
         GuardianAnimator.Reset(ch)
-        local old = ch:FindFirstChild('SkyGuardianVisual')
-        if old then
-            old.Name = 'LegacySkyGuardianVisual'
+        for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual' }) do
+            local oldVis = ch:FindFirstChild(oldVisName)
+            if oldVis then
+                oldVis:Destroy()
+            end
         end
 
-        local visual = template:Clone()
-        visual.Name = class == 'SkyGuardian' and 'SkyGuardianVisual'
-            or (class == 'ArcaneMage' and 'ArcaneMageVisual' or 'ThunderStrikerVisual')
-        visual:ScaleTo(2.6)
-        local floor = root.Position.Y - h.HipHeight - root.Size.Y / 2
-        visual:PivotTo(CFrame.new(root.Position.X, floor, root.Position.Z) * root.CFrame.Rotation)
-        for _, o in visual:GetDescendants() do
-            if o:IsA('BasePart') then
-                o.Anchored = false
-                o.Massless = true
-            end
-        end
-        local weld = Instance.new('WeldConstraint')
-        weld.Part0 = root
-        weld.Part1 = visual.PrimaryPart
-        weld.Parent = visual.PrimaryPart
-        visual.Parent = ch
-
-        -- Prevent Roblox's default R15 Animate/Animator from driving our custom Blender Bone hierarchy
-        local animateScript = ch:FindFirstChild('Animate')
-        if animateScript then
-            animateScript.Enabled = false
-            animateScript:Destroy()
-        end
-        for _, child in ipairs(h:GetChildren()) do
-            if child:IsA('Animator') then
-                child:Destroy()
-            end
-        end
-        local hChildConnection = h.ChildAdded:Connect(function(child)
-            if child:IsA('Animator') then
-                task.defer(function()
-                    if child.Parent then
-                        child:Destroy()
-                    end
-                end)
-            end
-        end)
-        local chChildConnection = ch.ChildAdded:Connect(function(child)
-            if child.Name == 'Animate' and child:IsA('LocalScript') then
-                child.Enabled = false
-                task.defer(function()
-                    if child.Parent then
-                        child:Destroy()
-                    end
-                end)
-            end
-        end)
-
-        local classClips
+        local visual
+        local weld = nil
+        local hChildConnection = nil
+        local chChildConnection = nil
+        local classClips = nil
         local clipAssetName = nil
-        if class == 'ArcaneMage' then
-            clipAssetName = 'ArcaneMage'
-            classClips = getScaledClips('ArcaneMage', 2.6)
-        elseif class == 'ThunderStriker' then
-            clipAssetName = (gender == 'Female' and sources:FindFirstChild('ThunderStrikerFemale')) and 'ThunderStrikerFemale' or 'ThunderStriker'
-            classClips = getScaledClips(clipAssetName, 2.6)
-        elseif class == 'SkyGuardian' then
-            local sgAsset = sources:FindFirstChild(gender .. '_' .. stage) and (gender .. '_' .. stage)
-                or ((gender == 'Female' and sources:FindFirstChild('Female_SkyGuardian')) and 'Female_SkyGuardian' or 'Male_SkyGuardian')
-            clipAssetName = sgAsset
-            if sources[sgAsset]:FindFirstChild('Clips') then
-                classClips = getScaledClips(sgAsset, 2.6)
+
+        if useNativeAvatar then
+            visual = ch
+            if not h:FindFirstChildOfClass('Animator') then
+                local animInst = Instance.new('Animator')
+                animInst.Parent = h
+            end
+            local animateScript = ch:FindFirstChild('Animate')
+            if animateScript and animateScript:IsA('BaseScript') then
+                animateScript.Disabled = false
+            end
+            restoreNativeAvatarVisibility(ch)
+            if owner and not owner:HasAppearanceLoaded() then
+                task.spawn(function()
+                    local appDeadline = os.clock() + 8
+                    while ch.Parent and owner.Parent and not owner:HasAppearanceLoaded() and os.clock() < appDeadline do
+                        task.wait(0.15)
+                    end
+                    if ch.Parent and states[ch] and states[ch].IsNativeAvatar then
+                        local isBeastNow = states[ch].TransformFX and states[ch].TransformFX.V5Model and states[ch].TransformFX.V5Model.Parent ~= nil
+                        if not isBeastNow then
+                            restoreNativeAvatarVisibility(ch)
+                        end
+                    end
+                end)
+            end
+        else
+            visual = template:Clone()
+            visual.Name = class == 'SkyGuardian' and 'SkyGuardianVisual'
+                or (class == 'ArcaneMage' and 'ArcaneMageVisual' or 'ThunderStrikerVisual')
+            visual:ScaleTo(2.6)
+            local floor = root.Position.Y - h.HipHeight - root.Size.Y / 2
+            visual:PivotTo(CFrame.new(root.Position.X, floor, root.Position.Z) * root.CFrame.Rotation)
+            for _, o in visual:GetDescendants() do
+                if o:IsA('BasePart') then
+                    o.Anchored = false
+                    o.Massless = true
+                end
+            end
+            weld = Instance.new('WeldConstraint')
+            weld.Part0 = root
+            weld.Part1 = visual.PrimaryPart
+            weld.Parent = visual.PrimaryPart
+            visual.Parent = ch
+
+            -- Prevent Roblox's default R15 Animate/Animator from driving our custom Blender Bone hierarchy
+            local animateScript = ch:FindFirstChild('Animate')
+            if animateScript then
+                animateScript.Enabled = false
+                animateScript:Destroy()
+            end
+            for _, child in ipairs(h:GetChildren()) do
+                if child:IsA('Animator') then
+                    child:Destroy()
+                end
+            end
+            hChildConnection = h.ChildAdded:Connect(function(child)
+                if child:IsA('Animator') then
+                    task.defer(function()
+                        if child.Parent then
+                            child:Destroy()
+                        end
+                    end)
+                end
+            end)
+            chChildConnection = ch.ChildAdded:Connect(function(child)
+                if child.Name == 'Animate' and child:IsA('LocalScript') then
+                    child.Enabled = false
+                    task.defer(function()
+                        if child.Parent then
+                            child:Destroy()
+                        end
+                    end)
+                end
+            end)
+
+            if class == 'ArcaneMage' then
+                clipAssetName = 'ArcaneMage'
+                classClips = getScaledClips('ArcaneMage', 2.6)
+            elseif class == 'ThunderStriker' then
+                clipAssetName = (gender == 'Female' and sources:FindFirstChild('ThunderStrikerFemale')) and 'ThunderStrikerFemale' or 'ThunderStriker'
+                classClips = getScaledClips(clipAssetName, 2.6)
+            elseif class == 'SkyGuardian' then
+                local sgAsset = sources:FindFirstChild(gender .. '_' .. stage) and (gender .. '_' .. stage)
+                    or ((gender == 'Female' and sources:FindFirstChild('Female_SkyGuardian')) and 'Female_SkyGuardian' or 'Male_SkyGuardian')
+                clipAssetName = sgAsset
+                if sources[sgAsset]:FindFirstChild('Clips') then
+                    classClips = getScaledClips(sgAsset, 2.6)
+                end
             end
         end
 
@@ -2451,6 +2567,7 @@ local function boot()
             Model = visual,
             Visual = visual,
             Weld = weld,
+            IsNativeAvatar = useNativeAvatar,
             Root = root,
             H = h,
             Owner = owner,
@@ -2539,8 +2656,6 @@ local function boot()
         end)
 
         local stateConns = {
-            hChildConnection,
-            chChildConnection,
             chEnhanceConnection,
             transformConnection,
             hakiConnection,
@@ -2548,6 +2663,12 @@ local function boot()
             hakiStageConnection,
             raceConnection,
         }
+        if hChildConnection then
+            table.insert(stateConns, hChildConnection)
+        end
+        if chChildConnection then
+            table.insert(stateConns, chChildConnection)
+        end
         if equipmentConnection then
             table.insert(stateConns, equipmentConnection)
         end
@@ -2565,19 +2686,48 @@ local function boot()
             table.clear(stateConns)
         end)
 
-        ch:SetAttribute('BlenderGuardian', (class == 'SkyGuardian') and (not classClips or not next(classClips)))
-        hideLegacy(ch, visual)
-        local connection = ch.DescendantAdded:Connect(function(o)
-            if o:IsA('BasePart') and not o:IsDescendantOf(visual) then
-                o.Transparency = 1
-            end
-        end)
-        stateEntry.HideConnection = connection
+        if useNativeAvatar then
+            ch:SetAttribute('BlenderGuardian', false)
+            local connection = ch.DescendantAdded:Connect(function(o)
+                task.defer(function()
+                    if not o or not o.Parent or not ch.Parent then
+                        return
+                    end
+                    if isInsideManagedFXContainer(o, ch) then
+                        return
+                    end
+                    local isBeastNow = stateEntry.TransformFX and stateEntry.TransformFX.V5Model and stateEntry.TransformFX.V5Model.Parent ~= nil
+                    if o:IsA('BasePart') then
+                        stateEntry._EquipBindReady = nil
+                        if LEGACY_SERVER_PLACEHOLDERS[o.Name] or o:GetAttribute('EquipmentRole') == 'Weapon' then
+                            o.Transparency = 1
+                        elseif isBeastNow then
+                            o.LocalTransparencyModifier = 1
+                        else
+                            o.Transparency = 0
+                            o.LocalTransparencyModifier = 0
+                        end
+                    elseif o:IsA('Decal') then
+                        o.Transparency = isBeastNow and 1 or 0
+                    end
+                end)
+            end)
+            stateEntry.HideConnection = connection
+        else
+            ch:SetAttribute('BlenderGuardian', (class == 'SkyGuardian') and (not classClips or not next(classClips)))
+            hideLegacy(ch, visual)
+            local connection = ch.DescendantAdded:Connect(function(o)
+                if o:IsA('BasePart') and not o:IsDescendantOf(visual) then
+                    o.Transparency = 1
+                end
+            end)
+            stateEntry.HideConnection = connection
+        end
         states[ch] = stateEntry
 
-        ch:SetAttribute('V5Visual', class)
+        ch:SetAttribute('V5Visual', useNativeAvatar and 'NativeAvatar' or class)
         ch:SetAttribute('V5VisualReady', true)
-        ch:SetAttribute('V7AppearanceKey', class .. '/' .. gender .. '/' .. stage)
+        ch:SetAttribute('V7AppearanceKey', (useNativeAvatar and 'NativeAvatar' or class) .. '/' .. gender .. '/' .. stage)
     end
 
     local function bindPlayer(p)
@@ -2937,20 +3087,33 @@ local function boot()
             task.spawn(spawnCharacterSkillRigTrail, s, moveKey, fx)
         end
 
-        if s.ClassId == 'SkyGuardian' and (not s.Clips or not next(s.Clips)) then
-            if action == 'Skill3' or action == 'JudgmentStrike' or action == 'ConquerorHaki' or moveKey == 'C' or moveKey == 'X' then
-                GuardianAnimator.Action(ch, 'Heavy', fx.Combo)
-            elseif action == 'Ultimate' or action == 'CelestialAegis' or moveKey == 'V' or moveKey == 'Z' or kind == 'Skill' then
-                GuardianAnimator.Action(ch, 'SkySlash', fx.Combo)
-            elseif kind == 'Swing' or action == 'Attack' or action == 'Heavy' then
-                GuardianAnimator.Action(ch, action == 'Heavy' and 'Heavy' or 'Attack', fx.Combo)
-            elseif kind == 'Dodge' or action == 'Dodge' or action == 'Dash' or moveKey == 'F' then
-                GuardianAnimator.Action(ch, 'Dash', fx.Combo)
-            end
-            return
-        end
-
         if not s.Clips or not next(s.Clips) then
+            local nowAct = os.clock()
+            s.Start = nowAct
+            if moveKey ~= '' then
+                s.Name = 'Skill' .. moveKey
+                s.Until = nowAct + 0.72
+            elseif action == 'Heavy' or action == 'JudgmentStrike' or action == 'CelestialAegis' then
+                s.Name = 'Heavy'
+                s.Until = nowAct + 0.58
+            elseif kind == 'Dodge' or action == 'Dash' or action == 'Dodge' or action == 'FlashStep' then
+                s.Name = 'Dash'
+                s.Until = nowAct + 0.45
+            else
+                s.Name = 'Attack'
+                s.Until = nowAct + 0.42
+            end
+            if not s.IsNativeAvatar and s.ClassId == 'SkyGuardian' then
+                if action == 'Skill3' or action == 'JudgmentStrike' or action == 'ConquerorHaki' or moveKey == 'C' or moveKey == 'X' then
+                    GuardianAnimator.Action(ch, 'Heavy', fx.Combo)
+                elseif action == 'Ultimate' or action == 'CelestialAegis' or moveKey == 'V' or moveKey == 'Z' or kind == 'Skill' then
+                    GuardianAnimator.Action(ch, 'SkySlash', fx.Combo)
+                elseif kind == 'Swing' or action == 'Attack' or action == 'Heavy' then
+                    GuardianAnimator.Action(ch, action == 'Heavy' and 'Heavy' or 'Attack', fx.Combo)
+                elseif kind == 'Dodge' or action == 'Dodge' or action == 'Dash' or moveKey == 'F' then
+                    GuardianAnimator.Action(ch, 'Dash', fx.Combo)
+                end
+            end
             return
         end
 
@@ -3154,23 +3317,74 @@ local function boot()
                 continue
             end
 
-            if s.H then
-                local animInst = s.H:FindFirstChildOfClass('Animator')
-                if animInst then
-                    for _, tr in ipairs(s.H:GetPlayingAnimationTracks()) do
-                        pcall(function() tr:Stop(0) end)
-                    end
-                    animInst:Destroy()
+            if s.IsNativeAvatar then
+                if s.H and not s.H:FindFirstChildOfClass('Animator') then
+                    local animInst = Instance.new('Animator')
+                    animInst.Parent = s.H
                 end
-            end
-            local animScript = ch:FindFirstChild('Animate')
-            if animScript and animScript:IsA('BaseScript') then
-                animScript.Disabled = true
-                animScript:Destroy()
+                local animScript = ch:FindFirstChild('Animate')
+                if animScript and animScript:IsA('BaseScript') and animScript.Disabled then
+                    animScript.Disabled = false
+                end
+                local isBeastNow = s.TransformFX and s.TransformFX.V5Model and s.TransformFX.V5Model.Parent ~= nil
+                if not isBeastNow then
+                    local headPart = ch:FindFirstChild('Head')
+                    if headPart and headPart:IsA('BasePart') and headPart.Transparency > 0.5 then
+                        restoreNativeAvatarVisibility(ch)
+                    end
+                end
+                local mode = s.H:GetState()
+                local vel = s.Root.AssemblyLinearVelocity
+                local hSpeed = math.max(Vector3.new(vel.X, 0, vel.Z).Magnitude, s.H.MoveDirection.Magnitude * s.H.WalkSpeed)
+                local airborne = (mode == Enum.HumanoidStateType.Jumping or mode == Enum.HumanoidStateType.Freefall)
+                local lastAirJump = tonumber(ch:GetAttribute('LastAirJumpAt')) or 0
+                if lastAirJump > (s.LastAirJumpAt or 0) then
+                    s.LastAirJumpAt = lastAirJump
+                    local jumpIdx = math.max(1, tonumber(ch:GetAttribute('AirJumpIndex')) or ((s.AirJumpSeq or 0) + 1))
+                    s.AirJumpSeq = jumpIdx
+                    Equipment3D.SpawnGeppoShockwave(s, jumpIdx)
+                end
+                if s.WasAirborne and not airborne then
+                    local fallDist = (s.AirPeakY or s.Root.Position.Y) - s.Root.Position.Y
+                    s.AirPeakY = s.Root.Position.Y
+                    if fallDist > 45 then
+                        Equipment3D.SpawnSuperheroHeavyLanding(s, fallDist)
+                    end
+                    s.AirJumpSeq = 0
+                end
+                s.WasAirborne = airborne
+                if airborne then
+                    s.LastFallVy = math.min(tonumber(s.LastFallVy) or 0, vel.Y)
+                    s.AirPeakY = math.max(s.AirPeakY or s.Root.Position.Y, s.Root.Position.Y)
+                else
+                    s.LastFallVy = 0
+                    s.AirPeakY = s.Root.Position.Y
+                end
+                s.LastCapeWind = math.clamp(hSpeed / 36 + (airborne and 0.32 or 0), 0, 1.35)
+                Equipment3D.ApplyHeadTargetLookAt(s, dt, now)
+                if now >= (s.Until or 0) then
+                    s.Name = airborne and 'Jump' or (hSpeed > 1.5 and 'Run' or 'Idle')
+                end
+                ch:SetAttribute('V5CurrentClip', s.Name:gsub('^TS_', ''))
+            else
+                if s.H then
+                    local animInst = s.H:FindFirstChildOfClass('Animator')
+                    if animInst then
+                        for _, tr in ipairs(s.H:GetPlayingAnimationTracks()) do
+                            pcall(function() tr:Stop(0) end)
+                        end
+                        animInst:Destroy()
+                    end
+                end
+                local animScript = ch:FindFirstChild('Animate')
+                if animScript and animScript:IsA('BaseScript') then
+                    animScript.Disabled = true
+                    animScript:Destroy()
+                end
             end
 
             -- 5. Monitor Blox Fruits Air-Jump / Geppo (Alternating Step L / Step R / Somersault Flip)
-            if s.Clips and next(s.Clips) then
+            if not s.IsNativeAvatar and s.Clips and next(s.Clips) then
                 local mode = s.H:GetState()
                 local vel = s.Root.AssemblyLinearVelocity
                 local hSpeed = math.max(Vector3.new(vel.X, 0, vel.Z).Magnitude, s.H.MoveDirection.Magnitude * s.H.WalkSpeed)

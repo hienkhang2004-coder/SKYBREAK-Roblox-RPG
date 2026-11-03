@@ -29,15 +29,62 @@ local function isLowFX(plr)
 end
 M.IsLowFX = isLowFX
 
+local R6_FALLBACK_PART_NAMES = {
+    RightHand = 'Right Arm',
+    Hand_R = 'Right Arm',
+    RightLowerArm = 'Right Arm',
+    LowerArm_R = 'Right Arm',
+    RightArm = 'Right Arm',
+    LeftHand = 'Left Arm',
+    Hand_L = 'Left Arm',
+    LeftLowerArm = 'Left Arm',
+    LowerArm_L = 'Left Arm',
+    LeftArm = 'Left Arm',
+    UpperTorso = 'Torso',
+    LowerTorso = 'Torso',
+    Spine2 = 'Torso',
+    Chest = 'Torso',
+    Spine = 'Torso',
+    RightLowerLeg = 'Right Leg',
+    LowerLeg_R = 'Right Leg',
+    RightShin = 'Right Leg',
+    Shin_R = 'Right Leg',
+    RightFoot = 'Right Leg',
+    Foot_R = 'Right Leg',
+    RightLeg = 'Right Leg',
+    LeftLowerLeg = 'Left Leg',
+    LowerLeg_L = 'Left Leg',
+    LeftShin = 'Left Leg',
+    Shin_L = 'Left Leg',
+    LeftFoot = 'Left Leg',
+    Foot_L = 'Left Leg',
+    LeftLeg = 'Left Leg',
+}
+
 local function findBone(visual, names)
-    local root = visual and visual.PrimaryPart
-    if not root then
+    if not visual then
         return nil
     end
+    local root = visual.PrimaryPart
+    if root then
+        for _, name in ipairs(names) do
+            local b = root:FindFirstChild(name, true)
+            if b and b:IsA('Bone') then
+                return b
+            end
+        end
+    end
     for _, name in ipairs(names) do
-        local b = root:FindFirstChild(name, true)
-        if b and b:IsA('Bone') then
-            return b
+        local p = visual:FindFirstChild(name)
+        if p and p:IsA('BasePart') then
+            return p
+        end
+        local r6Name = R6_FALLBACK_PART_NAMES[name]
+        if r6Name then
+            local p6 = visual:FindFirstChild(r6Name)
+            if p6 and p6:IsA('BasePart') then
+                return p6
+            end
         end
     end
     return nil
@@ -46,7 +93,14 @@ M.FindBone = findBone
 
 local function getBoneWorldCF(s, bone, fallbackOffset)
     if bone and bone.Parent then
-        return bone.TransformedWorldCFrame
+        if bone:IsA('Bone') then
+            return bone.TransformedWorldCFrame
+        elseif bone:IsA('BasePart') then
+            if bone.Name == 'Right Arm' or bone.Name == 'Left Arm' then
+                return bone.CFrame * CFrame.new(0, -0.82, 0)
+            end
+            return bone.CFrame
+        end
     end
     local ratio = (s and s.CurrentScale or 2.6) / 2.6
     if s and s.Root and s.Root.Parent then
@@ -433,6 +487,21 @@ local function computeBindBasis(s)
     s._EquipHead = head
     s._EquipRLeg = rLeg
     s._EquipLLeg = lLeg
+
+    if s.IsNativeAvatar or (rHand and rHand:IsA('BasePart')) or (torso and torso:IsA('BasePart')) then
+        s._RightSwordRot = CFrame.Angles(-math.rad(80), 0, 0)
+        s._LeftSwordRot = CFrame.Angles(-math.rad(80), 0, 0)
+        s._RightGunRot = CFrame.Angles(-math.rad(90), 0, 0)
+        s._LeftGunRot = CFrame.Angles(-math.rad(90), 0, 0)
+        s._TorsoModelBasis = CFrame.identity
+        s._HeadModelBasis = CFrame.identity
+        s._RHandModelBasis = CFrame.identity
+        s._LHandModelBasis = CFrame.identity
+        s._RLegModelBasis = CFrame.identity
+        s._LLegModelBasis = CFrame.identity
+        s._EquipBindReady = true
+        return
+    end
 
     local modelPivot = s.Visual:GetPivot()
     local charFwd = modelPivot.LookVector
@@ -1765,10 +1834,17 @@ function M.ApplyHeadTargetLookAt(s, dt, now)
     s.HeadLookPitch = (s.HeadLookPitch or 0) + (goalPitch - (s.HeadLookPitch or 0)) * alpha
 
     if math.abs(s.HeadLookYaw) > 0.004 or math.abs(s.HeadLookPitch) > 0.004 then
-        local basis = s._HeadModelBasis or CFrame.identity
-        local lookRotModel = CFrame.fromEulerAnglesYXZ(s.HeadLookPitch, s.HeadLookYaw, 0)
-        local localLookDelta = basis * lookRotModel * basis:Inverse()
-        head.Transform = head.Transform * localLookDelta
+        if head:IsA('Bone') then
+            local basis = s._HeadModelBasis or CFrame.identity
+            local lookRotModel = CFrame.fromEulerAnglesYXZ(s.HeadLookPitch, s.HeadLookYaw, 0)
+            local localLookDelta = basis * lookRotModel * basis:Inverse()
+            head.Transform = head.Transform * localLookDelta
+        elseif head:IsA('BasePart') then
+            local neck = head:FindFirstChild('Neck')
+            if neck and neck:IsA('Motor6D') then
+                neck.Transform = CFrame.fromEulerAnglesYXZ(s.HeadLookPitch * 0.65, s.HeadLookYaw * 0.75, 0)
+            end
+        end
     end
 end
 
