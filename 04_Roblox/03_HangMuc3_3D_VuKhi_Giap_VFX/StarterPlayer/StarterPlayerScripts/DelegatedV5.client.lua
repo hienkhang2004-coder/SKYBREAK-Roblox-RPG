@@ -172,6 +172,12 @@ local function restoreNativeAvatarVisibility(ch)
     if not ch or not ch.Parent then
         return
     end
+    for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual' }) do
+        local oldVis = ch:FindFirstChild(oldVisName)
+        if oldVis then
+            oldVis:Destroy()
+        end
+    end
     for _, o in ipairs(ch:GetDescendants()) do
         if not isInsideManagedFXContainer(o, ch) then
             if o:IsA('BasePart') then
@@ -194,7 +200,22 @@ local function restoreNativeAvatarVisibility(ch)
                 if o.Transparency ~= 0 then
                     o.Transparency = 0
                 end
+                if o:IsA('Decal') and o.Name == 'face' and (not o.Texture or o.Texture == '') then
+                    o.Texture = 'rbxasset://textures/face.png'
+                end
             end
+        end
+    end
+    local headPart = ch:FindFirstChild('Head')
+    if headPart and headPart:IsA('BasePart') then
+        local hasFace = headPart:FindFirstChildOfClass('Decal') or headPart:FindFirstChildOfClass('SurfaceAppearance')
+        if not hasFace then
+            local faceDecal = Instance.new('Decal')
+            faceDecal.Name = 'face'
+            faceDecal.Face = Enum.NormalId.Front
+            faceDecal.Texture = 'rbxasset://textures/face.png'
+            faceDecal.Transparency = 0
+            faceDecal.Parent = headPart
         end
     end
 end
