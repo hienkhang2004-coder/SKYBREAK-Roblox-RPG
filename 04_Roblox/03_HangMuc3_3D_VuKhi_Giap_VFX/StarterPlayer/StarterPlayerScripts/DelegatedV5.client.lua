@@ -344,9 +344,6 @@ local function buildWeaponAwakeningAura(s)
         oldAura:Destroy()
     end
     s.Aura = nil
-    if s.IsNativeAvatar then
-        return
-    end
 
     local owner = s.Owner
     local ch = s.Character
@@ -549,7 +546,7 @@ local function stepWeaponAwakeningAura(s, now)
     if not aura or not aura.Folder or not aura.Folder.Parent or not s.Root or not s.Root.Parent then
         return
     end
-    local scaleRatio = (s.CurrentScale or 2.6) / 2.6
+    local scaleRatio = s.IsNativeAvatar and 0.68 or ((s.CurrentScale or 2.6) / 2.6)
     local rootCF = s.Root.CFrame
     local floorY = s.Root.Position.Y - s.H.HipHeight - s.Root.Size.Y * 0.5 + 0.08
     local centerFloor = Vector3.new(rootCF.Position.X, floorY, rootCF.Position.Z)
@@ -4046,29 +4043,54 @@ local function boot()
                 bosses[owner] = nil
                 continue
             end
-            local event = owner:GetAttribute('V5SwingAt') or owner:GetAttribute('EnemyAttackAt') or 0
-            local phase = owner:GetAttribute('BossPhase') or 1
-            if event ~= s.Event then
-                s.Event = event
-                local reqClip = tostring(owner:GetAttribute('EnemyAttackClip') or '')
-                if reqClip ~= '' and bossClips[reqClip] then
-                    s.Name = reqClip
-                else
-                    s.Name = bossClips.DivineSlash and 'DivineSlash' or (bossClips.HeroicKata and 'HeroicKata' or 'Attack')
+            local bodyPart = owner:FindFirstChild('Body')
+            if bodyPart and bodyPart:IsA('BasePart') and bodyPart.Transparency < 0.99 then
+                hideLegacy(owner, s.Model)
+            end
+            local hp = tonumber(owner:GetAttribute('HP'))
+            local isDead = (hp ~= nil and hp <= 0) or owner:GetAttribute('EnemyDead') == true
+            if isDead then
+                local tg = owner:FindFirstChild('Telegraph')
+                if tg then
+                    tg:Destroy()
                 end
-                s.Start = now
-            elseif phase ~= s.Phase then
-                s.Phase = phase
-                s.Name = bossClips.UltimateAwakening and 'UltimateAwakening' or (bossClips.Ascend and 'Ascend' or 'Heavy')
-                s.Start = now
-            else
-                local curBossClip = bossClips[s.Name] or bossClips.Idle
-                if curBossClip and (now - s.Start >= (curBossClip.Duration or 1.5)) then
-                    s.Name = 'Idle'
+                if not s.DeadStarted then
+                    s.DeadStarted = true
+                    s.Name = bossClips.Death and 'Death' or 'Idle'
                     s.Start = now
                 end
+            else
+                if s.DeadStarted then
+                    s.DeadStarted = false
+                    hideLegacy(owner, s.Model)
+                end
+                local event = owner:GetAttribute('V5SwingAt') or owner:GetAttribute('EnemyAttackAt') or 0
+                local phase = owner:GetAttribute('BossPhase') or 1
+                if event ~= s.Event then
+                    s.Event = event
+                    local reqClip = tostring(owner:GetAttribute('EnemyAttackClip') or '')
+                    if reqClip ~= '' and bossClips[reqClip] then
+                        s.Name = reqClip
+                    else
+                        s.Name = bossClips.DivineSlash and 'DivineSlash' or (bossClips.HeroicKata and 'HeroicKata' or 'Attack')
+                    end
+                    s.Start = now
+                elseif phase ~= s.Phase then
+                    s.Phase = phase
+                    s.Name = bossClips.UltimateAwakening and 'UltimateAwakening' or (bossClips.Ascend and 'Ascend' or 'Heavy')
+                    s.Start = now
+                else
+                    local curBossClip = bossClips[s.Name] or bossClips.Idle
+                    if curBossClip and (now - s.Start >= (curBossClip.Duration or 1.5)) then
+                        s.Name = 'Idle'
+                        s.Start = now
+                    end
+                end
             end
-            local targetPos = s.Root.Position - Vector3.new(0, 6, 0)
+            local rawPos = s.Root.Position
+            local fallbackY = rawPos.Y - math.max(2.5, s.Root.Size.Y * 0.5)
+            local groundY = Equipment3D.RaycastSolidFloor and Equipment3D.RaycastSolidFloor(rawPos, fallbackY) or fallbackY
+            local targetPos = Vector3.new(rawPos.X, groundY, rawPos.Z)
             local targetRot = s.Root.CFrame.Rotation
             if not s.SmoothPos or (targetPos - s.SmoothPos).Magnitude > 24 then
                 s.SmoothPos = targetPos
@@ -4081,7 +4103,11 @@ local function boot()
             s.Model:PivotTo(CFrame.new(s.SmoothPos) * s.SmoothRot)
             local activeBossClip = bossClips[s.Name] or bossClips.Idle
             if activeBossClip then
-                Renderer.Pose(s.Model, activeBossClip, now - s.Start)
+                local elapsed = now - s.Start
+                if isDead and activeBossClip.Duration then
+                    elapsed = math.min(elapsed, activeBossClip.Duration - 0.02)
+                end
+                Renderer.Pose(s.Model, activeBossClip, elapsed)
             end
         end
     end)

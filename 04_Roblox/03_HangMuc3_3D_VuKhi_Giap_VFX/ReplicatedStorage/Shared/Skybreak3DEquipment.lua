@@ -1054,7 +1054,7 @@ function M.StepRaceV4Wings(s, now)
     end
 
     computeBindBasis(s)
-    local scaleRatio = (s.CurrentScale or 2.6) / 2.6
+    local scaleRatio = s.IsNativeAvatar and 0.62 or ((s.CurrentScale or 2.6) / 2.6)
     local torsoCF = getBoneWorldCF(s, fx.TorsoBone, CFrame.new(0, 0.9, 0))
     local torsoAligned = torsoCF * (s._TorsoModelBasis or CFrame.identity)
 
@@ -1295,8 +1295,11 @@ function M.EnsureStarterCharacterForm(ch)
         end
     end
     local folder = ch:FindFirstChild('SkybreakStarterForm')
-    if not folder then
-        folder = Instance.new('Folder')
+    if not folder or not folder:IsA('Model') then
+        if folder then
+            folder:Destroy()
+        end
+        folder = Instance.new('Model')
         folder.Name = 'SkybreakStarterForm'
         folder.Parent = ch
     end
@@ -1341,7 +1344,7 @@ function M.EnsureStarterCharacterForm(ch)
     local head = ch:FindFirstChild('Head')
     if head and head:IsA('BasePart') and not folder:GetAttribute('B_Head') then
         folder:SetAttribute('B_Head', true)
-        local sh = weldPart(head, 'StarterHead', Vector3.new(2, 1, 1), skinCol, CFrame.identity, Enum.MeshType.Head, Vector3.new(1.25, 1.25, 1.25))
+        local sh = weldPart(head, 'SculptedFace_StarterHead', Vector3.new(2, 1, 1), skinCol, CFrame.identity, Enum.MeshType.Head, Vector3.new(1.25, 1.25, 1.25))
         local face = Instance.new('Decal')
         face.Name = 'StarterFace'
         face.Face = Enum.NormalId.Front
@@ -2980,7 +2983,7 @@ function M.BootWorld(Renderer)
             end
         end
 
-        -- Wild Natural Devil Fruit bobbing, respawn cycle & 1650-stud Aether Radar Wisp (#50)
+        -- Wild Natural Devil Fruit bobbing & respawn cycle (#50)
         if wildState.RespawnAt > 0 and now >= wildState.RespawnAt and wildState.SpawnFn then
             wildState.SpawnFn()
         end
@@ -2989,42 +2992,6 @@ function M.BootWorld(Renderer)
                 local bob = math.sin(now * 2.8) * 0.22
                 wildState.ActiveModel:PivotTo(CFrame.new(wildState.Pos + Vector3.new(0, bob, 0)) * CFrame.Angles(0, now * 1.45, math.sin(now * 2.0) * 0.08))
             end
-        end
-
-        if wildState.Pos and root and not lowFX then
-            local delta = wildState.Pos - root.Position
-            local dist = delta.Magnitude
-            if dist >= 10 and dist <= 1650 then
-                if not radarWisp or not radarWisp.Parent then
-                    radarWisp = makePart(
-                        ensureTempFolder(),
-                        'NaturalFruitRadarWisp',
-                        Vector3.new(0.32, 0.24, 0.95),
-                        Color3.fromRGB(255, 218, 88),
-                        Enum.PartType.Block,
-                        0.22,
-                        'WedgePart',
-                        Enum.Material.SmoothPlastic,
-                        0.08
-                    )
-                end
-                local dir = Vector3.new(delta.X, 0, delta.Z)
-                local dirUnit = dir.Magnitude > 0.1 and dir.Unit or root.CFrame.LookVector
-                local pulseFreq = 3.2 + (1 - math.clamp(dist / 1650, 0, 1)) * 5.0
-                local bob = math.sin(now * pulseFreq) * 0.20
-                local wPos = root.Position + dirUnit * 5.0 + Vector3.new(0, 2.35 + bob, 0)
-                radarWisp.Color = (wildState.Spec and wildState.Spec.Color) or Color3.fromRGB(255, 218, 88)
-                local wDiff = wildState.Pos - wPos
-                local wDir = wDiff.Magnitude > 1e-3 and wDiff.Unit or dirUnit
-                local wUp = math.abs(wDir.Y) > 0.99 and Vector3.new(0, 0, 1) or Vector3.new(0, 1, 0)
-                radarWisp.CFrame = CFrame.lookAt(wPos, wPos + wDir, wUp)
-            elseif radarWisp then
-                radarWisp:Destroy()
-                radarWisp = nil
-            end
-        elseif radarWisp then
-            radarWisp:Destroy()
-            radarWisp = nil
         end
 
         -- Kael Forge rhythmic anvil sparks (#24)
