@@ -2566,7 +2566,14 @@ function DragonSovereignVFX.DispatchMove(moveKey, actorChar, startPos, endPos, l
 
 	if actorChar and (tier or 0) < 2 then
 		Lib.PlaySkillCastPose(actorChar, k, 0.36)
+		Lib.SpawnHandChargeIgnition(actorChar, k, cMain, cSub, 0.34, folder)
+		if k == "X" or k == "C" or k == "V" or k == "F" then
+			Lib.SpawnCharacterAfterimageBurst(actorChar, 3, cMain, 0.30, folder)
+		end
 	end
+	Lib.SpawnFadeAtmosphericWindSmoke(startPos, 5.2 * sc, cMain, folder)
+	Lib.PlayLayeredSkillAudio(startPos, dst, k, "Dragon")
+	Lib.SpawnLingeringGroundAftermath(dst, 12.5 * sc, cMain, cSub, "Dragon", folder)
 
 	if k == "V" then
 		local vTier = tier

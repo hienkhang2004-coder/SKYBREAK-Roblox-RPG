@@ -487,22 +487,24 @@ local function buildWeaponAwakeningAura(s)
             table.insert(auraData.InnerRingNodes, { Seg = seg, Index = i, Count = segCount, Radius = radius })
         end
 
-        local shardCount = 4
-        for i = 1, shardCount do
-            local shard = makeAuraPart(
-                folder,
-                'AstralShard_' .. i,
-                Vector3.new(0.24, 0.72, 0.24),
-                i % 2 == 0 and secondary or primary,
-                Enum.PartType.Block,
-                0.08
-            )
-            table.insert(auraData.Shards, { Part = shard, Index = i, Count = shardCount })
+        if not s.IsNativeAvatar then
+            local shardCount = 4
+            for i = 1, shardCount do
+                local shard = makeAuraPart(
+                    folder,
+                    'AstralShard_' .. i,
+                    Vector3.new(0.24, 0.72, 0.24),
+                    i % 2 == 0 and secondary or primary,
+                    Enum.PartType.Block,
+                    0.08
+                )
+                table.insert(auraData.Shards, { Part = shard, Index = i, Count = shardCount })
+            end
         end
     end
 
     -- +15 (MAX): Mythic Celestial Sunfire Crown Halo + 4 Orbiting Radiant Spirit Blades
-    if level >= 15 then
+    if level >= 15 and not s.IsNativeAvatar then
         local rayCount = 8
         for i = 1, rayCount do
             local ray = makeAuraPart(
@@ -1388,7 +1390,8 @@ local function buildHeldFruitFX(s, fruitId)
         end
         local clone = template:Clone()
         clone.Name = 'HeldFruit3D'
-        clone:ScaleTo(0.78)
+        local fruitScale = s.IsNativeAvatar and 0.54 or 0.78
+        clone:ScaleTo(fruitScale)
         local firstMesh = nil
         for _, d in ipairs(clone:GetDescendants()) do
             if d:IsA('WeldConstraint') then
@@ -1427,7 +1430,7 @@ local function buildHeldFruitFX(s, fruitId)
         clone.Parent = s.Model
         s.HeldFruitModel = clone
         s.HeldFruitParts = partsList
-        s.HeldFruitClips = getScaledClips(assetName, 0.78)
+        s.HeldFruitClips = getScaledClips(assetName, fruitScale)
         s.HeldFruitHandBone = findBone(s.Model, { 'Hand_R', 'RightHand', 'Arm_R', 'Weapon_R' })
     end)
 end
@@ -1468,6 +1471,7 @@ local function stepHeldFruitFX(s, now)
     local ch = s.Character
     local plr = s.Owner
     local activeSlot = tonumber((ch and ch:GetAttribute('ActiveSlot')) or (plr and plr:GetAttribute('ActiveSlot')))
+    local showcaseUntil = tonumber(plr and plr:GetAttribute('ShowcaseFruitUntil')) or 0
     local m = s.HeldFruitModel
     local hasHeldFruit = (m ~= nil and m.Parent ~= nil)
     local isV5Transform = (s.TransformFX and s.TransformFX.V5Model and s.TransformFX.V5Model.Parent ~= nil)
@@ -1482,7 +1486,8 @@ local function stepHeldFruitFX(s, now)
     if not hasHeldFruit then
         return
     end
-    if isV5Transform then
+    local hideFruit = isV5Transform or (activeSlot ~= nil and activeSlot ~= 2 and now >= showcaseUntil)
+    if hideFruit then
         if not s._HeldFruitHiddenForBeast then
             s._HeldFruitHiddenForBeast = true
             for _, d in ipairs(m:GetDescendants()) do
@@ -1505,12 +1510,12 @@ local function stepHeldFruitFX(s, now)
             end
         end
     end
-    local bob = math.sin(now * 3.2) * 0.12
+    local bob = math.sin(now * 3.2) * 0.10
+    local handCF = getBoneWorldCF(s, s.HeldFruitHandBone, CFrame.new(1.35, 0.35, -0.85))
     local targetPos
-    if activeSlot == 1 or activeSlot == 3 or activeSlot == 4 then
-        targetPos = (s.Root.CFrame * CFrame.new(-1.85, 1.65 + bob, 0.45)).Position
+    if s.IsNativeAvatar then
+        targetPos = (handCF * CFrame.new(0, -0.18, -0.36)).Position + Vector3.new(0, 0.24 + bob, 0)
     else
-        local handCF = getBoneWorldCF(s, s.HeldFruitHandBone, CFrame.new(1.35, 0.35, -0.85))
         targetPos = handCF.Position + Vector3.new(0, 0.52 + bob, 0)
     end
     local baseCF = CFrame.new(targetPos) * CFrame.Angles(0, math.pi + now * 1.35, math.sin(now * 2.2) * 0.06)
@@ -3316,429 +3321,8 @@ local function boot()
         combatEvent.OnClientEvent:Connect(handleCombatClip)
     end
 
-    local NATIVE_JOINT_ROLE_MAP = {
-        Root = 'Root',
-        RootJoint = 'Root',
-        Waist = 'Waist',
-        Neck = 'Neck',
-        RightShoulder = 'RightShoulder',
-        ['Right Shoulder'] = 'RightShoulder',
-        RightElbow = 'RightElbow',
-        RightWrist = 'RightWrist',
-        LeftShoulder = 'LeftShoulder',
-        ['Left Shoulder'] = 'LeftShoulder',
-        LeftElbow = 'LeftElbow',
-        LeftWrist = 'LeftWrist',
-        RightHip = 'RightHip',
-        ['Right Hip'] = 'RightHip',
-        RightKnee = 'RightKnee',
-        LeftHip = 'LeftHip',
-        ['Left Hip'] = 'LeftHip',
-        LeftKnee = 'LeftKnee',
-    }
-
-    local function ensureNativeJoints(s)
-        local ch = s and s.Character
-        if not ch or not ch.Parent then
-            return nil
-        end
-        if s.NativeJoints and s.NativeJoints.RightShoulder and s.NativeJoints.RightShoulder.Joint and s.NativeJoints.RightShoulder.Joint.Parent then
-            return s.NativeJoints
-        end
-        local joints = {}
-        s.NativeJointOffsets = s.NativeJointOffsets or {}
-        for _, d in ipairs(ch:GetDescendants()) do
-            if d:IsA('Motor6D') and not isInsideManagedFXContainer(d, ch) then
-                local role = NATIVE_JOINT_ROLE_MAP[d.Name]
-                if role and not joints[role] then
-                    if not d:GetAttribute('SkybreakOrigC0') then
-                        d:SetAttribute('SkybreakOrigC0', d.C0)
-                    end
-                    local origC0 = d:GetAttribute('SkybreakOrigC0') or d.C0
-                    joints[role] = {
-                        Joint = d,
-                        BaseC0 = origC0,
-                    }
-                    s.NativeJointOffsets[role] = s.NativeJointOffsets[role] or CFrame.identity
-                end
-            end
-        end
-        s.NativeJoints = joints
-        return joints
-    end
-
     local function stepNativeAvatarAnimation(s, dt, now)
-        local ch = s.Character
-        if not ch or not ch.Parent or not s.H or not s.Root then
-            return
-        end
-        local animator = s.H:FindFirstChildOfClass('Animator')
-        if not animator then
-            animator = Instance.new('Animator')
-            animator.Parent = s.H
-        end
-        local animScript = ch:FindFirstChild('Animate')
-        if animScript and animScript:IsA('BaseScript') and animScript.Disabled then
-            animScript.Disabled = false
-        end
-
-        local isBeastNow = s.TransformFX and s.TransformFX.V5Model and s.TransformFX.V5Model.Parent ~= nil
-        if not isBeastNow then
-            local age = now - (s.SpawnedAt or 0)
-            local allowFallback = (age > 3.5) or (s.Owner ~= nil and s.Owner:HasAppearanceLoaded())
-            if age < 10.0 or now >= (s.NextVisCheckAt or 0) then
-                s.NextVisCheckAt = now + 0.2
-                restoreNativeAvatarVisibility(ch, allowFallback)
-            end
-        end
-
-        if ch:GetAttribute('NativeRaceV4Toggled') == true and not s.NativeRaceV4Toggled then
-            s.NativeRaceV4Toggled = true
-            local rv = tostring(ch:GetAttribute('RaceV4') or (s.Owner and s.Owner:GetAttribute('RaceV4')) or '')
-            if rv ~= '' then
-                buildRaceV4FX(s, rv)
-            end
-        end
-
-        local mode = s.H:GetState()
-        local vel = s.Root.AssemblyLinearVelocity
-        local hSpeed = math.max(Vector3.new(vel.X, 0, vel.Z).Magnitude, s.H.MoveDirection.Magnitude * s.H.WalkSpeed)
-        local airborne = (mode == Enum.HumanoidStateType.Jumping or mode == Enum.HumanoidStateType.Freefall)
-        local activeSlot = tonumber(ch:GetAttribute('ActiveSlot') or ch:GetAttribute('EquippedSlot')
-            or (s.Owner and (s.Owner:GetAttribute('ActiveSlot') or s.Owner:GetAttribute('EquippedSlot')))) or 3
-
-        -- 1. Instant 0ms Client Input Detection (Attacks, Skills, Dash, Geppo Double-Jump)
-        local lastClientAtk = tonumber(ch:GetAttribute('LastClientAttackAt')) or 0
-        if lastClientAtk > (s.LastClientAttackAt or 0) then
-            s.LastClientAttackAt = lastClientAtk
-            local isHeavy = ch:GetAttribute('LastClientAttackHeavy') == true
-            local comboIdx = math.clamp(tonumber(ch:GetAttribute('LastClientAttackCombo')) or 1, 1, 3)
-            s.Start = now
-            if isHeavy then
-                s.Name = 'Heavy'
-                s.Until = now + 0.56
-            elseif activeSlot == 4 then
-                s.Name = 'GunShoot'
-                s.Until = now + 0.36
-            elseif activeSlot == 1 then
-                s.Name = 'StyleAttack0' .. comboIdx
-                s.Until = now + 0.42
-            else
-                s.Name = 'Attack0' .. comboIdx
-                s.Until = now + 0.44
-            end
-        end
-
-        local lastClientSkill = tonumber(ch:GetAttribute('LastClientSkillAt')) or 0
-        if lastClientSkill > (s.LastClientSkillAt or 0) then
-            s.LastClientSkillAt = lastClientSkill
-            local sKey = string.upper(tostring(ch:GetAttribute('LastClientSkillKey') or 'Z'))
-            s.Name = 'Skill' .. sKey
-            s.Start = now
-            s.Until = now + (sKey == 'V' and 0.92 or (sKey == 'C' and 0.78 or 0.64))
-        end
-
-        local lastDashAt = tonumber(ch:GetAttribute('LastDashAt')) or 0
-        if lastDashAt > (s.LastDashAt or 0) then
-            s.LastDashAt = lastDashAt
-            s.Name = 'Dash'
-            s.Start = now
-            s.Until = now + math.max(0.38, tonumber(ch:GetAttribute('DashDuration')) or 0.42)
-        end
-
-        local lastAirJump = tonumber(ch:GetAttribute('LastAirJumpAt')) or 0
-        if lastAirJump > (s.LastAirJumpAt or 0) then
-            s.LastAirJumpAt = lastAirJump
-            local jumpIdx = math.max(1, tonumber(ch:GetAttribute('AirJumpIndex')) or ((s.AirJumpSeq or 0) + 1))
-            s.AirJumpSeq = jumpIdx
-            s.Name = (jumpIdx % 3 == 0) and 'DoubleJump_Flip' or 'DoubleJump'
-            s.Start = now
-            s.Until = now + 0.48
-            Equipment3D.SpawnGeppoShockwave(s, jumpIdx)
-        end
-
-        if s.WasAirborne and not airborne then
-            local fallDist = (s.AirPeakY or s.Root.Position.Y) - s.Root.Position.Y
-            s.AirPeakY = s.Root.Position.Y
-            if fallDist > 45 then
-                Equipment3D.SpawnSuperheroHeavyLanding(s, fallDist)
-            end
-            s.AirJumpSeq = 0
-        end
-        s.WasAirborne = airborne
-        if airborne then
-            s.LastFallVy = math.min(tonumber(s.LastFallVy) or 0, vel.Y)
-            s.AirPeakY = math.max(s.AirPeakY or s.Root.Position.Y, s.Root.Position.Y)
-        else
-            s.LastFallVy = 0
-            s.AirPeakY = s.Root.Position.Y
-        end
-        s.LastCapeWind = math.clamp(hSpeed / 36 + (airborne and 0.32 or 0), 0, 1.35)
-
-        if now >= (s.Until or 0) then
-            s.Name = airborne and 'Jump' or (hSpeed > 1.5 and 'Run' or 'Idle')
-        end
-        ch:SetAttribute('V5CurrentClip', s.Name:gsub('^TS_', ''))
-
-        -- 2. Compute Zero-Drift R15 / R6 Motor6D Pose Offsets
-        local joints = ensureNativeJoints(s)
-        if not joints then
-            return
-        end
-
-        local hasNativeTracks = false
-        local okTracks, tracks = pcall(function()
-            return animator:GetPlayingAnimationTracks()
-        end)
-        if okTracks and type(tracks) == 'table' and #tracks > 0 then
-            hasNativeTracks = true
-        end
-
-        local targets = {
-            Root = CFrame.identity,
-            Waist = CFrame.identity,
-            Neck = CFrame.identity,
-            RightShoulder = CFrame.identity,
-            RightElbow = CFrame.identity,
-            RightWrist = CFrame.identity,
-            LeftShoulder = CFrame.identity,
-            LeftElbow = CFrame.identity,
-            LeftWrist = CFrame.identity,
-            RightHip = CFrame.identity,
-            RightKnee = CFrame.identity,
-            LeftHip = CFrame.identity,
-            LeftKnee = CFrame.identity,
-        }
-
-        local inAction = now < (s.Until or 0)
-        if inAction then
-            local dur = math.max(0.16, (s.Until or now) - (s.Start or now))
-            local p = math.clamp((now - (s.Start or now)) / dur, 0, 1)
-            local env = math.sin(p * math.pi)
-            local strike = math.clamp((p - 0.14) / 0.38, 0, 1)
-            local clip = s.Name
-
-            if clip == 'Attack01' or clip == 'Attack' then
-                -- Sword Combo 1: Diagonal Right-to-Left Cleave
-                local yaw = math.rad(-26 + 64 * strike) * env
-                local pitch = math.rad(124 - 98 * strike) * env
-                local roll = math.rad(28 - 58 * strike) * env
-                targets.Waist = CFrame.Angles(math.rad(-10) * env, yaw, 0)
-                targets.RightShoulder = CFrame.Angles(pitch, math.rad(-14) * env, roll)
-                targets.RightElbow = CFrame.Angles(math.rad(38 * (1 - strike * 0.75)) * env, 0, 0)
-                targets.RightWrist = CFrame.Angles(math.rad(-24 * strike) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(-28) * env, 0, math.rad(-20) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(26) * env, 0, 0)
-
-            elseif clip == 'Attack02' then
-                -- Sword Combo 2: Reverse Cross-Slash Left-to-Right
-                local yaw = math.rad(32 - 70 * strike) * env
-                local pitch = math.rad(86 - 18 * strike) * env
-                local roll = math.rad(-36 + 76 * strike) * env
-                targets.Waist = CFrame.Angles(math.rad(-8) * env, yaw, 0)
-                targets.RightShoulder = CFrame.Angles(pitch, math.rad(22 - 52 * strike) * env, roll)
-                targets.RightElbow = CFrame.Angles(math.rad(28 * (1 - strike * 0.7)) * env, 0, 0)
-                targets.RightWrist = CFrame.Angles(math.rad(-18 * strike) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(68 - 42 * strike) * env, 0, math.rad(-26) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(32) * env, 0, 0)
-
-            elseif clip == 'Attack03' then
-                -- Sword Combo 3: 360° Whirlwind Power Cleave
-                local spinYaw = -p * math.pi * 2
-                targets.Root = CFrame.Angles(math.rad(-12) * env, spinYaw, 0)
-                targets.Waist = CFrame.Angles(math.rad(-8) * env, math.rad(18) * env, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(92) * env, 0, math.rad(38) * env)
-                targets.RightElbow = CFrame.Angles(math.rad(14) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(82) * env, 0, math.rad(-34) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(22) * env, 0, 0)
-
-            elseif clip == 'StyleAttack01' then
-                -- Fighting Style Combo 1: Right Straight Martial Punch
-                local punch = math.sin(math.clamp(p * 1.35, 0, 1) * math.pi)
-                targets.Waist = CFrame.Angles(math.rad(-12) * punch, math.rad(40) * punch, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(94) * punch, 0, math.rad(-8) * punch)
-                targets.RightElbow = CFrame.Angles(math.rad(12) * (1 - punch), 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(72) * env, 0, math.rad(18) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(64) * env, 0, 0)
-
-            elseif clip == 'StyleAttack02' then
-                -- Fighting Style Combo 2: Left Hook Martial Strike
-                local hook = math.sin(math.clamp(p * 1.35, 0, 1) * math.pi)
-                targets.Waist = CFrame.Angles(math.rad(-12) * hook, math.rad(-42) * hook, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(96) * hook, 0, math.rad(24) * hook)
-                targets.LeftElbow = CFrame.Angles(math.rad(28) * hook, 0, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(72) * env, 0, math.rad(-18) * env)
-                targets.RightElbow = CFrame.Angles(math.rad(64) * env, 0, 0)
-
-            elseif clip == 'StyleAttack03' then
-                -- Fighting Style Combo 3: High Roundhouse Sky-Kick
-                targets.Root = CFrame.Angles(math.rad(18) * env, math.rad(28) * env, 0)
-                targets.Waist = CFrame.Angles(math.rad(-10) * env, math.rad(-24) * env, 0)
-                targets.RightHip = CFrame.Angles(math.rad(106) * env, 0, math.rad(18) * env)
-                targets.RightKnee = CFrame.Angles(math.rad(-16) * (1 - env), 0, 0)
-                targets.LeftHip = CFrame.Angles(math.rad(-18) * env, 0, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(68) * env, 0, math.rad(22) * env)
-                targets.RightElbow = CFrame.Angles(math.rad(56) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(68) * env, 0, math.rad(-22) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(56) * env, 0, 0)
-
-            elseif clip == 'GunShoot' then
-                -- Slot 4 Gun / Bow Aiming + Recoil Kick
-                local recoil = math.sin(math.clamp((p - 0.08) / 0.45, 0, 1) * math.pi)
-                targets.Waist = CFrame.Angles(math.rad(4 * recoil), math.rad(-18) * env, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(90 + 20 * recoil) * env, math.rad(-12) * env, 0)
-                targets.RightElbow = CFrame.Angles(math.rad(16 * recoil) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(48) * env, 0, math.rad(18) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(36) * env, 0, 0)
-
-            elseif clip == 'Heavy' then
-                -- Heavy Attack / Charged Overhead Leap Slam
-                local slam = math.clamp((p - 0.28) / 0.36, 0, 1)
-                local armPitch = math.rad(148 - 122 * slam) * env
-                targets.Root = CFrame.new(0, 0.42 * math.sin(math.clamp(p * 1.4, 0, 1) * math.pi), 0)
-                    * CFrame.Angles(math.rad(14 - 36 * slam) * env, 0, 0)
-                targets.Waist = CFrame.Angles(math.rad(10 - 28 * slam) * env, 0, 0)
-                targets.RightShoulder = CFrame.Angles(armPitch, 0, math.rad(-16) * env)
-                targets.RightElbow = CFrame.Angles(math.rad(24 * (1 - slam)) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(armPitch, 0, math.rad(16) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(24 * (1 - slam)) * env, 0, 0)
-
-            elseif clip == 'Dash' then
-                -- Aerodynamic Flash-Step / Dash Sprint Lean
-                targets.Root = CFrame.Angles(math.rad(-26) * env, 0, 0)
-                targets.Waist = CFrame.Angles(math.rad(-10) * env, 0, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(-38) * env, 0, math.rad(18) * env)
-                targets.RightElbow = CFrame.Angles(math.rad(28) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(-38) * env, 0, math.rad(-18) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(28) * env, 0, 0)
-                targets.RightHip = CFrame.Angles(math.rad(34) * env, 0, 0)
-                targets.RightKnee = CFrame.Angles(math.rad(-42) * env, 0, 0)
-                targets.LeftHip = CFrame.Angles(math.rad(-28) * env, 0, 0)
-                targets.LeftKnee = CFrame.Angles(math.rad(-24) * env, 0, 0)
-
-            elseif clip == 'DoubleJump_Flip' then
-                -- Geppo 3rd Jump Somersault Flip
-                targets.Root = CFrame.Angles(-p * math.pi * 2, 0, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(65) * env, 0, math.rad(28) * env)
-                targets.LeftShoulder = CFrame.Angles(math.rad(65) * env, 0, math.rad(-28) * env)
-                targets.RightHip = CFrame.Angles(math.rad(58) * env, 0, 0)
-                targets.RightKnee = CFrame.Angles(math.rad(-68) * env, 0, 0)
-                targets.LeftHip = CFrame.Angles(math.rad(58) * env, 0, 0)
-                targets.LeftKnee = CFrame.Angles(math.rad(-68) * env, 0, 0)
-
-            elseif clip == 'DoubleJump' then
-                -- Geppo Sky-Step Mid-Air Kick
-                targets.Root = CFrame.Angles(math.rad(-10) * env, 0, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(42) * env, 0, math.rad(24) * env)
-                targets.LeftShoulder = CFrame.Angles(math.rad(42) * env, 0, math.rad(-24) * env)
-                targets.RightHip = CFrame.Angles(math.rad(46) * env, 0, 0)
-                targets.RightKnee = CFrame.Angles(math.rad(-54) * env, 0, 0)
-                targets.LeftHip = CFrame.Angles(math.rad(-22) * env, 0, 0)
-                targets.LeftKnee = CFrame.Angles(math.rad(-32) * env, 0, 0)
-
-            elseif clip == 'SkillZ' or clip == 'FruitZ' then
-                -- Skill [Z]: Elemental Wave Thrust / Crescent Cast
-                local cast = math.clamp((p - 0.12) / 0.42, 0, 1)
-                targets.Waist = CFrame.Angles(math.rad(-14) * env, math.rad(-28 + 62 * cast) * env, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(108 - 22 * cast) * env, 0, math.rad(28 - 54 * cast) * env)
-                targets.RightElbow = CFrame.Angles(math.rad(24 * (1 - cast)) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(45) * env, 0, math.rad(-24) * env)
-
-            elseif clip == 'SkillX' or clip == 'FruitX' then
-                -- Skill [X]: Twin-Arm Rising Cyclone Surge
-                local rise = math.clamp(p * 1.45, 0, 1)
-                targets.Root = CFrame.new(0, 0.28 * env, 0)
-                targets.Waist = CFrame.Angles(math.rad(14 * rise) * env, 0, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(28 + 106 * rise) * env, 0, math.rad(26) * env)
-                targets.RightElbow = CFrame.Angles(math.rad(20) * env, 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(28 + 106 * rise) * env, 0, math.rad(-26) * env)
-                targets.LeftElbow = CFrame.Angles(math.rad(20) * env, 0, 0)
-
-            elseif clip == 'SkillC' or clip == 'FruitC' then
-                -- Skill [C]: Rapid 720° Whirlwind Kata Barrage
-                targets.Root = CFrame.Angles(math.rad(-10) * env, -p * math.pi * 4, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(90) * env, 0, math.rad(42) * env)
-                targets.LeftShoulder = CFrame.Angles(math.rad(90) * env, 0, math.rad(-42) * env)
-
-            else
-                -- Skill [V] / [F] / Awakening Ultimate Levitation Burst
-                local burst = math.clamp((p - 0.35) / 0.35, 0, 1)
-                targets.Root = CFrame.new(0, 0.58 * env, 0)
-                targets.Waist = CFrame.Angles(math.rad(18 - 34 * burst) * env, 0, 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(136 - 42 * burst) * env, 0, math.rad(36) * env)
-                targets.LeftShoulder = CFrame.Angles(math.rad(136 - 42 * burst) * env, 0, math.rad(-36) * env)
-                targets.RightHip = CFrame.Angles(math.rad(-16) * env, 0, math.rad(10) * env)
-                targets.RightKnee = CFrame.Angles(math.rad(-28) * env, 0, 0)
-                targets.LeftHip = CFrame.Angles(math.rad(-16) * env, 0, math.rad(-10) * env)
-                targets.LeftKnee = CFrame.Angles(math.rad(-28) * env, 0, 0)
-            end
-        else
-            -- Locomotion Pose Layer (Fallback procedural R15/R6 locomotion when native tracks aren't active + Sword Carry Grip)
-            if not hasNativeTracks then
-                if airborne then
-                    targets.Root = CFrame.Angles(math.rad(-8), 0, 0)
-                    targets.RightShoulder = CFrame.Angles(math.rad(34), 0, math.rad(22))
-                    targets.RightElbow = CFrame.Angles(math.rad(28), 0, 0)
-                    targets.LeftShoulder = CFrame.Angles(math.rad(34), 0, math.rad(-22))
-                    targets.LeftElbow = CFrame.Angles(math.rad(28), 0, 0)
-                    targets.RightHip = CFrame.Angles(math.rad(28), 0, 0)
-                    targets.RightKnee = CFrame.Angles(math.rad(-44), 0, 0)
-                    targets.LeftHip = CFrame.Angles(math.rad(-16), 0, 0)
-                    targets.LeftKnee = CFrame.Angles(math.rad(-32), 0, 0)
-                elseif hSpeed > 1.5 then
-                    local cyc = now * math.clamp(hSpeed * 0.55, 6.5, 13.5)
-                    local sWave = math.sin(cyc)
-                    local cWave = math.cos(cyc)
-                    local stride = math.clamp(hSpeed / 22, 0.35, 1.0)
-                    targets.Root = CFrame.new(0, math.abs(cWave) * 0.12 * stride, 0)
-                        * CFrame.Angles(math.rad(-10 * stride), math.rad(-sWave * 6 * stride), 0)
-                    targets.Waist = CFrame.Angles(0, math.rad(sWave * 8 * stride), 0)
-                    targets.RightHip = CFrame.Angles(math.rad(-sWave * 46 * stride), 0, 0)
-                    targets.RightKnee = CFrame.Angles(math.rad(-math.max(0, sWave) * 52 * stride - 8), 0, 0)
-                    targets.LeftHip = CFrame.Angles(math.rad(sWave * 46 * stride), 0, 0)
-                    targets.LeftKnee = CFrame.Angles(math.rad(-math.max(0, -sWave) * 52 * stride - 8), 0, 0)
-                    targets.LeftShoulder = CFrame.Angles(math.rad(-sWave * 38 * stride), 0, math.rad(-8))
-                    targets.LeftElbow = CFrame.Angles(math.rad(26 + math.max(0, -sWave) * 22 * stride), 0, 0)
-                    if activeSlot == 3 then
-                        targets.RightShoulder = CFrame.Angles(math.rad(18 + sWave * 12 * stride), 0, math.rad(12))
-                        targets.RightElbow = CFrame.Angles(math.rad(24), 0, 0)
-                    else
-                        targets.RightShoulder = CFrame.Angles(math.rad(sWave * 38 * stride), 0, math.rad(8))
-                        targets.RightElbow = CFrame.Angles(math.rad(26 + math.max(0, sWave) * 22 * stride), 0, 0)
-                    end
-                else
-                    local br = math.sin(now * 2.4)
-                    targets.Waist = CFrame.Angles(math.rad(br * 1.8), 0, 0)
-                    targets.LeftShoulder = CFrame.Angles(math.rad(br * 2.2), 0, math.rad(-5))
-                    if activeSlot == 3 then
-                        targets.RightShoulder = CFrame.Angles(math.rad(16 + br * 2.0), 0, math.rad(10))
-                        targets.RightElbow = CFrame.Angles(math.rad(20), 0, 0)
-                    else
-                        targets.RightShoulder = CFrame.Angles(math.rad(-br * 2.2), 0, math.rad(5))
-                    end
-                end
-            elseif activeSlot == 3 and not airborne then
-                -- Subtle sword-carry arm lift when native Animate tracks are playing so blade stays above ground
-                targets.RightShoulder = CFrame.Angles(math.rad(14), 0, math.rad(8))
-                targets.RightElbow = CFrame.Angles(math.rad(16), 0, 0)
-            end
-        end
-
-        local blendSpeed = inAction and 22 or 14
-        local alpha = 1 - math.exp(-blendSpeed * dt)
-        for role, entry in pairs(joints) do
-            local j = entry.Joint
-            if j and j.Parent then
-                local curOff = s.NativeJointOffsets[role] or CFrame.identity
-                local goalOff = targets[role] or CFrame.identity
-                local nextOff = curOff:Lerp(goalOff, alpha)
-                s.NativeJointOffsets[role] = nextOff
-                local baseC0 = entry.BaseC0
-                j.C0 = CFrame.new(baseC0.Position + nextOff.Position) * nextOff.Rotation * baseC0.Rotation
-            end
-        end
-
-        Equipment3D.ApplyHeadTargetLookAt(s, dt, now)
+        Equipment3D.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreNativeAvatarVisibility)
     end
 
     Run.RenderStepped:Connect(function(dt)

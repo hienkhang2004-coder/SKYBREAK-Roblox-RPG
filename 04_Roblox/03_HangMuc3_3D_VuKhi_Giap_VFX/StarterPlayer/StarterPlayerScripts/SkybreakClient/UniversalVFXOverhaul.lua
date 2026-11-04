@@ -182,8 +182,10 @@ function UniversalVFXOverhaul.SpawnStage3Aftermath(impactPos, prof, radius, scal
 	Debris:AddItem(darkCore, 0.36)
 	Debris:AddItem(plasmaShell, 0.48)
 
-	-- Native VFX Studio Prefab Elemental Burst
+	-- Native VFX Studio Prefab Elemental Burst + FADE Atmospheric Wind-Smoke & 1.75s Lingering Ground Aftermath
 	Lib.EmitElement(prof.Element, CFrame.new(impactPos), math.clamp(r / 12, 0.8, 1.85), prof.Primary, prof.Secondary)
+	Lib.SpawnFadeAtmosphericWindSmoke(impactPos, r * 0.65, prof.Primary, folder)
+	Lib.SpawnLingeringGroundAftermath(impactPos, r * 0.68, prof.Primary, prof.Secondary, 1.75, folder)
 
 	if isAwakened then
 		Lib.SpawnShockRing(CFrame.new(impactPos).Position, CFrame.new(impactPos) * CFrame.Angles(0.42, 0.6, 0), PAL.Gold, r * 0.35, r * 1.65, 0.22, 0.50, Enum.Material.ForceField, folder)
@@ -408,7 +410,13 @@ local function spawnBespokeFruitSignature(fruitKey, moveKey, startPos, endPos, l
 	-- Dynamic Cast Pose on Character + FADE Showcase Core Layering per Move Key (Z vs X vs C vs V vs F)
 	if actorChar then
 		Lib.PlaySkillCastPose(actorChar, k, (k == "V") and 0.50 or ((k == "C") and 0.42 or 0.32))
+		Lib.SpawnHandChargeIgnition(actorChar, k, prof.Primary, prof.Secondary, (k == "V") and 0.42 or 0.28, folder)
+		if k == "X" or k == "C" or k == "V" or k == "F" then
+			Lib.SpawnCharacterAfterimageBurst(actorChar, (k == "V" or k == "F") and 3 or 2, prof.Primary, 0.28, folder)
+		end
 	end
+	Lib.SpawnFadeAtmosphericWindSmoke(startPos, 4.2 * sc, prof.Primary, folder)
+	Lib.PlayLayeredSkillAudio(startPos, endPos, k, prof.Element)
 
 	-- Distinct Per-Key FADE Showcase Backbone so Z, X, C, V, F NEVER look identical:
 	if k == "Z" then
@@ -1544,8 +1552,10 @@ function UniversalVFXOverhaul.SpawnHitImpact(hitPos, isCrit, breakDmg, knockDir,
 
 	local randCF = CFrame.new(hitPos) * CFrame.Angles(math.random() * 3.14, math.random() * 3.14, 0)
 	Lib.SpawnShockRing(hitPos, randCF, col, 1.2, heavy and 9.4 or 5.8, 0.22, 0.26, Enum.Material.ForceField, folder)
+	Lib.SpawnFadeCrescentArc(randCF, 1.4, heavy and 7.4 or 4.6, heavy and 1.4 or 0.9, col, sub, 0.26, folder)
 	if heavy then
 		Lib.SpawnShockRing(hitPos, randCF * CFrame.Angles(1.1, 0.8, 0), sub, 0.9, 6.8, 0.16, 0.22, Enum.Material.ForceField, folder)
+		Lib.SpawnFadeCrescentArc(randCF * CFrame.Angles(1.1, 0.8, 0.5), 1.1, 5.8, 1.1, sub, col, 0.22, folder)
 	end
 
 	if not Lib.IsLowFX() then

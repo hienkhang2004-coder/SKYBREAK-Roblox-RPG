@@ -3087,4 +3087,354 @@ function VFXStudioLibrary.PlaySkillCastPose(actorChar, moveKey, dur)
 	end)
 end
 
+-- ============================================================================
+-- FADE SHOWCASE PHASE 2 REALISM SUITE:
+-- 1. SpawnFadeAtmosphericWindSmoke (Soft translucent white/slate wind-smoke curtains & dust clouds)
+-- 2. SpawnHandChargeIgnition (Inward suction sparks + forearm crescent rings + foot dust cone)
+-- 3. SpawnCharacterAfterimageBurst (2-3 trailing dark-core + neon-rim speed silhouettes on X/C/V/F)
+-- 4. SpawnLingeringGroundAftermath (1.8s smoldering/frozen/crackling ground scar after skill impact)
+-- 5. PlayLayeredSkillAudio (3-stage Charge -> Sonic Boom Bass Drop -> Elemental Impact audio)
+-- ============================================================================
+function VFXStudioLibrary.SpawnFadeAtmosphericWindSmoke(startPos, endPos, radius, cPrimary, dur, parent)
+	if VFXStudioLibrary.IsLowFX() then return end
+	local d = dur or 0.65
+	local folder = parent or VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local gStart = VFXStudioLibrary.FindGround(startPos)
+	local gEnd = VFXStudioLibrary.FindGround(endPos)
+	local delta = gEnd - gStart
+	local dist = math.clamp(delta.Magnitude, 5, 48)
+	local dir = (delta.Magnitude > 0.05) and delta.Unit or Vector3.new(0, 0, -1)
+	local actualEnd = gStart + dir * dist
+	local r = math.clamp(radius or 3.5, 1.8, 14.0)
+	local col = cPrimary or PAL.Cyan
+	local softTint = Color3.new(
+		0.78 + col.R * 0.22,
+		0.80 + col.G * 0.20,
+		0.84 + col.B * 0.16
+	)
+
+	-- 1. Dual Peeling Atmospheric Wind-Smoke Curtains (Beam with smoke_main.dds, low LightEmission for true physical air density!)
+	local smokeHost = Instance.new("Part")
+	smokeHost.Name = "FadeWindSmokeHost"
+	smokeHost.Size = Vector3.new(0.2, 0.2, 0.2)
+	smokeHost.CFrame = VFXStudioLibrary.SafeLookAt(gStart + Vector3.new(0, 0.45, 0), actualEnd + Vector3.new(0, 0.45, 0), dir)
+	smokeHost.Transparency = 1
+	smokeHost.Anchored = true
+	smokeHost.CanCollide = false
+	smokeHost.CanQuery = false
+	smokeHost.CanTouch = false
+	smokeHost.Parent = folder
+
+	for side = -1, 1, 2 do
+		local a0 = Instance.new("Attachment")
+		a0.Position = Vector3.new(side * 0.6, 0, 0)
+		a0.Parent = smokeHost
+		local a1 = Instance.new("Attachment")
+		a1.Position = Vector3.new(side * r * 1.35, r * 0.42, -dist)
+		a1.Parent = smokeHost
+
+		local curtain = Instance.new("Beam")
+		curtain.Name = "WindSmokeCurtain_" .. side
+		curtain.Attachment0 = a0
+		curtain.Attachment1 = a1
+		curtain.Texture = TEX_SMOKE_CLOUD
+		curtain.TextureMode = Enum.TextureMode.Stretch
+		curtain.TextureSpeed = 1.8
+		curtain.Segments = 20
+		curtain.CurveSize0 = side * r * 0.85
+		curtain.CurveSize1 = -side * r * 0.45
+		curtain.Width0 = r * 0.55
+		curtain.Width1 = r * 1.65
+		curtain.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 245, 255)),
+			ColorSequenceKeypoint.new(0.55, softTint),
+			ColorSequenceKeypoint.new(1, PAL.Slate),
+		})
+		curtain.LightEmission = 0.12
+		curtain.LightInfluence = 0.35
+		curtain.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.62),
+			NumberSequenceKeypoint.new(0.35, 0.48),
+			NumberSequenceKeypoint.new(0.80, 0.68),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		curtain.FaceCamera = true
+		curtain.Parent = smokeHost
+
+		TweenService:Create(a1, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Position = Vector3.new(side * r * 2.25, r * 0.85, -dist * 1.05),
+		}):Play()
+		TweenService:Create(curtain, TweenInfo.new(d, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Width0 = 0,
+			Width1 = r * 2.4,
+		}):Play()
+	end
+
+	-- 2. Volumetric Impact Dust & Wind-Shear Smoke Burst at Impact Zone
+	local attEnd = Instance.new("Attachment")
+	attEnd.Position = Vector3.new(0, 0.4, -dist)
+	attEnd.Parent = smokeHost
+
+	local dustPE = Instance.new("ParticleEmitter")
+	dustPE.Name = "FadeAtmosphericDust"
+	dustPE.Texture = TEX_SMOKE_CLOUD
+	dustPE.Enabled = false
+	dustPE.Rate = 0
+	dustPE.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(242, 246, 255)),
+		ColorSequenceKeypoint.new(0.5, softTint),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(68, 74, 92)),
+	})
+	dustPE.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, r * 0.45),
+		NumberSequenceKeypoint.new(0.45, r * 1.25),
+		NumberSequenceKeypoint.new(1, r * 1.85),
+	})
+	dustPE.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.48),
+		NumberSequenceKeypoint.new(0.55, 0.68),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	dustPE.LightEmission = 0.10
+	dustPE.LightInfluence = 0.4
+	dustPE.Lifetime = NumberRange.new(d * 0.75, d * 1.15)
+	dustPE.Speed = NumberRange.new(r * 1.6, r * 3.8)
+	dustPE.SpreadAngle = Vector2.new(88, 22)
+	dustPE.Drag = 4.8
+	dustPE.RotSpeed = NumberRange.new(-140, 140)
+	dustPE.Rotation = NumberRange.new(0, 360)
+	dustPE.Parent = attEnd
+	dustPE:Emit(12)
+
+	Debris:AddItem(smokeHost, d + 0.35)
+end
+
+function VFXStudioLibrary.SpawnHandChargeIgnition(actorChar, originPos, lookDir, moveKey, cPrimary, cSecondary, sc, folder)
+	if VFXStudioLibrary.IsLowFX() then return end
+	local k = tostring(moveKey or "Z")
+	local col1 = cPrimary or PAL.Cyan
+	local col2 = cSecondary or PAL.HotWhite
+	local scale = math.clamp(sc or 1.0, 0.7, 2.0)
+
+	local handPart = actorChar and (
+		actorChar:FindFirstChild("RightHand")
+		or actorChar:FindFirstChild("RightLowerArm")
+		or actorChar:FindFirstChild("Right Arm")
+		or actorChar:FindFirstChild("HumanoidRootPart")
+	)
+	local chargePos = (handPart and handPart.Position) or (originPos + lookDir * 1.4 + Vector3.new(0, 1.2, 0))
+	local chargeCF = VFXStudioLibrary.SafeLookAt(chargePos, chargePos + lookDir, lookDir)
+
+	-- 1. Converging Suction Ring + Inward Implosion Sparks on the Fist/Hand
+	local coreFlash = VFXStudioLibrary.MakePart("HandChargeCore", Enum.PartType.Ball, Vector3.new(2.2, 2.2, 2.2) * scale, chargeCF, PAL.HotWhite, 0.05, Enum.Material.ForceField, folder)
+	local outerOrb = VFXStudioLibrary.MakePart("HandChargeShell", Enum.PartType.Ball, Vector3.new(3.8, 3.8, 3.8) * scale, chargeCF, col1, 0.25, Enum.Material.ForceField, folder)
+	TweenService:Create(coreFlash, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+		Size = Vector3.new(0.25, 0.25, 0.25),
+		Transparency = 1,
+	}):Play()
+	TweenService:Create(outerOrb, TweenInfo.new(0.20, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+		Size = Vector3.new(0.4, 0.4, 0.4),
+		Transparency = 1,
+	}):Play()
+	Debris:AddItem(coreFlash, 0.22)
+	Debris:AddItem(outerOrb, 0.24)
+
+	-- Forearm Twin Crescent Ignition Rings
+	VFXStudioLibrary.SpawnFadeCrescentArc(chargeCF * CFrame.Angles(math.pi * 0.5, 0, 0), 0.5 * scale, 2.6 * scale, 0.65 * scale, col1, col2, 0.24, folder)
+	if k == "X" or k == "C" or k == "V" then
+		VFXStudioLibrary.SpawnFadeCrescentArc(chargeCF * CFrame.Angles(math.pi * 0.5, math.pi, 0.4), 0.6 * scale, 3.4 * scale, 0.75 * scale, col2, PAL.HotWhite, 0.28, folder)
+	end
+end
+
+function VFXStudioLibrary.SpawnCharacterAfterimageBurst(actorChar, lookDir, moveKey, cPrimary, cSecondary, folder)
+	if VFXStudioLibrary.IsLowFX() or not actorChar or not actorChar.Parent then return end
+	local k = tostring(moveKey or "Z")
+	if k ~= "X" and k ~= "C" and k ~= "V" and k ~= "F" then return end
+
+	local root = actorChar:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local col1 = cPrimary or PAL.Cyan
+	local col2 = cSecondary or PAL.HotWhite
+	local ghostCount = (k == "V" or k == "F") and 3 or 2
+	local limbNames = {
+		"UpperTorso", "LowerTorso", "Torso",
+		"RightUpperArm", "LeftUpperArm", "Right Arm", "Left Arm",
+		"RightUpperLeg", "LeftUpperLeg", "Right Leg", "Left Leg",
+	}
+
+	for g = 1, ghostCount do
+		task.delay((g - 1) * 0.035, function()
+			if not actorChar or not actorChar.Parent then return end
+			local ghostModel = Instance.new("Model")
+			ghostModel.Name = "FadeSpeedAfterimage_" .. g
+			ghostModel.Parent = folder
+			local offsetVec = -lookDir * (g * 1.45)
+
+			for _, lName in ipairs(limbNames) do
+				local src = actorChar:FindFirstChild(lName)
+				if src and src:IsA("BasePart") and src.Transparency < 0.9 then
+					local gp = Instance.new("Part")
+					gp.Name = lName .. "_Ghost"
+					gp.Size = src.Size * 0.98
+					gp.CFrame = src.CFrame + offsetVec
+					gp.Color = (g % 2 == 1) and PAL.Obsidian or col1
+					gp.Material = (g % 2 == 1) and Enum.Material.SmoothPlastic or Enum.Material.ForceField
+					gp.Transparency = 0.28 + g * 0.14
+					gp.Anchored = true
+					gp.CanCollide = false
+					gp.CanQuery = false
+					gp.CanTouch = false
+					gp.CastShadow = false
+					gp.Parent = ghostModel
+					TweenService:Create(gp, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+						Transparency = 1,
+						CFrame = gp.CFrame + offsetVec * 0.35,
+					}):Play()
+				end
+			end
+
+			local hl = Instance.new("Highlight")
+			hl.Adornee = ghostModel
+			hl.FillColor = PAL.Obsidian
+			hl.FillTransparency = 0.45
+			hl.OutlineColor = (g == 1) and col2 or col1
+			hl.OutlineTransparency = 0.12
+			hl.DepthMode = Enum.HighlightDepthMode.Occluded
+			hl.Parent = ghostModel
+			TweenService:Create(hl, TweenInfo.new(0.26), {
+				FillTransparency = 1,
+				OutlineTransparency = 1,
+			}):Play()
+
+			Debris:AddItem(ghostModel, 0.30)
+		end)
+	end
+end
+
+function VFXStudioLibrary.SpawnLingeringGroundAftermath(impactPos, radius, elem, cPrimary, cSecondary, folder)
+	if VFXStudioLibrary.IsLowFX() then return end
+	local gPos = VFXStudioLibrary.FindGround(impactPos)
+	local r = math.clamp(radius or 9, 4, 24)
+	local col1 = cPrimary or PAL.Cyan
+	local col2 = cSecondary or PAL.HotWhite
+	local lingerDur = 1.75
+
+	-- 1. Smoldering Obsidian Ground Scar + Glowing Fissure Cross
+	local scarHost = Instance.new("Part")
+	scarHost.Name = "FadeLingeringGroundScar"
+	scarHost.Shape = Enum.PartType.Cylinder
+	scarHost.Size = Vector3.new(0.08, r * 1.15, r * 1.15)
+	scarHost.CFrame = CFrame.new(gPos + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.pi * 0.5)
+	scarHost.Color = PAL.Obsidian
+	scarHost.Material = Enum.Material.Slate
+	scarHost.Transparency = 0.22
+	scarHost.Anchored = true
+	scarHost.CanCollide = false
+	scarHost.CanQuery = false
+	scarHost.CanTouch = false
+	scarHost.Parent = folder
+
+	for i = 1, 3 do
+		local ang = (i - 1) * (math.pi / 3)
+		local crack = VFXStudioLibrary.MakePart(
+			"LingeringFissure_" .. i,
+			Enum.PartType.Block,
+			Vector3.new(0.22, 0.12, r * 1.35),
+			CFrame.new(gPos + Vector3.new(0, 0.08, 0)) * CFrame.Angles(0, ang, 0),
+			(i % 2 == 0) and col1 or col2,
+			0.12,
+			Enum.Material.ForceField,
+			folder
+		)
+		task.delay(lingerDur * 0.55, function()
+			if crack and crack.Parent then
+				TweenService:Create(crack, TweenInfo.new(lingerDur * 0.45), { Transparency = 1, Size = Vector3.new(0.04, 0.04, r * 1.45) }):Play()
+			end
+		end)
+		Debris:AddItem(crack, lingerDur + 0.08)
+	end
+
+	-- 2. Lingering Elemental Residual Emitter (1.2s active smolder/frost/sparks)
+	local att = Instance.new("Attachment")
+	att.Parent = scarHost
+
+	local emberPE = Instance.new("ParticleEmitter")
+	emberPE.Name = "LingeringResidualEmbers"
+	emberPE.Texture = (tostring(elem) == "Ice" or tostring(elem) == "Frost") and TEX_SMOKE_CLOUD or TEX_SPARK_FLARE
+	emberPE.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PAL.HotWhite),
+		ColorSequenceKeypoint.new(0.45, col1),
+		ColorSequenceKeypoint.new(1, PAL.Obsidian),
+	})
+	emberPE.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.42),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	emberPE.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.08),
+		NumberSequenceKeypoint.new(0.7, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	emberPE.LightEmission = 0.9
+	emberPE.Lifetime = NumberRange.new(0.35, 0.70)
+	emberPE.Speed = NumberRange.new(2.5, 7.5)
+	emberPE.SpreadAngle = Vector2.new(75, 75)
+	emberPE.Rate = 18
+	emberPE.Enabled = true
+	emberPE.Parent = att
+
+	task.delay(lingerDur * 0.65, function()
+		if emberPE and emberPE.Parent then
+			emberPE.Enabled = false
+		end
+		if scarHost and scarHost.Parent then
+			TweenService:Create(scarHost, TweenInfo.new(lingerDur * 0.35), { Transparency = 1 }):Play()
+		end
+	end)
+	Debris:AddItem(scarHost, lingerDur + 0.12)
+end
+
+function VFXStudioLibrary.PlayLayeredSkillAudio(originPos, impactPos, moveKey, elem)
+	local folder = VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local k = tostring(moveKey or "Z")
+	local pitchBase = (k == "V" and 0.74) or (k == "C" and 0.84) or (k == "X" and 0.94) or 1.05
+	local volBase = (k == "V" and 0.52) or (k == "C" and 0.44) or 0.36
+
+	local function spawnSoundAt(pos, soundId, speed, vol, delaySec)
+		local function playNow()
+			local host = Instance.new("Part")
+			host.Name = "FadeAudioNode"
+			host.Size = Vector3.new(0.2, 0.2, 0.2)
+			host.Position = pos
+			host.Transparency = 1
+			host.Anchored = true
+			host.CanCollide = false
+			host.CanQuery = false
+			host.CanTouch = false
+			host.Parent = folder
+			local snd = Instance.new("Sound")
+			snd.SoundId = soundId
+			snd.PlaybackSpeed = speed + (math.random() - 0.5) * 0.08
+			snd.Volume = vol
+			snd.RollOffMaxDistance = 140
+			snd.RollOffMinDistance = 12
+			snd.Parent = host
+			snd:Play()
+			Debris:AddItem(host, 2.0)
+		end
+		if delaySec and delaySec > 0 then
+			task.delay(delaySec, playNow)
+		else
+			playNow()
+		end
+	end
+
+	-- Stage 1 (0.00s): High-Tech Energy Charge & Air Suction Whoosh
+	spawnSoundAt(originPos, "rbxasset://sounds/electronicpingshort.wav", pitchBase * 1.35, volBase * 0.65, 0)
+	-- Stage 2 (0.05s): Razor Wind-Slash & Sub-Bass Launch Punch
+	spawnSoundAt(originPos, "rbxasset://sounds/swordslash.wav", pitchBase * 0.88, volBase * 0.95, 0.05)
+	-- Stage 3 (0.16s): Heavy Impact Detonation at Target
+	spawnSoundAt(impactPos or originPos, "rbxasset://sounds/Launching rocket.wav", pitchBase * 0.92, volBase, 0.16)
+end
+
 return VFXStudioLibrary
