@@ -10,9 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- ============================================================================
--- 0. IMMEDIATE SYNCHRONOUS ANTI-GLARE LIGHTING LOCK (MANDATORY!)
--- Brightness <= 1.42 (never > 1.45), ExposureCompensation <= -0.18,
--- BloomEffect.Intensity <= 0.35, BloomEffect.Threshold >= 1.45
+-- 0. BALANCED HDR BLOOM & LIGHTING LOCK FOR VFX STUDIO NEON & PARTICLES
 -- ============================================================================
 local lightingGuardBusy = false
 
@@ -21,25 +19,34 @@ local function enforceAntiGlareLock()
         return
     end
     lightingGuardBusy = true
-    if Lighting.Brightness > 1.42 then
-        Lighting.Brightness = 1.38
+    if Lighting.Brightness > 1.55 then
+        Lighting.Brightness = 1.42
     end
-    if Lighting.ExposureCompensation > -0.18 then
-        Lighting.ExposureCompensation = -0.20
+    if Lighting.ExposureCompensation > 0.05 or Lighting.ExposureCompensation < -0.15 then
+        Lighting.ExposureCompensation = -0.04
     end
+    local foundBloom = false
     for _, child in ipairs(Lighting:GetChildren()) do
         if child:IsA("BloomEffect") then
-            if child.Intensity > 0.35 then
-                child.Intensity = 0.32
-            end
-            if child.Threshold < 1.45 then
-                child.Threshold = 1.55
-            end
+            foundBloom = true
+            child.Enabled = true
+            child.Intensity = math.clamp(child.Intensity, 0.45, 0.68)
+            child.Threshold = math.clamp(child.Threshold, 0.88, 0.98)
+            child.Size = math.clamp(child.Size, 24, 36)
         elseif child:IsA("Atmosphere") then
             if child.Glare > 0.10 then
                 child.Glare = 0.08
             end
         end
+    end
+    if not foundBloom then
+        local bl = Instance.new("BloomEffect")
+        bl.Name = "SkybreakVFXBloom"
+        bl.Enabled = true
+        bl.Intensity = 0.58
+        bl.Threshold = 0.92
+        bl.Size = 28
+        bl.Parent = Lighting
     end
     lightingGuardBusy = false
 end
@@ -402,9 +409,9 @@ local function stepAtmosphereAndWeather(camPos)
 
     lightingGuardBusy = true
     Lighting.ClockTime = sample.Clock
-    -- Hard anti-glare lock: Brightness <= 1.42, ExposureCompensation <= -0.18
-    Lighting.Brightness = math.clamp(sample.Brightness, 0.78, 1.42)
-    Lighting.ExposureCompensation = math.clamp(sample.Exposure, -0.30, -0.18)
+    -- Balanced lighting & HDR Bloom for VFX Studio Neon & ParticleEmitters
+    Lighting.Brightness = math.clamp(sample.Brightness + 0.08, 0.90, 1.48)
+    Lighting.ExposureCompensation = math.clamp(sample.Exposure + 0.16, -0.14, -0.02)
     Lighting.Ambient = sample.Ambient:Lerp(rBias.Tint, blend * 0.35)
     Lighting.OutdoorAmbient = sample.Outdoor:Lerp(rBias.Tint, blend * 0.45)
     Lighting.ColorShift_Top = sample.ShiftTop:Lerp(rBias.Tint, blend * 0.40)
@@ -420,8 +427,10 @@ local function stepAtmosphereAndWeather(camPos)
 
     for _, child in ipairs(Lighting:GetChildren()) do
         if child:IsA("BloomEffect") then
-            child.Intensity = math.clamp(child.Intensity, 0.03, 0.32)
-            child.Threshold = math.max(child.Threshold, 1.55)
+            child.Enabled = true
+            child.Intensity = math.clamp(child.Intensity, 0.48, 0.65)
+            child.Threshold = math.clamp(child.Threshold, 0.90, 0.96)
+            child.Size = math.clamp(child.Size, 26, 34)
         end
     end
     lightingGuardBusy = false
@@ -710,170 +719,23 @@ local cachedFallbackBeaconPos = nil
 local nextFallbackScanAt = 0
 
 local function ensureQuestWaypoint()
-    if waypointFolder and waypointFolder.Parent and waypointBeam and waypointBeam.Parent then
-        return
+    local tfx = workspace:FindFirstChild("TempFX")
+    local existing = tfx and tfx:FindFirstChild("QuestWaypointBeacon")
+    if existing then
+        existing:Destroy()
     end
-    local tfx = ensureTempFX()
-    waypointFolder = tfx:FindFirstChild("QuestWaypointBeacon")
-    if waypointFolder then
+    waypointFolder = nil
+    waypointBeam = nil
+    waypointRing = nil
+    waypointAnchor = nil
+    waypointBill = nil
+end
+
+local function stepQuestWaypoint(_playerPos, _now)
+    if waypointFolder and waypointFolder.Parent then
         waypointFolder:Destroy()
+        waypointFolder = nil
     end
-    waypointFolder = Instance.new("Folder")
-    waypointFolder.Name = "QuestWaypointBeacon"
-    waypointFolder.Parent = tfx
-
-    waypointBeam = makeCloudPart(waypointFolder, "WaypointLightStream", Vector3.new(110, 3.2, 3.2), Enum.PartType.Cylinder, 0.68)
-    waypointBeam.Material = Enum.Material.ForceField
-    waypointBeam.Color = Color3.fromRGB(238, 198, 92)
-
-    waypointRing = makeCloudPart(waypointFolder, "WaypointGroundRing", Vector3.new(0.28, 7.6, 7.6), Enum.PartType.Cylinder, 0.42)
-    waypointRing.Color = Color3.fromRGB(98, 224, 248)
-
-    waypointAnchor = makeCloudPart(waypointFolder, "WaypointBillboardAnchor", Vector3.new(0.4, 0.4, 0.4), Enum.PartType.Ball, 1.0)
-
-    waypointBill = Instance.new("BillboardGui")
-    waypointBill.Name = "QuestWaypointGui"
-    waypointBill.Size = UDim2.fromOffset(252, 42)
-    waypointBill.AlwaysOnTop = true
-    waypointBill.MaxDistance = 9500
-    waypointBill.Parent = waypointAnchor
-
-    waypointFrame = Instance.new("Frame")
-    waypointFrame.Name = "Badge"
-    waypointFrame.Size = UDim2.fromScale(1, 1)
-    waypointFrame.BackgroundColor3 = Color3.fromRGB(10, 14, 26)
-    waypointFrame.BackgroundTransparency = 0.16
-    waypointFrame.BorderSizePixel = 0
-    waypointFrame.Parent = waypointBill
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 9)
-    corner.Parent = waypointFrame
-
-    waypointStroke = Instance.new("UIStroke")
-    waypointStroke.Color = Color3.fromRGB(236, 192, 86)
-    waypointStroke.Thickness = 1.5
-    waypointStroke.Transparency = 0.18
-    waypointStroke.Parent = waypointFrame
-
-    waypointLabel = Instance.new("TextLabel")
-    waypointLabel.Name = "DistanceText"
-    waypointLabel.Size = UDim2.new(1, -16, 1, -6)
-    waypointLabel.Position = UDim2.fromOffset(8, 3)
-    waypointLabel.BackgroundTransparency = 1
-    waypointLabel.Font = Enum.Font.GothamBold
-    waypointLabel.TextSize = 12
-    waypointLabel.TextColor3 = Color3.fromRGB(246, 222, 146)
-    waypointLabel.TextStrokeTransparency = 0.35
-    waypointLabel.Text = "MỤC TIÊU NHIỆM VỤ • 0m"
-    waypointLabel.Parent = waypointFrame
-end
-
-local function resolveQuestTargetPos(playerPos, now)
-    if localPlayer then
-        for _, attrName in ipairs({ "ActiveQuestTargetPos", "QuestTargetPos", "PortalCompassTarget" }) do
-            local v = localPlayer:GetAttribute(attrName)
-            if typeof(v) == "Vector3" then
-                return v
-            end
-        end
-    end
-
-    if now >= nextFallbackScanAt or not cachedFallbackBeaconPos then
-        nextFallbackScanAt = now + 2.0
-        local bestPos = nil
-        local bestDist = math.huge
-
-        -- Fallback 1: nearest active enemy in current zone within 750 studs
-        local enemies = workspace:FindFirstChild("ActiveEnemies")
-        if enemies and playerPos then
-            for _, mdl in ipairs(enemies:GetChildren()) do
-                local hp = tonumber(mdl:GetAttribute("HP"))
-                if mdl:IsA("Model") and mdl:GetAttribute("EnemyDead") ~= true and (hp == nil or hp > 0) then
-                    local bp = mdl.PrimaryPart or mdl:FindFirstChild("Body") or mdl:FindFirstChildWhichIsA("BasePart")
-                    if bp then
-                        local d = (bp.Position - playerPos).Magnitude
-                        if d > 18 and d < bestDist and d <= 2500 then
-                            bestDist = d
-                            bestPos = bp.Position
-                        end
-                    end
-                end
-            end
-        end
-
-        -- Fallback 2: nearest portal / quest hub beacon
-        if not bestPos and playerPos then
-            local portals = workspace:FindFirstChild("WorldPortals")
-            local props = workspace:FindFirstChild("SkybreakWorld3DProps")
-            local wObjs = workspace:FindFirstChild("SkybreakWorldObjects")
-            for _, container in ipairs({ portals, props, wObjs }) do
-                if container then
-                    for _, ch in ipairs(container:GetDescendants()) do
-                        if ch:IsA("BasePart") and (ch.Name == "PortalInteractCore" or ch.Name == "PortalCore" or tostring(ch:GetAttribute("InteractableId") or ""):find("WorldGate")) then
-                            local d = (ch.Position - playerPos).Magnitude
-                            if d < bestDist then
-                                bestDist = d
-                                bestPos = ch.Position
-                            end
-                        end
-                    end
-                end
-            end
-        end
-
-        cachedFallbackBeaconPos = bestPos or (Config.BossSpawn or Vector3.new(0, 50.5, -395))
-    end
-    return cachedFallbackBeaconPos
-end
-
-local function stepQuestWaypoint(playerPos, now)
-    ensureQuestWaypoint()
-    if not playerPos then
-        waypointBill.Enabled = false
-        waypointBeam.Transparency = 1
-        waypointRing.Transparency = 1
-        return
-    end
-
-    local targetPos = resolveQuestTargetPos(playerPos, now)
-    if not targetPos then
-        waypointBill.Enabled = false
-        waypointBeam.Transparency = 1
-        waypointRing.Transparency = 1
-        return
-    end
-
-    local distStuds = (targetPos - playerPos).Magnitude
-    -- Gently fade out completely when within 14 studs so combat is never cluttered
-    local fadeAlpha = math.clamp((distStuds - 14) / 10, 0, 1)
-    if fadeAlpha <= 0.02 then
-        waypointBill.Enabled = false
-        waypointBeam.Transparency = 1
-        waypointRing.Transparency = 1
-        return
-    end
-
-    local pulse = 0.5 + 0.5 * math.sin(now * 3.2)
-    local beamRadius = 2.6 + pulse * 0.55
-    waypointBeam.Size = Vector3.new(110, beamRadius, beamRadius)
-    waypointBeam.CFrame = CFrame.new(targetPos + Vector3.new(0, 55, 0)) * CFrame.Angles(0, 0, math.pi * 0.5)
-    waypointBeam.Transparency = 1 - (0.34 * fadeAlpha)
-
-    local ringDiam = 6.8 + pulse * 1.4
-    waypointRing.Size = Vector3.new(0.24, ringDiam, ringDiam)
-    waypointRing.CFrame = CFrame.new(targetPos + Vector3.new(0, 0.35, 0)) * CFrame.Angles(0, now * 0.9, math.pi * 0.5)
-    waypointRing.Transparency = 1 - (0.55 * fadeAlpha)
-
-    waypointAnchor.Position = targetPos + Vector3.new(0, 8.2 + math.sin(now * 2.4) * 0.45, 0)
-    waypointBill.Enabled = true
-    waypointFrame.BackgroundTransparency = 1 - (0.84 * fadeAlpha)
-    waypointStroke.Transparency = 1 - (0.82 * fadeAlpha)
-    waypointLabel.TextTransparency = 1 - fadeAlpha
-    waypointLabel.TextStrokeTransparency = 1 - (0.65 * fadeAlpha)
-
-    local meters = math.max(1, math.floor(distStuds * 0.35 + 0.5))
-    waypointLabel.Text = string.format("MỤC TIÊU NHIỆM VỤ • %dm", meters)
 end
 
 -- Animated 3D Ornate Treasure Chests & Magnetic Coin/Gem Burst (#26)
@@ -1351,9 +1213,27 @@ task.spawn(function()
             townFolder.Name = "SkybreakLivingTownNPCs"
             townFolder.Parent = workspace
         end
-        local rayParams = RaycastParams.new()
-        rayParams.FilterType = Enum.RaycastFilterType.Exclude
-        rayParams.FilterDescendantsInstances = { townFolder }
+        local function buildTownRayParams()
+            local rp = RaycastParams.new()
+            rp.FilterType = Enum.RaycastFilterType.Exclude
+            local excl = { townFolder }
+            for _, fn in ipairs({
+                "ActiveNPCs", "ActiveEnemies", "SkybreakWorldObjects", "SkybreakWorld3DProps",
+                "TempFX", "WorldPortals", "SkybreakSeaPlanes", "SkybreakVFXDebris",
+                "SkybreakAtmosphereFX", "SkybreakTownLanterns", "SkybreakHarborBoats",
+            }) do
+                local f = workspace:FindFirstChild(fn)
+                if f then
+                    table.insert(excl, f)
+                end
+            end
+            if localPlayer and localPlayer.Character then
+                table.insert(excl, localPlayer.Character)
+            end
+            rp.FilterDescendantsInstances = excl
+            return rp
+        end
+        local rayParams = buildTownRayParams()
 
         for _, spec in ipairs(AMBIENT_SPAWN_SPECS) do
             if not townFolder:FindFirstChild(spec.Name) and Sources:FindFirstChild(spec.Asset) then
@@ -1364,7 +1244,7 @@ task.spawn(function()
                 end)
                 if okB and built then
                     local hit = workspace:Raycast(spec.Pos + Vector3.new(0, 14, 0), Vector3.new(0, -32, 0), rayParams)
-                    local floorY = hit and hit.Position.Y or (spec.Pos.Y - 3.0)
+                    local floorY = hit and hit.Position.Y or (spec.Pos.Y - 4.0)
                     local groundPos = Vector3.new(spec.Pos.X, floorY, spec.Pos.Z)
                     local baseCF = CFrame.lookAt(groundPos, Vector3.new(spec.Face.X, floorY, spec.Face.Z))
 
@@ -1407,6 +1287,9 @@ task.spawn(function()
                         registerEntry(clone, clone.PrimaryPart, clone, spec.Role, true, spec.Asset)
                         tracked[clone].BaseCF = baseCF
                         tracked[clone].RigBasePivot = baseCF
+                        tracked[clone].SpecPos = spec.Pos
+                        tracked[clone].SpecFace = spec.Face
+                        tracked[clone].GroundSnapped = (hit ~= nil)
                     end
                 end
                 task.wait(0.05)
@@ -1440,6 +1323,33 @@ task.spawn(function()
                     e.Billboard.Enabled = false
                 end
                 continue
+            end
+
+            if e.IsSpawnedRig and not e.GroundSnapped and e.SpecPos and dist <= 320 and now >= (e.NextGroundCheckAt or 0) then
+                e.NextGroundCheckAt = now + 2.0
+                local townF = workspace:FindFirstChild("SkybreakLivingTownNPCs")
+                local rp = RaycastParams.new()
+                rp.FilterType = Enum.RaycastFilterType.Exclude
+                local excl = {}
+                if townF then table.insert(excl, townF) end
+                for _, fn in ipairs({
+                    "ActiveNPCs", "ActiveEnemies", "SkybreakWorldObjects", "SkybreakWorld3DProps",
+                    "TempFX", "WorldPortals", "SkybreakSeaPlanes", "SkybreakVFXDebris",
+                }) do
+                    local f = workspace:FindFirstChild(fn)
+                    if f then table.insert(excl, f) end
+                end
+                if ch then table.insert(excl, ch) end
+                rp.FilterDescendantsInstances = excl
+                local hit = workspace:Raycast(e.SpecPos + Vector3.new(0, 14, 0), Vector3.new(0, -32, 0), rp)
+                if hit then
+                    local floorY = hit.Position.Y
+                    local groundPos = Vector3.new(e.SpecPos.X, floorY, e.SpecPos.Z)
+                    local newBaseCF = CFrame.lookAt(groundPos, Vector3.new(e.SpecFace.X, floorY, e.SpecFace.Z))
+                    e.BaseCF = newBaseCF
+                    e.RigBasePivot = newBaseCF
+                    e.GroundSnapped = true
+                end
             end
 
             local isNear = dist <= 18

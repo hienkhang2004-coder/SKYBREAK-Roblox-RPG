@@ -289,7 +289,7 @@ function _G.SkybreakStartLivingNPCs()
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
     local excl = { townFolder }
-    for _, fn in ipairs({ "ActiveNPCs", "ActiveEnemies", "SkybreakWorldObjects", "TempFX", "SkyHub" }) do
+    for _, fn in ipairs({ "ActiveNPCs", "ActiveEnemies", "SkybreakWorldObjects", "SkybreakWorld3DProps", "TempFX", "WorldPortals", "SkybreakSeaPlanes", "SkybreakVFXDebris" }) do
       local f = workspace:FindFirstChild(fn)
       if f then table.insert(excl, f) end
     end
@@ -304,7 +304,7 @@ function _G.SkybreakStartLivingNPCs()
         end)
         if okB and built then
           local hit = workspace:Raycast(spec.Pos + Vector3.new(0, 14, 0), Vector3.new(0, -32, 0), rayParams)
-          local floorY = hit and hit.Position.Y or (spec.Pos.Y - 3.0)
+          local floorY = hit and hit.Position.Y or (spec.Pos.Y - 4.0)
           local baseCF = CFrame.lookAt(Vector3.new(spec.Pos.X, floorY, spec.Pos.Z), Vector3.new(spec.Face.X, floorY, spec.Face.Z))
           local clone = built:Clone()
           clone.Name = spec.Name

@@ -511,16 +511,16 @@ local function buildBespokeFlightRig(ch, root, fruitKey, spec)
 				p.Transparency = 0.58
 			end
 		end
-		data.Core = makeFXPart("PhotonBody", Enum.PartType.Ball, Vector3.new(2.4, 2.4, 5.6), root.CFrame, spec.Primary, 0.14, Enum.Material.ForceField, folder)
-		data.Halo = makeFXPart("PhotonHalo", Enum.PartType.Cylinder, Vector3.new(0.18, 5.4, 5.4), root.CFrame, spec.Secondary, 0.20, Enum.Material.ForceField, folder)
+		data.Core = makeFXPart("PhotonBody", Enum.PartType.Ball, Vector3.new(2.4, 2.4, 5.6), root.CFrame, spec.Primary, 0.14, Enum.Material.Neon, folder)
+		data.Halo = makeFXPart("PhotonHalo", Enum.PartType.Cylinder, Vector3.new(0.18, 5.4, 5.4), root.CFrame, spec.Secondary, 0.20, Enum.Material.Neon, folder)
 		safeLight(data.Core, spec.Primary, 1.35, 15, 0)
 
 	elseif spec.Mode == "FlameJets" then
 		-- Dual Solar Rocket Thruster Cones at Feet/Back
-		data.JetL = makeFXPart("FlameThrusterL", Enum.PartType.Cylinder, Vector3.new(4.2, 1.45, 1.45), root.CFrame, spec.Primary, 0.14, Enum.Material.ForceField, folder)
-		data.JetR = makeFXPart("FlameThrusterR", Enum.PartType.Cylinder, Vector3.new(4.2, 1.45, 1.45), root.CFrame, spec.Primary, 0.14, Enum.Material.ForceField, folder)
-		data.CoreL = makeFXPart("FlameCoreL", Enum.PartType.Cylinder, Vector3.new(3.2, 0.72, 0.72), root.CFrame, spec.Secondary, 0.08, Enum.Material.SmoothPlastic, folder)
-		data.CoreR = makeFXPart("FlameCoreR", Enum.PartType.Cylinder, Vector3.new(3.2, 0.72, 0.72), root.CFrame, spec.Secondary, 0.08, Enum.Material.SmoothPlastic, folder)
+		data.JetL = makeFXPart("FlameThrusterL", Enum.PartType.Cylinder, Vector3.new(4.2, 1.45, 1.45), root.CFrame, spec.Primary, 0.14, Enum.Material.Neon, folder)
+		data.JetR = makeFXPart("FlameThrusterR", Enum.PartType.Cylinder, Vector3.new(4.2, 1.45, 1.45), root.CFrame, spec.Primary, 0.14, Enum.Material.Neon, folder)
+		data.CoreL = makeFXPart("FlameCoreL", Enum.PartType.Cylinder, Vector3.new(3.2, 0.72, 0.72), root.CFrame, spec.Secondary, 0.08, Enum.Material.Neon, folder)
+		data.CoreR = makeFXPart("FlameCoreR", Enum.PartType.Cylinder, Vector3.new(3.2, 0.72, 0.72), root.CFrame, spec.Secondary, 0.08, Enum.Material.Neon, folder)
 		safeLight(data.JetL, spec.Primary, 1.25, 14, 0)
 
 	elseif spec.Mode == "IceSkyBridge" then
@@ -532,25 +532,25 @@ local function buildBespokeFlightRig(ch, root, fruitKey, spec)
 		-- Levitating Craggy Asteroid Platform + Orbiting Graviton Rings under feet
 		data.BoulderMain = makeFXPart("AsteroidDeck", Enum.PartType.Block, Vector3.new(5.2, 1.4, 5.8), root.CFrame, Color3.fromRGB(68, 58, 86), 0.04, Enum.Material.Slate, folder)
 		data.BoulderUnder = makeFXPart("AsteroidKeel", Enum.PartType.Wedge, Vector3.new(3.8, 1.8, 4.4), root.CFrame, Color3.fromRGB(52, 44, 68), 0.04, Enum.Material.Slate, folder)
-		data.GravRing = makeFXPart("GravitonOrbit", Enum.PartType.Cylinder, Vector3.new(0.16, 7.6, 7.6), root.CFrame, spec.Primary, 0.20, Enum.Material.ForceField, folder)
+		data.GravRing = makeFXPart("GravitonOrbit", Enum.PartType.Cylinder, Vector3.new(0.16, 7.6, 7.6), root.CFrame, spec.Primary, 0.20, Enum.Material.Neon, folder)
 		safeLight(data.GravRing, spec.Primary, 1.2, 14, 0)
 
 	elseif spec.Mode == "PortalRings" then
-		data.Gate = makeFXPart("DimensionalHarness", Enum.PartType.Cylinder, Vector3.new(0.22, 5.8, 5.8), root.CFrame, spec.Primary, 0.16, Enum.Material.ForceField, folder)
+		data.Gate = makeFXPart("DimensionalHarness", Enum.PartType.Cylinder, Vector3.new(0.22, 5.8, 5.8), root.CFrame, spec.Primary, 0.16, Enum.Material.Neon, folder)
 		lastPathSpawnPos = root.Position - Vector3.new(0, 10, 0)
 
 	elseif spec.Mode == "MagmaHound" then
 		-- Volcanic Hound Sled Construct beneath player
 		data.Body = makeFXPart("MagmaHoundBody", Enum.PartType.Block, Vector3.new(3.2, 1.5, 5.6), root.CFrame, Color3.fromRGB(64, 26, 24), 0.06, Enum.Material.Slate, folder)
-		data.Snout = makeFXPart("MagmaHoundHead", Enum.PartType.Wedge, Vector3.new(2.6, 1.6, 2.8), root.CFrame, spec.Primary, 0.08, Enum.Material.SmoothPlastic, folder)
-		data.Core = makeFXPart("MagmaGlow", Enum.PartType.Cylinder, Vector3.new(4.8, 2.0, 2.0), root.CFrame, spec.Secondary, 0.20, Enum.Material.ForceField, folder)
+		data.Snout = makeFXPart("MagmaHoundHead", Enum.PartType.Wedge, Vector3.new(2.6, 1.6, 2.8), root.CFrame, spec.Primary, 0.08, Enum.Material.Neon, folder)
+		data.Core = makeFXPart("MagmaGlow", Enum.PartType.Cylinder, Vector3.new(4.8, 2.0, 2.0), root.CFrame, spec.Secondary, 0.20, Enum.Material.Neon, folder)
 		safeLight(data.Snout, spec.Primary, 1.25, 14, 0)
 
 	elseif spec.Mode == "LightningForm" then
-		data.Sphere = makeFXPart("VoltShroud", Enum.PartType.Ball, Vector3.new(5.2, 5.2, 5.2), root.CFrame, spec.Primary, 0.34, Enum.Material.ForceField, folder)
+		data.Sphere = makeFXPart("VoltShroud", Enum.PartType.Ball, Vector3.new(5.2, 5.2, 5.2), root.CFrame, spec.Primary, 0.34, Enum.Material.Neon, folder)
 		data.Bolts = {}
 		for i = 1, 4 do
-			data.Bolts[i] = makeFXPart("VoltArc_" .. i, Enum.PartType.Block, Vector3.new(0.24, 0.24, 4.4), root.CFrame, (i % 2 == 0) and spec.Secondary or spec.Primary, 0.10, Enum.Material.SmoothPlastic, folder)
+			data.Bolts[i] = makeFXPart("VoltArc_" .. i, Enum.PartType.Block, Vector3.new(0.24, 0.24, 4.4), root.CFrame, (i % 2 == 0) and spec.Secondary or spec.Primary, 0.10, Enum.Material.Neon, folder)
 		end
 		safeLight(data.Sphere, spec.Primary, 1.25, 14, 0)
 
@@ -558,7 +558,7 @@ local function buildBespokeFlightRig(ch, root, fruitKey, spec)
 		data.Rings = {}
 		for i = 1, 4 do
 			local r = 2.4 + i * 1.1
-			data.Rings[i] = makeFXPart("CycloneRing_" .. i, Enum.PartType.Cylinder, Vector3.new(0.22, r, r), root.CFrame, (i % 2 == 0) and spec.Primary or spec.Secondary, 0.22, Enum.Material.ForceField, folder)
+			data.Rings[i] = makeFXPart("CycloneRing_" .. i, Enum.PartType.Cylinder, Vector3.new(0.22, r, r), root.CFrame, (i % 2 == 0) and spec.Primary or spec.Secondary, 0.22, Enum.Material.Neon, folder)
 		end
 
 	elseif spec.Mode == "DoughWheel" then
@@ -566,15 +566,15 @@ local function buildBespokeFlightRig(ch, root, fruitKey, spec)
 		data.Rim = makeFXPart("DoughDonutRim", Enum.PartType.Cylinder, Vector3.new(1.5, 6.8, 6.8), root.CFrame, spec.Primary, 0.08, Enum.Material.SmoothPlastic, folder)
 		data.Spikes = {}
 		for i = 1, 8 do
-			data.Spikes[i] = makeFXPart("DoughSpike_" .. i, Enum.PartType.Wedge, Vector3.new(0.65, 1.25, 0.85), root.CFrame, spec.Secondary, 0.06, Enum.Material.SmoothPlastic, folder)
+			data.Spikes[i] = makeFXPart("DoughSpike_" .. i, Enum.PartType.Wedge, Vector3.new(0.65, 1.25, 0.85), root.CFrame, spec.Secondary, 0.06, Enum.Material.Neon, folder)
 		end
 
 	elseif spec.Mode == "BuddhaLotus" then
 		-- Radiant Golden Levitation Lotus Pedestal under feet
-		data.Base = makeFXPart("LotusCore", Enum.PartType.Cylinder, Vector3.new(0.42, 4.6, 4.6), root.CFrame, spec.Primary, 0.10, Enum.Material.SmoothPlastic, folder)
+		data.Base = makeFXPart("LotusCore", Enum.PartType.Cylinder, Vector3.new(0.42, 4.6, 4.6), root.CFrame, spec.Primary, 0.10, Enum.Material.Neon, folder)
 		data.Petals = {}
 		for i = 1, 8 do
-			data.Petals[i] = makeFXPart("LotusPetal_" .. i, Enum.PartType.Wedge, Vector3.new(1.35, 0.85, 2.2), root.CFrame, (i % 2 == 0) and spec.Primary or spec.Secondary, 0.12, Enum.Material.SmoothPlastic, folder)
+			data.Petals[i] = makeFXPart("LotusPetal_" .. i, Enum.PartType.Wedge, Vector3.new(1.35, 0.85, 2.2), root.CFrame, (i % 2 == 0) and spec.Primary or spec.Secondary, 0.12, Enum.Material.Neon, folder)
 		end
 		safeLight(data.Base, spec.Primary, 1.25, 14, 0)
 
@@ -584,13 +584,13 @@ local function buildBespokeFlightRig(ch, root, fruitKey, spec)
 		local tier = tonumber((ch and ch:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
 		local is3DDragonForm = (tier >= 1 or tf == "AbyssalSovereign" or tf == "AbyssalDragonHybrid" or tf == "DragonFull" or tf == "DragonHybrid")
 		if not is3DDragonForm then
-			data.WingL = makeFXPart("SoarWingL", Enum.PartType.Wedge, Vector3.new(0.24, 3.2, 7.6), root.CFrame, spec.Primary, 0.16, Enum.Material.ForceField, folder)
-			data.WingR = makeFXPart("SoarWingR", Enum.PartType.Wedge, Vector3.new(0.24, 3.2, 7.6), root.CFrame, spec.Primary, 0.16, Enum.Material.ForceField, folder)
+			data.WingL = makeFXPart("SoarWingL", Enum.PartType.Wedge, Vector3.new(0.24, 3.2, 7.6), root.CFrame, spec.Primary, 0.16, Enum.Material.Neon, folder)
+			data.WingR = makeFXPart("SoarWingR", Enum.PartType.Wedge, Vector3.new(0.24, 3.2, 7.6), root.CFrame, spec.Primary, 0.16, Enum.Material.Neon, folder)
 		else
-			data.OuterHalo = makeFXPart("DragonSovereignMachHalo", Enum.PartType.Cylinder, Vector3.new(0.24, 9.6, 9.6), root.CFrame, spec.Primary, 0.22, Enum.Material.ForceField, folder)
+			data.OuterHalo = makeFXPart("DragonSovereignMachHalo", Enum.PartType.Cylinder, Vector3.new(0.24, 9.6, 9.6), root.CFrame, spec.Primary, 0.22, Enum.Material.Neon, folder)
 			lastPathSpawnPos = root.Position - Vector3.new(0, 20, 0)
 		end
-		data.Halo = makeFXPart("DragonSlipHalo", Enum.PartType.Cylinder, Vector3.new(0.20, 6.2, 6.2), root.CFrame, spec.Secondary, 0.26, Enum.Material.ForceField, folder)
+		data.Halo = makeFXPart("DragonSlipHalo", Enum.PartType.Cylinder, Vector3.new(0.20, 6.2, 6.2), root.CFrame, spec.Secondary, 0.26, Enum.Material.Neon, folder)
 	end
 
 	return folder, data
@@ -1774,7 +1774,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		stopActiveEmote()
 	end
 
-	-- #81 [F] 3D Free Flight (Hold [F] on any slot or press/hold [F] when Slot 2 Fruit is active; Shift+F ignored so Forge UI works)
+	-- #81 [F] 3D Free Flight (Hold [F] on any slot or press/hold [F] on sustained-flight Slot 2 Fruits; Shift+F ignored so Forge UI works)
 	if kc == Enum.KeyCode.F and not (UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)) then
 		if not blocksCombat() then
 			if flightActive then
@@ -1784,10 +1784,35 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			flightFKeyHeld = true
 			flightHoldStartedAt = os.clock()
 			local activeSlot = tonumber(player:GetAttribute("ActiveSlot")) or 1
-			if activeSlot == 2 then
-				startFreeFlight()
+			local fruitKey = resolveEquippedFruitKey()
+			local INSTANT_F_SKILL_FRUITS = {
+				ThunderRumbleCore = true,
+				DimensionalPortalCore = true,
+				GlacierIceCore = true,
+				SweetDoughCore = true,
+				SolarTitanCore = true,
+			}
+			if activeSlot == 2 and not INSTANT_F_SKILL_FRUITS[fruitKey] then
+				-- Check Mastery requirement for F move before engaging instant Slot 2 flight
+				local reqMastery = 10
+				local styles = Config and Config.CombatStyles
+				local styleDef = styles and styles[fruitKey]
+				if styleDef and type(styleDef.Moves) == "table" and type(styleDef.Moves.F) == "table" then
+					reqMastery = tonumber(styleDef.Moves.F.Mastery) or 10
+				end
+				local curMastery = tonumber(player:GetAttribute("FruitMastery_" .. tostring(fruitKey)))
+					or tonumber(player:GetAttribute("FruitMastery"))
+					or tonumber(player:GetAttribute("StyleMastery"))
+					or 1
+				if curMastery >= reqMastery then
+					task.delay(0.08, function()
+						if not flightActive and not blocksCombat() then
+							startFreeFlight()
+						end
+					end)
+				end
 			else
-				task.delay(0.24, function()
+				task.delay(0.30, function()
 					if flightFKeyHeld and not flightActive and not blocksCombat() then
 						startFreeFlight()
 					end

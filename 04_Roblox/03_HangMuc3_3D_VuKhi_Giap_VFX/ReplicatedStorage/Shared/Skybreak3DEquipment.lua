@@ -2401,73 +2401,11 @@ function M.BootWorld(Renderer)
     local kaelForgeState = nil
     local raidConsoleState = nil
 
-    -- 1. Build 4 Aether Jump Streams (#64)
-    for idx, js in ipairs(JUMP_STREAM_SPECS) do
-        local fy = raycastSolidFloor(js.Pos, js.Pos.Y)
-        local basePos = Vector3.new(js.Pos.X, fy, js.Pos.Z)
-        local f = Instance.new('Folder')
-        f.Name = 'AetherJumpStream_' .. js.Name
-        f.Parent = props
-
-        local base = makePart(f, 'StreamPedestal', Vector3.new(0.58, 6.4, 6.4), Color3.fromRGB(36, 44, 62), Enum.PartType.Cylinder, 0, 'Part', Enum.Material.Metal, 0.08)
-        base.CFrame = CFrame.new(basePos + Vector3.new(0, 0.29, 0)) * CFrame.Angles(0, 0, math.pi * 0.5)
-
-        local core = makePart(f, 'StreamCoreDisc', Vector3.new(0.64, 4.8, 4.8), js.Color, Enum.PartType.Cylinder, 0.24, 'Part', Enum.Material.SmoothPlastic, 0.06)
-        core.CFrame = CFrame.new(basePos + Vector3.new(0, 0.33, 0)) * CFrame.Angles(0, 0, math.pi * 0.5)
-
-        local pl = Instance.new('PointLight')
-        pl.Color = js.Color
-        pl.Brightness = 0.95
-        pl.Range = 11
-        pl.Shadows = false
-        pl.Parent = core
-
-        local pe = Instance.new('ParticleEmitter')
-        pe.Name = 'UpdraftStreamParticles'
-        pe.Color = ColorSequence.new(js.Color, Color3.fromRGB(240, 250, 255))
-        pe.LightEmission = 0.65
-        pe.Size = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.36),
-            NumberSequenceKeypoint.new(1, 0.05),
-        })
-        pe.Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.28),
-            NumberSequenceKeypoint.new(1, 1.0),
-        })
-        pe.Lifetime = NumberRange.new(0.65, 1.15)
-        pe.Rate = isLowFX(localPlayer) and 6 or 16
-        pe.Speed = NumberRange.new(14, 24)
-        pe.EmissionDirection = Enum.NormalId.Right
-        pe.SpreadAngle = Vector2.new(12, 12)
-        pe.Parent = core
-
-        local rings = {}
-        for r = 1, 3 do
-            local ring = makePart(
-                f,
-                'WindRing_' .. r,
-                Vector3.new(0.14, 5.2 - r * 0.55, 5.2 - r * 0.55),
-                r % 2 == 1 and js.Color or Color3.fromRGB(235, 248, 255),
-                Enum.PartType.Cylinder,
-                0.36,
-                'Part',
-                Enum.Material.SmoothPlastic,
-                0
-            )
-            ring.CFrame = CFrame.new(basePos + Vector3.new(0, 1.2 + r * 1.65, 0)) * CFrame.Angles(0, 0, math.pi * 0.5)
-            table.insert(rings, ring)
+    -- 1. Aether Jump Streams removed per user request (no JumpPads/SkyRails on islands)
+    for _, ch in ipairs(props:GetChildren()) do
+        if ch.Name:match('^AetherJumpStream_') then
+            ch:Destroy()
         end
-
-        table.insert(jumpStreams, {
-            Spec = js,
-            BasePos = basePos,
-            BasePart = base,
-            CorePart = core,
-            Emitter = pe,
-            Rings = rings,
-            Phase = idx * 1.1,
-            CooldownUntil = 0,
-        })
     end
 
     -- 2. Spawn KaelWorkstation beside NPC Kael (-282, 49.0, 506) with Forge Fire, Embers, Sparks & [E] Forge Prompt (#24)

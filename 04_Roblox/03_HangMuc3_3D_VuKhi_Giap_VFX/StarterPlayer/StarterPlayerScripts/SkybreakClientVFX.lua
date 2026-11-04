@@ -37,9 +37,9 @@ local activeConnections = {}
 local charConnections = {}
 local enemyConnections = {}
 
-local MAX_LIGHT_BRIGHTNESS = 1.45
-local MAX_LIGHT_RANGE = 16
-local MAX_PARTICLE_EMISSION = 0.78
+local MAX_LIGHT_BRIGHTNESS = 2.65
+local MAX_LIGHT_RANGE = 22
+local MAX_PARTICLE_EMISSION = 0.96
 local PARK_POS = Vector3.new(0, -5200, 0)
 
 local function isLowFX()
@@ -102,13 +102,30 @@ local function makePart(name, shape, size, cf, color, transparency, material, pa
 	p.Size = size or Vector3.new(1, 1, 1)
 	p.CFrame = cf or CFrame.new()
 	p.Color = color or Color3.fromRGB(115, 225, 255)
-	p.Material = material or Enum.Material.SmoothPlastic
-	p.Transparency = math.clamp(transparency or 0.18, 0, 1)
+	local mat = material or Enum.Material.Neon
+	if mat == Enum.Material.ForceField then
+		mat = Enum.Material.Neon
+	end
+	p.Material = mat
+	p.Transparency = math.clamp(transparency or 0.16, 0, 1)
 	p.Anchored = true
 	p.CanCollide = false
 	p.CanQuery = false
 	p.CanTouch = false
 	p.CastShadow = false
+	local nm = p.Name
+	if (p.Shape == Enum.PartType.Block or p.Shape == Enum.PartType.Wedge)
+		and mat == Enum.Material.Neon
+		and not nm:find("Shard")
+		and not nm:find("Boulder")
+		and not nm:find("Slab")
+		and not nm:find("Gate")
+		and not nm:find("Rock")
+	then
+		local sm = Instance.new("SpecialMesh")
+		sm.MeshType = Enum.MeshType.Sphere
+		sm.Parent = p
+	end
 	p.Parent = parent or tempFX
 	return p
 end
@@ -117,14 +134,14 @@ local function makeSafeLight(parent, color, brightness, range, dur)
 	if isLowFX() or not parent then return nil end
 	local pl = Instance.new("PointLight")
 	pl.Color = color or Color3.fromRGB(255, 220, 140)
-	pl.Brightness = math.clamp(brightness or 1.15, 0, MAX_LIGHT_BRIGHTNESS)
-	pl.Range = math.clamp(range or 12, 2, MAX_LIGHT_RANGE)
+	pl.Brightness = math.clamp(brightness or 1.85, 0, MAX_LIGHT_BRIGHTNESS)
+	pl.Range = math.clamp(range or 15, 2, MAX_LIGHT_RANGE)
 	pl.Shadows = false
 	pl.Parent = parent
 	if dur and dur > 0 then
 		TweenService:Create(pl, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Brightness = 0,
-			Range = math.min(MAX_LIGHT_RANGE, pl.Range * 1.1),
+			Range = math.min(MAX_LIGHT_RANGE, pl.Range * 1.15),
 		}):Play()
 	end
 	return pl
@@ -135,6 +152,7 @@ local function makeBurstEmitter(parent, color1, color2, sizeStart, sizeEnd, life
 	local att = Instance.new("Attachment")
 	att.Parent = parent
 	local pe = Instance.new("ParticleEmitter")
+	pe.Texture = "rbxassetid://243660364"
 	pe.Color = ColorSequence.new(color1, color2 or color1)
 	pe.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, sizeStart or 0.9),
@@ -142,12 +160,12 @@ local function makeBurstEmitter(parent, color1, color2, sizeStart, sizeEnd, life
 		NumberSequenceKeypoint.new(1, sizeEnd or 0),
 	})
 	pe.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.12),
-		NumberSequenceKeypoint.new(0.7, 0.45),
+		NumberSequenceKeypoint.new(0, 0.08),
+		NumberSequenceKeypoint.new(0.7, 0.42),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	pe.LightEmission = math.min(MAX_PARTICLE_EMISSION, 0.68)
-	pe.LightInfluence = 0.25
+	pe.LightEmission = math.min(MAX_PARTICLE_EMISSION, 0.90)
+	pe.LightInfluence = 0.08
 	pe.Lifetime = NumberRange.new((lifetime or 0.45) * 0.7, lifetime or 0.45)
 	pe.Speed = NumberRange.new(speedMin or 8, speedMax or 22)
 	pe.SpreadAngle = Vector2.new(180, 180)
@@ -989,6 +1007,11 @@ end
 local function triggerEnemyDissolveDeath(enemyModel)
 	if not enemyModel or not enemyModel.Parent or enemyModel:GetAttribute("_DissolvedVFX") then return end
 	enemyModel:SetAttribute("_DissolvedVFX", true)
+	for _, ch in ipairs(enemyModel:GetChildren()) do
+		if ch.Name == "Telegraph" or ch.Name == "TelegraphRing" or ch.Name == "AttackTelegraph" then
+			ch:Destroy()
+		end
+	end
 	local isBoss = (enemyModel.Parent and enemyModel.Parent.Name == "ActiveBosses") or (enemyModel:GetAttribute("IsBoss") == true)
 	UniversalVFXOverhaul.SpawnEnemyDeathDissolve(enemyModel, isBoss)
 end
@@ -1011,11 +1034,15 @@ local function bindEnemyModel(m)
 		lastHP = hp
 		if hp and hp <= 0 then
 			triggerEnemyDissolveDeath(m)
+		elseif hp and hp > 0 then
+			m:SetAttribute("_DissolvedVFX", nil)
 		end
 	end))
 	table.insert(conns, m:GetAttributeChangedSignal("EnemyDead"):Connect(function()
 		if m:GetAttribute("EnemyDead") == true then
 			triggerEnemyDissolveDeath(m)
+		else
+			m:SetAttribute("_DissolvedVFX", nil)
 		end
 	end))
 	local hum = m:FindFirstChildOfClass("Humanoid")

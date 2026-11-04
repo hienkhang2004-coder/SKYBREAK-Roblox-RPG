@@ -1984,12 +1984,33 @@ Run.Heartbeat:Connect(function(dt)
             task.spawn(summonVoidFX, s, model:GetAttribute('NoxarPhaseFX'))
         end
         local hit = model:GetAttribute('EnemyHitAt') or 0
-        if model:GetAttribute('EnemyDead') then
+        local curHP = tonumber(model:GetAttribute('HP'))
+        local isDead = (model:GetAttribute('EnemyDead') == true) or (curHP ~= nil and curHP <= 0)
+        if isDead then
+            s.WasDead = true
+            for _, ch in ipairs(model:GetChildren()) do
+                if ch.Name == 'Telegraph' or ch.Name == 'TelegraphRing' or ch.Name == 'AttackTelegraph' then
+                    ch:Destroy()
+                end
+            end
             local deathKey = (s.ClipMap and s.ClipMap.Death) or 'Death'
             if s.Name ~= deathKey then
                 s.Name = deathKey
                 s.Start = now
                 s.Rate = 1
+            end
+        elseif s.WasDead then
+            s.WasDead = false
+            s.Until = 0
+            s.Name = (s.ClipMap and s.ClipMap.Idle) or 'Idle'
+            s.Start = now
+            s.Rate = 1
+            if s.Visual then
+                for _, d in ipairs(s.Visual:GetDescendants()) do
+                    if d:IsA('BasePart') and d.Name ~= 'HumanoidRootPart' then
+                        d.Transparency = 0
+                    end
+                end
             end
         elseif bossPhase ~= (s.BossPhase or 1) then
             s.BossPhase = bossPhase

@@ -798,12 +798,28 @@ local function vfxPart(name,shape,size,cf,color,transparency,material)
 	p.Size=size
 	p.CFrame=cf
 	p.Color=color
-	p.Material=material or Enum.Material.Neon
-	p.Transparency=transparency or .25
+	local mat=material or Enum.Material.Neon
+	if mat==Enum.Material.ForceField then
+		mat=Enum.Material.Neon
+	end
+	p.Material=mat
+	p.Transparency=transparency or .22
 	p.Anchored=true
 	p.CanCollide=false
 	p.CanQuery=false
 	p.CanTouch=false
+	p.CastShadow=false
+	if (p.Shape==Enum.PartType.Block or p.Shape==Enum.PartType.Wedge)
+		and mat==Enum.Material.Neon
+		and not name:find("Shard")
+		and not name:find("Boulder")
+		and not name:find("Slab")
+		and not name:find("Gate")
+	then
+		local sm=Instance.new("SpecialMesh")
+		sm.MeshType=Enum.MeshType.Sphere
+		sm.Parent=p
+	end
 	p.Parent=tempFX
 	return p
 end
