@@ -17,9 +17,24 @@ local Workspace = game:GetService("Workspace")
 
 local VFXStudioLibrary = {}
 
-VFXStudioLibrary.MAX_LIGHT_BRIGHTNESS = 1.45
-VFXStudioLibrary.MAX_LIGHT_RANGE = 16
-VFXStudioLibrary.MAX_PARTICLE_EMISSION = 0.78
+VFXStudioLibrary.MAX_LIGHT_BRIGHTNESS = 4.25
+VFXStudioLibrary.MAX_LIGHT_RANGE = 28
+VFXStudioLibrary.MAX_PARTICLE_EMISSION = 1.0
+
+-- Authentic Roblox VFX Studio Engine Textures
+local TEX_FIRE_PLASMA = "rbxasset://textures/particles/fire_main.dds"
+local TEX_SMOKE_CLOUD = "rbxasset://textures/particles/smoke_main.dds"
+local TEX_SHOCK_RING = "rbxasset://textures/particles/forcefield_glow_main.dds"
+local TEX_IMPLOSION = "rbxasset://textures/particles/explosion01_implosion_main.dds"
+local TEX_SPARK_FLARE = "rbxasset://textures/particles/sparkles_main.dds"
+
+VFXStudioLibrary.Textures = {
+	FirePlasma = TEX_FIRE_PLASMA,
+	SmokeCloud = TEX_SMOKE_CLOUD,
+	ShockRing = TEX_SHOCK_RING,
+	Implosion = TEX_IMPLOSION,
+	SparkFlare = TEX_SPARK_FLARE,
+}
 
 local PAL = {
 	HotWhite = Color3.fromRGB(246, 250, 255),
@@ -83,19 +98,76 @@ end
 
 function VFXStudioLibrary.MakePart(name, shape, size, cf, color, transparency, material, parent)
 	local p = Instance.new("Part")
-	p.Name = name or "SkybreakVFXPart"
-	p.Shape = shape or Enum.PartType.Block
-	p.Size = size or Vector3.new(1, 1, 1)
+	local nm = name or "SkybreakVFXPart"
+	local sh = shape or Enum.PartType.Block
+	local sz = size or Vector3.new(1, 1, 1)
+	local col = color or PAL.Cyan
+	local isEnergyMat = (material == nil) or (material == Enum.Material.ForceField) or (material == Enum.Material.Neon)
+
+	p.Name = nm
+	p.Shape = sh
+	p.Size = sz
 	p.CFrame = cf or CFrame.new()
-	p.Color = color or PAL.Cyan
-	p.Material = material or Enum.Material.ForceField
-	p.Transparency = math.clamp(transparency or 0.14, 0, 1)
+	p.Color = col
+	p.Material = (material == nil or material == Enum.Material.ForceField) and Enum.Material.Neon or material
+	p.Transparency = math.clamp(transparency or 0.08, 0, 1)
 	p.Anchored = true
 	p.CanCollide = false
 	p.CanQuery = false
 	p.CanTouch = false
 	p.CastShadow = false
 	p.Massless = true
+
+	-- Tapered 3D SpecialMesh(Sphere) so energy slashes, needles, bolts, and beams never look like blocky bricks
+	if isEnergyMat and sh == Enum.PartType.Block and p.Transparency < 0.95 then
+		local maxD = math.max(sz.X, sz.Y, sz.Z)
+		local minD = math.max(0.01, math.min(sz.X, sz.Y, sz.Z))
+		if (maxD / minD >= 1.85) or string.find(nm, "Spark") or string.find(nm, "Slash") or string.find(nm, "Bolt") or string.find(nm, "Streak") or string.find(nm, "Ray") or string.find(nm, "Crack") or string.find(nm, "Fissure") or string.find(nm, "Spoke") or string.find(nm, "Bar") or string.find(nm, "Blade") or string.find(nm, "Prong") or string.find(nm, "Tracer") or string.find(nm, "Arc") or string.find(nm, "Wave") or string.find(nm, "Feather") or string.find(nm, "Lance") or string.find(nm, "Spear") then
+			local sm = Instance.new("SpecialMesh")
+			sm.MeshType = Enum.MeshType.Sphere
+			sm.Parent = p
+		end
+	end
+
+	-- Automatic live VFX Studio particle emitter on major skill projectiles, cores, meteors, beams & tornadoes
+	if isEnergyMat and p.Transparency < 0.85 and not VFXStudioLibrary.IsLowFX() then
+		if string.find(nm, "Core") or string.find(nm, "Fireball") or string.find(nm, "Meteor") or string.find(nm, "Orb") or string.find(nm, "Lance") or string.find(nm, "Spear") or string.find(nm, "Fist") or string.find(nm, "Tracer") or string.find(nm, "Wheel") or string.find(nm, "Tornado") or string.find(nm, "Funnel") or string.find(nm, "Bird") or string.find(nm, "Hawk") or string.find(nm, "Pillar") then
+			local att = Instance.new("Attachment")
+			att.Name = "StudioLiveAtt"
+			att.Parent = p
+			local pe = Instance.new("ParticleEmitter")
+			pe.Name = "StudioLivePlasma"
+			pe.Texture = TEX_FIRE_PLASMA
+			pe.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, PAL.HotWhite),
+				ColorSequenceKeypoint.new(0.45, col),
+				ColorSequenceKeypoint.new(1, PAL.Obsidian),
+			})
+			local baseScale = math.clamp(math.max(sz.X, sz.Y, sz.Z) * 0.28, 0.35, 3.2)
+			pe.Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, baseScale * 0.85),
+				NumberSequenceKeypoint.new(0.55, baseScale * 1.25),
+				NumberSequenceKeypoint.new(1, 0),
+			})
+			pe.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.05),
+				NumberSequenceKeypoint.new(0.65, 0.38),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			pe.LightEmission = 1.0
+			pe.LightInfluence = 0
+			pcall(function() pe.Brightness = 3.6 end)
+			pe.Lifetime = NumberRange.new(0.14, 0.28)
+			pe.Speed = NumberRange.new(3, 12)
+			pe.SpreadAngle = Vector2.new(180, 180)
+			pe.RotSpeed = NumberRange.new(-220, 220)
+			pe.Rotation = NumberRange.new(0, 360)
+			pe.Rate = 46
+			pe.Enabled = true
+			pe.Parent = att
+		end
+	end
+
 	p.Parent = parent or (VFXStudioLibrary.GetTempFolder("UniversalVFX"))
 	return p
 end
@@ -104,8 +176,8 @@ function VFXStudioLibrary.SafeLight(parent, color, brightness, range, dur)
 	if VFXStudioLibrary.IsLowFX() or not parent then return nil end
 	local pl = Instance.new("PointLight")
 	pl.Color = color or PAL.Gold
-	pl.Brightness = math.clamp(brightness or 1.2, 0, VFXStudioLibrary.MAX_LIGHT_BRIGHTNESS)
-	pl.Range = math.clamp(range or 13, 2, VFXStudioLibrary.MAX_LIGHT_RANGE)
+	pl.Brightness = math.clamp((brightness or 1.4) * 1.85, 0, VFXStudioLibrary.MAX_LIGHT_BRIGHTNESS)
+	pl.Range = math.clamp((range or 14) * 1.45, 4, VFXStudioLibrary.MAX_LIGHT_RANGE)
 	pl.Shadows = false
 	pl.Parent = parent
 	if dur and dur > 0 then
@@ -128,14 +200,16 @@ function VFXStudioLibrary.AttachRibbonTrail(hostPart, color1, color2, color3, wi
 	local tr = Instance.new("Trail")
 	tr.Attachment0 = a0
 	tr.Attachment1 = a1
+	tr.Texture = TEX_FIRE_PLASMA
+	tr.TextureMode = Enum.TextureMode.Stretch
 	tr.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, color1 or PAL.HotWhite),
-		ColorSequenceKeypoint.new(0.5, color2 or color1 or PAL.Cyan),
+		ColorSequenceKeypoint.new(0.45, color2 or color1 or PAL.Cyan),
 		ColorSequenceKeypoint.new(1, color3 or PAL.Obsidian),
 	})
 	tr.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.08),
-		NumberSequenceKeypoint.new(0.65, 0.42),
+		NumberSequenceKeypoint.new(0, 0.02),
+		NumberSequenceKeypoint.new(0.65, 0.32),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	tr.WidthScale = NumberSequence.new({
@@ -143,12 +217,44 @@ function VFXStudioLibrary.AttachRibbonTrail(hostPart, color1, color2, color3, wi
 		NumberSequenceKeypoint.new(0.55, 0.72),
 		NumberSequenceKeypoint.new(1, 0),
 	})
-	tr.LightEmission = math.min(VFXStudioLibrary.MAX_PARTICLE_EMISSION, 0.72)
-	tr.LightInfluence = 0.16
+	tr.LightEmission = 1.0
+	tr.LightInfluence = 0
+	pcall(function() tr.Brightness = 3.5 end)
 	tr.FaceCamera = true
-	tr.Lifetime = lifetime or 0.25
-	tr.MinLength = 0.05
+	tr.Lifetime = lifetime or 0.26
+	tr.MinLength = 0.04
 	tr.Parent = hostPart
+
+	if not VFXStudioLibrary.IsLowFX() then
+		local sp = Instance.new("ParticleEmitter")
+		sp.Name = "StudioTrailSparks"
+		sp.Texture = TEX_SPARK_FLARE
+		sp.Orientation = Enum.ParticleOrientation.VelocityParallel
+		sp.Squash = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, -1.4),
+			NumberSequenceKeypoint.new(1, -2.2),
+		})
+		sp.Color = tr.Color
+		sp.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, math.clamp(w * 0.38, 0.22, 1.4)),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		sp.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		sp.LightEmission = 1.0
+		sp.LightInfluence = 0
+		pcall(function() sp.Brightness = 4.2 end)
+		sp.Lifetime = NumberRange.new(0.12, 0.24)
+		sp.Speed = NumberRange.new(8, 22)
+		sp.SpreadAngle = Vector2.new(180, 180)
+		sp.Drag = 4.2
+		sp.Rate = 40
+		sp.Enabled = true
+		sp.Parent = a0
+	end
+
 	return tr
 end
 
@@ -184,22 +290,60 @@ end
 
 function VFXStudioLibrary.SpawnShockRing(pos, upCF, color, startR, endR, thickness, dur, mat, parent)
 	local baseCF = upCF or CFrame.new(pos)
+	local d = dur or 0.42
+	local col = color or PAL.Cyan
 	local ring = VFXStudioLibrary.MakePart(
 		"ShockRing",
 		Enum.PartType.Cylinder,
 		Vector3.new(thickness or 0.26, startR, startR),
 		baseCF * CFrame.Angles(0, 0, math.pi * 0.5),
-		color,
-		0.14,
-		mat or Enum.Material.ForceField,
+		col,
+		0.10,
+		mat or Enum.Material.Neon,
 		parent
 	)
-	local d = dur or 0.42
 	TweenService:Create(ring, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 		Size = Vector3.new(math.max(0.06, (thickness or 0.26) * 0.3), endR, endR),
 		Transparency = 1,
 	}):Play()
-	Debris:AddItem(ring, d + 0.05)
+
+	-- Authentic 3D Planar VFX Studio Shockwave Ring Emitter (VelocityPerpendicular)
+	if not VFXStudioLibrary.IsLowFX() then
+		local att = Instance.new("Attachment")
+		att.CFrame = CFrame.Angles(0, 0, -math.pi * 0.5)
+		att.Parent = ring
+		local pe = Instance.new("ParticleEmitter")
+		pe.Name = "StudioShockRingEmitter"
+		pe.Texture = TEX_SHOCK_RING
+		pe.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+		pe.Enabled = false
+		pe.Rate = 0
+		pe.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, PAL.HotWhite),
+			ColorSequenceKeypoint.new(0.45, col),
+			ColorSequenceKeypoint.new(1, col),
+		})
+		pe.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, math.max(1.0, startR * 0.55)),
+			NumberSequenceKeypoint.new(0.65, endR * 0.72),
+			NumberSequenceKeypoint.new(1, endR * 0.92),
+		})
+		pe.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.04),
+			NumberSequenceKeypoint.new(0.65, 0.35),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		pe.LightEmission = 1.0
+		pe.LightInfluence = 0
+		pcall(function() pe.Brightness = 4.0 end)
+		pe.Lifetime = NumberRange.new(d * 0.85, d)
+		pe.Speed = NumberRange.new(0.05, 0.12)
+		pe.SpreadAngle = Vector2.new(0, 0)
+		pe.Parent = att
+		pe:Emit(2)
+	end
+
+	Debris:AddItem(ring, d + 0.08)
 	return ring
 end
 
@@ -420,39 +564,174 @@ local ELEMENT_TO_PREFAB = {
 	Abyss = "Elem_Gravity",
 }
 
-local function makeStudioEmitter(parent, spec)
+local function makeStudioEmitter(parent, spec, layerIdx)
 	local pe = Instance.new("ParticleEmitter")
-	pe.Name = spec[1]
+	local nm = tostring(spec[1] or "StudioEmitter")
+	pe.Name = nm
 	pe.Enabled = false
-	pe.Rate = 0
+	pe.Rate = 72
+	if string.find(nm, "Mist") or string.find(nm, "Smoke") or string.find(nm, "Plume") or string.find(nm, "Vapor") or string.find(nm, "Ash") then
+		pe.Texture = TEX_SMOKE_CLOUD
+		pe.LightEmission = 0.68
+		pe.LightInfluence = 0.08
+		pcall(function() pe.Brightness = 2.6 end)
+		pe.ZOffset = -0.25
+	elseif string.find(nm, "Spark") or string.find(nm, "Shard") or string.find(nm, "Ray") or string.find(nm, "Star") then
+		pe.Texture = TEX_SPARK_FLARE
+		pe.Orientation = Enum.ParticleOrientation.VelocityParallel
+		pe.Squash = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, -1.2),
+			NumberSequenceKeypoint.new(0.65, -2.0),
+			NumberSequenceKeypoint.new(1, -0.6),
+		})
+		pe.LightEmission = 1.0
+		pe.LightInfluence = 0
+		pcall(function() pe.Brightness = 4.2 end)
+		pe.ZOffset = 0.35
+	else
+		pe.Texture = (layerIdx == 2) and TEX_IMPLOSION or TEX_FIRE_PLASMA
+		pe.LightEmission = 1.0
+		pe.LightInfluence = 0
+		pcall(function() pe.Brightness = 3.8 end)
+		pe.ZOffset = 0.15
+	end
+
 	pe.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, spec[2]),
-		ColorSequenceKeypoint.new(0.52, spec[3]),
+		ColorSequenceKeypoint.new(0.48, spec[3]),
 		ColorSequenceKeypoint.new(1, spec[4] or PAL.Obsidian),
 	})
 	pe.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, spec[5]),
-		NumberSequenceKeypoint.new(0.55, (spec[5] + spec[6]) * 0.52),
+		NumberSequenceKeypoint.new(0, spec[5] * 1.15),
+		NumberSequenceKeypoint.new(0.52, (spec[5] + spec[6]) * 0.68),
 		NumberSequenceKeypoint.new(1, spec[6]),
 	})
 	pe.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.08),
-		NumberSequenceKeypoint.new(0.68, 0.42),
+		NumberSequenceKeypoint.new(0, 0.02),
+		NumberSequenceKeypoint.new(0.65, 0.32),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	pe.LightEmission = math.min(VFXStudioLibrary.MAX_PARTICLE_EMISSION, 0.72)
-	pe.LightInfluence = 0.20
 	pe.Lifetime = NumberRange.new(spec[7], spec[8])
-	pe.Speed = NumberRange.new(spec[9], spec[10])
+	pe.Speed = NumberRange.new(spec[9] * 1.15, spec[10] * 1.25)
 	pe.SpreadAngle = Vector2.new(spec[13] or 180, spec[13] or 180)
-	pe.Drag = spec[14] or 3.2
-	pe.RotSpeed = NumberRange.new(-140, 140)
+	pe.Drag = spec[14] or 3.4
+	pe.RotSpeed = NumberRange.new(-220, 220)
 	pe.Rotation = NumberRange.new(0, 360)
-	pe:SetAttribute("EmitCount", spec[11] or 18)
+	pe:SetAttribute("EmitCount", math.floor((spec[11] or 18) * 1.65 + 0.5))
 	pe:SetAttribute("EmitDelay", spec[12] or 0)
-	pe:SetAttribute("EmitDuration", 0)
+	pe:SetAttribute("EmitDuration", 0.14)
 	pe.Parent = parent
 	return pe
+end
+
+local function attachStudioSignatureLayers(att, primaryCol, secondaryCol, accentCol)
+	-- Layer 3: Additive Core Flash (FacingCamera high-impact anime flash)
+	local coreFlash = Instance.new("ParticleEmitter")
+	coreFlash.Name = "StudioCoreFlash"
+	coreFlash.Texture = TEX_SHOCK_RING
+	coreFlash.Orientation = Enum.ParticleOrientation.FacingCamera
+	coreFlash.Enabled = false
+	coreFlash.Rate = 0
+	coreFlash.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PAL.HotWhite),
+		ColorSequenceKeypoint.new(0.5, primaryCol or PAL.Gold),
+		ColorSequenceKeypoint.new(1, secondaryCol or primaryCol or PAL.Cyan),
+	})
+	coreFlash.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.8),
+		NumberSequenceKeypoint.new(0.35, 4.6),
+		NumberSequenceKeypoint.new(1, 0.2),
+	})
+	coreFlash.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.55, 0.28),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	coreFlash.LightEmission = 1.0
+	coreFlash.LightInfluence = 0
+	pcall(function() coreFlash.Brightness = 4.8 end)
+	coreFlash.ZOffset = 0.85
+	coreFlash.Lifetime = NumberRange.new(0.14, 0.22)
+	coreFlash.Speed = NumberRange.new(0.1, 0.5)
+	coreFlash.SpreadAngle = Vector2.new(180, 180)
+	coreFlash:SetAttribute("EmitCount", 4)
+	coreFlash:SetAttribute("EmitDelay", 0)
+	coreFlash:SetAttribute("EmitDuration", 0)
+	coreFlash.Parent = att
+
+	-- Layer 4: 3D Planar Shockwave Ring (VelocityPerpendicular)
+	local planarRing = Instance.new("ParticleEmitter")
+	planarRing.Name = "StudioPlanarShockRing"
+	planarRing.Texture = TEX_SHOCK_RING
+	planarRing.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+	planarRing.Enabled = false
+	planarRing.Rate = 0
+	planarRing.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PAL.HotWhite),
+		ColorSequenceKeypoint.new(0.45, primaryCol or PAL.Cyan),
+		ColorSequenceKeypoint.new(1, secondaryCol or PAL.Obsidian),
+	})
+	planarRing.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.2),
+		NumberSequenceKeypoint.new(0.65, 7.8),
+		NumberSequenceKeypoint.new(1, 10.6),
+	})
+	planarRing.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.04),
+		NumberSequenceKeypoint.new(0.65, 0.36),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	planarRing.LightEmission = 1.0
+	planarRing.LightInfluence = 0
+	pcall(function() planarRing.Brightness = 4.0 end)
+	planarRing.ZOffset = 0.45
+	planarRing.Lifetime = NumberRange.new(0.22, 0.34)
+	planarRing.Speed = NumberRange.new(0.08, 0.25)
+	planarRing.SpreadAngle = Vector2.new(25, 25)
+	planarRing:SetAttribute("EmitCount", 3)
+	planarRing:SetAttribute("EmitDelay", 0)
+	planarRing:SetAttribute("EmitDuration", 0)
+	planarRing.Parent = att
+
+	-- Layer 5: Stretched Directional Anime Impact Sparks (VelocityParallel + Squash)
+	local velSparks = Instance.new("ParticleEmitter")
+	velSparks.Name = "StudioVelocitySparks"
+	velSparks.Texture = TEX_SPARK_FLARE
+	velSparks.Orientation = Enum.ParticleOrientation.VelocityParallel
+	velSparks.Squash = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, -1.5),
+		NumberSequenceKeypoint.new(0.6, -2.35),
+		NumberSequenceKeypoint.new(1, -0.7),
+	})
+	velSparks.Enabled = false
+	velSparks.Rate = 0
+	velSparks.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PAL.HotWhite),
+		ColorSequenceKeypoint.new(0.45, primaryCol or PAL.Gold),
+		ColorSequenceKeypoint.new(1, accentCol or secondaryCol or PAL.Cyan),
+	})
+	velSparks.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.68),
+		NumberSequenceKeypoint.new(0.65, 0.42),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	velSparks.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.75, 0.25),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	velSparks.LightEmission = 1.0
+	velSparks.LightInfluence = 0
+	pcall(function() velSparks.Brightness = 4.6 end)
+	velSparks.ZOffset = 0.55
+	velSparks.Lifetime = NumberRange.new(0.16, 0.32)
+	velSparks.Speed = NumberRange.new(28, 68)
+	velSparks.SpreadAngle = Vector2.new(180, 180)
+	velSparks.Drag = 4.6
+	velSparks:SetAttribute("EmitCount", 28)
+	velSparks:SetAttribute("EmitDelay", 0)
+	velSparks:SetAttribute("EmitDuration", 0)
+	velSparks.Parent = att
 end
 
 function VFXStudioLibrary.EnsureAllPrefabs()
@@ -484,8 +763,12 @@ function VFXStudioLibrary.EnsureAllPrefabs()
 				local att = Instance.new("Attachment")
 				att.Name = "VFXAttachment"
 				att.Parent = holder
-				for _, s in ipairs(emitterList) do
-					makeStudioEmitter(att, s)
+				for idx, s in ipairs(emitterList) do
+					makeStudioEmitter(att, s, idx)
+				end
+				local s1 = emitterList[1]
+				if s1 then
+					attachStudioSignatureLayers(att, s1[2], s1[3], s1[4])
 				end
 				holder.Parent = catFolder
 			end
@@ -530,6 +813,59 @@ function VFXStudioLibrary.Emit(categoryName, prefabName, worldCF, scale, tintPri
 		clone.Parent = hostPart
 	end
 
+	-- Add 2 Curved 3D VFX Studio Energy Beams swirling around the burst
+	if not low then
+		local bCol1 = tintPrimary or PAL.Cyan
+		local bCol2 = tintSecondary or PAL.Gold
+		for bIdx = 1, 2 do
+			local sign = (bIdx == 1) and 1 or -1
+			local a0 = Instance.new("Attachment")
+			a0.Position = Vector3.new(-3.2 * mult * sign, -0.6 * mult, 0)
+			a0.Parent = hostPart
+			local a1 = Instance.new("Attachment")
+			a1.Position = Vector3.new(3.2 * mult * sign, 1.4 * mult, 0)
+			a1.Parent = hostPart
+			local bm = Instance.new("Beam")
+			bm.Name = "StudioCurvedArcBeam_" .. bIdx
+			bm.Attachment0 = a0
+			bm.Attachment1 = a1
+			bm.Texture = TEX_FIRE_PLASMA
+			bm.TextureMode = Enum.TextureMode.Wrap
+			bm.TextureSpeed = 4.2 * sign
+			bm.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, PAL.HotWhite),
+				ColorSequenceKeypoint.new(0.5, (bIdx == 1) and bCol1 or bCol2),
+				ColorSequenceKeypoint.new(1, PAL.Obsidian),
+			})
+			bm.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.2, 0.05),
+				NumberSequenceKeypoint.new(0.8, 0.15),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			bm.LightEmission = 1.0
+			bm.LightInfluence = 0
+			pcall(function() bm.Brightness = 3.8 end)
+			bm.FaceCamera = true
+			bm.Segments = 18
+			bm.CurveSize0 = 4.2 * mult * sign
+			bm.CurveSize1 = -4.2 * mult * sign
+			bm.Width0 = 1.45 * mult
+			bm.Width1 = 0.25 * mult
+			bm.Parent = hostPart
+			TweenService:Create(a0, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Position = Vector3.new(-6.4 * mult * sign, 1.2 * mult, 2.2 * mult * sign),
+			}):Play()
+			TweenService:Create(a1, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Position = Vector3.new(6.4 * mult * sign, 3.2 * mult, -2.2 * mult * sign),
+			}):Play()
+			TweenService:Create(bm, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Width0 = 0,
+				Width1 = 0,
+			}):Play()
+		end
+	end
+
 	local maxCleanup = 1.15
 	for _, desc in ipairs(hostPart:GetDescendants()) do
 		if desc:IsA("ParticleEmitter") then
@@ -553,24 +889,34 @@ function VFXStudioLibrary.Emit(categoryName, prefabName, worldCF, scale, tintPri
 			local emitDur = tonumber(desc:GetAttribute("EmitDuration")) or 0
 			maxCleanup = math.max(maxCleanup, emitDelay + emitDur + desc.Lifetime.Max + 0.32)
 
-			task.spawn(function()
-				if emitDelay > 0 then
-					task.wait(emitDelay)
-				else
-					task.wait()
-				end
-				if not desc or not desc.Parent then return end
+			if emitDelay <= 0 then
 				if emitCount > 0 then
 					desc:Emit(emitCount)
 				end
-				if emitDur > 0 then
+				if emitDur > 0 and not low then
 					desc.Enabled = true
-					task.wait(emitDur)
-					if desc and desc.Parent then
-						desc.Enabled = false
-					end
+					task.delay(emitDur, function()
+						if desc and desc.Parent then
+							desc.Enabled = false
+						end
+					end)
 				end
-			end)
+			else
+				task.delay(emitDelay, function()
+					if not desc or not desc.Parent then return end
+					if emitCount > 0 then
+						desc:Emit(emitCount)
+					end
+					if emitDur > 0 and not low then
+						desc.Enabled = true
+						task.delay(emitDur, function()
+							if desc and desc.Parent then
+								desc.Enabled = false
+							end
+						end)
+					end
+				end)
+			end
 		elseif desc:IsA("PointLight") then
 			desc.Brightness = math.min(VFXStudioLibrary.MAX_LIGHT_BRIGHTNESS, desc.Brightness)
 			desc.Range = math.min(VFXStudioLibrary.MAX_LIGHT_RANGE, desc.Range)

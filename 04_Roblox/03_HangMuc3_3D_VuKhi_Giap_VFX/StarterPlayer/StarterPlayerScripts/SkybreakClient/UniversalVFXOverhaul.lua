@@ -130,6 +130,9 @@ function UniversalVFXOverhaul.SpawnStage1Sigil(originCF, prof, scale, isAwakened
 		Debris:AddItem(bar, 0.32)
 	end
 
+	-- Native VFX Studio Cast Muzzle Burst at caster origin
+	Lib.EmitElement(prof.Element, originCF, math.clamp(sc * 0.85, 0.65, 1.5), prof.Primary, prof.Secondary)
+
 	-- Awakened V2 Dual Tilted Sovereign Corona Halos
 	if isAwakened then
 		for i = 1, 2 do

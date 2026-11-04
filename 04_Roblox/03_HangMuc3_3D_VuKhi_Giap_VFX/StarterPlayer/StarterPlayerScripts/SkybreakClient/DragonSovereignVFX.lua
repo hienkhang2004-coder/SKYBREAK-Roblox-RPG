@@ -16,9 +16,15 @@ local Workspace = game:GetService("Workspace")
 
 local DragonSovereignVFX = {}
 
-local MAX_LIGHT_BRIGHTNESS = 1.45
-local MAX_LIGHT_RANGE = 16
-local MAX_PARTICLE_EMISSION = 0.78
+local MAX_LIGHT_BRIGHTNESS = 4.25
+local MAX_LIGHT_RANGE = 28
+local MAX_PARTICLE_EMISSION = 1.0
+
+local TEX_FIRE_PLASMA = "rbxasset://textures/particles/fire_main.dds"
+local TEX_SMOKE_CLOUD = "rbxasset://textures/particles/smoke_main.dds"
+local TEX_SHOCK_RING = "rbxasset://textures/particles/forcefield_glow_main.dds"
+local TEX_IMPLOSION = "rbxasset://textures/particles/explosion01_implosion_main.dds"
+local TEX_SPARK_FLARE = "rbxasset://textures/particles/sparkles_main.dds"
 
 local PALETTE = {
 	Crimson = Color3.fromRGB(255, 46, 150),
@@ -90,19 +96,74 @@ end
 
 local function makePart(name, shape, size, cf, color, transparency, material, parent)
 	local p = Instance.new("Part")
-	p.Name = name or "DragonVFXPart"
-	p.Shape = shape or Enum.PartType.Block
-	p.Size = size or Vector3.new(1, 1, 1)
+	local nm = name or "DragonVFXPart"
+	local sh = shape or Enum.PartType.Block
+	local sz = size or Vector3.new(1, 1, 1)
+	local col = color or PALETTE.Crimson
+	local isEnergyMat = (material == nil) or (material == Enum.Material.ForceField) or (material == Enum.Material.Neon)
+
+	p.Name = nm
+	p.Shape = sh
+	p.Size = sz
 	p.CFrame = cf or CFrame.new()
-	p.Color = color or PALETTE.Crimson
-	p.Material = material or Enum.Material.ForceField
-	p.Transparency = math.clamp(transparency or 0.14, 0, 1)
+	p.Color = col
+	p.Material = (material == nil or material == Enum.Material.ForceField) and Enum.Material.Neon or material
+	p.Transparency = math.clamp(transparency or 0.08, 0, 1)
 	p.Anchored = true
 	p.CanCollide = false
 	p.CanQuery = false
 	p.CanTouch = false
 	p.CastShadow = false
 	p.Massless = true
+
+	if isEnergyMat and sh == Enum.PartType.Block and p.Transparency < 0.95 then
+		local maxD = math.max(sz.X, sz.Y, sz.Z)
+		local minD = math.max(0.01, math.min(sz.X, sz.Y, sz.Z))
+		if (maxD / minD >= 1.85) or string.find(nm, "Bolt") or string.find(nm, "Slash") or string.find(nm, "Claw") or string.find(nm, "Talon") or string.find(nm, "Spoke") or string.find(nm, "Spark") or string.find(nm, "Arc") or string.find(nm, "Ribbon") or string.find(nm, "Streak") or string.find(nm, "Ray") then
+			local sm = Instance.new("SpecialMesh")
+			sm.MeshType = Enum.MeshType.Sphere
+			sm.Parent = p
+		end
+	end
+
+	if isEnergyMat and p.Transparency < 0.85 and not isLowFX() then
+		if string.find(nm, "Core") or string.find(nm, "Meteor") or string.find(nm, "Orb") or string.find(nm, "Breath") or string.find(nm, "Beam") or string.find(nm, "Pillar") or string.find(nm, "Vortex") then
+			local att = Instance.new("Attachment")
+			att.Name = "DragonLiveAtt"
+			att.Parent = p
+			local pe = Instance.new("ParticleEmitter")
+			pe.Name = "DragonLivePlasma"
+			pe.Texture = TEX_FIRE_PLASMA
+			pe.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, PALETTE.HotCore),
+				ColorSequenceKeypoint.new(0.45, col),
+				ColorSequenceKeypoint.new(1, PALETTE.Obsidian),
+			})
+			local baseScale = math.clamp(math.max(sz.X, sz.Y, sz.Z) * 0.28, 0.4, 3.6)
+			pe.Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, baseScale * 0.85),
+				NumberSequenceKeypoint.new(0.55, baseScale * 1.25),
+				NumberSequenceKeypoint.new(1, 0),
+			})
+			pe.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.04),
+				NumberSequenceKeypoint.new(0.65, 0.36),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			pe.LightEmission = 1.0
+			pe.LightInfluence = 0
+			pcall(function() pe.Brightness = 3.8 end)
+			pe.Lifetime = NumberRange.new(0.15, 0.30)
+			pe.Speed = NumberRange.new(4, 14)
+			pe.SpreadAngle = Vector2.new(180, 180)
+			pe.RotSpeed = NumberRange.new(-240, 240)
+			pe.Rotation = NumberRange.new(0, 360)
+			pe.Rate = 52
+			pe.Enabled = true
+			pe.Parent = att
+		end
+	end
+
 	p.Parent = parent or (getTempFolder())
 	return p
 end
@@ -111,8 +172,8 @@ local function makeSafeLight(parent, color, brightness, range, dur)
 	if isLowFX() or not parent then return nil end
 	local pl = Instance.new("PointLight")
 	pl.Color = color or PALETTE.Crimson
-	pl.Brightness = math.clamp(brightness or 1.25, 0, MAX_LIGHT_BRIGHTNESS)
-	pl.Range = math.clamp(range or 14, 2, MAX_LIGHT_RANGE)
+	pl.Brightness = math.clamp((brightness or 1.4) * 1.85, 0, MAX_LIGHT_BRIGHTNESS)
+	pl.Range = math.clamp((range or 14) * 1.45, 4, MAX_LIGHT_RANGE)
 	pl.Shadows = false
 	pl.Parent = parent
 	if dur and dur > 0 then
@@ -134,14 +195,16 @@ local function attachRibbonTrail(hostPart, color1, color2, width, lifetime)
 	local tr = Instance.new("Trail")
 	tr.Attachment0 = a0
 	tr.Attachment1 = a1
+	tr.Texture = TEX_FIRE_PLASMA
+	tr.TextureMode = Enum.TextureMode.Stretch
 	tr.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, color1),
-		ColorSequenceKeypoint.new(0.55, color2),
+		ColorSequenceKeypoint.new(0.5, color2),
 		ColorSequenceKeypoint.new(1, PALETTE.Obsidian),
 	})
 	tr.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.08),
-		NumberSequenceKeypoint.new(0.65, 0.38),
+		NumberSequenceKeypoint.new(0, 0.02),
+		NumberSequenceKeypoint.new(0.65, 0.32),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	tr.WidthScale = NumberSequence.new({
@@ -149,12 +212,44 @@ local function attachRibbonTrail(hostPart, color1, color2, width, lifetime)
 		NumberSequenceKeypoint.new(0.6, 0.65),
 		NumberSequenceKeypoint.new(1, 0),
 	})
-	tr.LightEmission = 0.72
-	tr.LightInfluence = 0.15
+	tr.LightEmission = 1.0
+	tr.LightInfluence = 0
+	pcall(function() tr.Brightness = 3.8 end)
 	tr.FaceCamera = true
 	tr.Lifetime = lifetime or 0.28
-	tr.MinLength = 0.05
+	tr.MinLength = 0.04
 	tr.Parent = hostPart
+
+	if not isLowFX() then
+		local sp = Instance.new("ParticleEmitter")
+		sp.Name = "DragonTrailSparks"
+		sp.Texture = TEX_SPARK_FLARE
+		sp.Orientation = Enum.ParticleOrientation.VelocityParallel
+		sp.Squash = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, -1.4),
+			NumberSequenceKeypoint.new(1, -2.2),
+		})
+		sp.Color = tr.Color
+		sp.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, math.clamp(width * 0.38, 0.24, 1.5)),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		sp.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		sp.LightEmission = 1.0
+		sp.LightInfluence = 0
+		pcall(function() sp.Brightness = 4.2 end)
+		sp.Lifetime = NumberRange.new(0.14, 0.26)
+		sp.Speed = NumberRange.new(10, 26)
+		sp.SpreadAngle = Vector2.new(180, 180)
+		sp.Drag = 4.2
+		sp.Rate = 44
+		sp.Enabled = true
+		sp.Parent = a0
+	end
+
 	return tr
 end
 
@@ -175,22 +270,59 @@ end
 
 local function spawnShockRing(pos, upCF, color, startR, endR, thickness, dur, mat, parent)
 	local baseCF = upCF or CFrame.new(pos)
+	local d = dur or 0.44
+	local col = color or PALETTE.Crimson
 	local ring = makePart(
 		"DragonShockRing",
 		Enum.PartType.Cylinder,
 		Vector3.new(thickness or 0.28, startR, startR),
 		baseCF * CFrame.Angles(0, 0, math.pi * 0.5),
-		color,
-		0.14,
-		mat or Enum.Material.ForceField,
+		col,
+		0.10,
+		mat or Enum.Material.Neon,
 		parent
 	)
-	local d = dur or 0.44
 	TweenService:Create(ring, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 		Size = Vector3.new(math.max(0.06, (thickness or 0.28) * 0.3), endR, endR),
 		Transparency = 1,
 	}):Play()
-	Debris:AddItem(ring, d + 0.05)
+
+	if not isLowFX() then
+		local att = Instance.new("Attachment")
+		att.CFrame = CFrame.Angles(0, 0, -math.pi * 0.5)
+		att.Parent = ring
+		local pe = Instance.new("ParticleEmitter")
+		pe.Name = "DragonShockRingEmitter"
+		pe.Texture = TEX_SHOCK_RING
+		pe.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+		pe.Enabled = false
+		pe.Rate = 0
+		pe.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, PALETTE.HotCore),
+			ColorSequenceKeypoint.new(0.45, col),
+			ColorSequenceKeypoint.new(1, col),
+		})
+		pe.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, math.max(1.2, startR * 0.55)),
+			NumberSequenceKeypoint.new(0.65, endR * 0.72),
+			NumberSequenceKeypoint.new(1, endR * 0.92),
+		})
+		pe.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.04),
+			NumberSequenceKeypoint.new(0.65, 0.35),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		pe.LightEmission = 1.0
+		pe.LightInfluence = 0
+		pcall(function() pe.Brightness = 4.2 end)
+		pe.Lifetime = NumberRange.new(d * 0.85, d)
+		pe.Speed = NumberRange.new(0.05, 0.12)
+		pe.SpreadAngle = Vector2.new(0, 0)
+		pe.Parent = att
+		pe:Emit(2)
+	end
+
+	Debris:AddItem(ring, d + 0.08)
 	return ring
 end
 
@@ -397,37 +529,168 @@ end
 -- ============================================================================
 local function makeStudioEmitter(parent, name, c1, c2, c3, sz0, sz1, lifeMin, lifeMax, spdMin, spdMax, emitCount, emitDelay, spread, drag)
 	local pe = Instance.new("ParticleEmitter")
-	pe.Name = name
+	local nm = tostring(name or "DragonStudioEmitter")
+	pe.Name = nm
 	pe.Enabled = false
-	pe.Rate = 0
+	pe.Rate = 76
+	if string.find(nm, "Mist") or string.find(nm, "Smoke") or string.find(nm, "Wisps") or string.find(nm, "Ash") then
+		pe.Texture = TEX_SMOKE_CLOUD
+		pe.LightEmission = 0.72
+		pe.LightInfluence = 0.06
+		pcall(function() pe.Brightness = 2.8 end)
+		pe.ZOffset = -0.25
+	elseif string.find(nm, "Sparks") or string.find(nm, "Cinders") or string.find(nm, "Embers") then
+		pe.Texture = TEX_SPARK_FLARE
+		pe.Orientation = Enum.ParticleOrientation.VelocityParallel
+		pe.Squash = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, -1.3),
+			NumberSequenceKeypoint.new(0.65, -2.1),
+			NumberSequenceKeypoint.new(1, -0.6),
+		})
+		pe.LightEmission = 1.0
+		pe.LightInfluence = 0
+		pcall(function() pe.Brightness = 4.4 end)
+		pe.ZOffset = 0.4
+	else
+		pe.Texture = TEX_FIRE_PLASMA
+		pe.LightEmission = 1.0
+		pe.LightInfluence = 0
+		pcall(function() pe.Brightness = 4.0 end)
+		pe.ZOffset = 0.2
+	end
 	pe.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, c1),
-		ColorSequenceKeypoint.new(0.52, c2),
+		ColorSequenceKeypoint.new(0.48, c2),
 		ColorSequenceKeypoint.new(1, c3 or PALETTE.Obsidian),
 	})
 	pe.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, sz0),
-		NumberSequenceKeypoint.new(0.55, (sz0 + sz1) * 0.52),
+		NumberSequenceKeypoint.new(0, sz0 * 1.18),
+		NumberSequenceKeypoint.new(0.55, (sz0 + sz1) * 0.68),
 		NumberSequenceKeypoint.new(1, sz1),
 	})
 	pe.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.08),
-		NumberSequenceKeypoint.new(0.68, 0.42),
+		NumberSequenceKeypoint.new(0, 0.02),
+		NumberSequenceKeypoint.new(0.68, 0.32),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	pe.LightEmission = math.min(MAX_PARTICLE_EMISSION, 0.72)
-	pe.LightInfluence = 0.2
 	pe.Lifetime = NumberRange.new(lifeMin, lifeMax)
-	pe.Speed = NumberRange.new(spdMin, spdMax)
+	pe.Speed = NumberRange.new(spdMin * 1.18, spdMax * 1.28)
 	pe.SpreadAngle = Vector2.new(spread or 180, spread or 180)
-	pe.Drag = drag or 3.2
-	pe.RotSpeed = NumberRange.new(-140, 140)
+	pe.Drag = drag or 3.4
+	pe.RotSpeed = NumberRange.new(-240, 240)
 	pe.Rotation = NumberRange.new(0, 360)
-	pe:SetAttribute("EmitCount", emitCount or 18)
+	pe:SetAttribute("EmitCount", math.floor((emitCount or 18) * 1.7 + 0.5))
 	pe:SetAttribute("EmitDelay", emitDelay or 0)
-	pe:SetAttribute("EmitDuration", 0)
+	pe:SetAttribute("EmitDuration", 0.16)
 	pe.Parent = parent
 	return pe
+end
+
+local function attachDragonSignatureStudioLayers(att)
+	local coreFlash = Instance.new("ParticleEmitter")
+	coreFlash.Name = "DragonStudioCoreFlash"
+	coreFlash.Texture = TEX_SHOCK_RING
+	coreFlash.Orientation = Enum.ParticleOrientation.FacingCamera
+	coreFlash.Enabled = false
+	coreFlash.Rate = 0
+	coreFlash.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PALETTE.HotCore),
+		ColorSequenceKeypoint.new(0.5, PALETTE.Crimson),
+		ColorSequenceKeypoint.new(1, PALETTE.Violet),
+	})
+	coreFlash.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.0),
+		NumberSequenceKeypoint.new(0.35, 5.4),
+		NumberSequenceKeypoint.new(1, 0.2),
+	})
+	coreFlash.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.55, 0.25),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	coreFlash.LightEmission = 1.0
+	coreFlash.LightInfluence = 0
+	pcall(function() coreFlash.Brightness = 5.0 end)
+	coreFlash.ZOffset = 0.85
+	coreFlash.Lifetime = NumberRange.new(0.16, 0.24)
+	coreFlash.Speed = NumberRange.new(0.1, 0.5)
+	coreFlash.SpreadAngle = Vector2.new(180, 180)
+	coreFlash:SetAttribute("EmitCount", 5)
+	coreFlash:SetAttribute("EmitDelay", 0)
+	coreFlash:SetAttribute("EmitDuration", 0)
+	coreFlash.Parent = att
+
+	local planarRing = Instance.new("ParticleEmitter")
+	planarRing.Name = "DragonStudioPlanarRing"
+	planarRing.Texture = TEX_SHOCK_RING
+	planarRing.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+	planarRing.Enabled = false
+	planarRing.Rate = 0
+	planarRing.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PALETTE.HotCore),
+		ColorSequenceKeypoint.new(0.45, PALETTE.Crimson),
+		ColorSequenceKeypoint.new(1, PALETTE.Violet),
+	})
+	planarRing.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.4),
+		NumberSequenceKeypoint.new(0.65, 9.2),
+		NumberSequenceKeypoint.new(1, 12.4),
+	})
+	planarRing.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.04),
+		NumberSequenceKeypoint.new(0.65, 0.35),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	planarRing.LightEmission = 1.0
+	planarRing.LightInfluence = 0
+	pcall(function() planarRing.Brightness = 4.2 end)
+	planarRing.ZOffset = 0.45
+	planarRing.Lifetime = NumberRange.new(0.24, 0.36)
+	planarRing.Speed = NumberRange.new(0.08, 0.25)
+	planarRing.SpreadAngle = Vector2.new(25, 25)
+	planarRing:SetAttribute("EmitCount", 4)
+	planarRing:SetAttribute("EmitDelay", 0)
+	planarRing:SetAttribute("EmitDuration", 0)
+	planarRing.Parent = att
+
+	local velSparks = Instance.new("ParticleEmitter")
+	velSparks.Name = "DragonStudioVelocitySparks"
+	velSparks.Texture = TEX_SPARK_FLARE
+	velSparks.Orientation = Enum.ParticleOrientation.VelocityParallel
+	velSparks.Squash = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, -1.6),
+		NumberSequenceKeypoint.new(0.6, -2.4),
+		NumberSequenceKeypoint.new(1, -0.7),
+	})
+	velSparks.Enabled = false
+	velSparks.Rate = 0
+	velSparks.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PALETTE.HotCore),
+		ColorSequenceKeypoint.new(0.45, PALETTE.Crimson),
+		ColorSequenceKeypoint.new(1, PALETTE.SolarGold),
+	})
+	velSparks.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.74),
+		NumberSequenceKeypoint.new(0.65, 0.45),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	velSparks.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.75, 0.22),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	velSparks.LightEmission = 1.0
+	velSparks.LightInfluence = 0
+	pcall(function() velSparks.Brightness = 4.8 end)
+	velSparks.ZOffset = 0.55
+	velSparks.Lifetime = NumberRange.new(0.18, 0.34)
+	velSparks.Speed = NumberRange.new(32, 76)
+	velSparks.SpreadAngle = Vector2.new(180, 180)
+	velSparks.Drag = 4.6
+	velSparks:SetAttribute("EmitCount", 32)
+	velSparks:SetAttribute("EmitDelay", 0)
+	velSparks:SetAttribute("EmitDuration", 0)
+	velSparks.Parent = att
 end
 
 function DragonSovereignVFX.EnsureDefaultPrefabs()
@@ -496,6 +759,7 @@ function DragonSovereignVFX.EnsureDefaultPrefabs()
 			for _, s in ipairs(emitterList) do
 				makeStudioEmitter(att, s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12], s[13], s[14])
 			end
+			attachDragonSignatureStudioLayers(att)
 			holder.Parent = dragonFolder
 		end
 	end
@@ -534,6 +798,56 @@ function DragonSovereignVFX.EmitPrefab(prefabName, worldCF, scale)
 		clone.Parent = hostPart
 	end
 
+	if not low then
+		for bIdx = 1, 2 do
+			local sign = (bIdx == 1) and 1 or -1
+			local a0 = Instance.new("Attachment")
+			a0.Position = Vector3.new(-3.6 * mult * sign, -0.8 * mult, 0)
+			a0.Parent = hostPart
+			local a1 = Instance.new("Attachment")
+			a1.Position = Vector3.new(3.6 * mult * sign, 1.6 * mult, 0)
+			a1.Parent = hostPart
+			local bm = Instance.new("Beam")
+			bm.Name = "DragonStudioCurvedBeam_" .. bIdx
+			bm.Attachment0 = a0
+			bm.Attachment1 = a1
+			bm.Texture = TEX_FIRE_PLASMA
+			bm.TextureMode = Enum.TextureMode.Wrap
+			bm.TextureSpeed = 4.6 * sign
+			bm.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, PALETTE.HotCore),
+				ColorSequenceKeypoint.new(0.5, (bIdx == 1) and PALETTE.Crimson or PALETTE.Violet),
+				ColorSequenceKeypoint.new(1, PALETTE.Obsidian),
+			})
+			bm.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.2, 0.04),
+				NumberSequenceKeypoint.new(0.8, 0.14),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			bm.LightEmission = 1.0
+			bm.LightInfluence = 0
+			pcall(function() bm.Brightness = 4.2 end)
+			bm.FaceCamera = true
+			bm.Segments = 18
+			bm.CurveSize0 = 4.8 * mult * sign
+			bm.CurveSize1 = -4.8 * mult * sign
+			bm.Width0 = 1.65 * mult
+			bm.Width1 = 0.30 * mult
+			bm.Parent = hostPart
+			TweenService:Create(a0, TweenInfo.new(0.36, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Position = Vector3.new(-7.2 * mult * sign, 1.4 * mult, 2.5 * mult * sign),
+			}):Play()
+			TweenService:Create(a1, TweenInfo.new(0.36, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Position = Vector3.new(7.2 * mult * sign, 3.6 * mult, -2.5 * mult * sign),
+			}):Play()
+			TweenService:Create(bm, TweenInfo.new(0.36, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Width0 = 0,
+				Width1 = 0,
+			}):Play()
+		end
+	end
+
 	local maxCleanup = 1.2
 	for _, desc in ipairs(hostPart:GetDescendants()) do
 		if desc:IsA("ParticleEmitter") then
@@ -550,24 +864,34 @@ function DragonSovereignVFX.EmitPrefab(prefabName, worldCF, scale)
 			local emitDur = tonumber(desc:GetAttribute("EmitDuration")) or 0
 			maxCleanup = math.max(maxCleanup, emitDelay + emitDur + desc.Lifetime.Max + 0.35)
 
-			task.spawn(function()
-				if emitDelay > 0 then
-					task.wait(emitDelay)
-				else
-					task.wait()
-				end
-				if not desc or not desc.Parent then return end
+			if emitDelay <= 0 then
 				if emitCount > 0 then
 					desc:Emit(emitCount)
 				end
-				if emitDur > 0 then
+				if emitDur > 0 and not low then
 					desc.Enabled = true
-					task.wait(emitDur)
-					if desc and desc.Parent then
-						desc.Enabled = false
-					end
+					task.delay(emitDur, function()
+						if desc and desc.Parent then
+							desc.Enabled = false
+						end
+					end)
 				end
-			end)
+			else
+				task.delay(emitDelay, function()
+					if not desc or not desc.Parent then return end
+					if emitCount > 0 then
+						desc:Emit(emitCount)
+					end
+					if emitDur > 0 and not low then
+						desc.Enabled = true
+						task.delay(emitDur, function()
+							if desc and desc.Parent then
+								desc.Enabled = false
+							end
+						end)
+					end
+				end)
+			end
 		elseif desc:IsA("PointLight") then
 			desc.Brightness = math.min(MAX_LIGHT_BRIGHTNESS, desc.Brightness)
 			desc.Range = math.min(MAX_LIGHT_RANGE, desc.Range)
