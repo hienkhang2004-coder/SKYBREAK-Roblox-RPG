@@ -374,16 +374,14 @@ local function getWorldShaderSpec(matName,rawColor)
         elseif ml:find('crimson') or ml:find('magma') then
             nr,ng,nb=1.00,0.28,0.22
         end
-        local isGlassCrystal=ml:find('crystal') or ml:find('prism') or ml:find('amethyst') or ml:find('amber')
         spec={
             mode='PLASMA',
-            stops=makeWorldStops(nr,ng,nb,1.35,0.62,1.00,1.25,0.08),
+            stops=makeWorldStops(nr,ng,nb,1.35,0.58,0.98,1.22,0.08),
             scale=4.6,
-            boost=1.16,
-            mat=isGlassCrystal and Enum.Material.Glass or Enum.Material.Neon,
-            refl=isGlassCrystal and 0.25 or 0.0,
-            neon=not isGlassCrystal,
-            neonColor=Color3.new(math.clamp(nr*0.92,0,1),math.clamp(ng*0.92,0,1),math.clamp(nb*0.92,0,1)),
+            boost=1.12,
+            mat=Enum.Material.Glass,
+            refl=0.18,
+            neon=false,
             lightColor=Color3.new(math.clamp(nr,0,1),math.clamp(ng,0,1),math.clamp(nb,0,1)),
         }
     elseif ml:find('turf') or ml:find('grass') or ml:find('moss') or ml:find('lawn') then

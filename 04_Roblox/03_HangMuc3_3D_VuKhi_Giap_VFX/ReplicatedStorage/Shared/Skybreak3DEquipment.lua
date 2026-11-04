@@ -1337,6 +1337,64 @@ function M.EnsureStarterCharacterForm(ch)
         return
     end
 
+    -- In unpublished local .rbxlx Studio (PlaceId == 0), Roblox assetdelivery returns HTTP 401 (customErrorCode 11)
+    -- for FileMesh DynamicHeads (e.g. 11163789916 -> 109475967782707) and classic Shirt/Pants textures,
+    -- which makes FileMesh Head invisible and triggers the purple Roblox-logo Modesty Layer on skin-colored torsos.
+    if game.PlaceId == 0 then
+        local head = ch:FindFirstChild('Head')
+        if head and head:IsA('BasePart') then
+            local sm = head:FindFirstChildOfClass('SpecialMesh')
+            if sm and sm.MeshType == Enum.MeshType.FileMesh then
+                sm.MeshType = Enum.MeshType.Head
+                sm.MeshId = ''
+                sm.TextureId = ''
+                sm.Scale = Vector3.new(1.25, 1.25, 1.25)
+            end
+            local face = head:FindFirstChild('face') or head:FindFirstChildOfClass('Decal')
+            if not face then
+                face = Instance.new('Decal')
+                face.Name = 'face'
+                face.Face = Enum.NormalId.Front
+                face.Texture = 'rbxasset://textures/face.png'
+                face.Parent = head
+            elseif face.Texture == '' or face.Texture:find('rbxassetid://') or face.Texture:find('roblox.com/asset') then
+                face.Texture = 'rbxasset://textures/face.png'
+            end
+            face.Transparency = 0
+        end
+        for _, inst in ipairs(ch:GetChildren()) do
+            if inst:IsA('Shirt') or inst:IsA('Pants') then
+                inst:Destroy()
+            end
+        end
+        local bc = ch:FindFirstChildOfClass('BodyColors')
+        if bc then
+            local torsoCol = Color3.fromRGB(26, 28, 36)
+            local legCol = Color3.fromRGB(20, 22, 28)
+            if bc.TorsoColor3 ~= torsoCol then
+                bc.TorsoColor3 = torsoCol
+            end
+            if bc.LeftLegColor3 ~= legCol then
+                bc.LeftLegColor3 = legCol
+            end
+            if bc.RightLegColor3 ~= legCol then
+                bc.RightLegColor3 = legCol
+            end
+            for _, tName in ipairs({ 'UpperTorso', 'Torso' }) do
+                local tp = ch:FindFirstChild(tName)
+                if tp and tp:IsA('BasePart') and tp.Color ~= torsoCol then
+                    tp.Color = torsoCol
+                end
+            end
+            for _, lName in ipairs({ 'LowerTorso', 'LeftUpperLeg', 'RightUpperLeg', 'LeftLowerLeg', 'RightLowerLeg', 'LeftFoot', 'RightFoot', 'Left Leg', 'Right Leg' }) do
+                local lp = ch:FindFirstChild(lName)
+                if lp and lp:IsA('BasePart') and lp.Color ~= legCol then
+                    lp.Color = legCol
+                end
+            end
+        end
+    end
+
     -- Preserve 100% of the player's real outside Roblox Avatar (Body, Head, Face, Hair, Hats, Accessories, 2D/3D Clothes)
     -- while overriding CosmeticService.Guardian's server-side Transparency = 1 hiding.
     for _, desc in ipairs(ch:GetDescendants()) do
@@ -1410,7 +1468,13 @@ local function ensureStarterJoints(s)
     if not ch or not ch.Parent then
         return nil
     end
-    if s.NativeJoints and s.NativeJoints.RightShoulder and s.NativeJoints.RightShoulder.Joint and s.NativeJoints.RightShoulder.Joint.Parent then
+    if s.NativeJoints
+        and s.NativeJoints.Root and s.NativeJoints.Root.Joint and s.NativeJoints.Root.Joint.Parent
+        and s.NativeJoints.RightShoulder and s.NativeJoints.RightShoulder.Joint and s.NativeJoints.RightShoulder.Joint.Parent
+        and s.NativeJoints.LeftShoulder and s.NativeJoints.LeftShoulder.Joint and s.NativeJoints.LeftShoulder.Joint.Parent
+        and s.NativeJoints.RightHip and s.NativeJoints.RightHip.Joint and s.NativeJoints.RightHip.Joint.Parent
+        and s.NativeJoints.Neck and s.NativeJoints.Neck.Joint and s.NativeJoints.Neck.Joint.Parent
+    then
         return s.NativeJoints
     end
     local joints = {}

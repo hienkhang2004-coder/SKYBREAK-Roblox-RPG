@@ -2159,8 +2159,8 @@ local function applyRealmElementalTheme(model, realmName)
             if isCrystal then
                 local useAlt = m:find('magenta') or m:find('pink') or m:find('violet') or m:find('gold') or m:find('warm') or m:find('sun')
                 p.Color = useAlt and pal.CrystalAlt or pal.Crystal
-                p.Material = m:find('crystal') and Enum.Material.Glass or Enum.Material.Neon
-                p.Reflectance = m:find('crystal') and 0.22 or 0.0
+                p.Material = Enum.Material.Glass
+                p.Reflectance = 0.20
             elseif isWater then
                 p.Color = pal.Water
                 p.Material = (m:find('ice') or m:find('glacier')) and Enum.Material.Glacier or Enum.Material.Glass
@@ -2713,14 +2713,18 @@ local function boot()
                         return
                     end
                     local isBeastNow = stateEntry.TransformFX and stateEntry.TransformFX.V5Model and stateEntry.TransformFX.V5Model.Parent ~= nil
-                    if o:IsA('BasePart') then
+                    if o:IsA('BasePart') or o:IsA('Motor6D') or o:IsA('Decal') or o:IsA('Texture') or o:IsA('SpecialMesh') then
                         stateEntry._EquipBindReady = nil
-                        o.Transparency = 1
-                        if not isBeastNow then
+                        stateEntry.NativeJoints = nil
+                        if isBeastNow then
+                            if o:IsA('BasePart') then
+                                o.LocalTransparencyModifier = 1
+                            elseif o:IsA('Decal') or o:IsA('Texture') then
+                                o.Transparency = 1
+                            end
+                        else
                             ensureStarterCharacterForm(ch)
                         end
-                    elseif o:IsA('Decal') or o:IsA('Texture') then
-                        o.Transparency = 1
                     end
                 end)
             end)
