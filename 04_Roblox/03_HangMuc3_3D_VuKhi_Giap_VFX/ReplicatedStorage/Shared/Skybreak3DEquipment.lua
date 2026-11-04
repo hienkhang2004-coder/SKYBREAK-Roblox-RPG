@@ -1283,6 +1283,142 @@ local function resolveArmorTheme(tokenStr)
     }
 end
 
+function M.EnsureStarterCharacterForm(ch)
+    if not ch or not ch.Parent then
+        return
+    end
+    local animScript = ch:FindFirstChild('Animate')
+    if animScript then
+        local mood = animScript:FindFirstChild('mood')
+        if mood then
+            mood:Destroy()
+        end
+    end
+    local folder = ch:FindFirstChild('SkybreakStarterForm')
+    if not folder then
+        folder = Instance.new('Folder')
+        folder.Name = 'SkybreakStarterForm'
+        folder.Parent = ch
+    end
+    local function weldPart(host, name, size, color, offsetCF, meshType, scale)
+        local p = Instance.new('Part')
+        p.Name = name
+        p.Size = size
+        p.Color = color
+        p.Material = Enum.Material.SmoothPlastic
+        p.TopSurface = Enum.SurfaceType.Smooth
+        p.BottomSurface = Enum.SurfaceType.Smooth
+        p.CanCollide = false
+        p.CanQuery = false
+        p.CanTouch = false
+        p.Massless = true
+        p.CastShadow = true
+        p.CFrame = host.CFrame * (offsetCF or CFrame.identity)
+        if meshType then
+            local sm = Instance.new('SpecialMesh')
+            sm.MeshType = meshType
+            if scale then
+                sm.Scale = scale
+            end
+            sm.Parent = p
+        end
+        local w = Instance.new('WeldConstraint')
+        w.Part0 = host
+        w.Part1 = p
+        w.Parent = p
+        p.Parent = folder
+        return p
+    end
+
+    local skinCol = Color3.fromRGB(234, 184, 146)
+    local hairGold = Color3.fromRGB(235, 202, 108)
+    local hairDark = Color3.fromRGB(210, 174, 84)
+    local coatBlack = Color3.fromRGB(22, 24, 30)
+    local pantsBlack = Color3.fromRGB(20, 22, 28)
+    local shirtWhite = Color3.fromRGB(242, 244, 248)
+    local trimGold = Color3.fromRGB(228, 184, 74)
+
+    local head = ch:FindFirstChild('Head')
+    if head and head:IsA('BasePart') and not folder:GetAttribute('B_Head') then
+        folder:SetAttribute('B_Head', true)
+        local sh = weldPart(head, 'StarterHead', Vector3.new(2, 1, 1), skinCol, CFrame.identity, Enum.MeshType.Head, Vector3.new(1.25, 1.25, 1.25))
+        local face = Instance.new('Decal')
+        face.Name = 'StarterFace'
+        face.Face = Enum.NormalId.Front
+        face.Texture = 'rbxasset://textures/face.png'
+        face.Parent = sh
+        weldPart(head, 'HairCrown', Vector3.new(1.54, 0.74, 1.56), hairGold, CFrame.new(0, 0.44, 0.04), Enum.MeshType.Sphere)
+        weldPart(head, 'HairBack', Vector3.new(1.48, 0.98, 0.84), hairDark, CFrame.new(0, 0.06, 0.40) * CFrame.Angles(0.16, 0, 0), Enum.MeshType.Sphere)
+        weldPart(head, 'HairBangL', Vector3.new(0.62, 0.68, 0.42), hairGold, CFrame.new(-0.34, 0.24, -0.52) * CFrame.Angles(0.14, 0.22, 0.26), Enum.MeshType.Sphere)
+        weldPart(head, 'HairBangR', Vector3.new(0.62, 0.68, 0.42), hairGold, CFrame.new(0.34, 0.24, -0.52) * CFrame.Angles(0.14, -0.22, -0.26), Enum.MeshType.Sphere)
+        weldPart(head, 'HairLockL', Vector3.new(0.36, 0.88, 0.56), hairDark, CFrame.new(-0.66, 0.02, -0.14) * CFrame.Angles(0.08, 0, 0.12), Enum.MeshType.Sphere)
+        weldPart(head, 'HairLockR', Vector3.new(0.36, 0.88, 0.56), hairDark, CFrame.new(0.66, 0.02, -0.14) * CFrame.Angles(0.08, 0, -0.12), Enum.MeshType.Sphere)
+    end
+
+    local uTorso = ch:FindFirstChild('UpperTorso') or ch:FindFirstChild('Torso')
+    if uTorso and uTorso:IsA('BasePart') and not folder:GetAttribute('B_UTorso') then
+        folder:SetAttribute('B_UTorso', true)
+        weldPart(uTorso, 'StarterShirt', Vector3.new(1.94, 1.60, 0.96), shirtWhite)
+        weldPart(uTorso, 'StarterCoatBack', Vector3.new(2.02, 1.64, 0.54), coatBlack, CFrame.new(0, 0, 0.24))
+        weldPart(uTorso, 'StarterCoatL', Vector3.new(0.66, 1.64, 1.02), coatBlack, CFrame.new(-0.68, 0, 0))
+        weldPart(uTorso, 'StarterCoatR', Vector3.new(0.66, 1.64, 1.02), coatBlack, CFrame.new(0.68, 0, 0))
+        weldPart(uTorso, 'StarterCollar', Vector3.new(1.42, 0.30, 0.86), coatBlack, CFrame.new(0, 0.82, 0.08))
+        weldPart(uTorso, 'StarterGoldL', Vector3.new(0.09, 1.24, 1.04), trimGold, CFrame.new(-0.37, -0.04, 0))
+        weldPart(uTorso, 'StarterGoldR', Vector3.new(0.09, 1.24, 1.04), trimGold, CFrame.new(0.37, -0.04, 0))
+    end
+
+    local lTorso = ch:FindFirstChild('LowerTorso')
+    if lTorso and lTorso:IsA('BasePart') and not folder:GetAttribute('B_LTorso') then
+        folder:SetAttribute('B_LTorso', true)
+        weldPart(lTorso, 'StarterWaist', Vector3.new(1.96, 0.46, 0.98), pantsBlack)
+        weldPart(lTorso, 'StarterBuckle', Vector3.new(0.36, 0.22, 1.02), trimGold, CFrame.new(0, 0.04, 0))
+    end
+
+    for _, side in ipairs({ 'Left', 'Right' }) do
+        local uArm = ch:FindFirstChild(side .. 'UpperArm')
+        if uArm and uArm:IsA('BasePart') and not folder:GetAttribute('B_UA_' .. side) then
+            folder:SetAttribute('B_UA_' .. side, true)
+            weldPart(uArm, 'StarterUA_' .. side, Vector3.new(0.98, 1.18, 0.98), coatBlack)
+        end
+        local lArm = ch:FindFirstChild(side .. 'LowerArm')
+        if lArm and lArm:IsA('BasePart') and not folder:GetAttribute('B_LA_' .. side) then
+            folder:SetAttribute('B_LA_' .. side, true)
+            weldPart(lArm, 'StarterLA_' .. side, Vector3.new(0.96, 1.00, 0.96), coatBlack, CFrame.new(0, 0.06, 0))
+            weldPart(lArm, 'StarterCuff_' .. side, Vector3.new(0.94, 0.18, 0.94), shirtWhite, CFrame.new(0, -0.44, 0))
+        end
+        local hand = ch:FindFirstChild(side .. 'Hand')
+        if hand and hand:IsA('BasePart') and not folder:GetAttribute('B_H_' .. side) then
+            folder:SetAttribute('B_H_' .. side, true)
+            weldPart(hand, 'StarterHand_' .. side, Vector3.new(0.92, 0.36, 0.92), skinCol)
+        end
+        local uLeg = ch:FindFirstChild(side .. 'UpperLeg')
+        if uLeg and uLeg:IsA('BasePart') and not folder:GetAttribute('B_UL_' .. side) then
+            folder:SetAttribute('B_UL_' .. side, true)
+            weldPart(uLeg, 'StarterUL_' .. side, Vector3.new(0.98, 1.24, 0.98), pantsBlack)
+        end
+        local lLeg = ch:FindFirstChild(side .. 'LowerLeg')
+        if lLeg and lLeg:IsA('BasePart') and not folder:GetAttribute('B_LL_' .. side) then
+            folder:SetAttribute('B_LL_' .. side, true)
+            weldPart(lLeg, 'StarterLL_' .. side, Vector3.new(0.96, 1.18, 0.96), pantsBlack)
+        end
+        local foot = ch:FindFirstChild(side .. 'Foot')
+        if foot and foot:IsA('BasePart') and not folder:GetAttribute('B_F_' .. side) then
+            folder:SetAttribute('B_F_' .. side, true)
+            weldPart(foot, 'StarterShoe_' .. side, Vector3.new(0.98, 0.34, 1.06), Color3.fromRGB(18, 19, 24), CFrame.new(0, 0.04, -0.03))
+            weldPart(foot, 'StarterSole_' .. side, Vector3.new(1.00, 0.12, 1.08), shirtWhite, CFrame.new(0, -0.14, -0.03))
+        end
+    end
+
+    for _, d in ipairs(folder:GetDescendants()) do
+        if d:IsA('BasePart') then
+            d.Transparency = 0
+            d.LocalTransparencyModifier = 0
+        elseif d:IsA('Decal') then
+            d.Transparency = 0
+        end
+    end
+end
+
 function M.BuildCharacterAccessories(s, rawKey)
     if not s or not s.Visual or not s.Visual.Parent then
         return
@@ -1292,6 +1428,9 @@ function M.BuildCharacterAccessories(s, rawKey)
         old:Destroy()
     end
     s.AccessoryFX = nil
+    if s.IsNativeAvatar then
+        return
+    end
     s.AccessoryKey = rawKey or ''
     if s.AccessoryKey == '' or s.AccessoryKey:gsub('|', '') == '' then
         return
@@ -1632,7 +1771,7 @@ function M.BuildCharacterAccessories(s, rawKey)
 end
 
 function M.StepCharacterAccessories(s, now, capeWind)
-    if not s or not s.Visual or not s.Visual.Parent or not s.Root or not s.Root.Parent then
+    if not s or s.IsNativeAvatar or not s.Visual or not s.Visual.Parent or not s.Root or not s.Root.Parent then
         return
     end
     local key = readAccessoryKey(s.Character, s.Owner)

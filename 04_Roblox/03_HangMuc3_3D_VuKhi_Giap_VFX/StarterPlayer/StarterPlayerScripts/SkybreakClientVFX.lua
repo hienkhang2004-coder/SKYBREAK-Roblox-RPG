@@ -1163,8 +1163,9 @@ local function updateBusoshokuCoating(ch)
 		allowed[n] = true
 	end
 
+	local hasStarterForm = ch:FindFirstChild("SkybreakStarterForm") ~= nil
 	for _, part in ipairs(ch:GetChildren()) do
-		if part:IsA("BasePart") and allowed[part.Name] and part.Transparency < 0.95 then
+		if part:IsA("BasePart") and allowed[part.Name] and (part.Transparency < 0.95 or hasStarterForm) then
 			local sleeve = Instance.new("Part")
 			sleeve.Name = "Buso_" .. part.Name
 			sleeve.Size = part.Size + Vector3.new(0.055, 0.055, 0.055)

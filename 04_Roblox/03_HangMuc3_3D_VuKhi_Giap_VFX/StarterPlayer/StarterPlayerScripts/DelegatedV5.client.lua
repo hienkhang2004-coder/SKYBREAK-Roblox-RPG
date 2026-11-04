@@ -153,6 +153,7 @@ local FX_MANAGED_CONTAINERS = {
     FruitTransformFX = true,
     HakiAuraFX = true,
     SkybreakBusoCoating = true,
+    SkybreakStarterForm = true,
     RaceV4FX = true,
     RaceV4WingsFX = true,
     HeldFruit3D = true,
@@ -175,63 +176,30 @@ local function isInsideManagedFXContainer(inst, ch)
     return false
 end
 
-local function restoreNativeAvatarVisibility(ch, allowFallbackFace)
+local ensureStarterCharacterForm = Equipment3D.EnsureStarterCharacterForm
+
+local function restoreNativeAvatarVisibility(ch)
     if not ch or not ch.Parent then
         return
     end
-    for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual' }) do
+    for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual', 'CharacterAccessories3D' }) do
         local oldVis = ch:FindFirstChild(oldVisName)
         if oldVis then
             oldVis:Destroy()
         end
     end
+    ensureStarterCharacterForm(ch)
     for _, o in ipairs(ch:GetDescendants()) do
         if not isInsideManagedFXContainer(o, ch) then
             if o:IsA('BasePart') then
-                if LEGACY_SERVER_PLACEHOLDERS[o.Name] or o:GetAttribute('EquipmentRole') == 'Weapon' then
-                    if o.Transparency ~= 1 then
-                        o.Transparency = 1
-                    end
-                    if o.LocalTransparencyModifier ~= 1 then
-                        o.LocalTransparencyModifier = 1
-                    end
-                else
-                    if o.Transparency ~= 0 then
-                        o.Transparency = 0
-                    end
-                    if o.LocalTransparencyModifier ~= 0 then
-                        o.LocalTransparencyModifier = 0
-                    end
+                if o.Transparency ~= 1 then
+                    o.Transparency = 1
                 end
             elseif o:IsA('Decal') or o:IsA('Texture') then
-                if o.Transparency ~= 0 then
-                    o.Transparency = 0
+                if o.Transparency ~= 1 then
+                    o.Transparency = 1
                 end
             end
-        end
-    end
-    local headPart = ch:FindFirstChild('Head')
-    if headPart and headPart:IsA('BasePart') then
-        local fallbackFace = headPart:FindFirstChild('SkybreakFallbackFace')
-        local hasRealFace = false
-        for _, child in ipairs(headPart:GetChildren()) do
-            if (child:IsA('Decal') and child.Name ~= 'SkybreakFallbackFace' and child.Texture ~= '')
-                or child:IsA('SurfaceAppearance') then
-                hasRealFace = true
-                break
-            end
-        end
-        if hasRealFace then
-            if fallbackFace then
-                fallbackFace:Destroy()
-            end
-        elseif allowFallbackFace and not fallbackFace then
-            local faceDecal = Instance.new('Decal')
-            faceDecal.Name = 'SkybreakFallbackFace'
-            faceDecal.Face = Enum.NormalId.Front
-            faceDecal.Texture = 'rbxasset://textures/face.png'
-            faceDecal.Transparency = 0
-            faceDecal.Parent = headPart
         end
     end
 end
@@ -243,6 +211,16 @@ local function setCharacterBaseVisibilityForBeast(s, hidden)
     local lowFX = Equipment3D.IsLowFX(s.Owner)
     if hidden then
         if s.IsNativeAvatar then
+            local sf = s.Visual:FindFirstChild('SkybreakStarterForm')
+            if sf then
+                for _, d in ipairs(sf:GetDescendants()) do
+                    if d:IsA('BasePart') then
+                        d.LocalTransparencyModifier = 1
+                    elseif d:IsA('Decal') then
+                        d.Transparency = 1
+                    end
+                end
+            end
             for _, o in ipairs(s.Visual:GetDescendants()) do
                 if not isInsideManagedFXContainer(o, s.Visual) then
                     if o:IsA('BasePart') then
@@ -366,6 +344,9 @@ local function buildWeaponAwakeningAura(s)
         oldAura:Destroy()
     end
     s.Aura = nil
+    if s.IsNativeAvatar then
+        return
+    end
 
     local owner = s.Owner
     local ch = s.Character
@@ -2754,16 +2735,12 @@ local function boot()
                     local isBeastNow = stateEntry.TransformFX and stateEntry.TransformFX.V5Model and stateEntry.TransformFX.V5Model.Parent ~= nil
                     if o:IsA('BasePart') then
                         stateEntry._EquipBindReady = nil
-                        if LEGACY_SERVER_PLACEHOLDERS[o.Name] or o:GetAttribute('EquipmentRole') == 'Weapon' then
-                            o.Transparency = 1
-                        elseif isBeastNow then
-                            o.LocalTransparencyModifier = 1
-                        else
-                            o.Transparency = 0
-                            o.LocalTransparencyModifier = 0
+                        o.Transparency = 1
+                        if not isBeastNow then
+                            ensureStarterCharacterForm(ch)
                         end
-                    elseif o:IsA('Decal') then
-                        o.Transparency = isBeastNow and 1 or 0
+                    elseif o:IsA('Decal') or o:IsA('Texture') then
+                        o.Transparency = 1
                     end
                 end)
             end)
