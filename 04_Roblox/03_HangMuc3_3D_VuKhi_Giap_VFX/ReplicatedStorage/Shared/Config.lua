@@ -26,7 +26,7 @@ C.HotbarSlots = {
 
 C.RequiredXP = function(level)
     local lv = math.clamp(tonumber(level) or 1, 1, C.MaxLevel)
-    return math.floor(65 + 14 * (lv - 1))
+    return math.floor(150 + 38 * (lv - 1) + 0.14 * ((lv - 1) ^ 1.75))
 end
 
 local islandList = {
@@ -166,9 +166,9 @@ C.Stats = function(level, classId, statAlloc)
         (tonumber(alloc.Fruit) or 1) - 1
     ), 0, C.MaxStat - 1)
     return {
-        HP = math.floor((120 + 2.2 * (lv - 1) + 4.8 * defPts) * class.HP),
-        ATK = math.floor((14 + 0.18 * (lv - 1) + 0.42 * offensePts) * class.ATK),
-        DEF = math.floor((6 + 0.08 * (lv - 1) + 0.18 * defPts) * class.DEF),
+        HP = math.floor((150 + 2.5 * (lv - 1) + 5.2 * defPts) * class.HP),
+        ATK = math.floor((18 + 0.22 * (lv - 1) + 0.48 * offensePts) * class.ATK),
+        DEF = math.floor((8 + 0.09 * (lv - 1) + 0.20 * defPts) * class.DEF),
         CritRate = baseCrit,
         CritDmg = baseCritDmg,
         Break = 100,
@@ -437,25 +437,25 @@ C.AetherFruits = {
         Passive = "Song Long Biến Hình (2 Dạng & 2 Bộ Kỹ Năng): [Dạng 1 - Bán Long Nhân] thiên về cận chiến tốc độ & Hỏa Long Trảo; [Dạng 2 - Thái Cổ Long Hoàng] hóa Rồng Khổng Lồ 3D bay lượn hủy diệt diện rộng!",
         Desc = "Trái Thần Thoại tối thượng sở hữu 2 Dạng Rồng 3D riêng biệt (Bán Long Nhân & Thái Cổ Long Hoàng) với 2 bộ kỹ năng hoàn toàn khác nhau.",
         Form1Moves = {
-            Z = {Key="Z", Name="Draconic Fireball Volley • Hỏa Long Liên Đạn", ShortName="Hỏa Long Đạn", AwakenedName="Crimson Fireball Volley • Hỏa Long Liên Đạn", Mastery=1, Cooldown=4.5, Cost=10, Range=32, Multiplier=3.2, Break=32, Hits=3, Mechanic="HybridFireballVolley", Element="Void", Desc="[Dạng 1 • Bán Long] Bắn liên hoàn 3 quả cầu lửa rồng đỏ thẫm phát nổ liên tiếp vào mục tiêu."},
-            X = {Key="X", Name="Hybrid Talon Rend • Bán Long Đột Trảo", ShortName="Bán Long Trảo", AwakenedName="Abyssal Claw Slam • Bán Long Đột Trảo", Mastery=1, Cooldown=7.5, Cost=14, Range=24, Multiplier=3.8, Break=40, Hits=2, Mechanic="HybridTalonRend", Element="Void", Desc="[Dạng 1 • Bán Long] Lao vút 20m chộp cổ mục tiêu bằng song trảo Bán Long rồi quật nổ hắc hỏa."},
-            C = {Key="C", Name="Draconic Inferno Vortex • Cuồng Long Lốc Xoáy", ShortName="Cuồng Long Xoáy", AwakenedName="Hybrid Blade Cyclone • Cuồng Long Lốc Xoáy", Mastery=1, Cooldown=10.5, Cost=18, Range=28, Multiplier=4.4, Break=46, Hits=4, Mechanic="HybridInfernoCyclone", Element="Void", Desc="[Dạng 1 • Bán Long] Xoay người tạo cơn lốc lưỡi đao lửa rồng cuốn hút kẻ địch xung quanh vào tâm."},
-            V = {Key="V", Name="Dragon Form Shift • Hóa Hình Bán Long / Long Hoàng", ShortName="Chuyển Dạng Rồng", AwakenedName="Sovereign Ascension • Hóa Thái Cổ Long Hoàng", Mastery=1, Cooldown=3.0, Cost=10, Range=36, Multiplier=4.5, Break=50, Mechanic="DragonFormShift", Element="Void", Desc="Chuyển đổi tuần tự: Nhân Dạng -> [Dạng 1] Bán Long Nhân -> [Dạng 2] Chân Thân Thái Cổ Long Hoàng 3D!"},
-            F = {Key="F", Name="Hybrid Wing Dash • Long Ảnh Bộ", ShortName="Long Ảnh Bộ", AwakenedName="Crimson Wing Blitz • Long Ảnh Bộ", Mastery=1, Cooldown=4.5, Cost=8, Range=36, Multiplier=2.0, Break=20, Mechanic="HybridWingDash", Element="Void", Desc="[Dạng 1 • Bán Long] Vỗ cánh Bán Long lướt chớp nhoáng 36m để lại tàn ảnh trảo lửa đỏ."},
+            Z = {Key="Z", Name="Draconic Fireball Volley • Hỏa Long Liên Đạn", ShortName="Hỏa Long Đạn", AwakenedName="Crimson Fireball Volley • Hỏa Long Liên Đạn", Mastery=1, Cooldown=4.2, Cost=10, Range=34, Multiplier=3.5, Break=35, Hits=5, Mechanic="HybridFireballVolley", Element="Void", Desc="[Dạng 1 • Bán Long] Bắn liên hoàn 5 quả cầu Đầu Hỏa Long phát nổ thành cột dung nham liên tiếp."},
+            X = {Key="X", Name="Hybrid Talon Rend • Bán Long Đột Trảo", ShortName="Bán Long Trảo", AwakenedName="Abyssal Claw Slam • Bán Long Đột Trảo", Mastery=1, Cooldown=7.0, Cost=14, Range=26, Multiplier=4.1, Break=42, Hits=2, Mechanic="HybridTalonRend", Element="Void", Desc="[Dạng 1 • Bán Long] Lao vút 20m chộp cổ mục tiêu bằng song trảo Bán Long rồi quật nổ hắc hỏa."},
+            C = {Key="C", Name="Draconic Inferno Vortex • Cuồng Long Lốc Xoáy", ShortName="Cuồng Long Xoáy", AwakenedName="Hybrid Blade Cyclone • Cuồng Long Lốc Xoáy", Mastery=1, Cooldown=10.0, Cost=18, Range=28, Multiplier=4.7, Break=48, Hits=4, Mechanic="HybridInfernoCyclone", Element="Void", Desc="[Dạng 1 • Bán Long] Xoay người tạo cơn lốc 3 Hỏa Long Hồn cuốn hút kẻ địch xung quanh vào tâm và kích nổ."},
+            V = {Key="V", Name="Dragon Form Shift • Hóa Hình Bán Long / Long Hoàng", ShortName="Chuyển Dạng Rồng", AwakenedName="Sovereign Ascension • Hóa Thái Cổ Long Hoàng", Mastery=1, Cooldown=2.5, Cost=10, Range=36, Multiplier=4.2, Break=45, Mechanic="DragonFormShift", Element="Void", Desc="Chuyển đổi tuần tự: Nhân Dạng -> [Dạng 1] Bán Long Nhân -> [Dạng 2] Chân Thân Thái Cổ Long Hoàng 3D!"},
+            F = {Key="F", Name="Hybrid Wing Dash • Long Ảnh Bộ", ShortName="Long Ảnh Bộ", AwakenedName="Crimson Wing Blitz • Long Ảnh Bộ", Mastery=1, Cooldown=4.2, Cost=8, Range=36, Multiplier=2.2, Break=22, Mechanic="HybridWingDash", Element="Void", Desc="[Dạng 1 • Bán Long] Vỗ cánh Bán Long lướt chớp nhoáng 36m để lại 6 cặp tàn ảnh cánh lửa."},
         },
         Form2Moves = {
-            Z = {Key="Z", Name="Sovereign Obliteration Beam • Thái Cổ Long Tức", ShortName="Thái Cổ Long Tức", AwakenedName="Abyssal Sovereign Breath • Thái Cổ Long Tức", Mastery=1, Cooldown=5.5, Cost=14, Range=52, Multiplier=4.8, Break=48, Hits=5, Mechanic="SovereignBeam", Element="Void", Desc="[Dạng 2 • Long Hoàng] Há miệng Rồng Khổng Lồ bắn đại trụ laser Hư Không xuyên thấu 52m cày nát mặt đất."},
-            X = {Key="X", Name="Sovereign Skyfall Dive • Long Hoàng Giáng Thế", ShortName="Long Hoàng Giáng", AwakenedName="Cataclysmic Dragon Dive • Long Hoàng Giáng Thế", Mastery=1, Cooldown=9.0, Cost=18, Range=38, Multiplier=5.5, Break=62, Hits=3, Mechanic="SovereignSkyfallDive", Element="Void", Desc="[Dạng 2 • Long Hoàng] Bay vọt lên không trung rồi bổ nhào xuống như thiên thạch rồng, tạo 3 vòng sóng chấn động khổng lồ."},
-            C = {Key="C", Name="Apocalyptic Eclipse Starshower • Vạn Long Thiên Hỏa Vũ", ShortName="Vạn Long Hỏa Vũ", AwakenedName="Eclipse Dragon Starshower • Vạn Long Thiên Hỏa Vũ", Mastery=1, Cooldown=12.5, Cost=24, Range=48, Multiplier=6.4, Break=68, Hits=6, Mechanic="SovereignStarshower", Element="Void", Desc="[Dạng 2 • Long Hoàng] Mở Cổng Nhật Thực Hư Không trên bầu trời, trút mưa 12 thiên thạch rồng hủy diệt diện rộng 48m."},
-            V = {Key="V", Name="Revert Sovereign Form • Thu Hồi Long Hồn", ShortName="Thu Hồi Rồng", AwakenedName="Revert Sovereign Form • Thu Hồi Long Hồn", Mastery=1, Cooldown=3.0, Cost=0, Range=28, Multiplier=2.0, Break=20, Mechanic="DragonFormShift", Element="Void", Desc="[Dạng 2 • Long Hoàng] Thu hồi Chân Thân Thái Cổ Long Hoàng trở về Nhân Dạng."},
-            F = {Key="F", Name="Sovereign Supersonic Flight • Long Vũ Cửu Thiên", ShortName="Long Vũ Cửu Thiên", AwakenedName="Abyssal Supersonic Soar • Long Vũ Cửu Thiên", Mastery=1, Cooldown=4.5, Cost=10, Range=60, Multiplier=2.8, Break=30, Mechanic="SovereignSupersonicFlight", Element="Void", Desc="[Dạng 2 • Long Hoàng] Vỗ đôi cánh Hắc Long Khổng Lồ bay siêu thanh 60m kèm 6 vòng sóng xung kích Mach Cone."},
+            Z = {Key="Z", Name="Sovereign Obliteration Beam • Thái Cổ Long Tức", ShortName="Thái Cổ Long Tức", AwakenedName="Abyssal Sovereign Breath • Thái Cổ Long Tức", Mastery=1, Cooldown=6.0, Cost=15, Range=54, Multiplier=5.2, Break=52, Hits=5, Mechanic="SovereignBeam", Element="Void", Desc="[Dạng 2 • Long Hoàng] Há miệng Rồng Khổng Lồ bắn đại trụ laser Hư Không 4 lõi xuyên thấu 54m cày nát mặt đất."},
+            X = {Key="X", Name="Sovereign Skyfall Dive • Long Hoàng Giáng Thế", ShortName="Long Hoàng Giáng", AwakenedName="Cataclysmic Dragon Dive • Long Hoàng Giáng Thế", Mastery=1, Cooldown=9.5, Cost=18, Range=38, Multiplier=5.8, Break=64, Hits=4, Mechanic="SovereignSkyfallDive", Element="Void", Desc="[Dạng 2 • Long Hoàng] Mở Tinh Môn trên không rồi bổ nhào xuống như thiên thạch rồng, tạo 4 vòng sóng chấn động kiến tạo."},
+            C = {Key="C", Name="Apocalyptic Eclipse Starshower • Vạn Long Thiên Hỏa Vũ", ShortName="Vạn Long Hỏa Vũ", AwakenedName="Eclipse Dragon Starshower • Vạn Long Thiên Hỏa Vũ", Mastery=1, Cooldown=13.5, Cost=25, Range=48, Multiplier=6.8, Break=72, Hits=6, Mechanic="SovereignStarshower", Element="Void", Desc="[Dạng 2 • Long Hoàng] Mở Cổng Nhật Thực Hư Không trên bầu trời, trút mưa 12 thiên thạch Đầu Rồng hủy diệt diện rộng 48m."},
+            V = {Key="V", Name="Revert Sovereign Form • Thu Hồi Long Hồn", ShortName="Thu Hồi Rồng", AwakenedName="Revert Sovereign Form • Thu Hồi Long Hồn", Mastery=1, Cooldown=2.5, Cost=0, Range=28, Multiplier=0, Break=0, Mechanic="DragonFormShift", Element="Void", Desc="[Dạng 2 • Long Hoàng] Thu hồi Chân Thân Thái Cổ Long Hoàng trở về Nhân Dạng."},
+            F = {Key="F", Name="Sovereign Supersonic Flight • Long Vũ Cửu Thiên", ShortName="Long Vũ Cửu Thiên", AwakenedName="Abyssal Supersonic Soar • Long Vũ Cửu Thiên", Mastery=1, Cooldown=4.8, Cost=10, Range=60, Multiplier=3.0, Break=32, Mechanic="SovereignSupersonicFlight", Element="Void", Desc="[Dạng 2 • Long Hoàng] Vỗ đôi cánh Hắc Long Khổng Lồ bay siêu thanh 60m kèm 8 vòng sóng xung kích Mach Cone."},
         },
         Moves = {
-            Z = {Key="Z", Name="Draconic Fireball Volley • Hỏa Long Liên Đạn", ShortName="Hỏa Long Đạn", AwakenedName="Abyssal Sovereign Breath • Thái Cổ Long Tức", Mastery=1, Cooldown=4.5, Cost=10, Range=32, Multiplier=3.2, Break=32, Element="Void", Desc="[Dạng 1] Bắn 3 cầu lửa rồng liên hoàn | [Dạng 2] Phun đại trụ laser Thái Cổ Long Tức 52m."},
-            X = {Key="X", Name="Hybrid Talon Rend • Bán Long Đột Trảo", ShortName="Bán Long Trảo", AwakenedName="Sovereign Skyfall Dive • Long Hoàng Giáng Thế", Mastery=1, Cooldown=7.5, Cost=14, Range=24, Multiplier=3.8, Break=40, Element="Void", Desc="[Dạng 1] Lao tới chộp cổ bằng vuốt Bán Long | [Dạng 2] Bổ nhào từ không trung chấn vỡ mặt đất."},
-            C = {Key="C", Name="Draconic Inferno Vortex • Cuồng Long Lốc Xoáy", ShortName="Cuồng Long Xoáy", AwakenedName="Apocalyptic Eclipse Starshower • Vạn Long Hỏa Vũ", Mastery=1, Cooldown=10.5, Cost=18, Range=28, Multiplier=4.4, Break=46, Element="Void", Desc="[Dạng 1] Xoay lốc đao lửa cuốn kẻ địch | [Dạng 2] Mở Cổng Nhật Thực trút mưa 12 thiên thạch rồng."},
-            V = {Key="V", Name="Dragon Form Shift • Hóa Bán Long / Long Hoàng 3D", ShortName="Chuyển Dạng Rồng", AwakenedName="Sovereign Ascension • Chân Thân Hắc Long Đế Vương", Mastery=1, Cooldown=3.0, Cost=10, Range=36, Multiplier=4.5, Break=50, Element="Void", Desc="Nhấn [V] lần 1 hóa Dạng 1 (Bán Long Nhân), nhấn [V] lần 2 hóa Dạng 2 (Thái Cổ Long Hoàng Khổng Lồ), nhấn [V] lần 3 thu hồi!"},
-            F = {Key="F", Name="Hybrid Wing Dash • Long Ảnh Bộ", ShortName="Long Ảnh Bộ", AwakenedName="Sovereign Supersonic Flight • Long Vũ Cửu Thiên", Mastery=1, Cooldown=4.5, Cost=8, Range=36, Multiplier=2.0, Break=20, Element="Void", Desc="[Dạng 1] Lướt nhanh để lại tàn ảnh lửa | [Dạng 2] Bay siêu thanh 60m tạo sóng xung kích Mach Cone."},
+            Z = {Key="Z", Name="Draconic Fireball Volley • Hỏa Long Liên Đạn", ShortName="Hỏa Long Đạn", AwakenedName="Abyssal Sovereign Breath • Thái Cổ Long Tức", Mastery=1, Cooldown=4.2, Cost=10, Range=34, Multiplier=3.5, Break=35, Element="Void", Desc="[Dạng 1] Bắn 5 cầu lửa Đầu Rồng liên hoàn | [Dạng 2] Phun đại trụ laser Thái Cổ Long Tức 54m."},
+            X = {Key="X", Name="Hybrid Talon Rend • Bán Long Đột Trảo", ShortName="Bán Long Trảo", AwakenedName="Sovereign Skyfall Dive • Long Hoàng Giáng Thế", Mastery=1, Cooldown=7.0, Cost=14, Range=26, Multiplier=4.1, Break=42, Element="Void", Desc="[Dạng 1] Lao tới chộp cổ bằng vuốt Bán Long | [Dạng 2] Bổ nhào từ không trung chấn vỡ mặt đất."},
+            C = {Key="C", Name="Draconic Inferno Vortex • Cuồng Long Lốc Xoáy", ShortName="Cuồng Long Xoáy", AwakenedName="Apocalyptic Eclipse Starshower • Vạn Long Hỏa Vũ", Mastery=1, Cooldown=10.0, Cost=18, Range=28, Multiplier=4.7, Break=48, Element="Void", Desc="[Dạng 1] Xoay lốc đao lửa cuốn kẻ địch | [Dạng 2] Mở Cổng Nhật Thực trút mưa 12 thiên thạch rồng."},
+            V = {Key="V", Name="Dragon Form Shift • Hóa Bán Long / Long Hoàng 3D", ShortName="Chuyển Dạng Rồng", AwakenedName="Sovereign Ascension • Chân Thân Hắc Long Đế Vương", Mastery=1, Cooldown=2.5, Cost=10, Range=36, Multiplier=4.2, Break=45, Element="Void", Desc="Nhấn [V] lần 1 hóa Dạng 1 (Bán Long Nhân), nhấn [V] lần 2 hóa Dạng 2 (Thái Cổ Long Hoàng Khổng Lồ), nhấn [V] lần 3 thu hồi!"},
+            F = {Key="F", Name="Hybrid Wing Dash • Long Ảnh Bộ", ShortName="Long Ảnh Bộ", AwakenedName="Sovereign Supersonic Flight • Long Vũ Cửu Thiên", Mastery=1, Cooldown=4.2, Cost=8, Range=36, Multiplier=2.2, Break=22, Element="Void", Desc="[Dạng 1] Lướt nhanh để lại tàn ảnh lửa | [Dạng 2] Bay siêu thanh 60m tạo sóng xung kích Mach Cone."},
         },
     },
 }
@@ -623,69 +623,82 @@ C.Companions = {}
 
 C.Enemies = {
     -- Sea 1: Golden Sky Mobs & Bosses (Lv. 1 - 700)
-    TrainingDrone = {Name="Training Drone", Level=10, VisualAsset="TrainingDrone", Element="Sky", HP=85, ATK=8, Attack=8, DEF=0, Defense=0, XP=2400, Gold=120, Range=6, Speed=9, Aggro=30, Leash=30, Drop="SkyIron"},
-    SkyPirate = {Name="Sky Pirate", Level=75, VisualAsset="SkyPirate", Element="Sky", HP=145, ATK=12, Attack=12, DEF=3, Defense=3, XP=4800, Gold=180, Range=7, Speed=11, Aggro=30, Leash=30, Drop="SkyIron"},
-    CorruptedGuard = {Name="Corrupted Guard", Level=175, VisualAsset="CorruptedGuard", Element="Sky", HP=210, ATK=16, Attack=16, DEF=5, Defense=5, XP=8500, Gold=260, Range=7, Speed=11, Aggro=34, Leash=34, Drop="SunshardCore"},
-    LightArcher = {Name="Light Archer", Level=325, VisualAsset="LightArcher", Element="Sky", HP=260, ATK=20, Attack=20, DEF=6, Defense=6, XP=14000, Gold=350, Range=27, Speed=9, Aggro=32, Leash=32, Ranged=true, Drop="CelestialFeather"},
-    SunshardRoyalGuard = {Name="Sunshard Royal Guard", Level=450, VisualAsset="SunshardRoyalGuard", Element="Sky", HP=360, ATK=24, Attack=24, DEF=8, Defense=8, XP=22000, Gold=450, Range=7.5, Speed=11, Aggro=34, Leash=38, Drop="SunshardCore"},
-    GoldenKnight = {Name="Golden Knight", Level=500, VisualAsset="GoldenKnight", Element="Sky", HP=920, ATK=32, Attack=32, DEF=14, Defense=14, XP=45000, Gold=950, Range=10, Speed=10, Aggro=35, Leash=35, Elite=true, Drop="SunshardCore"},
-    SunshardTemplar = {Name="Sunshard Templar", Level=575, VisualAsset="SunshardTemplar", Element="Sky", HP=540, ATK=28, Attack=28, DEF=11, Defense=11, XP=32000, Gold=650, Range=8, Speed=11, Aggro=34, Leash=42, Drop="SunshardCore"},
-    AureonSentinel = {Name="AUREON SENTINEL", Level=700, VisualAsset="AureonSentinel", Element="Sky", HP=4200, ATK=42, Attack=42, DEF=18, Defense=18, XP=180000, Gold=5000, Range=16, Speed=9, Aggro=47, Leash=47, Boss=true, Drop="CoreEssence"},
-    EnergyPylon = {Name="Energy Pylon", Level=700, VisualAsset="EnergyPylon", Element="Sky", HP=240, ATK=0, Attack=0, DEF=0, Defense=0, XP=0, Gold=0, Range=0, Speed=0, Aggro=0, Leash=0},
+    TrainingDrone = {Name="Training Drone", Level=10, VisualAsset="TrainingDrone", Element="Sky", HP=140, ATK=14, Attack=14, DEF=2, Defense=2, XP=450, Gold=150, Range=6, Speed=9, Aggro=30, Leash=30, Drop="SkyIron"},
+    SkyPirate = {Name="Sky Pirate", Level=75, VisualAsset="SkyPirate", Element="Sky", HP=420, ATK=32, Attack=32, DEF=8, Defense=8, XP=1800, Gold=320, Range=7, Speed=11, Aggro=30, Leash=30, Drop="SkyIron"},
+    CorruptedGuard = {Name="Corrupted Guard", Level=175, VisualAsset="CorruptedGuard", Element="Sky", HP=850, ATK=58, Attack=58, DEF=16, Defense=16, XP=4200, Gold=520, Range=7, Speed=11, Aggro=34, Leash=34, Drop="SunshardCore"},
+    LightArcher = {Name="Light Archer", Level=325, VisualAsset="LightArcher", Element="Sky", HP=1450, ATK=92, Attack=92, DEF=24, Defense=24, XP=8200, Gold=780, Range=27, Speed=9, Aggro=32, Leash=32, Ranged=true, Drop="CelestialFeather"},
+    SunshardRoyalGuard = {Name="Sunshard Royal Guard", Level=450, VisualAsset="SunshardRoyalGuard", Element="Sky", HP=2200, ATK=128, Attack=128, DEF=34, Defense=34, XP=12500, Gold=1050, Range=7.5, Speed=11, Aggro=34, Leash=38, Drop="SunshardCore"},
+    GoldenKnight = {Name="Golden Knight", Level=500, VisualAsset="GoldenKnight", Element="Sky", HP=5400, ATK=148, Attack=148, DEF=42, Defense=42, XP=26000, Gold=2400, Range=10, Speed=10, Aggro=35, Leash=35, Elite=true, Drop="SunshardCore"},
+    SunshardTemplar = {Name="Sunshard Templar", Level=575, VisualAsset="SunshardTemplar", Element="Sky", HP=3100, ATK=165, Attack=165, DEF=45, Defense=45, XP=18000, Gold=1400, Range=8, Speed=11, Aggro=34, Leash=42, Drop="SunshardCore"},
+    AureonSentinel = {Name="AUREON SENTINEL", Level=700, VisualAsset="AureonSentinel", Element="Sky", HP=24000, ATK=235, Attack=235, DEF=58, Defense=58, XP=145000, Gold=20000, Range=16, Speed=9, Aggro=47, Leash=47, Boss=true, Drop="CoreEssence"},
+    EnergyPylon = {Name="Energy Pylon", Level=700, VisualAsset="EnergyPylon", Element="Sky", HP=1200, ATK=0, Attack=0, DEF=0, Defense=0, XP=0, Gold=0, Range=0, Speed=0, Aggro=0, Leash=0},
 
     -- Sea 2: Frozen Cyber Mobs & Bosses (Lv. 700 - 1500)
-    FrostDrone = {Name="Frost Automaton", Level=750, VisualAsset="FrostDrone", Element="Frost", HP=780, ATK=38, Attack=38, DEF=14, Defense=14, Speed=14, Range=6.5, Aggro=38, Leash=55, XP=65000, Gold=1200, Drop="SkyIron"},
-    FrostAutomaton = {Name="Frost Automaton", Level=750, VisualAsset="FrostAutomaton", Element="Frost", HP=780, ATK=38, Attack=38, DEF=14, Defense=14, Speed=14, Range=6.5, Aggro=38, Leash=55, XP=65000, Gold=1200, Drop="SkyIron"},
-    CyberMercenary = {Name="Cyber Mercenary", Level=875, VisualAsset="CyberMercenary", Element="Frost", HP=920, ATK=44, Attack=44, DEF=16, Defense=16, Speed=14, Range=24, Aggro=42, Leash=58, Ranged=true, XP=85000, Gold=1500, Drop="SkyIron"},
-    CryoGuard = {Name="Cryo Vanguard", Level=1025, VisualAsset="CryoGuard", Element="Frost", HP=1250, ATK=50, Attack=50, DEF=20, Defense=20, Speed=14, Range=7, Aggro=40, Leash=60, XP=110000, Gold=1850, Drop="SunshardCore"},
-    CryoVanguard = {Name="Cryo Vanguard", Level=1025, VisualAsset="CryoVanguard", Element="Frost", HP=1250, ATK=50, Attack=50, DEF=20, Defense=20, Speed=14, Range=7, Aggro=40, Leash=60, XP=110000, Gold=1850, Drop="SunshardCore"},
-    CyberArcher = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialMarksman", Element="Frost", HP=1080, ATK=54, Attack=54, DEF=18, Defense=18, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=125000, Gold=2100, Drop="CelestialFeather"},
-    GlacialMarksman = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialMarksman", Element="Frost", HP=1080, ATK=54, Attack=54, DEF=18, Defense=18, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=125000, Gold=2100, Drop="CelestialFeather"},
-    GlacialSniper = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialSniper", Element="Frost", HP=1080, ATK=54, Attack=54, DEF=18, Defense=18, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=125000, Gold=2100, Drop="CelestialFeather"},
-    MechaDrone = {Name="Mecha Security Drone", Level=1250, VisualAsset="MechaDrone", Element="Frost", HP=1380, ATK=58, Attack=58, DEF=22, Defense=22, Speed=15, Range=7.5, Aggro=42, Leash=60, XP=145000, Gold=2400, Drop="SkyIron"},
-    ArcticCorsair = {Name="Arctic Corsair", Level=1375, VisualAsset="ArcticCorsair", Element="Frost", HP=1560, ATK=64, Attack=64, DEF=24, Defense=24, Speed=15, Range=7.5, Aggro=42, Leash=60, XP=175000, Gold=2800, Drop="SkyIron"},
-    CryonPillar = {Name="Cryon Glacial Pillar", Level=1500, VisualAsset="CryonPillar", Element="Frost", HP=450, ATK=0, Attack=0, DEF=5, Defense=5, Speed=0, Range=0, Aggro=0, Leash=999, XP=5000, Gold=500},
-    CryonPrime = {Name="CRYON PRIME", Level=1500, VisualAsset="CryonPrime", Element="Frost", HP=9800, ATK=74, Attack=74, DEF=30, Defense=30, XP=480000, Gold=12000, Range=24, Speed=0, Aggro=55, Leash=55, Boss=true, Drop="CoreEssence"},
+    FrostDrone = {Name="Frost Automaton", Level=750, VisualAsset="FrostDrone", Element="Frost", HP=4200, ATK=215, Attack=215, DEF=55, Defense=55, Speed=14, Range=6.5, Aggro=38, Leash=55, XP=24000, Gold=2200, Drop="SkyIron"},
+    FrostAutomaton = {Name="Frost Automaton", Level=750, VisualAsset="FrostAutomaton", Element="Frost", HP=4200, ATK=215, Attack=215, DEF=55, Defense=55, Speed=14, Range=6.5, Aggro=38, Leash=55, XP=24000, Gold=2200, Drop="SkyIron"},
+    CyberMercenary = {Name="Cyber Mercenary", Level=875, VisualAsset="CyberMercenary", Element="Frost", HP=5200, ATK=248, Attack=248, DEF=64, Defense=64, Speed=14, Range=24, Aggro=42, Leash=58, Ranged=true, XP=30000, Gold=2650, Drop="SkyIron"},
+    CryoGuard = {Name="Cryo Vanguard", Level=1025, VisualAsset="CryoGuard", Element="Frost", HP=6600, ATK=285, Attack=285, DEF=74, Defense=74, Speed=14, Range=7, Aggro=40, Leash=60, XP=38000, Gold=3100, Drop="SunshardCore"},
+    CryoVanguard = {Name="Cryo Vanguard", Level=1025, VisualAsset="CryoVanguard", Element="Frost", HP=6600, ATK=285, Attack=285, DEF=74, Defense=74, Speed=14, Range=7, Aggro=40, Leash=60, XP=38000, Gold=3100, Drop="SunshardCore"},
+    CyberArcher = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialMarksman", Element="Frost", HP=6200, ATK=320, Attack=320, DEF=78, Defense=78, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=44000, Gold=3500, Drop="CelestialFeather"},
+    GlacialMarksman = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialMarksman", Element="Frost", HP=6200, ATK=320, Attack=320, DEF=78, Defense=78, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=44000, Gold=3500, Drop="CelestialFeather"},
+    GlacialSniper = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialSniper", Element="Frost", HP=6200, ATK=320, Attack=320, DEF=78, Defense=78, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=44000, Gold=3500, Drop="CelestialFeather"},
+    MechaDrone = {Name="Mecha Security Drone", Level=1250, VisualAsset="MechaDrone", Element="Frost", HP=7800, ATK=345, Attack=345, DEF=86, Defense=86, Speed=15, Range=7.5, Aggro=42, Leash=60, XP=50000, Gold=3900, Drop="SkyIron"},
+    ArcticCorsair = {Name="Arctic Corsair", Level=1375, VisualAsset="ArcticCorsair", Element="Frost", HP=8900, ATK=375, Attack=375, DEF=94, Defense=94, Speed=15, Range=7.5, Aggro=42, Leash=60, XP=58000, Gold=4400, Drop="SkyIron"},
+    CryonPillar = {Name="Cryon Glacial Pillar", Level=1500, VisualAsset="CryonPillar", Element="Frost", HP=2400, ATK=0, Attack=0, DEF=25, Defense=25, Speed=0, Range=0, Aggro=0, Leash=999, XP=5000, Gold=500},
+    CryonPrime = {Name="CRYON PRIME", Level=1500, VisualAsset="CryonPrime", Element="Frost", HP=64000, ATK=470, Attack=470, DEF=115, Defense=115, XP=420000, Gold=55000, Range=24, Speed=0, Aggro=55, Leash=55, Boss=true, Drop="CoreEssence"},
 
     -- Sea 3: Shadow Realm Mobs & Bosses (Lv. 1500 - 2200)
-    VoidPirate = {Name="Void Marauder", Level=1550, VisualAsset="VoidMarauder", Element="Void", HP=1850, ATK=72, Attack=72, DEF=28, Defense=28, Speed=16, Range=7, Aggro=40, Leash=55, XP=220000, Gold=3500, Drop="SunshardCore"},
-    VoidMarauder = {Name="Void Marauder", Level=1550, VisualAsset="VoidMarauder", Element="Void", HP=1850, ATK=72, Attack=72, DEF=28, Defense=28, Speed=16, Range=7, Aggro=40, Leash=55, XP=220000, Gold=3500, Drop="SunshardCore"},
-    VoidRaider = {Name="Void Raider", Level=1675, VisualAsset="VoidRaider", Element="Void", HP=2050, ATK=78, Attack=78, DEF=30, Defense=30, Speed=16, Range=7.5, Aggro=40, Leash=55, XP=250000, Gold=3800, Drop="SunshardCore"},
-    ShadowArcher = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralBowman", Element="Void", HP=1920, ATK=84, Attack=84, DEF=28, Defense=28, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=280000, Gold=4200, Drop="CelestialFeather"},
-    UmbralBowman = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralBowman", Element="Void", HP=1920, ATK=84, Attack=84, DEF=28, Defense=28, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=280000, Gold=4200, Drop="CelestialFeather"},
-    UmbralRanger = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralRanger", Element="Void", HP=1920, ATK=84, Attack=84, DEF=28, Defense=28, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=280000, Gold=4200, Drop="CelestialFeather"},
-    ShadowSpecter = {Name="Shadow Specter", Level=1925, VisualAsset="ShadowSpecter", Element="Void", HP=2400, ATK=90, Attack=90, DEF=32, Defense=32, Speed=17, Range=8, Aggro=44, Leash=60, XP=320000, Gold=4800, Drop="CelestialFeather"},
-    AbyssalKnight = {Name="Abyssal Dreadknight", Level=2000, VisualAsset="AbyssalKnight", Element="Void", HP=3200, ATK=98, Attack=98, DEF=38, Defense=38, Speed=14, Range=8, Aggro=42, Leash=65, Elite=true, XP=420000, Gold=6500, Drop="CoreEssence"},
-    AbyssalDreadknight = {Name="Abyssal Dreadknight", Level=2000, VisualAsset="AbyssalDreadknight", Element="Void", HP=3200, ATK=98, Attack=98, DEF=38, Defense=38, Speed=14, Range=8, Aggro=42, Leash=65, Elite=true, XP=420000, Gold=6500, Drop="CoreEssence"},
-    TerrorSkyShark = {Name="Terror Sky-Shark", Level=2100, VisualAsset="TerrorSkyShark", Element="Void", HP=4200, ATK=108, Attack=108, DEF=42, Defense=42, Speed=15, Range=11, Aggro=52, Leash=75, Elite=true, XP=520000, Gold=8500, Drop="CoreEssence"},
-    NoxarVoidFX = {Name="Void Singularity", Level=2200, VisualAsset="NoxarVoidFX", Element="Void", HP=850, ATK=0, Attack=0, DEF=10, Defense=10, Speed=0, Range=0, Aggro=0, Leash=999, XP=15000, Gold=1200},
-    Noxar = {Name="NOXAR • VOID SOVEREIGN", Level=2200, VisualAsset="Noxar", Element="Void", HP=18500, ATK=120, Attack=120, DEF=45, Defense=45, XP=950000, Gold=25000, Range=26, Speed=0, Aggro=58, Leash=58, Boss=true, Drop="CoreEssence"},
+    VoidPirate = {Name="Void Marauder", Level=1550, VisualAsset="VoidMarauder", Element="Void", HP=10800, ATK=425, Attack=425, DEF=108, Defense=108, Speed=16, Range=7, Aggro=40, Leash=55, XP=72000, Gold=5500, Drop="SunshardCore"},
+    VoidMarauder = {Name="Void Marauder", Level=1550, VisualAsset="VoidMarauder", Element="Void", HP=10800, ATK=425, Attack=425, DEF=108, Defense=108, Speed=16, Range=7, Aggro=40, Leash=55, XP=72000, Gold=5500, Drop="SunshardCore"},
+    VoidRaider = {Name="Void Raider", Level=1675, VisualAsset="VoidRaider", Element="Void", HP=12400, ATK=460, Attack=460, DEF=118, Defense=118, Speed=16, Range=7.5, Aggro=40, Leash=55, XP=82000, Gold=6200, Drop="SunshardCore"},
+    ShadowArcher = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralBowman", Element="Void", HP=12000, ATK=495, Attack=495, DEF=122, Defense=122, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=94000, Gold=6800, Drop="CelestialFeather"},
+    UmbralBowman = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralBowman", Element="Void", HP=12000, ATK=495, Attack=495, DEF=122, Defense=122, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=94000, Gold=6800, Drop="CelestialFeather"},
+    UmbralRanger = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralRanger", Element="Void", HP=12000, ATK=495, Attack=495, DEF=122, Defense=122, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=94000, Gold=6800, Drop="CelestialFeather"},
+    ShadowSpecter = {Name="Shadow Specter", Level=1925, VisualAsset="ShadowSpecter", Element="Void", HP=14800, ATK=530, Attack=530, DEF=135, Defense=135, Speed=17, Range=8, Aggro=44, Leash=60, XP=108000, Gold=7600, Drop="CelestialFeather"},
+    AbyssalKnight = {Name="Abyssal Dreadknight", Level=2000, VisualAsset="AbyssalKnight", Element="Void", HP=24000, ATK=580, Attack=580, DEF=150, Defense=150, Speed=14, Range=8, Aggro=42, Leash=65, Elite=true, XP=165000, Gold=11500, Drop="CoreEssence"},
+    AbyssalDreadknight = {Name="Abyssal Dreadknight", Level=2000, VisualAsset="AbyssalDreadknight", Element="Void", HP=24000, ATK=580, Attack=580, DEF=150, Defense=150, Speed=14, Range=8, Aggro=42, Leash=65, Elite=true, XP=165000, Gold=11500, Drop="CoreEssence"},
+    TerrorSkyShark = {Name="Terror Sky-Shark", Level=2100, VisualAsset="TerrorSkyShark", Element="Void", HP=32000, ATK=630, Attack=630, DEF=160, Defense=160, Speed=15, Range=11, Aggro=52, Leash=75, Elite=true, XP=210000, Gold=14500, Drop="CoreEssence"},
+    NoxarVoidFX = {Name="Void Singularity", Level=2200, VisualAsset="NoxarVoidFX", Element="Void", HP=4500, ATK=0, Attack=0, DEF=40, Defense=40, Speed=0, Range=0, Aggro=0, Leash=999, XP=15000, Gold=1200},
+    Noxar = {Name="NOXAR • VOID SOVEREIGN", Level=2200, VisualAsset="Noxar", Element="Void", HP=150000, ATK=780, Attack=780, DEF=195, Defense=195, XP=1050000, Gold=135000, Range=26, Speed=0, Aggro=58, Leash=58, Boss=true, Drop="CoreEssence"},
 
     -- Sea Event & Island Raid Bosses (Grand Sky Seas v12 Rigged Blender Models)
-    PirateCaptainVance = {Name="CAPTAIN VANCE • ĐÔ ĐỐC KHÔNG TẶC", Level=350, VisualAsset="PirateCaptainVance", Element="Sky", HP=2800, ATK=36, Attack=36, DEF=16, Defense=16, XP=85000, Gold=3500, Range=14, Speed=12, Aggro=42, Leash=50, Boss=true, Drop="SunshardCore"},
-    OrderCyborg = {Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", Level=1250, VisualAsset="OrderCyborg", Element="Frost", HP=7800, ATK=68, Attack=68, DEF=28, Defense=28, XP=320000, Gold=8500, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
-    OrderCyborgBoss = {Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", Level=1250, VisualAsset="OrderCyborgBoss", Element="Frost", HP=7800, ATK=68, Attack=68, DEF=28, Defense=28, XP=320000, Gold=8500, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
-    SkySeaBeast = {Name="SKY SEA BEAST • THỦY QUÁI BIỂN MÂY", Level=1400, VisualAsset="SkySeaBeast", Element="Frost", HP=9200, ATK=72, Attack=72, DEF=30, Defense=30, XP=380000, Gold=11000, Range=26, Speed=8, Aggro=70, Leash=90, Boss=true, Drop="CoreEssence"},
-    SoulReaperRift = {Name="SOUL REAPER • TỬ THẦN HƯ KHÔNG", Level=2050, VisualAsset="SoulReaperRift", Element="Void", HP=14500, ATK=105, Attack=105, DEF=40, Defense=40, XP=680000, Gold=18000, Range=20, Speed=13, Aggro=55, Leash=65, Boss=true, Drop="CoreEssence"},
-    AbyssalDragonHybrid = {Name="ABYSSAL DRAGON HYBRID • LONG NHÂN HƯ KHÔNG", Level=2125, VisualAsset="AbyssalDragonHybrid", Element="Void", HP=16000, ATK=112, Attack=112, DEF=42, Defense=42, XP=750000, Gold=20000, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
-    AbyssalLeviathan = {Name="ABYSSAL LEVIATHAN • THỦY TỔ HƯ KHÔNG", Level=2150, VisualAsset="AbyssalLeviathan", Element="Void", HP=17500, ATK=116, Attack=116, DEF=44, Defense=44, XP=850000, Gold=24000, Range=28, Speed=9, Aggro=80, Leash=100, Boss=true, Drop="CoreEssence"},
-    AbyssalSovereignDragon = {Name="ABYSSAL SOVEREIGN DRAGON • THÁI CỔ LONG HOÀNG", Level=2300, VisualAsset="AbyssalSovereignDragon", Element="Void", HP=22000, ATK=128, Attack=128, DEF=48, Defense=48, XP=1100000, Gold=32000, Range=28, Speed=10, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
+    PirateCaptainVance = {Name="CAPTAIN VANCE • ĐÔ ĐỐC KHÔNG TẶC", Level=350, VisualAsset="PirateCaptainVance", Element="Sky", HP=8200, ATK=125, Attack=125, DEF=32, Defense=32, XP=42000, Gold=6500, Range=14, Speed=12, Aggro=42, Leash=50, Boss=true, Drop="SunshardCore"},
+    OrderCyborg = {Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", Level=1250, VisualAsset="OrderCyborg", Element="Frost", HP=45000, ATK=395, Attack=395, DEF=96, Defense=96, XP=260000, Gold=36000, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
+    OrderCyborgBoss = {Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", Level=1250, VisualAsset="OrderCyborgBoss", Element="Frost", HP=45000, ATK=395, Attack=395, DEF=96, Defense=96, XP=260000, Gold=36000, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
+    SkySeaBeast = {Name="SKY SEA BEAST • THỦY QUÁI BIỂN MÂY", Level=1400, VisualAsset="SkySeaBeast", Element="Frost", HP=54000, ATK=430, Attack=430, DEF=105, Defense=105, XP=320000, Gold=45000, Range=26, Speed=8, Aggro=70, Leash=90, Boss=true, Drop="CoreEssence"},
+    SoulReaperRift = {Name="SOUL REAPER • TỬ THẦN HƯ KHÔNG", Level=2050, VisualAsset="SoulReaperRift", Element="Void", HP=105000, ATK=650, Attack=650, DEF=165, Defense=165, XP=680000, Gold=88000, Range=20, Speed=13, Aggro=55, Leash=65, Boss=true, Drop="CoreEssence"},
+    AbyssalDragonHybrid = {Name="ABYSSAL DRAGON HYBRID • LONG NHÂN HƯ KHÔNG", Level=2125, VisualAsset="AbyssalDragonHybrid", Element="Void", HP=118000, ATK=690, Attack=690, DEF=175, Defense=175, XP=750000, Gold=98000, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
+    AbyssalLeviathan = {Name="ABYSSAL LEVIATHAN • THỦY TỔ HƯ KHÔNG", Level=2150, VisualAsset="AbyssalLeviathan", Element="Void", HP=135000, ATK=730, Attack=730, DEF=185, Defense=185, XP=880000, Gold=115000, Range=28, Speed=9, Aggro=80, Leash=100, Boss=true, Drop="CoreEssence"},
+    AbyssalSovereignDragon = {Name="ABYSSAL SOVEREIGN DRAGON • THÁI CỔ LONG HOÀNG", Level=2300, VisualAsset="AbyssalSovereignDragon", Element="Void", HP=195000, ATK=880, Attack=880, DEF=225, Defense=225, XP=1450000, Gold=175000, Range=28, Speed=10, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
 
     -- Regional Island & Expansion Realm Bosses (Lv. 100 - 2550 MAX)
-    SkyHubWatchCommander = {Name="COMMANDER VALEN • THỦ VỆ SÂN TẬP", Level=100, VisualAsset="SunshardRoyalGuard", Element="Sky", HP=1100, ATK=22, Attack=22, DEF=10, Defense=10, XP=28000, Gold=1200, Range=11, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
-    ShrineGuardianBoss = {Name="SHRINE WARDEN ORION • HỘ VỆ ĐIỆN THỜ", Level=225, VisualAsset="SunshardTemplar", Element="Sky", HP=1550, ATK=26, Attack=26, DEF=12, Defense=12, XP=48000, Gold=1800, Range=11, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
-    AetherArchonBoss = {Name="ARCHON HELIOS • LINH VỆ AETHER", Level=450, VisualAsset="GoldenKnight", Element="Sky", HP=2100, ATK=30, Attack=30, DEF=14, Defense=14, XP=75000, Gold=2500, Range=12, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
-    SolarHighPriestBoss = {Name="HIGH PRIEST SOLARIUS • ĐẠI TƯ TẾ THÁI DƯƠNG", Level=625, VisualAsset="SolarTitanBuddha", Element="Sky", HP=3500, ATK=38, Attack=38, DEF=16, Defense=16, XP=135000, Gold=4200, Range=16, Speed=11, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
-    CyberSyndicateBoss = {Name="OVERLORD KRON • TRÙM HẮC THỊ CYBERPORT", Level=950, VisualAsset="CyberMercenary", Element="Frost", HP=5800, ATK=56, Attack=56, DEF=24, Defense=24, XP=240000, Gold=6500, Range=18, Speed=13, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
-    PermafrostWardenBoss = {Name="GENERAL BOREAS • THỐNG LĨNH PHÁO ĐÀI BĂNG", Level=1125, VisualAsset="CryoVanguard", Element="Frost", HP=6800, ATK=62, Attack=62, DEF=26, Defense=26, XP=280000, Gold=7500, Range=14, Speed=12, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
-    VoidCastellanBoss = {Name="LORD MALAKOR • LÃNH CHÚA DINH THỰ HƯ KHÔNG", Level=1725, VisualAsset="AbyssalDreadknight", Element="Void", HP=12000, ATK=92, Attack=92, DEF=36, Defense=36, XP=520000, Gold=14000, Range=16, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
-    UmbralArchfiendBoss = {Name="ARCHFIEND ZERATH • KIẾM MA TINH THỂ ĐEN", Level=1875, VisualAsset="AbyssalDragonHybrid", Element="Void", HP=13500, ATK=98, Attack=98, DEF=38, Defense=38, XP=600000, Gold=16000, Range=18, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
-    Sylvaris = {Name="SYLVARIS • ĐẠI CỔ THỤ HOÀNG", Level=2250, VisualAsset="AbyssalDragonHybrid", Element="Sky", HP=26000, ATK=135, Attack=135, DEF=50, Defense=50, XP=1350000, Gold=35000, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
-    Ignivar = {Name="IGNIVAR • TITAN LÒ RÈN LỬA", Level=2325, VisualAsset="SolarTitanBuddha", Element="Sky", HP=34000, ATK=155, Attack=155, DEF=56, Defense=56, XP=1650000, Gold=45000, Range=24, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
-    Nerith = {Name="NERITH • THỦY HOÀNG VỰC SÂU", Level=2400, VisualAsset="AbyssalLeviathan", Element="Frost", HP=44000, ATK=180, Attack=180, DEF=64, Defense=64, XP=2100000, Gold=60000, Range=28, Speed=11, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
-    Aion = {Name="AION • PHÁP VƯƠNG THỜI GIAN", Level=2475, VisualAsset="OrderCyborgBoss", Element="Sky", HP=56000, ATK=210, Attack=210, DEF=72, Defense=72, XP=2800000, Gold=80000, Range=24, Speed=13, Aggro=70, Leash=85, Boss=true, Drop="CoreEssence"},
-    Veyr = {Name="VEYR • ĐẤNG KIẾN TẠO ĐẦU TIÊN", Level=2550, VisualAsset="AbyssalSovereignDragon", Element="Void", HP=82000, ATK=260, Attack=260, DEF=85, Defense=85, XP=5000000, Gold=150000, Range=30, Speed=12, Aggro=80, Leash=95, Boss=true, Drop="CoreEssence"},
+    SkyHubWatchCommander = {Name="COMMANDER VALEN • THỦ VỆ SÂN TẬP", Level=100, VisualAsset="SunshardRoyalGuard", Element="Sky", HP=2400, ATK=52, Attack=52, DEF=16, Defense=16, XP=12000, Gold=2200, Range=11, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
+    ShrineGuardianBoss = {Name="SHRINE WARDEN ORION • HỘ VỆ ĐIỆN THỜ", Level=225, VisualAsset="SunshardTemplar", Element="Sky", HP=4800, ATK=85, Attack=85, DEF=24, Defense=24, XP=24000, Gold=3800, Range=11, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
+    AetherArchonBoss = {Name="ARCHON HELIOS • LINH VỆ AETHER", Level=450, VisualAsset="GoldenKnight", Element="Sky", HP=11500, ATK=155, Attack=155, DEF=38, Defense=38, XP=58000, Gold=8500, Range=12, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
+    SolarHighPriestBoss = {Name="HIGH PRIEST SOLARIUS • ĐẠI TƯ TẾ THÁI DƯƠNG", Level=625, VisualAsset="SolarTitanBuddha", Element="Sky", HP=15500, ATK=195, Attack=195, DEF=50, Defense=50, XP=85000, Gold=12000, Range=16, Speed=11, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
+    CyberSyndicateBoss = {Name="OVERLORD KRON • TRÙM HẮC THỊ CYBERPORT", Level=950, VisualAsset="CyberMercenary", Element="Frost", HP=28000, ATK=310, Attack=310, DEF=78, Defense=78, XP=165000, Gold=22000, Range=18, Speed=13, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
+    PermafrostWardenBoss = {Name="GENERAL BOREAS • THỐNG LĨNH PHÁO ĐÀI BĂNG", Level=1125, VisualAsset="CryoVanguard", Element="Frost", HP=36000, ATK=355, Attack=355, DEF=88, Defense=88, XP=210000, Gold=28000, Range=14, Speed=12, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
+    VoidCastellanBoss = {Name="LORD MALAKOR • LÃNH CHÚA DINH THỰ HƯ KHÔNG", Level=1725, VisualAsset="AbyssalDreadknight", Element="Void", HP=76000, ATK=540, Attack=540, DEF=135, Defense=135, XP=480000, Gold=62000, Range=16, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
+    UmbralArchfiendBoss = {Name="ARCHFIEND ZERATH • KIẾM MA TINH THỂ ĐEN", Level=1875, VisualAsset="AbyssalDragonHybrid", Element="Void", HP=88000, ATK=590, Attack=590, DEF=148, Defense=148, XP=560000, Gold=72000, Range=18, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
+    Sylvaris = {Name="SYLVARIS • ĐẠI CỔ THỤ HOÀNG", Level=2250, VisualAsset="AbyssalDragonHybrid", Element="Sky", HP=175000, ATK=830, Attack=830, DEF=210, Defense=210, XP=1250000, Gold=155000, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
+    Ignivar = {Name="IGNIVAR • TITAN LÒ RÈN LỬA", Level=2325, VisualAsset="SolarTitanBuddha", Element="Sky", HP=210000, ATK=910, Attack=910, DEF=235, Defense=235, XP=1600000, Gold=190000, Range=24, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
+    Nerith = {Name="NERITH • THỦY HOÀNG VỰC SÂU", Level=2400, VisualAsset="AbyssalLeviathan", Element="Frost", HP=245000, ATK=970, Attack=970, DEF=250, Defense=250, XP=1950000, Gold=225000, Range=28, Speed=11, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
+    Aion = {Name="AION • PHÁP VƯƠNG THỜI GIAN", Level=2475, VisualAsset="OrderCyborgBoss", Element="Sky", HP=285000, ATK=1040, Attack=1040, DEF=270, Defense=270, XP=2400000, Gold=275000, Range=24, Speed=13, Aggro=70, Leash=85, Boss=true, Drop="CoreEssence"},
+    Veyr = {Name="VEYR • ĐẤNG KIẾN TẠO ĐẦU TIÊN", Level=2550, VisualAsset="AbyssalSovereignDragon", Element="Void", HP=360000, ATK=1150, Attack=1150, DEF=300, Defense=300, XP=3500000, Gold=400000, Range=30, Speed=12, Aggro=80, Leash=95, Boss=true, Drop="CoreEssence"},
 }
+
+local BALANCED_ENEMY_STATS = {}
+for enemyId, enemyDef in pairs(C.Enemies) do
+    BALANCED_ENEMY_STATS[enemyId] = {
+        HP = enemyDef.HP,
+        ATK = enemyDef.ATK,
+        Attack = enemyDef.Attack or enemyDef.ATK,
+        DEF = enemyDef.DEF,
+        Defense = enemyDef.Defense or enemyDef.DEF,
+        XP = enemyDef.XP,
+        Gold = enemyDef.Gold,
+    }
+end
 
 C.NPCs = {
     Lyra = {Id="Lyra", Name="Lyra • Chỉ Huy Skyborn", VisualAsset="Lyra", Scale=2.6},
@@ -1046,28 +1059,28 @@ C.SkyShips = {
 }
 
 local recipeList = {
-    {Id="dawnbringer_sword", ItemId="dawnbringer_sword", Name="Dawnbringer • Sword of the First Light", Slot="Weapon", ClassId="SkyGuardian", Rarity="Legendary", Gold=400, Materials={SunshardCore=2, SkyIron=5, CoreEssence=1}, Desc="Thần kiếm Ánh Sáng dành cho Sky Guardian (+72 ATK, +12% Crit, +24% Crit DMG)."},
-    {Id="stormfang_daggers", ItemId="stormfang_daggers", Name="Stormfang • Twinblades of the Tempest", Slot="Weapon", ClassId="ThunderStriker", Rarity="Legendary", Gold=400, Materials={SunshardCore=2, SkyIron=5, CoreEssence=1}, Desc="Song đao Lôi Đình dành cho Thunder Striker (+76 ATK, +18% Crit, +30% Crit DMG)."},
-    {Id="astral_staff", ItemId="astral_staff", Name="Chronostaff • Scepter of the Void Star", Slot="Weapon", ClassId="ArcaneMage", Rarity="Legendary", Gold=400, Materials={SunshardCore=2, SkyIron=5, CoreEssence=1}, Desc="Quyền trượng Tinh Cầu dành cho Arcane Mage (+78 ATK, +15% Crit, +28% Crit DMG)."},
-    {Id="saber_of_aureon", ItemId="saber_of_aureon", Name="Saber of Aureon • Đại Kiếm Thánh Quang", Slot="Weapon", Rarity="Legendary", Gold=1200, Materials={SunshardCore=3, SkyIron=6, CoreEssence=1}, Desc="Đại kiếm của Aureon Sentinel (+115 ATK, +16% Crit, +32% Crit DMG)."},
-    {Id="cryon_frostblade", ItemId="cryon_frostblade", Name="Cryon Frostblade • Tuyệt Độ Hàn Đao", Slot="Weapon", Rarity="Legendary", Gold=1800, Materials={SunshardCore=4, CelestialFeather=3, CoreEssence=2}, Desc="Đại đao băng tinh của Cryon Prime (+135 ATK, +18% Crit, +36% Crit DMG)."},
-    {Id="cursed_dual_skyblades", ItemId="cursed_dual_skyblades", Name="Cursed Dual Skyblades (CDK) • Song Kiếm Huyền Thoại", Slot="Weapon", Rarity="Mythic", Gold=5000, Materials={SunshardCore=6, CelestialFeather=5, CoreEssence=3}, Desc="Song kiếm thần thoại kết hợp Ánh Sáng & Hư Không (+185 ATK, +25% Crit, +48% Crit DMG)."},
-    {Id="noxar_abyssal_greatsword", ItemId="noxar_abyssal_greatsword", Name="Noxar's Abyssal Greatsword • Hắc Kiếm Hư Không", Slot="Weapon", Rarity="Mythic", Gold=7500, Materials={SunshardCore=8, CelestialFeather=6, CoreEssence=4}, Desc="Đại kiếm tối thượng của Hư Không Vương Noxar (+210 ATK, +28% Crit, +55% Crit DMG)."},
-    {Id="solar_kabucha", ItemId="solar_kabucha", Name="Solar Kabucha • Ná Thần Mặt Trời", Slot="Gun", Rarity="Rare", Gold=900, Materials={SunshardCore=2, SkyIron=4}, Desc="Ná thần bắn đạn mặt trời phá giáp (+78 ATK, +12% Crit)."},
-    {Id="cryo_railgun", ItemId="cryo_railgun", Name="Cryo Railgun • Pháo Từ Trường Băng", Slot="Gun", Rarity="Legendary", Gold=2400, Materials={SunshardCore=3, SkyIron=6, CoreEssence=2}, Desc="Pháo từ trường bắn tia laser băng giá (+125 ATK, +18% Crit)."},
-    {Id="soul_guitar_void", ItemId="soul_guitar_void", Name="Soul Guitar of the Void • Đàn Linh Hồn Hư Không", Slot="Gun", Rarity="Mythic", Gold=6000, Materials={SunshardCore=5, CelestialFeather=5, CoreEssence=3}, Desc="Đàn linh hồn thần thoại triệu hồi sóng âm hư không (+165 ATK, +22% Crit)."},
-    {Id="skyward_chest", ItemId="skyward_chest", Name="Chiến Giáp Skyward Cloak", Slot="Chest", Rarity="Legendary", Gold=250, Materials={CelestialFeather=2, SkyIron=4}, Desc="Chiến giáp huyền thoại tăng +320 HP và +32 DEF."},
-    {Id="sovereign_cloak", ItemId="sovereign_cloak", Name="Áo Choàng Hư Không Đế Vương", Slot="Chest", Rarity="Mythic", Gold=4500, Materials={CelestialFeather=5, SunshardCore=4, CoreEssence=2}, Desc="Áo choàng thần thoại tăng +750 HP, +70 DEF, +55 ATK, +30% Crit DMG."},
-    {Id="aether_ring", ItemId="aether_ring", Name="Nhẫn Tinh Cầu Aether", Slot="Ring", Rarity="Legendary", Gold=250, Materials={SunshardCore=1, SkyIron=3}, Desc="Nhẫn cổ ngữ tăng +28 ATK và +8% Crit Rate."},
-    {Id="core_artifact", ItemId="core_artifact", Name="Thánh Vật Core of Light", Slot="Artifact", Rarity="Mythic", Gold=500, Materials={SunshardCore=2, CelestialFeather=2, CoreEssence=1}, Desc="Thánh vật thần thoại tăng +35 ATK, +250 HP, +20 DEF."},
-    {Id="leviathan_shield", ItemId="leviathan_shield", Name="Khiên Thần Leviathan", Slot="Artifact", Rarity="Mythic", Gold=5500, Materials={SunshardCore=5, SkyIron=8, CoreEssence=3}, Desc="Khiên thần rèn từ vảy Thủy Tổ Leviathan (+850 HP, +85 DEF, +60 ATK)."},
+    {Id="dawnbringer_sword", ItemId="dawnbringer_sword", Name="Dawnbringer • Sword of the First Light", Slot="Weapon", ClassId="SkyGuardian", Rarity="Legendary", Gold=45000, Materials={SunshardCore=2, SkyIron=5, CoreEssence=1}, Desc="Thần kiếm Ánh Sáng dành cho Sky Guardian (+72 ATK, +12% Crit, +24% Crit DMG)."},
+    {Id="stormfang_daggers", ItemId="stormfang_daggers", Name="Stormfang • Twinblades of the Tempest", Slot="Weapon", ClassId="ThunderStriker", Rarity="Legendary", Gold=45000, Materials={SunshardCore=2, SkyIron=5, CoreEssence=1}, Desc="Song đao Lôi Đình dành cho Thunder Striker (+76 ATK, +18% Crit, +30% Crit DMG)."},
+    {Id="astral_staff", ItemId="astral_staff", Name="Chronostaff • Scepter of the Void Star", Slot="Weapon", ClassId="ArcaneMage", Rarity="Legendary", Gold=45000, Materials={SunshardCore=2, SkyIron=5, CoreEssence=1}, Desc="Quyền trượng Tinh Cầu dành cho Arcane Mage (+78 ATK, +15% Crit, +28% Crit DMG)."},
+    {Id="saber_of_aureon", ItemId="saber_of_aureon", Name="Saber of Aureon • Đại Kiếm Thánh Quang", Slot="Weapon", Rarity="Legendary", Gold=125000, Materials={SunshardCore=3, SkyIron=6, CoreEssence=1}, Desc="Đại kiếm của Aureon Sentinel (+115 ATK, +16% Crit, +32% Crit DMG)."},
+    {Id="cryon_frostblade", ItemId="cryon_frostblade", Name="Cryon Frostblade • Tuyệt Độ Hàn Đao", Slot="Weapon", Rarity="Legendary", Gold=280000, Materials={SunshardCore=4, CelestialFeather=3, CoreEssence=2}, Desc="Đại đao băng tinh của Cryon Prime (+135 ATK, +18% Crit, +36% Crit DMG)."},
+    {Id="cursed_dual_skyblades", ItemId="cursed_dual_skyblades", Name="Cursed Dual Skyblades (CDK) • Song Kiếm Huyền Thoại", Slot="Weapon", Rarity="Mythic", Gold=950000, Materials={SunshardCore=6, CelestialFeather=5, CoreEssence=3}, Desc="Song kiếm thần thoại kết hợp Ánh Sáng & Hư Không (+185 ATK, +25% Crit, +48% Crit DMG)."},
+    {Id="noxar_abyssal_greatsword", ItemId="noxar_abyssal_greatsword", Name="Noxar's Abyssal Greatsword • Hắc Kiếm Hư Không", Slot="Weapon", Rarity="Mythic", Gold=1450000, Materials={SunshardCore=8, CelestialFeather=6, CoreEssence=4}, Desc="Đại kiếm tối thượng của Hư Không Vương Noxar (+210 ATK, +28% Crit, +55% Crit DMG)."},
+    {Id="solar_kabucha", ItemId="solar_kabucha", Name="Solar Kabucha • Ná Thần Mặt Trời", Slot="Gun", Rarity="Rare", Gold=65000, Materials={SunshardCore=2, SkyIron=4}, Desc="Ná thần bắn đạn mặt trời phá giáp (+78 ATK, +12% Crit)."},
+    {Id="cryo_railgun", ItemId="cryo_railgun", Name="Cryo Railgun • Pháo Từ Trường Băng", Slot="Gun", Rarity="Legendary", Gold=320000, Materials={SunshardCore=3, SkyIron=6, CoreEssence=2}, Desc="Pháo từ trường bắn tia laser băng giá (+125 ATK, +18% Crit)."},
+    {Id="soul_guitar_void", ItemId="soul_guitar_void", Name="Soul Guitar of the Void • Đàn Linh Hồn Hư Không", Slot="Gun", Rarity="Mythic", Gold=1100000, Materials={SunshardCore=5, CelestialFeather=5, CoreEssence=3}, Desc="Đàn linh hồn thần thoại triệu hồi sóng âm hư không (+165 ATK, +22% Crit)."},
+    {Id="skyward_chest", ItemId="skyward_chest", Name="Chiến Giáp Skyward Cloak", Slot="Chest", Rarity="Legendary", Gold=35000, Materials={CelestialFeather=2, SkyIron=4}, Desc="Chiến giáp huyền thoại tăng +320 HP và +32 DEF."},
+    {Id="sovereign_cloak", ItemId="sovereign_cloak", Name="Áo Choàng Hư Không Đế Vương", Slot="Chest", Rarity="Mythic", Gold=750000, Materials={CelestialFeather=5, SunshardCore=4, CoreEssence=2}, Desc="Áo choàng thần thoại tăng +750 HP, +70 DEF, +55 ATK, +30% Crit DMG."},
+    {Id="aether_ring", ItemId="aether_ring", Name="Nhẫn Tinh Cầu Aether", Slot="Ring", Rarity="Legendary", Gold=28000, Materials={SunshardCore=1, SkyIron=3}, Desc="Nhẫn cổ ngữ tăng +28 ATK và +8% Crit Rate."},
+    {Id="core_artifact", ItemId="core_artifact", Name="Thánh Vật Core of Light", Slot="Artifact", Rarity="Mythic", Gold=150000, Materials={SunshardCore=2, CelestialFeather=2, CoreEssence=1}, Desc="Thánh vật thần thoại tăng +35 ATK, +250 HP, +20 DEF."},
+    {Id="leviathan_shield", ItemId="leviathan_shield", Name="Khiên Thần Leviathan", Slot="Artifact", Rarity="Mythic", Gold=980000, Materials={SunshardCore=5, SkyIron=8, CoreEssence=3}, Desc="Khiên thần rèn từ vảy Thủy Tổ Leviathan (+850 HP, +85 DEF, +60 ATK)."},
     -- V2 Celestial Forge Blueprints (1:1 parity with RarityConfig.Recipes & Forge.lua)
-    {Id="Dawnbringer", ItemId="Dawnbringer", Name="Dawnbringer • Thánh Kiếm Ban Mai", Slot="Weapon", ClassId="SkyGuardian", Rarity="Legendary", Gold=500, Materials={SunshardCore=2, SkyIron=5, upgrade_material=3}, Desc="Thánh kiếm rèn từ Core of Light của Aureon (+120 ATK, +35 DEF, +180 HP)."},
-    {Id="Stormfang", ItemId="Stormfang", Name="Stormfang • Song Đao Lôi Đình", Slot="Weapon", ClassId="ThunderStriker", Rarity="Legendary", Gold=1200, Materials={SunshardCore=2, SkyIron=6, upgrade_material=4}, Desc="Song đao sấm sét tụ hội từ Frozen Cyber (+135 ATK, +18% Crit)."},
-    {Id="EternalFrost", ItemId="EternalFrost", Name="Eternal Frost • Quyền Trượng Băng Giá", Slot="Weapon", ClassId="ArcaneMage", Rarity="Legendary", Gold=1200, Materials={SunshardCore=2, CelestialFeather=3, upgrade_material=4}, Desc="Quyền trượng gắn tinh thể trái tim của Cryon Prime (+142 ATK, +14% Crit)."},
-    {Id="CelestialPlate", ItemId="CelestialPlate", Name="Celestial Aegis Plate", Slot="Chest", Rarity="Epic", Gold=800, Materials={CelestialFeather=2, SkyIron=5, upgrade_material=3}, Desc="Giáp ngực hợp kim Hắc Diện - Lam Ngọc (+160 HP, +38 DEF)."},
-    {Id="SolarBand", ItemId="SolarBand", Name="Solar Band", Slot="Ring", Rarity="Epic", Gold=600, Materials={SunshardCore=1, SkyIron=4, upgrade_material=2}, Desc="Nhẫn thái dương hồi năng lượng (+24 ATK, +8% Crit)."},
-    {Id="ArchitectsSeverance", ItemId="ArchitectsSeverance", Name="Architect's Severance • Kiếm Kiến Tạo Veyr", Slot="Weapon", ClassId="SkyGuardian", Rarity="Mythic", Gold=9500, Materials={SunshardCore=8, CelestialFeather=6, CoreEssence=5}, Desc="Thần kiếm tối thượng dệt từ kỳ điểm Veil's End (+380 ATK, +95 DEF, +620 HP)."},
+    {Id="Dawnbringer", ItemId="Dawnbringer", Name="Dawnbringer • Thánh Kiếm Ban Mai", Slot="Weapon", ClassId="SkyGuardian", Rarity="Legendary", Gold=95000, Materials={SunshardCore=2, SkyIron=5, upgrade_material=3}, Desc="Thánh kiếm rèn từ Core of Light của Aureon (+120 ATK, +35 DEF, +180 HP)."},
+    {Id="Stormfang", ItemId="Stormfang", Name="Stormfang • Song Đao Lôi Đình", Slot="Weapon", ClassId="ThunderStriker", Rarity="Legendary", Gold=240000, Materials={SunshardCore=2, SkyIron=6, upgrade_material=4}, Desc="Song đao sấm sét tụ hội từ Frozen Cyber (+135 ATK, +18% Crit)."},
+    {Id="EternalFrost", ItemId="EternalFrost", Name="Eternal Frost • Quyền Trượng Băng Giá", Slot="Weapon", ClassId="ArcaneMage", Rarity="Legendary", Gold=260000, Materials={SunshardCore=2, CelestialFeather=3, upgrade_material=4}, Desc="Quyền trượng gắn tinh thể trái tim của Cryon Prime (+142 ATK, +14% Crit)."},
+    {Id="CelestialPlate", ItemId="CelestialPlate", Name="Celestial Aegis Plate", Slot="Chest", Rarity="Epic", Gold=55000, Materials={CelestialFeather=2, SkyIron=5, upgrade_material=3}, Desc="Giáp ngực hợp kim Hắc Diện - Lam Ngọc (+160 HP, +38 DEF)."},
+    {Id="SolarBand", ItemId="SolarBand", Name="Solar Band", Slot="Ring", Rarity="Epic", Gold=42000, Materials={SunshardCore=1, SkyIron=4, upgrade_material=2}, Desc="Nhẫn thái dương hồi năng lượng (+24 ATK, +8% Crit)."},
+    {Id="ArchitectsSeverance", ItemId="ArchitectsSeverance", Name="Architect's Severance • Kiếm Kiến Tạo Veyr", Slot="Weapon", ClassId="SkyGuardian", Rarity="Mythic", Gold=2400000, Materials={SunshardCore=8, CelestialFeather=6, CoreEssence=5}, Desc="Thần kiếm tối thượng dệt từ kỳ điểm Veil's End (+380 ATK, +95 DEF, +620 HP)."},
 }
 local recipeById = {}
 for _, r in ipairs(recipeList) do
@@ -1083,53 +1096,53 @@ C.ForgeRecipes = setmetatable(recipeList, {
 -- Reward XP + TargetLevel milestone covers every Sea & Realm bracket smoothly without mandatory grinding.
 C.Quests = {
     -- CHƯƠNG 1: SEA 1 • GOLDEN SKY (Lv. 1 - 700)
-    {Id="Q01", Name="Lời Gọi Skyborn (Sea 1 • Lv. 1–120)", Realm="GoldenSky", Level=1, TargetLevel=120, XP=95000, Gold=1500, CoreShards=100,
+    {Id="Q01", Name="Lời Gọi Skyborn (Sea 1 • Lv. 1–120)", Realm="GoldenSky", Level=1, TargetLevel=120, XP=95000, Gold=8000, CoreShards=100,
         Text="Các quần đảo bầu trời đang mất dần năng lượng. Hãy tiêu diệt 3 Training Drone tại sân tập Sky Hub để làm quen với vũ khí và đột phá Lv. 120.",
         Objectives={{Kind="Kill", Target="TrainingDrone", Count=3, Label="Hạ gục Training Drone"}}},
-    {Id="Q02", Name="Khôi Phục Cầu Năng Lượng (Sea 1 • Lv. 120–260)", Realm="GoldenSky", Level=120, TargetLevel=260, XP=320000, Gold=3500, CoreShards=150,
+    {Id="Q02", Name="Khôi Phục Cầu Năng Lượng (Sea 1 • Lv. 120–260)", Realm="GoldenSky", Level=120, TargetLevel=260, XP=320000, Gold=16000, CoreShards=150,
         Text="Năng lượng cầu sang Quảng Trường Lumen đã cạn. Hãy đánh bại 3 Corrupted Guard và bật 3 Trạm Năng Lượng.",
         Objectives={{Kind="Kill", Target="CorruptedGuard", Count=3, Label="Hạ gục Corrupted Guard"},
         {Kind="Interact", Target="Station1", Count=1, Label="Bật Trạm 1"}, {Kind="Interact", Target="Station2", Count=1, Label="Bật Trạm 2"}, {Kind="Interact", Target="Station3", Count=1, Label="Bật Trạm 3"}}},
-    {Id="Q03", Name="Giải Cứu Quảng Trường Lumen (Sea 1 • Lv. 260–420)", Realm="GoldenSky", Level=260, TargetLevel=420, XP=720000, Gold=6000, CoreShards=220,
+    {Id="Q03", Name="Giải Cứu Quảng Trường Lumen (Sea 1 • Lv. 260–420)", Realm="GoldenSky", Level=260, TargetLevel=420, XP=720000, Gold=28000, CoreShards=220,
         Text="Cầu ánh sáng đã mở. Hãy giải cứu 3 người dân bị mắc kẹt và đánh bại Tinh Anh Golden Knight tại quảng trường.",
         Objectives={{Kind="Interact", Target="Citizen1", Count=1, Label="Cứu người dân 1"}, {Kind="Interact", Target="Citizen2", Count=1, Label="Cứu người dân 2"}, {Kind="Interact", Target="Citizen3", Count=1, Label="Cứu người dân 3"}, {Kind="Kill", Target="GoldenKnight", Count=1, Label="Hạ gục Golden Knight"}}},
-    {Id="Q04", Name="Chìa Khóa Tháp Ánh Sáng (Sea 1 • Lv. 420–560)", Realm="GoldenSky", Level=420, TargetLevel=560, XP=1100000, Gold=9000, CoreShards=300,
+    {Id="Q04", Name="Chìa Khóa Tháp Ánh Sáng (Sea 1 • Lv. 420–560)", Realm="GoldenSky", Level=420, TargetLevel=560, XP=1100000, Gold=42000, CoreShards=300,
         Text="Tiến tới Tiền Điện Aureon, kích hoạt 2 Công Tắc Cổ Ngữ và hạ 3 Light Archer để nhận Chìa Khóa Đấu Trường.",
         Objectives={{Kind="Interact", Target="Switch1", Count=1, Label="Bật Công tắc 1"}, {Kind="Interact", Target="Switch2", Count=1, Label="Bật Công tắc 2"}, {Kind="Kill", Target="LightArcher", Count=3, Label="Hạ gục Light Archer"}}},
-    {Id="Q05", Name="Trái Tim Ánh Sáng (Boss Sea 1 • Đột Phá Lv. 700)", Realm="GoldenSky", Level=560, TargetLevel=700, XP=1800000, Gold=15000, CoreShards=500,
+    {Id="Q05", Name="Trái Tim Ánh Sáng (Boss Sea 1 • Đột Phá Lv. 700)", Realm="GoldenSky", Level=560, TargetLevel=700, XP=1800000, Gold=75000, CoreShards=500,
         Text="Tiến vào Đấu Trường Tháp Ánh Sáng và đánh bại AUREON SENTINEL [Lv.700]. Phá hủy 2 trụ năng lượng khi Boss bật khiên để mở khóa Sea 2 (Lv. 700)!",
         Objectives={{Kind="Kill", Target="AureonSentinel", Count=1, Label="Đánh bại Boss Aureon Sentinel [Lv.700]"}}},
 
     -- CHƯƠNG 2: SEA 2 • FROZEN CYBER (Lv. 700 - 1500)
-    {Id="Q06", Name="Đột Nhập Thành Trì Băng Giá (Sea 2 • Lv. 700–960)", Realm="FrozenCyber", Level=700, TargetLevel=960, XP=3200000, Gold=22000, CoreShards=600,
+    {Id="Q06", Name="Đột Nhập Thành Trì Băng Giá (Sea 2 • Lv. 700–960)", Realm="FrozenCyber", Level=700, TargetLevel=960, XP=3200000, Gold=95000, CoreShards=600,
         Text="Cổng dịch chuyển Sea 2 • Frozen Cyber đã mở! Hãy tiêu diệt 3 Frost Automaton và 2 Cryo Vanguard để mở đường vào trung tâm.",
         Objectives={{Kind="Kill", Target="FrostDrone", Count=3, Label="Hạ gục Frost Automaton"}, {Kind="Kill", Target="CryoGuard", Count=2, Label="Hạ gục Cryo Vanguard"}}},
-    {Id="Q07", Name="Lõi Lượng Tử Nổi Loạn (Sea 2 • Lv. 960–1240)", Realm="FrozenCyber", Level=960, TargetLevel=1240, XP=4800000, Gold=32000, CoreShards=750,
+    {Id="Q07", Name="Lõi Lượng Tử Nổi Loạn (Sea 2 • Lv. 960–1240)", Realm="FrozenCyber", Level=960, TargetLevel=1240, XP=4800000, Gold=135000, CoreShards=750,
         Text="Tại Phòng Thí Nghiệm Đột Kích (hoặc vùng biển mây Sea 2), hãy đánh bại ORDER • Lõi Lượng Tử hoặc Thủy Quái Sky Sea Beast.",
         Objectives={{Kind="Kill", Target="OrderCyborg", Count=1, Label="Đánh bại Order Cyborg / Sky Sea Beast"}}},
-    {Id="Q08", Name="Thực Thể Băng Giá Vĩnh Cửu (Boss Sea 2 • Đột Phá Lv. 1500)", Realm="FrozenCyber", Level=1240, TargetLevel=1500, XP=6800000, Gold=45000, CoreShards=1000,
+    {Id="Q08", Name="Thực Thể Băng Giá Vĩnh Cửu (Boss Sea 2 • Đột Phá Lv. 1500)", Realm="FrozenCyber", Level=1240, TargetLevel=1500, XP=6800000, Gold=200000, CoreShards=1000,
         Text="Tiến vào Đấu Trường Băng Giá và tiêu diệt CRYON PRIME [Lv.1500]. Phá 3 Cột Băng Vĩnh Cửu để tiến vào Sea 3 (Lv. 1500)!",
         Objectives={{Kind="Kill", Target="CryonPrime", Count=1, Label="Đánh bại Boss Cryon Prime [Lv.1500]"}}},
 
     -- CHƯƠNG 3: SEA 3 • SHADOW REALM (Lv. 1500 - 2200)
-    {Id="Q09", Name="Quân Đoàn Bóng Đêm (Sea 3 • Lv. 1500–1750)", Realm="ShadowRealm", Level=1500, TargetLevel=1750, XP=8500000, Gold=60000, CoreShards=1200,
+    {Id="Q09", Name="Quân Đoàn Bóng Đêm (Sea 3 • Lv. 1500–1750)", Realm="ShadowRealm", Level=1500, TargetLevel=1750, XP=8500000, Gold=250000, CoreShards=1200,
         Text="Bước qua cổng Hư Không vào Sea 3 • Shadow Realm. Hãy thanh trừng 3 Void Marauder và 2 Kỵ Sĩ Hắc Ám Abyssal Dreadknight.",
         Objectives={{Kind="Kill", Target="VoidPirate", Count=3, Label="Hạ gục Void Marauder"}, {Kind="Kill", Target="AbyssalKnight", Count=2, Label="Hạ gục Abyssal Dreadknight"}}},
-    {Id="Q10", Name="Săn Lùng Thủy Tổ Hư Không (Sea 3 • Lv. 1750–1980)", Realm="ShadowRealm", Level=1750, TargetLevel=1980, XP=11000000, Gold=80000, CoreShards=1500,
+    {Id="Q10", Name="Săn Lùng Thủy Tổ Hư Không (Sea 3 • Lv. 1750–1980)", Realm="ShadowRealm", Level=1750, TargetLevel=1980, XP=11000000, Gold=320000, CoreShards=1500,
         Text="Tiến vào Vực Thẳm Leviathan (hoặc Điện Thờ Lõi) tại Shadow Realm và đánh bại Thủy Tổ ABYSSAL LEVIATHAN hoặc SOUL REAPER.",
         Objectives={{Kind="Kill", Target="AbyssalLeviathan", Count=1, Label="Đánh bại Abyssal Leviathan / Soul Reaper"}}},
-    {Id="Q11", Name="Chúa Tể Hư Không (Boss Sea 3 • Đột Phá Lv. 2200)", Realm="ShadowRealm", Level=1980, TargetLevel=2200, XP=14000000, Gold=110000, CoreShards=2000,
+    {Id="Q11", Name="Chúa Tể Hư Không (Boss Sea 3 • Đột Phá Lv. 2200)", Realm="ShadowRealm", Level=1980, TargetLevel=2200, XP=14000000, Gold=480000, CoreShards=2000,
         Text="Đối mặt với NOXAR • THE VOID SOVEREIGN [Lv.2200] tại Đấu Trường Hắc Tinh. Phá hủy Void Singularity để đoạt lấy Song Kiếm Huyền Thoại!",
         Objectives={{Kind="Kill", Target="Noxar", Count=1, Label="Đánh bại Boss Noxar • Void Sovereign [Lv.2200]"}}},
 
     -- CHƯƠNG 4 - 5: CÁC CÕI GIỚI THƯỢNG CỔ & CHUNG CUỘC (Lv. 2200 - 2550 MAX)
-    {Id="Q12", Name="Thức Tỉnh Nguyên Tố Cổ Đại (Realms 4–5 • Lv. 2200–2340)", Realm="VerdantCrown", Level=2200, TargetLevel=2340, XP=18000000, Gold=150000, CoreShards=2500,
+    {Id="Q12", Name="Thức Tỉnh Nguyên Tố Cổ Đại (Realms 4–5 • Lv. 2200–2340)", Realm="VerdantCrown", Level=2200, TargetLevel=2340, XP=18000000, Gold=600000, CoreShards=2500,
         Text="Dịch chuyển tới Verdant Crown và Emberforge Wastes để chinh phục Đại Cổ Thụ SYLVARIS [Lv.2250] cùng Titan Lửa IGNIVAR [Lv.2325].",
         Objectives={{Kind="Kill", Target="Sylvaris", Count=1, Label="Đánh bại Sylvaris (Verdant Crown)"}, {Kind="Kill", Target="Ignivar", Count=1, Label="Đánh bại Ignivar (Emberforge Wastes)"}}},
-    {Id="Q13", Name="Vượt Qua Dòng Chảy Thời Gian (Realms 6–7 • Lv. 2340–2480)", Realm="ChronosBastion", Level=2340, TargetLevel=2480, XP=24000000, Gold=220000, CoreShards=3200,
+    {Id="Q13", Name="Vượt Qua Dòng Chảy Thời Gian (Realms 6–7 • Lv. 2340–2480)", Realm="ChronosBastion", Level=2340, TargetLevel=2480, XP=24000000, Gold=800000, CoreShards=3200,
         Text="Tiến vào Abyssal Tides và Chronos Bastion để đánh bại Thủy Hoàng NERITH [Lv.2400] và Pháp Vương Thời Gian AION [Lv.2475].",
         Objectives={{Kind="Kill", Target="Nerith", Count=1, Label="Đánh bại Nerith (Abyssal Tides)"}, {Kind="Kill", Target="Aion", Count=1, Label="Đánh bại Aion (Chronos Bastion)"}}},
-    {Id="Q14", Name="Đấng Kiến Tạo Đầu Tiên (Chung Cuộc • MAX LV. 2550)", Realm="VeilsEnd", Level=2480, TargetLevel=2550, XP=40000000, Gold=350000, CoreShards=5000,
+    {Id="Q14", Name="Đấng Kiến Tạo Đầu Tiên (Chung Cuộc • MAX LV. 2550)", Realm="VeilsEnd", Level=2480, TargetLevel=2550, XP=40000000, Gold=1250000, CoreShards=5000,
         Text="Bước lên Đỉnh Phán Quyết tại Veil's End và đánh bại Boss tối thượng VEYR • ĐẤNG KIẾN TẠO ĐẦU TIÊN [Lv.2550] để đạt MAX LEVEL 2550!",
         Objectives={{Kind="Kill", Target="Veyr", Count=1, Label="Đánh bại Final Boss Veyr [Lv.2550]"}}},
 }
@@ -1288,7 +1301,7 @@ do
             end
         end
 
-        -- Merge Expansion Forge Recipes into C.ForgeRecipes
+        -- Merge Expansion Forge Recipes into C.ForgeRecipes (with balanced Gold scaling across Rarity tiers)
         for _, expRec in ipairs(ArsenalExp.ExpansionRecipes or {}) do
             local outId = expRec.OutputItemId or expRec.Id
             if outId and not recipeById[outId] and not recipeById[expRec.Id] then
@@ -1298,14 +1311,26 @@ do
                         matMap[m.ItemId] = m.Count or 1
                     end
                 end
+                local rawGold = tonumber(expRec.GoldCost) or 1000
+                local rar = expRec.Rarity or "Legendary"
+                local balancedGold = rawGold
+                if rawGold < 25000 then
+                    if rar == "Mythic" then
+                        balancedGold = math.clamp(rawGold * 160, 750000, 2400000)
+                    elseif rar == "Legendary" then
+                        balancedGold = math.clamp(rawGold * 95, 95000, 480000)
+                    else
+                        balancedGold = math.clamp(rawGold * 45, 25000, 90000)
+                    end
+                end
                 local entry = {
                     Id = outId,
                     RecipeId = expRec.Id,
                     ItemId = outId,
                     Name = expRec.Name,
                     Slot = expRec.Slot or "Weapon",
-                    Rarity = expRec.Rarity or "Legendary",
-                    Gold = expRec.GoldCost or 1000,
+                    Rarity = rar,
+                    Gold = balancedGold,
                     CoreShards = expRec.CoreShardCost or 0,
                     Materials = matMap,
                     Desc = expRec.Description or "",
@@ -1398,6 +1423,17 @@ do
                     CritRate = st.CRIT or 0,
                     Desc = rItem.Description or "",
                 }
+            end
+        end
+        if type(RarityCfg.Recipes) == "table" then
+            for _, rec in pairs(RarityCfg.Recipes) do
+                if type(rec) == "table" then
+                    local matched = recipeById[rec.OutputItemId or ""] or recipeById[rec.Id or ""]
+                    if matched and matched.Gold then
+                        rec.GoldCost = matched.Gold
+                        rec.Gold = matched.Gold
+                    end
+                end
             end
         end
     end
@@ -1504,6 +1540,42 @@ if game:GetService("RunService"):IsServer() then
                     okD, D = pcall(require, pdMod)
                 end
                 if okG and type(G) == "table" then
+                    for enemyId, bal in pairs(BALANCED_ENEMY_STATS) do
+                        local ec = C.Enemies and C.Enemies[enemyId]
+                        if type(ec) == "table" then
+                            ec.HP = bal.HP
+                            ec.ATK = bal.ATK
+                            ec.Attack = bal.Attack
+                            ec.DEF = bal.DEF
+                            ec.Defense = bal.Defense
+                            ec.XP = bal.XP
+                            ec.Gold = bal.Gold
+                        end
+                    end
+                    for _, e in ipairs(G.Enemies or {}) do
+                        if type(e) == "table" and e.Id and BALANCED_ENEMY_STATS[e.Id] then
+                            local bal = BALANCED_ENEMY_STATS[e.Id]
+                            if type(e.Config) == "table" then
+                                e.Config.HP = bal.HP
+                                e.Config.ATK = bal.ATK
+                                e.Config.Attack = bal.Attack
+                                e.Config.DEF = bal.DEF
+                                e.Config.Defense = bal.Defense
+                                e.Config.XP = bal.XP
+                                e.Config.Gold = bal.Gold
+                            end
+                            if (e.MaxHP or 0) ~= bal.HP then
+                                local wasFull = (e.HP or 0) >= (e.MaxHP or 1) * 0.99
+                                e.MaxHP = bal.HP
+                                if wasFull or (e.HP or 0) > bal.HP then
+                                    e.HP = bal.HP
+                                end
+                                if e.HPText then
+                                    e.HPText.Text = string.format("%d / %d", math.floor(e.HP or bal.HP), bal.HP)
+                                end
+                            end
+                        end
+                    end
                     if type(G.JumpPads) == "table" then
                         table.clear(G.JumpPads)
                     end
@@ -1704,7 +1776,7 @@ if game:GetService("RunService"):IsServer() then
                                         if now < (rt.Cooldowns.Slot_V or 0) then
                                             return
                                         end
-                                        rt.Cooldowns.Slot_V = now + 1.8
+                                        rt.Cooldowns.Slot_V = now + 2.2
                                         local nextTier = (curTier == 0 and 1) or (curTier == 1 and 2) or 0
                                         local tfName = (nextTier == 2 and "AbyssalSovereign") or (nextTier == 1 and "AbyssalDragonHybrid") or ""
                                         rt.DragonFormTier = nextTier
@@ -1717,19 +1789,26 @@ if game:GetService("RunService"):IsServer() then
 
                                         local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
                                         local atk = (stats and stats.ATK) or 65
+                                        local canDealBurst = now >= (rt.Cooldowns.DragonAscensionDmg or 0)
                                         if nextTier == 1 then
                                             G.Notify(p, "[DẠNG 1 • BÁN LONG NHÂN] Mở Bộ Kỹ Năng 1: [Z] Hỏa Long Đạn • [X] Bán Long Trảo • [C] Cuồng Long Xoáy • [F] Long Ảnh Bộ! (Nhấn [V] lần nữa để hóa Rồng Khổng Lồ Dạng 2)")
-                                            for _, e in ipairs(G.Enemies or {}) do
-                                                if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 28 then
-                                                    G.Hit(p, e, atk * 4.0, 42, "DragonHybridAscension_T1")
+                                            if canDealBurst then
+                                                rt.Cooldowns.DragonAscensionDmg = now + 10.0
+                                                for _, e in ipairs(G.Enemies or {}) do
+                                                    if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 30 then
+                                                        G.Hit(p, e, atk * 4.0, 42, "DragonHybridAscension_T1")
+                                                    end
                                                 end
                                             end
                                         elseif nextTier == 2 then
                                             rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 60)
                                             G.Notify(p, "[DẠNG 2 • THÁI CỔ LONG HOÀNG] Mở Bộ Kỹ Năng 2: [Z] Thái Cổ Long Tức • [X] Long Hoàng Giáng Thế • [C] Vạn Long Hỏa Vũ • [F] Long Vũ Cửu Thiên!")
-                                            for _, e in ipairs(G.Enemies or {}) do
-                                                if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 46 then
-                                                    G.Hit(p, e, atk * 6.2, 68, "DragonSovereignAscension_T2")
+                                            if canDealBurst then
+                                                rt.Cooldowns.DragonAscensionDmg = now + 10.0
+                                                for _, e in ipairs(G.Enemies or {}) do
+                                                    if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 48 then
+                                                        G.Hit(p, e, atk * 6.2, 68, "DragonSovereignAscension_T2")
+                                                    end
                                                 end
                                             end
                                         else
@@ -1803,14 +1882,14 @@ if game:GetService("RunService"):IsServer() then
                                                     end)
                                                 end
                                             elseif key == "X" then
-                                                -- [X] Long Hoàng Giáng Thế: 28m Skyfall Dive + 3 Tectonic Shockwaves (38m radius)
-                                                endPos = safeDashPlayer(p, rt, hrp, 28, 1.4)
-                                                for wave = 1, 3 do
-                                                    task.delay((wave - 1) * 0.14, function()
+                                                -- [X] Long Hoàng Giáng Thế: 32m Skyfall Dive + 4 Tectonic Shockwaves (38m radius)
+                                                endPos = safeDashPlayer(p, rt, hrp, 32, 1.4)
+                                                for wave = 1, 4 do
+                                                    task.delay((wave - 1) * 0.13, function()
                                                         if not p or not p.Parent then return end
                                                         for _, e in ipairs(G.Enemies or {}) do
                                                             if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 38 then
-                                                                G.Hit(p, e, (atk * mult) / 3, math.ceil(brk / 3), "Form2_SovereignSkyfall_X")
+                                                                G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form2_SovereignSkyfall_X")
                                                                 e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 1.8)
                                                             end
                                                         end
@@ -1842,22 +1921,22 @@ if game:GetService("RunService"):IsServer() then
                                         else
                                             -- === FORM 1 (BÁN LONG NHÂN / HYBRID DRAGON) ===
                                             if key == "Z" then
-                                                -- [Z] Hỏa Long Liên Đạn: 3-Fireball Volley (3 sequential explosions along 32m line)
-                                                endPos = originPos + lookVec * 32
-                                                for shot = 1, 3 do
-                                                    task.delay((shot - 1) * 0.11, function()
+                                                -- [Z] Hỏa Long Liên Đạn: 5-Fireball Volley (5 sequential explosions along 36m line)
+                                                endPos = originPos + lookVec * 36
+                                                for shot = 1, 5 do
+                                                    task.delay((shot - 1) * 0.08, function()
                                                         if not p or not p.Parent then return end
-                                                        local impactPos = originPos + lookVec * (10 * shot)
+                                                        local impactPos = originPos + lookVec * (7 * shot)
                                                         for _, e in ipairs(G.Enemies or {}) do
                                                             if e.Alive and e.Body and ((e.Body.Position - impactPos).Magnitude <= 18 or (e.Body.Position - endPos).Magnitude <= 18) then
-                                                                G.Hit(p, e, (atk * mult) / 3, math.ceil(brk / 3), "Form1_FireballVolley_Z")
+                                                                G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form1_FireballVolley_Z")
                                                             end
                                                         end
                                                     end)
                                                 end
                                             elseif key == "X" then
-                                                -- [X] Bán Long Đột Trảo: 20m Claw Rush + Grab Slam
-                                                endPos = safeDashPlayer(p, rt, hrp, 20, 1.0)
+                                                -- [X] Bán Long Đột Trảo: 22m Claw Rush + Grab Slam
+                                                endPos = safeDashPlayer(p, rt, hrp, 22, 1.0)
                                                 for _, e in ipairs(G.Enemies or {}) do
                                                     if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 22 or (e.Body.Position - originPos).Magnitude <= 20) then
                                                         G.Hit(p, e, atk * mult, brk, "Form1_HybridTalonRend_X")
@@ -1884,8 +1963,8 @@ if game:GetService("RunService"):IsServer() then
                                                     end)
                                                 end
                                             elseif key == "F" then
-                                                -- [F] Long Ảnh Bộ: 36m Rapid Crimson Wing Dash
-                                                endPos = safeDashPlayer(p, rt, hrp, 36, 1.2)
+                                                -- [F] Long Ảnh Bộ: 38m Rapid Crimson Wing Dash
+                                                endPos = safeDashPlayer(p, rt, hrp, 38, 1.2)
                                                 for _, e in ipairs(G.Enemies or {}) do
                                                     if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 18 then
                                                         G.Hit(p, e, atk * mult, brk, "Form1_HybridWingDash_F")
