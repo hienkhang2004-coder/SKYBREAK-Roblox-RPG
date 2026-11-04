@@ -2797,6 +2797,10 @@ local function send(action)
 	if action=="V" then
 		faceLockedTarget()
 		local ch=player.Character
+		if ch then
+			ch:SetAttribute("LastClientSkillKey","V")
+			ch:SetAttribute("LastClientSkillAt",os.clock())
+		end
 		local hum=ch and ch:FindFirstChildOfClass("Humanoid")
 		remotes.AbilityRequest:FireServer({action="SlotMove",key="V"})
 		if hum and hum.Health<hum.MaxHealth then
@@ -3004,9 +3008,12 @@ for name,key in pairs(keys) do
 				if shiftDown or UI.Page=="Forge" then
 					if UI.Toggle then UI.Toggle("Forge") else UI.Show(UI.Page=="Forge" and "HUD" or "Forge") end
 				elseif not UI.BlocksCombat() then
-					local slot=tonumber(player:GetAttribute("ActiveSlot")) or 1
-					if slot~=2 and player:GetAttribute("SkybreakFlightActive")~=true then
-						task.delay(0.25,function()
+					if player.Character then
+						player.Character:SetAttribute("LastClientSkillKey","F")
+						player.Character:SetAttribute("LastClientSkillAt",os.clock())
+					end
+					if player:GetAttribute("SkybreakFlightActive")~=true then
+						task.delay(0.18,function()
 							if player:GetAttribute("SkybreakFlightActive")~=true and not UI.BlocksCombat() then
 								faceLockedTarget()
 								remotes.AbilityRequest:FireServer({action="SlotMove",key="F"})
@@ -3333,63 +3340,512 @@ task.spawn(function()
 	end
 end)
 
--- Dynamic Dual-Form Dragon Skill Bar Synchronizer (Form 1: Bán Long Nhân vs Form 2: Thái Cổ Long Hoàng)
-task.spawn(function()
-	local DRAGON_HUD_CAPTIONS = {
-		[0] = { Z = "Hỏa Long Đạn", X = "Bán Long Trảo", C = "Cuồng Long Xoáy", V = "Hóa Dạng 1", F = "Long Ảnh Bộ" },
-		[1] = { Z = "Hỏa Long Đạn", X = "Bán Long Trảo", C = "Cuồng Long Xoáy", V = "Hóa Dạng 2", F = "Long Ảnh Bộ" },
-		[2] = { Z = "Thái Cổ Long Tức", X = "Long Hoàng Giáng", C = "Vạn Long Hỏa Vũ", V = "Thu Hồi Rồng", F = "Long Vũ Cửu Thiên" },
-	}
-	local DEFAULT_HUD_CAPTIONS = { Z = "Thiên Trảm", X = "Khiên Thánh", C = "Phán Quyết", V = "Thức Tỉnh", F = "Thiên Vũ" }
+-- ============================================================================
+-- 7. BLOX FRUITS-STYLE BOTTOM-RIGHT SKILL STACK (NAME + MASTERY + LIVE COOLDOWN)
+-- ============================================================================
+local latestSyncedState = nil
+local bloxSkillCooldowns = {} -- [slot_key] = { Start = clock, Duration = cd, End = clock + cd }
 
-	local function syncDragonFormSkillBar()
-		local ch = player.Character
-		local rawTier = tonumber((ch and ch:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
-		local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
-		local tier = 0
-		if rawTier >= 2 or tf == "AbyssalSovereign" then
-			tier = 2
-		elseif rawTier == 1 or tf == "AbyssalDragonHybrid" then
-			tier = 1
+local ELEMENT_HUD_PALETTES = {
+	Sky = { Accent = Color3.fromRGB(252, 208, 92), Dark = Color3.fromRGB(28, 24, 14), Badge = Color3.fromRGB(218, 152, 28) },
+	Frost = { Accent = Color3.fromRGB(86, 214, 255), Dark = Color3.fromRGB(12, 24, 38), Badge = Color3.fromRGB(32, 148, 224) },
+	Lightning = { Accent = Color3.fromRGB(116, 184, 255), Dark = Color3.fromRGB(16, 20, 42), Badge = Color3.fromRGB(78, 118, 246) },
+	Flame = { Accent = Color3.fromRGB(255, 132, 56), Dark = Color3.fromRGB(36, 16, 12), Badge = Color3.fromRGB(228, 78, 28) },
+	Jade = { Accent = Color3.fromRGB(72, 236, 164), Dark = Color3.fromRGB(12, 32, 24), Badge = Color3.fromRGB(28, 172, 112) },
+	Celestial = { Accent = Color3.fromRGB(255, 226, 118), Dark = Color3.fromRGB(28, 24, 16), Badge = Color3.fromRGB(224, 168, 38) },
+	Void = { Accent = Color3.fromRGB(196, 108, 255), Dark = Color3.fromRGB(24, 12, 38), Badge = Color3.fromRGB(138, 48, 216) },
+}
+
+local FRUIT_ID_LOOKUP = {}
+if C and C.AetherFruits then
+	for k, v in pairs(C.AetherFruits) do
+		FRUIT_ID_LOOKUP[string.lower(k)] = k
+		if v.Name then
+			FRUIT_ID_LOOKUP[string.lower(v.Name)] = k
+		end
+	end
+end
+FRUIT_ID_LOOKUP["dragon"] = "AbyssalSovereignCore"
+FRUIT_ID_LOOKUP["abyssal_dragon"] = "AbyssalSovereignCore"
+FRUIT_ID_LOOKUP["dough"] = "AetherflowCore"
+FRUIT_ID_LOOKUP["buddha"] = "SolarTitanCore"
+FRUIT_ID_LOOKUP["portal"] = "DimensionalPortalCore"
+FRUIT_ID_LOOKUP["gravity"] = "AstralGravityCore"
+FRUIT_ID_LOOKUP["rumble"] = "ThunderRumbleCore"
+FRUIT_ID_LOOKUP["magma"] = "StarforgedMagmaCore"
+FRUIT_ID_LOOKUP["light"] = "CelestialLightCore"
+FRUIT_ID_LOOKUP["ice"] = "GlacierIceCore"
+FRUIT_ID_LOOKUP["flame"] = "SolarFlameCore"
+FRUIT_ID_LOOKUP["sand"] = "SandstoneCore"
+FRUIT_ID_LOOKUP["gale"] = "GaleCore"
+
+local function resolveActiveCombatLoadout()
+	local ch = player.Character
+	local rawTier = tonumber((ch and ch:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
+	local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
+	local dragonTier = 0
+	if rawTier >= 2 or tf == "AbyssalSovereign" then
+		dragonTier = 2
+	elseif rawTier == 1 or tf == "AbyssalDragonHybrid" then
+		dragonTier = 1
+	end
+
+	if C and C.AetherFruits and C.AetherFruits.AbyssalSovereignCore and type(C.GetDragonFormMoves) == "function" then
+		local activeMoves = C.GetDragonFormMoves(dragonTier)
+		if activeMoves then
+			C.AetherFruits.AbyssalSovereignCore.Moves = activeMoves
+		end
+	end
+
+	local curSlot = tonumber((ch and ch:GetAttribute("ActiveSlot")) or player:GetAttribute("ActiveSlot") or (latestSyncedState and latestSyncedState.ActiveSlot)) or 1
+	local rawFruit = tostring((ch and ch:GetAttribute("EquippedFruit")) or player:GetAttribute("EquippedFruit") or (latestSyncedState and (latestSyncedState.EquippedFruit or latestSyncedState.FruitId)) or "")
+	local fruitId = FRUIT_ID_LOOKUP[string.lower(rawFruit)] or (C.AetherFruits and C.AetherFruits[rawFruit] and rawFruit) or nil
+	if dragonTier > 0 then
+		fruitId = "AbyssalSovereignCore"
+		curSlot = 2
+	end
+
+	local masteryTable = (latestSyncedState and type(latestSyncedState.Mastery) == "table" and latestSyncedState.Mastery) or {}
+	local playerLv = tonumber((latestSyncedState and latestSyncedState.Level) or player:GetAttribute("Level")) or 1
+
+	if curSlot == 2 then
+		local fDef = (fruitId and C.AetherFruits and C.AetherFruits[fruitId]) or (C.AetherFruits and C.AetherFruits.AbyssalSovereignCore)
+		if fDef then
+			local moves = fDef.Moves
+			local headerName = fDef.Name or fruitId
+			if fDef.Id == "AbyssalSovereignCore" then
+				if dragonTier >= 2 then
+					moves = fDef.Form2Moves or moves
+					headerName = "Thái Cổ Long Hoàng • Dạng 2"
+				elseif dragonTier == 1 then
+					moves = fDef.Form1Moves or moves
+					headerName = "Bán Long Nhân • Dạng 1"
+				else
+					moves = fDef.Form1Moves or moves
+					headerName = "Trái Long Vương Hư Không"
+				end
+			end
+			local mas = tonumber(masteryTable[fDef.Id] or masteryTable.Fruit or player:GetAttribute("FruitMastery")) or math.max(1, math.min(600, playerLv))
+			return curSlot, fDef.Id, headerName, fDef.Element or "Void", mas, moves or {}
+		end
+	elseif curSlot == 1 then
+		local rawStyle = tostring((ch and ch:GetAttribute("FightingStyle")) or player:GetAttribute("FightingStyle") or player:GetAttribute("EquippedStyle") or (latestSyncedState and latestSyncedState.FightingStyle) or "skyborn_combat")
+		local sDef = (C.FightingStyles and (C.FightingStyles[rawStyle] or C.FightingStyles.skyborn_combat))
+		if sDef then
+			local mas = tonumber(masteryTable[sDef.Id] or masteryTable.Melee or player:GetAttribute("MeleeMastery")) or math.max(1, math.min(600, playerLv))
+			return curSlot, sDef.Id, sDef.Name or rawStyle, sDef.Element or "Sky", mas, sDef.Moves or {}
+		end
+	elseif curSlot == 3 then
+		local eqWep = tostring((latestSyncedState and latestSyncedState.Equipment and latestSyncedState.Equipment.Weapon) or (ch and ch:GetAttribute("EquippedWeapon")) or player:GetAttribute("EquippedWeapon") or "starter_sword")
+		local wDef = (C.Swords and (C.Swords[eqWep] or C.Swords[string.lower(eqWep)] or C.Swords.starter_sword))
+		if wDef then
+			local mas = tonumber(masteryTable[wDef.Id] or masteryTable.Sword or player:GetAttribute("SwordMastery")) or math.max(1, math.min(600, playerLv))
+			return curSlot, wDef.Id, wDef.Name or eqWep, wDef.Element or "Sky", mas, wDef.Moves or {}
+		end
+	elseif curSlot == 4 then
+		local eqGun = tostring((latestSyncedState and latestSyncedState.Equipment and (latestSyncedState.Equipment.Offhand or latestSyncedState.Equipment.Gun)) or player:GetAttribute("EquippedGun") or "aether_flintlock")
+		local gDef = (C.Guns and (C.Guns[eqGun] or C.Guns[string.lower(eqGun)] or C.Guns.aether_flintlock))
+		if gDef then
+			local mas = tonumber(masteryTable[gDef.Id] or masteryTable.Gun or player:GetAttribute("GunMastery")) or math.max(1, math.min(600, playerLv))
+			return curSlot, gDef.Id, gDef.Name or eqGun, gDef.Element or "Sky", mas, gDef.Moves or {}
+		end
+	end
+
+	local fallbackFruit = C.AetherFruits and C.AetherFruits.GaleCore
+	return 2, "GaleCore", (fallbackFruit and fallbackFruit.Name) or "Trái Gió • Gale Core", "Sky", math.max(1, playerLv), (fallbackFruit and fallbackFruit.Moves) or {}
+end
+
+local function triggerBloxSkillCooldown(moveKey, customDuration)
+	local k = string.upper(tostring(moveKey or ""))
+	if k ~= "Z" and k ~= "X" and k ~= "C" and k ~= "V" and k ~= "F" then return end
+	local curSlot, itemId, _, _, curMas, moves = resolveActiveCombatLoadout()
+	local mv = moves and moves[k]
+	if not mv then return end
+	local reqMas = tonumber(mv.Mastery) or 1
+	if curMas < reqMas then return end
+	local cd = tonumber(customDuration) or tonumber(mv.Cooldown) or 6.0
+	if cd <= 0 then return end
+	local cdId = tostring(curSlot) .. "_" .. tostring(itemId) .. "_" .. k
+	local now = os.clock()
+	local existing = bloxSkillCooldowns[cdId]
+	if existing and existing.End > now + 0.15 and not customDuration then
+		return
+	end
+	bloxSkillCooldowns[cdId] = {
+		Start = now,
+		Duration = cd,
+		End = now + cd,
+	}
+end
+
+player:GetAttributeChangedSignal("LastClientSkillAt"):Connect(function()
+	local k = player.Character and player.Character:GetAttribute("LastClientSkillKey")
+	if k then
+		triggerBloxSkillCooldown(k)
+	end
+end)
+
+player.CharacterAdded:Connect(function(ch)
+	ch:GetAttributeChangedSignal("LastClientSkillAt"):Connect(function()
+		local k = ch:GetAttribute("LastClientSkillKey")
+		if k then
+			triggerBloxSkillCooldown(k)
+		end
+	end)
+end)
+if player.Character then
+	player.Character:GetAttributeChangedSignal("LastClientSkillAt"):Connect(function()
+		local k = player.Character:GetAttribute("LastClientSkillKey")
+		if k then
+			triggerBloxSkillCooldown(k)
+		end
+	end)
+end
+
+remotes.StateUpdate.OnClientEvent:Connect(function(payload)
+	if type(payload) == "table" and type(payload.State) == "table" then
+		latestSyncedState = payload.State
+	end
+end)
+
+remotes.CombatFX.OnClientEvent:Connect(function(fx)
+	if type(fx) ~= "table" then return end
+	local actorId = tonumber(fx.Actor or fx.Owner or fx.userId)
+	if actorId == nil or actorId == player.UserId then
+		local k = fx.MoveKey or fx.key or (type(fx.Action) == "string" and fx.Action:match("_([ZXCVF])$"))
+		if k then
+			triggerBloxSkillCooldown(k, tonumber(fx.Cooldown))
+		end
+	end
+end)
+
+task.spawn(function()
+	local KEY_ORDER = { "Z", "X", "C", "V", "F" }
+	local stackGui = nil
+	local container = nil
+	local headerTitle = nil
+	local headerMasText = nil
+	local headerMasFill = nil
+	local headerStroke = nil
+	local rowRefs = {}
+
+	local function buildBloxFruitsSkillHUD()
+		local pgui = player:WaitForChild("PlayerGui", 10)
+		if not pgui then return nil end
+		local existing = pgui:FindFirstChild("BloxFruitsSkillHUD")
+		if existing then
+			existing:Destroy()
 		end
 
-		if C and C.AetherFruits and C.AetherFruits.AbyssalSovereignCore and type(C.GetDragonFormMoves) == "function" then
-			local activeMoves = C.GetDragonFormMoves(tier)
-			if activeMoves then
-				C.AetherFruits.AbyssalSovereignCore.Moves = activeMoves
+		stackGui = Instance.new("ScreenGui")
+		stackGui.Name = "BloxFruitsSkillHUD"
+		stackGui.ResetOnSpawn = false
+		stackGui.IgnoreGuiInset = false
+		stackGui.DisplayOrder = 18
+		stackGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+		stackGui.Parent = pgui
+
+		container = Instance.new("Frame")
+		container.Name = "BottomRightSkillStack"
+		container.AnchorPoint = Vector2.new(1, 1)
+		container.Position = UDim2.new(1, -16, 1, -14)
+		container.Size = UDim2.fromOffset(312, 232)
+		container.BackgroundTransparency = 1
+		container.Parent = stackGui
+
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Vertical
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+		layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Padding = UDim.new(0, 5)
+		layout.Parent = container
+
+		-- Header Card: Equipped Fruit / Weapon Name + Mastery Bar (LayoutOrder = 0)
+		local headerCard = Instance.new("Frame")
+		headerCard.Name = "MasteryHeaderCard"
+		headerCard.Size = UDim2.fromOffset(312, 40)
+		headerCard.BackgroundColor3 = Color3.fromRGB(11, 16, 28)
+		headerCard.BackgroundTransparency = 0.06
+		headerCard.BorderSizePixel = 0
+		headerCard.LayoutOrder = 0
+		headerCard.Parent = container
+
+		local hCorner = Instance.new("UICorner")
+		hCorner.CornerRadius = UDim.new(0, 8)
+		hCorner.Parent = headerCard
+
+		headerStroke = Instance.new("UIStroke")
+		headerStroke.Color = Color3.fromRGB(252, 208, 92)
+		headerStroke.Thickness = 1.6
+		headerStroke.Transparency = 0.08
+		headerStroke.Parent = headerCard
+
+		headerTitle = Instance.new("TextLabel")
+		headerTitle.Name = "WeaponTitle"
+		headerTitle.Position = UDim2.fromOffset(10, 3)
+		headerTitle.Size = UDim2.new(1, -110, 0, 18)
+		headerTitle.BackgroundTransparency = 1
+		headerTitle.Font = Enum.Font.GothamBlack
+		headerTitle.TextSize = 12
+		headerTitle.TextColor3 = Color3.fromRGB(255, 246, 214)
+		headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+		headerTitle.TextTruncate = Enum.TextTruncate.AtEnd
+		headerTitle.Text = "Trái Ác Quỷ"
+		headerTitle.Parent = headerCard
+
+		headerMasText = Instance.new("TextLabel")
+		headerMasText.Name = "MasteryLevelText"
+		headerMasText.AnchorPoint = Vector2.new(1, 0)
+		headerMasText.Position = UDim2.new(1, -10, 0, 3)
+		headerMasText.Size = UDim2.fromOffset(96, 18)
+		headerMasText.BackgroundTransparency = 1
+		headerMasText.Font = Enum.Font.GothamBold
+		headerMasText.TextSize = 11
+		headerMasText.TextColor3 = Color3.fromRGB(255, 218, 108)
+		headerMasText.TextXAlignment = Enum.TextXAlignment.Right
+		headerMasText.Text = "Mastery 1"
+		headerMasText.Parent = headerCard
+
+		local barBg = Instance.new("Frame")
+		barBg.Name = "MasteryBarBg"
+		barBg.Position = UDim2.fromOffset(10, 25)
+		barBg.Size = UDim2.new(1, -20, 0, 8)
+		barBg.BackgroundColor3 = Color3.fromRGB(22, 30, 48)
+		barBg.BorderSizePixel = 0
+		barBg.Parent = headerCard
+		local barCorner = Instance.new("UICorner")
+		barCorner.CornerRadius = UDim.new(1, 0)
+		barCorner.Parent = barBg
+
+		headerMasFill = Instance.new("Frame")
+		headerMasFill.Name = "MasteryBarFill"
+		headerMasFill.Size = UDim2.fromScale(0.35, 1)
+		headerMasFill.BackgroundColor3 = Color3.fromRGB(252, 208, 92)
+		headerMasFill.BorderSizePixel = 0
+		headerMasFill.Parent = barBg
+		local fillCorner = Instance.new("UICorner")
+		fillCorner.CornerRadius = UDim.new(1, 0)
+		fillCorner.Parent = headerMasFill
+
+		table.clear(rowRefs)
+		for idx, k in ipairs(KEY_ORDER) do
+			local rowBtn = Instance.new("TextButton")
+			rowBtn.Name = "BloxSkillRow_" .. k
+			rowBtn.Size = UDim2.fromOffset(312, 33)
+			rowBtn.BackgroundColor3 = Color3.fromRGB(14, 20, 34)
+			rowBtn.BackgroundTransparency = 0.06
+			rowBtn.BorderSizePixel = 0
+			rowBtn.Text = ""
+			rowBtn.AutoButtonColor = false
+			rowBtn.ClipsDescendants = true
+			rowBtn.LayoutOrder = idx
+			rowBtn.Parent = container
+
+			local rCorner = Instance.new("UICorner")
+			rCorner.CornerRadius = UDim.new(0, 7)
+			rCorner.Parent = rowBtn
+
+			local rStroke = Instance.new("UIStroke")
+			rStroke.Color = Color3.fromRGB(88, 118, 168)
+			rStroke.Thickness = 1.4
+			rStroke.Transparency = 0.14
+			rStroke.Parent = rowBtn
+
+			-- Horizontal Cooldown Fill Sweep (Blox Fruits style)
+			local cdFill = Instance.new("Frame")
+			cdFill.Name = "CooldownFill"
+			cdFill.Size = UDim2.fromScale(0, 1)
+			cdFill.Position = UDim2.fromScale(0, 0)
+			cdFill.BackgroundColor3 = Color3.fromRGB(238, 64, 88)
+			cdFill.BackgroundTransparency = 0.32
+			cdFill.BorderSizePixel = 0
+			cdFill.ZIndex = 2
+			cdFill.Parent = rowBtn
+
+			-- Left Key Badge [Z] [X] [C] [V] [F]
+			local keyBadge = Instance.new("Frame")
+			keyBadge.Name = "KeyBadge"
+			keyBadge.AnchorPoint = Vector2.new(0, 0.5)
+			keyBadge.Position = UDim2.new(0, 5, 0.5, 0)
+			keyBadge.Size = UDim2.fromOffset(28, 24)
+			keyBadge.BackgroundColor3 = Color3.fromRGB(218, 152, 28)
+			keyBadge.BorderSizePixel = 0
+			keyBadge.ZIndex = 4
+			keyBadge.Parent = rowBtn
+			local kbCorner = Instance.new("UICorner")
+			kbCorner.CornerRadius = UDim.new(0, 5)
+			kbCorner.Parent = keyBadge
+
+			local keyLbl = Instance.new("TextLabel")
+			keyLbl.Size = UDim2.fromScale(1, 1)
+			keyLbl.BackgroundTransparency = 1
+			keyLbl.Font = Enum.Font.GothamBlack
+			keyLbl.TextSize = 13
+			keyLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+			keyLbl.TextStrokeTransparency = 0.25
+			keyLbl.Text = k
+			keyLbl.ZIndex = 5
+			keyLbl.Parent = keyBadge
+
+			-- Center Full Skill Name Label
+			local skillNameLbl = Instance.new("TextLabel")
+			skillNameLbl.Name = "SkillName"
+			skillNameLbl.Position = UDim2.fromOffset(40, 0)
+			skillNameLbl.Size = UDim2.new(1, -124, 1, 0)
+			skillNameLbl.BackgroundTransparency = 1
+			skillNameLbl.Font = Enum.Font.GothamBold
+			skillNameLbl.TextSize = 12
+			skillNameLbl.TextColor3 = Color3.fromRGB(244, 248, 255)
+			skillNameLbl.TextStrokeTransparency = 0.35
+			skillNameLbl.TextXAlignment = Enum.TextXAlignment.Left
+			skillNameLbl.TextTruncate = Enum.TextTruncate.AtEnd
+			skillNameLbl.Text = "Kỹ Năng [" .. k .. "]"
+			skillNameLbl.ZIndex = 4
+			skillNameLbl.Parent = rowBtn
+
+			-- Right Mastery Requirement / Cooldown Timer Pill
+			local masBadge = Instance.new("Frame")
+			masBadge.Name = "MasteryBadge"
+			masBadge.AnchorPoint = Vector2.new(1, 0.5)
+			masBadge.Position = UDim2.new(1, -6, 0.5, 0)
+			masBadge.Size = UDim2.fromOffset(74, 21)
+			masBadge.BackgroundColor3 = Color3.fromRGB(18, 28, 46)
+			masBadge.BorderSizePixel = 0
+			masBadge.ZIndex = 4
+			masBadge.Parent = rowBtn
+			local mbCorner = Instance.new("UICorner")
+			mbCorner.CornerRadius = UDim.new(0, 5)
+			mbCorner.Parent = masBadge
+
+			local masLbl = Instance.new("TextLabel")
+			masLbl.Name = "MasText"
+			masLbl.Size = UDim2.fromScale(1, 1)
+			masLbl.BackgroundTransparency = 1
+			masLbl.Font = Enum.Font.GothamBold
+			masLbl.TextSize = 10
+			masLbl.TextColor3 = Color3.fromRGB(255, 218, 108)
+			masLbl.Text = "Mas. 1"
+			masLbl.ZIndex = 5
+			masLbl.Parent = masBadge
+
+			rowBtn.Activated:Connect(function()
+				if UI.BlocksCombat() then return end
+				triggerBloxSkillCooldown(k)
+				if k == "V" then
+					send("V")
+				else
+					fireSlotMove(k)
+				end
+			end)
+
+			rowRefs[k] = {
+				Button = rowBtn,
+				Stroke = rStroke,
+				CDFill = cdFill,
+				KeyBadge = keyBadge,
+				KeyLabel = keyLbl,
+				NameLabel = skillNameLbl,
+				MasBadge = masBadge,
+				MasLabel = masLbl,
+			}
+		end
+		return stackGui
+	end
+
+	local function stepBloxFruitsSkillHUD()
+		if not stackGui or not stackGui.Parent then
+			if not buildBloxFruitsSkillHUD() then return end
+		end
+
+		-- Hide old center-bottom AbilityHotbar skill cards so only the Blox Fruits bottom-right skill stack is shown
+		local pgui = player:FindFirstChild("PlayerGui")
+		local skyUI = pgui and pgui:FindFirstChild("SkybreakUI")
+		if skyUI then
+			local oldHotbar = skyUI:FindFirstChild("AbilityHotbar", true)
+			if oldHotbar and oldHotbar:IsA("GuiObject") then
+				oldHotbar.Visible = false
+			end
+			local loadout1To4 = skyUI:FindFirstChild("LoadoutHotbar1To4", true)
+			if loadout1To4 and loadout1To4:IsA("GuiObject") then
+				loadout1To4.Position = UDim2.new(0.5, 28, 1, -14)
 			end
 		end
 
-		local eqFruit = string.lower(tostring((ch and ch:GetAttribute("EquippedFruit")) or player:GetAttribute("EquippedFruit") or ""))
-		local isDragonEquipped = (eqFruit == "abyssalsovereigncore" or eqFruit == "dragon" or eqFruit == "abyssal_dragon" or tier > 0)
-		local curSlot = tonumber((ch and ch:GetAttribute("ActiveSlot")) or player:GetAttribute("ActiveSlot")) or 1
-		local pgui = player:FindFirstChild("PlayerGui")
-		local skyUI = pgui and pgui:FindFirstChild("SkybreakUI")
-		local dock = skyUI and skyUI:FindFirstChild("AbilityHotbar", true)
-		if dock then
-			local captions = (isDragonEquipped and (curSlot == 2 or tier > 0)) and (DRAGON_HUD_CAPTIONS[tier] or DRAGON_HUD_CAPTIONS[1]) or DEFAULT_HUD_CAPTIONS
-			for key, labelText in pairs(captions) do
-				local card = dock:FindFirstChild("SkillCard_" .. key, true)
-				local capPill = card and card:FindFirstChild("CaptionPill")
-				local capLbl = capPill and capPill:FindFirstChild("Caption")
-				if capLbl and capLbl:IsA("TextLabel") then
-					capLbl.Text = labelText
+		local hudVisible = not (UI and UI.BlocksCombat and UI.BlocksCombat())
+		container.Visible = hudVisible
+		if not hudVisible then return end
+
+		local curSlot, itemId, headerName, element, curMas, moves = resolveActiveCombatLoadout()
+		local pal = ELEMENT_HUD_PALETTES[tostring(element)] or ELEMENT_HUD_PALETTES.Sky
+
+		headerStroke.Color = pal.Accent
+		headerTitle.Text = tostring(headerName)
+		headerMasText.Text = string.format("Mastery %d", math.floor(curMas))
+		headerMasText.TextColor3 = pal.Accent
+		headerMasFill.BackgroundColor3 = pal.Accent
+		local masProgress = math.clamp((curMas % 100) / 100, 0.08, 1.0)
+		if curMas >= 600 then masProgress = 1.0 end
+		headerMasFill.Size = UDim2.fromScale(masProgress, 1)
+
+		local now = os.clock()
+		for _, k in ipairs(KEY_ORDER) do
+			local ref = rowRefs[k]
+			local mv = moves and moves[k]
+			if ref then
+				if mv then
+					ref.Button.Visible = true
+					local rawName = tostring(mv.Name or ("Kỹ Năng " .. k))
+					-- Prefer the Vietnamese half after "•" or "-" if present so it's super readable, while keeping English/Vietnamese clarity
+					local viPart = rawName:match("•%s*(.+)$") or rawName:match("%-%s*(.+)$")
+					local cleanTitle = viPart and (viPart .. " (" .. (rawName:match("^(.-)%s*[•%-]") or rawName) .. ")") or rawName
+					ref.NameLabel.Text = cleanTitle
+
+					local reqMas = tonumber(mv.Mastery) or 1
+					local unlocked = (curMas >= reqMas)
+					local cdId = tostring(curSlot) .. "_" .. tostring(itemId) .. "_" .. k
+					local cdEntry = bloxSkillCooldowns[cdId]
+					local rem = (cdEntry and cdEntry.End and (cdEntry.End - now)) or 0
+
+					if not unlocked then
+						ref.Button.BackgroundColor3 = Color3.fromRGB(22, 16, 22)
+						ref.KeyBadge.BackgroundColor3 = Color3.fromRGB(64, 52, 62)
+						ref.Stroke.Color = Color3.fromRGB(110, 62, 72)
+						ref.NameLabel.TextColor3 = Color3.fromRGB(150, 142, 156)
+						ref.CDFill.Size = UDim2.fromScale(0, 1)
+						ref.MasBadge.BackgroundColor3 = Color3.fromRGB(68, 22, 32)
+						ref.MasLabel.TextColor3 = Color3.fromRGB(255, 138, 148)
+						ref.MasLabel.Text = string.format("🔒 Mas. %d", reqMas)
+					elseif rem > 0.05 then
+						local dur = math.max(0.1, tonumber(cdEntry.Duration) or tonumber(mv.Cooldown) or 6)
+						local frac = math.clamp(rem / dur, 0, 1)
+						ref.Button.BackgroundColor3 = pal.Dark
+						ref.KeyBadge.BackgroundColor3 = Color3.fromRGB(84, 34, 48)
+						ref.Stroke.Color = Color3.fromRGB(238, 68, 92)
+						ref.NameLabel.TextColor3 = Color3.fromRGB(224, 214, 220)
+						ref.CDFill.Size = UDim2.fromScale(frac, 1)
+						ref.MasBadge.BackgroundColor3 = Color3.fromRGB(128, 26, 44)
+						ref.MasLabel.TextColor3 = Color3.fromRGB(255, 228, 232)
+						ref.MasLabel.Text = string.format("%.1fs", rem)
+					else
+						ref.Button.BackgroundColor3 = Color3.fromRGB(14, 20, 34)
+						ref.KeyBadge.BackgroundColor3 = pal.Badge
+						ref.Stroke.Color = pal.Accent
+						ref.NameLabel.TextColor3 = Color3.fromRGB(248, 250, 255)
+						ref.CDFill.Size = UDim2.fromScale(0, 1)
+						ref.MasBadge.BackgroundColor3 = Color3.fromRGB(18, 28, 46)
+						ref.MasLabel.TextColor3 = pal.Accent
+						ref.MasLabel.Text = string.format("Mas. %d", reqMas)
+					end
+				else
+					ref.Button.Visible = false
 				end
 			end
 		end
 	end
 
-	player:GetAttributeChangedSignal("DragonFormTier"):Connect(syncDragonFormSkillBar)
-	player:GetAttributeChangedSignal("FruitTransform"):Connect(syncDragonFormSkillBar)
-	player:GetAttributeChangedSignal("ActiveSlot"):Connect(syncDragonFormSkillBar)
-	player:GetAttributeChangedSignal("EquippedFruit"):Connect(syncDragonFormSkillBar)
-	player.CharacterAdded:Connect(function(ch)
-		ch:GetAttributeChangedSignal("DragonFormTier"):Connect(syncDragonFormSkillBar)
-		ch:GetAttributeChangedSignal("FruitTransform"):Connect(syncDragonFormSkillBar)
-		task.defer(syncDragonFormSkillBar)
+	buildBloxFruitsSkillHUD()
+	Run.RenderStepped:Connect(function()
+		pcall(stepBloxFruitsSkillHUD)
 	end)
-	while player.Parent do
-		syncDragonFormSkillBar()
-		task.wait(0.4)
-	end
 end)

@@ -2195,6 +2195,75 @@ function DragonSovereignVFX.SpawnSovereignSkyfallDive(actorChar, startPos, endPo
 	end
 end
 
+local DRAGON_CALLOUT_NAMES = {
+	[1] = {
+		Z = "Hỏa Long Liên Đạn • Fireball Volley",
+		X = "Bán Long Đột Trảo • Hybrid Talon Rend",
+		C = "Cuồng Long Lốc Xoáy • Inferno Vortex",
+		V = "Hóa Hình Bán Long / Long Hoàng",
+		F = "Long Ảnh Bộ • Hybrid Wing Dash",
+	},
+	[2] = {
+		Z = "Thái Cổ Long Tức • Sovereign Breath",
+		X = "Long Hoàng Giáng Thế • Skyfall Dive",
+		C = "Vạn Long Thiên Hỏa Vũ • Eclipse Starshower",
+		V = "Thu Hồi Long Hồn • Revert Form",
+		F = "Long Vũ Cửu Thiên • Supersonic Flight",
+	},
+}
+
+local function spawnDragonSkillCallout(pos, tier, key)
+	if typeof(pos) ~= "Vector3" then return end
+	local t = (tier and tier >= 2) and 2 or 1
+	local title = (DRAGON_CALLOUT_NAMES[t] and DRAGON_CALLOUT_NAMES[t][key]) or ("Dragon [" .. tostring(key) .. "]")
+	local col = (t == 2) and PALETTE.Violet or PALETTE.Crimson
+	local folder, token = createMoveFolder("DragonCallout_" .. key, 1.05)
+	local anchor = makePart("CalloutNode", Enum.PartType.Ball, Vector3.new(0.2, 0.2, 0.2), CFrame.new(pos + Vector3.new(0, (t == 2) and 9.5 or 4.8, 0)), col, 1, Enum.Material.SmoothPlastic, folder)
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(320, 44)
+	bb.StudsOffset = Vector3.new(0, 1.2, 0)
+	bb.AlwaysOnTop = true
+	bb.MaxDistance = 140
+	bb.Parent = anchor
+
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.fromScale(1, 0.78)
+	bg.Position = UDim2.fromScale(0.5, 0.5)
+	bg.AnchorPoint = Vector2.new(0.5, 0.5)
+	bg.BackgroundColor3 = Color3.fromRGB(10, 12, 22)
+	bg.BackgroundTransparency = 0.16
+	bg.BorderSizePixel = 0
+	bg.Parent = bb
+	local cr = Instance.new("UICorner")
+	cr.CornerRadius = UDim.new(0, 8)
+	cr.Parent = bg
+	local st = Instance.new("UIStroke")
+	st.Color = col
+	st.Thickness = 2
+	st.Parent = bg
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -12, 1, 0)
+	lbl.Position = UDim2.fromOffset(6, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Font = Enum.Font.GothamBlack
+	lbl.TextSize = 14
+	lbl.TextColor3 = Color3.fromRGB(255, 245, 220)
+	lbl.TextStrokeTransparency = 0.15
+	lbl.Text = "[" .. tostring(key) .. "] " .. title
+	lbl.Parent = bg
+
+	TweenService:Create(bb, TweenInfo.new(0.95, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		StudsOffset = Vector3.new(0, 3.8, 0),
+	}):Play()
+	task.delay(0.55, function()
+		if not isFolderAlive(folder, token) then return end
+		TweenService:Create(bg, TweenInfo.new(0.38), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(st, TweenInfo.new(0.38), { Transparency = 1 }):Play()
+		TweenService:Create(lbl, TweenInfo.new(0.38), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	end)
+end
+
 -- ============================================================================
 -- 9. UNIFIED DISPATCHER FOR ALL DRAGON MOVES & TRANSFORMATIONS
 --    Routes to Form 1 (Hybrid) vs Form 2 (Sovereign) Skill Sets automatically!
@@ -2213,6 +2282,8 @@ function DragonSovereignVFX.DispatchMove(moveKey, actorChar, startPos, endPos, l
 			tier = anchors.Tier
 		end
 	end
+
+	pcall(spawnDragonSkillCallout, startPos, tier, k)
 
 	if k == "V" then
 		local vTier = tier
