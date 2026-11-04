@@ -287,12 +287,254 @@ local FRUIT_SHADER_SPECS={
     EyeGlow={mode='PLASMA',stops=pbrStops('#380220','#88084E','#E81C8C'),scale=5.0,boost=1.14,refl=0.0},
     VioletGem={mode='FRESNEL',stops=pbrStops('#480C94','#9418DE','#D65AFF'),scale=5.5,boost=1.10,refl=0.08},
     WingMembrane={mode='PLASMA',stops=pbrStops('#14020A','#780A30','#FF286E'),scale=5.2,boost=1.12,refl=0.02},
+    -- Expansion Melee, Guns/Bows, Armor Sets & Crafting Relics (29 previously missing materials)
+    AbyssalPurple={mode='PLASMA',stops=pbrStops('#1E0648','#6A14D8','#C854FF'),scale=5.2,boost=1.14,refl=0.04},
+    BronzeForge={mode='METAL',stops=pbrStops('#4A2810','#9A5824','#E09448'),scale=9.5,boost=1.06,refl=0.12},
+    DarkBark={mode='FRESNEL',stops=pbrStops('#180E08','#321E12','#543420'),scale=8.5,boost=1.04,refl=0.02},
+    EmeraldCore={mode='PLASMA',stops=pbrStops('#044824','#0EC862','#54FF9E'),scale=4.8,boost=1.16,refl=0.04},
+    EmeraldCrystal={mode='FRESNEL',stops=pbrStops('#06542C','#14B864','#64FFB0'),scale=5.5,boost=1.12,refl=0.08},
+    EmeraldLeaf={mode='FRESNEL',stops=pbrStops('#0A421E','#1E8C42','#4CE078'),scale=6.5,boost=1.08,refl=0.03},
+    LimeGlow={mode='PLASMA',stops=pbrStops('#186808','#4CE218','#A8FF4C'),scale=4.8,boost=1.18,refl=0.0},
+    LivingWood={mode='FRESNEL',stops=pbrStops('#2A180C','#58341A','#8C562C'),scale=8.0,boost=1.05,refl=0.02},
+    PearlOrb={mode='FRESNEL',stops=pbrStops('#A8B8D8','#E2ECFC','#FFFFFF'),scale=6.0,boost=1.08,refl=0.10},
+    RoyalPurple={mode='FRESNEL',stops=pbrStops('#240A4E','#5818B8','#9E48FF'),scale=6.5,boost=1.08,refl=0.05},
+    SylvanLeaf={mode='FRESNEL',stops=pbrStops('#0E4E22','#249E48','#5CF084'),scale=6.5,boost=1.08,refl=0.03},
+    TealScale={mode='METAL',stops=pbrStops('#063844','#107E92','#38D8EC'),scale=8.5,boost=1.08,refl=0.10},
+    VioletArc={mode='PLASMA',stops=pbrStops('#3A0888','#8E1EFF','#DF74FF'),scale=4.8,boost=1.16,refl=0.0},
+    CrimsonArmor={mode='METAL',stops=pbrStops('#3E0610','#8E0E24','#DC2442'),scale=9.5,boost=1.08,refl=0.10},
+    CrimsonCloth={mode='FRESNEL',stops=pbrStops('#34040C','#780A1E','#C41838'),scale=7.5,boost=1.06,refl=0.02},
+    CosmicPurple={mode='PLASMA',stops=pbrStops('#16043A','#5210B4','#B244FF'),scale=5.0,boost=1.14,refl=0.04},
+    DemonHorn={mode='FRESNEL',stops=pbrStops('#12080E','#2E1220','#5E2038'),scale=8.0,boost=1.05,refl=0.04},
+    VoidCape={mode='FRESNEL',stops=pbrStops('#0C061C','#221048','#462088'),scale=7.5,boost=1.06,refl=0.02},
+    VoidSingularity={mode='PLASMA',stops=pbrStops('#080218','#4808A8','#C438FF'),scale=4.6,boost=1.18,refl=0.0},
+    AbyssalChamber={mode='METAL',stops=pbrStops('#100A24','#281854','#5634A8'),scale=9.0,boost=1.06,refl=0.08},
+    AncientWood={mode='FRESNEL',stops=pbrStops('#24140A','#4C2C16','#7A4826'),scale=8.5,boost=1.04,refl=0.02},
+    BoneTooth={mode='FRESNEL',stops=pbrStops('#9E8E72','#D8C8A8','#F8F0DC'),scale=7.5,boost=1.05,refl=0.04},
+    ChronoGrip={mode='METAL',stops=pbrStops('#1E2434','#3E4A68','#6E82B0'),scale=9.0,boost=1.05,refl=0.06},
+    ChronoStar={mode='PLASMA',stops=pbrStops('#0058B8','#00C4FF','#94F4FF'),scale=4.6,boost=1.18,refl=0.0},
+    CloudPorcelain={mode='FRESNEL',stops=pbrStops('#B4C2DC','#E4ECF8','#FFFFFF'),scale=7.5,boost=1.06,refl=0.08},
+    FlintlockWood={mode='FRESNEL',stops=pbrStops('#2C160A','#5C3016','#8E4C24'),scale=8.5,boost=1.05,refl=0.03},
+    SteamSmoke={mode='PLASMA',stops=pbrStops('#586882','#9EB0CC','#E8F2FF'),scale=5.2,boost=1.08,refl=0.0},
+    VoidBlack={mode='METAL',stops=pbrStops('#080612','#181230','#342662'),scale=9.5,boost=1.06,refl=0.08},
+    ParchmentGold={mode='FRESNEL',stops=pbrStops('#9A7438','#D4AC64','#F6DC9E'),scale=7.5,boost=1.06,refl=0.03},
 }
-local function getFruitShaderSpec(matName)
+local WORLD_SHADER_CACHE={}
+local function boostSaturationRGB(r,g,b,satMult,valMult)
+    local maxC=math.max(r,g,b)
+    local minC=math.min(r,g,b)
+    local d=maxC-minC
+    local h,s,v=0,maxC>1e-5 and (d/maxC) or 0,maxC
+    if d>1e-5 then
+        if maxC==r then h=((g-b)/d)%6
+        elseif maxC==g then h=(b-r)/d+2
+        else h=(r-g)/d+4 end
+        h=h/6
+    end
+    s=math.clamp(s*satMult,0,1)
+    v=math.clamp(v*valMult,0.04,1)
+    local c=v*s
+    local x=c*(1-math.abs((h*6)%2-1))
+    local m=v-c
+    local nr,ng,nb=0,0,0
+    local hi=math.floor(h*6)%6
+    if hi==0 then nr,ng,nb=c,x,0
+    elseif hi==1 then nr,ng,nb=x,c,0
+    elseif hi==2 then nr,ng,nb=0,c,x
+    elseif hi==3 then nr,ng,nb=0,x,c
+    elseif hi==4 then nr,ng,nb=x,0,c
+    else nr,ng,nb=c,0,x end
+    return math.clamp(nr+m,0,1),math.clamp(ng+m,0,1),math.clamp(nb+m,0,1)
+end
+local function makeWorldStops(r,g,b,satBoost,darkMul,midMul,lightMul,warmShift)
+    local mr,mg,mb=boostSaturationRGB(r,g,b,satBoost or 1.45,midMul or 1.02)
+    local dr,dg,db=boostSaturationRGB(r*0.88,g*0.92,b*1.06,(satBoost or 1.45)*1.12,darkMul or 0.56)
+    local lr,lg,lb=boostSaturationRGB(math.min(1,r+(warmShift or 0.06)),math.min(1,g+(warmShift or 0.06)*0.75),b,(satBoost or 1.45)*0.88,lightMul or 1.28)
+    return {
+        {0.00,{dr,dg,db}},
+        {0.50,{mr,mg,mb}},
+        {1.00,{lr,lg,lb}},
+    }
+end
+local function getWorldShaderSpec(matName,rawColor)
+    if not matName or matName:sub(1,8)~='MAT_C3D_' then return nil end
+    local cached=WORLD_SHADER_CACHE[matName]
+    if cached then return cached end
+    local ml=matName:lower()
+    local rc=rawColor or {0.5,0.5,0.5,1}
+    local r,g,b=rc[1] or 0.5,rc[2] or 0.5,rc[3] or 0.5
+    local spec
+    if ml:find('glow') or ml:find('neon') or ml:find('conduit') or ml:find('holo') or ml:find('beacon') or ml:find('magmacrack') or ml:find('core') or ml:find('crystal') or ml:find('prism') or ml:find('voidstar') or ml:find('abyssalwater') then
+        local nr,ng,nb=boostSaturationRGB(r,g,b,1.65,1.22)
+        if ml:find('solaraetherglow') or ml:find('amber') or ml:find('sun') then
+            nr,ng,nb=1.00,0.78,0.22
+        elseif ml:find('cryocrystal') or ml:find('conduit') or ml:find('holo') or ml:find('beacon') or ml:find('prism') then
+            nr,ng,nb=0.18,0.88,1.00
+        elseif ml:find('umbralglow') or ml:find('void') or ml:find('amethyst') then
+            nr,ng,nb=0.72,0.28,1.00
+        elseif ml:find('crimson') or ml:find('magma') then
+            nr,ng,nb=1.00,0.28,0.22
+        end
+        local isGlassCrystal=ml:find('crystal') or ml:find('prism') or ml:find('amethyst') or ml:find('amber')
+        spec={
+            mode='PLASMA',
+            stops=makeWorldStops(nr,ng,nb,1.35,0.62,1.00,1.25,0.08),
+            scale=4.6,
+            boost=1.16,
+            mat=isGlassCrystal and Enum.Material.Glass or Enum.Material.Neon,
+            refl=isGlassCrystal and 0.25 or 0.0,
+            neon=not isGlassCrystal,
+            neonColor=Color3.new(math.clamp(nr*0.92,0,1),math.clamp(ng*0.92,0,1),math.clamp(nb*0.92,0,1)),
+            lightColor=Color3.new(math.clamp(nr,0,1),math.clamp(ng,0,1),math.clamp(nb,0,1)),
+        }
+    elseif ml:find('turf') or ml:find('grass') or ml:find('moss') or ml:find('lawn') then
+        if ml:find('emeraldturf') or ml:find('sunturft') or ml:find('gardenturf') or ml:find('forestmoss') then
+            r,g,b=0.14,0.64,0.26
+        end
+        spec={
+            mode='WORLD_TURF',
+            stops=makeWorldStops(r,g,b,1.65,0.52,1.04,1.34,0.08),
+            scale=4.2,
+            boost=1.08,
+            mat=Enum.Material.LeafyGrass,
+            refl=0.0,
+        }
+    elseif ml:find('canopy') or ml:find('foliage') or ml:find('leaf') or ml:find('bush') or ml:find('hedge') or ml:find('vine') then
+        spec={
+            mode='WORLD_CANOPY',
+            stops=makeWorldStops(r,g,b,1.60,0.48,1.05,1.36,0.09),
+            scale=3.8,
+            boost=1.10,
+            mat=Enum.Material.Grass,
+            refl=0.0,
+        }
+    elseif ml:find('gold') or ml:find('brass') or ml:find('bronze') or ml:find('copper') then
+        if ml:find('gold') then r,g,b=0.88,0.66,0.18 end
+        spec={
+            mode='WORLD_METAL',
+            stops=makeWorldStops(r,g,b,1.55,0.54,1.06,1.38,0.10),
+            scale=7.5,
+            boost=1.12,
+            mat=Enum.Material.Metal,
+            refl=0.22,
+        }
+    elseif ml:find('steel') or ml:find('iron') or ml:find('alloy') or ml:find('chrome') or ml:find('hull') and ml:find('W4') then
+        spec={
+            mode='WORLD_METAL',
+            stops=makeWorldStops(r,g,b,1.35,0.52,0.98,1.28,0.04),
+            scale=7.5,
+            boost=1.06,
+            mat=Enum.Material.Metal,
+            refl=0.16,
+        }
+    elseif ml:find('cliff') or ml:find('canyon') or ml:find('mesa') or ml:find('crag') or ml:find('spire') then
+        if ml:find('goldencliff') or ml:find('suncliff') then
+            r,g,b=0.72,0.50,0.28
+        end
+        local isDarkVolcanic=ml:find('obsidian') or ml:find('basalt') or ml:find('void') or ml:find('umbral') or ml:find('abyss')
+        local isIcy=ml:find('frost') or ml:find('glacier') or ml:find('ice') or ml:find('permafrost')
+        spec={
+            mode='WORLD_CLIFF',
+            stops=makeWorldStops(r,g,b,1.58,0.44,0.96,1.32,0.07),
+            scale=5.4,
+            boost=1.06,
+            mat=isIcy and Enum.Material.Glacier or (isDarkVolcanic and Enum.Material.Basalt or Enum.Material.Sandstone),
+            refl=isIcy and 0.12 or 0.0,
+        }
+    elseif ml:find('water') or ml:find('sea') or ml:find('pool') or ml:find('fountain') then
+        spec={
+            mode='WORLD_WATER',
+            stops=makeWorldStops(0.08,0.62,0.88,1.55,0.55,1.05,1.35,0.08),
+            scale=4.5,
+            boost=1.12,
+            mat=Enum.Material.Glass,
+            refl=0.28,
+            trans=0.18,
+        }
+    elseif ml:find('ice') or ml:find('glacier') or ml:find('frost') then
+        spec={
+            mode='WORLD_CLIFF',
+            stops=makeWorldStops(r,g,b,1.50,0.58,1.04,1.32,0.06),
+            scale=5.0,
+            boost=1.08,
+            mat=Enum.Material.Glacier,
+            refl=0.14,
+        }
+    elseif ml:find('snow') then
+        spec={
+            mode='WORLD_TURF',
+            stops=makeWorldStops(0.78,0.88,0.98,1.25,0.74,1.00,1.16,0.04),
+            scale=4.5,
+            boost=1.04,
+            mat=Enum.Material.Snow,
+            refl=0.04,
+        }
+    elseif ml:find('wood') or ml:find('timber') or ml:find('plank') or ml:find('deck') or ml:find('trunk') or ml:find('bark') or ml:find('hull') then
+        spec={
+            mode='WORLD_CLIFF',
+            stops=makeWorldStops(r,g,b,1.55,0.48,0.96,1.28,0.06),
+            scale=6.5,
+            boost=1.06,
+            mat=(ml:find('plank') or ml:find('deck') or ml:find('hull')) and Enum.Material.WoodPlanks or Enum.Material.Wood,
+            refl=0.0,
+        }
+    elseif ml:find('roof') or ml:find('tile') or ml:find('shingle') or ml:find('dome') then
+        if ml:find('azuredome') then r,g,b=0.14,0.48,0.88 end
+        spec={
+            mode='WORLD_STONE',
+            stops=makeWorldStops(r,g,b,1.62,0.52,1.04,1.34,0.07),
+            scale=5.5,
+            boost=1.08,
+            mat=ml:find('dome') and Enum.Material.Marble or Enum.Material.RoofShingles,
+            refl=ml:find('dome') and 0.10 or 0.02,
+        }
+    elseif ml:find('sail') or ml:find('banner') or ml:find('awning') or ml:find('canopycloth') or ml:find('tent') then
+        spec={
+            mode='WORLD_CANOPY',
+            stops=makeWorldStops(r,g,b,1.58,0.56,1.04,1.30,0.06),
+            scale=5.0,
+            boost=1.08,
+            mat=Enum.Material.Fabric,
+            refl=0.0,
+        }
+    elseif ml:find('marble') or ml:find('alabaster') or ml:find('sanctum') or ml:find('pillar') or ml:find('column') or ml:find('arch') then
+        if ml:find('alabaster') then r,g,b=0.84,0.78,0.66 end
+        spec={
+            mode='WORLD_STONE',
+            stops=makeWorldStops(r,g,b,1.42,0.62,1.00,1.24,0.06),
+            scale=5.2,
+            boost=1.05,
+            mat=Enum.Material.Marble,
+            refl=0.06,
+        }
+    elseif ml:find('cobble') or ml:find('pave') or ml:find('road') or ml:find('path') or ml:find('plaza') or ml:find('stone') or ml:find('wall') or ml:find('bastion') or ml:find('fortress') then
+        if ml:find('ceremonialstone') then r,g,b=0.72,0.62,0.46 end
+        spec={
+            mode='WORLD_STONE',
+            stops=makeWorldStops(r,g,b,1.52,0.54,0.98,1.28,0.06),
+            scale=5.0,
+            boost=1.06,
+            mat=(ml:find('cobble') or ml:find('path') or ml:find('road')) and Enum.Material.Cobblestone or Enum.Material.Limestone,
+            refl=0.02,
+        }
+    else
+        spec={
+            mode='WORLD_STONE',
+            stops=makeWorldStops(r,g,b,1.50,0.54,0.98,1.28,0.06),
+            scale=5.0,
+            boost=1.06,
+            mat=Enum.Material.Slate,
+            refl=0.02,
+        }
+    end
+    WORLD_SHADER_CACHE[matName]=spec
+    return spec
+end
+local function getFruitShaderSpec(matName,rawColor)
     if not matName then return nil end
     if FRUIT_SHADER_SPECS[matName] then return FRUIT_SHADER_SPECS[matName] end
     local short=matName:gsub('^MAT_[%w]+_','')
-    return FRUIT_SHADER_SPECS[short]
+    if FRUIT_SHADER_SPECS[short] then return FRUIT_SHADER_SPECS[short] end
+    return getWorldShaderSpec(matName,rawColor)
 end
 local function fbm3(x,y,z)
     local n=math.noise(x,y,z)*0.54
@@ -365,11 +607,37 @@ local function evalFruitShader(spec,px,py,pz,nx,ny,nz,low,high,isGrid)
         local cell=1.0-math.min(1.0,math.abs(math.noise(gx*sc*2.3+7.1,gy*sc*2.3+13.4,gz*sc*2.3+5.8))*1.85)
         local facing=0.35+0.65*math.max(math.abs(nz),math.abs(ny)*0.55)
         fac=n1*0.46+cell*0.26+facing*0.28
-    elseif mode=='METAL' then
+    elseif mode=='METAL' or mode=='WORLD_METAL' then
         local n1=fbm3(gx*sc,gy*sc,gz*sc)
         local wave=0.5+0.5*math.sin((gy*sc*2.4+n1*2.8)*math.pi)
         local specH=math.clamp(0.50+0.34*ny-0.26*nz+0.14*nx,0,1)
         fac=wave*0.32+n1*0.28+specH*0.40
+    elseif mode=='WORLD_TURF' then
+        local n1=fbm3(gx*sc*1.15,gy*sc*0.65,gz*sc*1.15)
+        local dapple=0.5+0.5*math.sin((gx*sc*2.2+gz*sc*1.9+n1*2.4)*math.pi)
+        local sun=math.clamp(0.45+0.38*ny+0.14*nx-0.12*nz,0,1)
+        fac=n1*0.36+dapple*0.26+sun*0.38
+    elseif mode=='WORLD_CANOPY' then
+        local n1=fbm3(gx*sc,gy*sc,gz*sc)
+        local crown=math.clamp(gy*0.72+0.28*math.max(0,ny),0,1)
+        local sun=math.clamp(0.44+0.36*ny+0.18*nx-0.14*nz,0,1)
+        fac=n1*0.34+crown*0.34+sun*0.32
+    elseif mode=='WORLD_CLIFF' then
+        local n1=fbm3(gx*sc*0.90,gy*sc*1.65,gz*sc*0.90)
+        local strata=0.5+0.5*math.sin((gy*sc*3.6+n1*2.6)*math.pi)
+        local heightGrad=math.clamp(0.18+gy*0.68,0,1)
+        local slope=math.clamp(0.46+0.36*ny+0.14*nx-0.16*nz,0,1)
+        fac=strata*0.30+heightGrad*0.34+slope*0.24+n1*0.12
+    elseif mode=='WORLD_STONE' then
+        local n1=fbm3(gx*sc,gy*sc,gz*sc)
+        local vein=0.5+0.5*math.sin(((gx+gz)*sc*1.85+n1*2.5)*math.pi)
+        local sun=math.clamp(0.48+0.34*ny+0.14*nx-0.14*nz,0,1)
+        fac=n1*0.34+vein*0.26+sun*0.40
+    elseif mode=='WORLD_WATER' then
+        local n1=fbm3(gx*sc*1.3,gy*sc*0.5,gz*sc*1.3)
+        local ripple=0.5+0.5*math.sin((gx*sc*3.0+gz*sc*2.6+n1*3.2)*math.pi)
+        local fres=math.clamp(1.0-math.abs(ny),0,1)^1.2
+        fac=n1*0.32+ripple*0.38+fres*0.30
     else
         local n1=fbm3(gx*sc,gy*sc,gz*sc)
         local fres=math.clamp(1.0-math.abs(nz),0,1)^1.35
@@ -560,7 +828,7 @@ local function build(name,progress)
             end
         end
         local center=(low+high)/2
-        local fruitSpec=getFruitShaderSpec(mat and mat.name)
+        local fruitSpec=getFruitShaderSpec(mat and mat.name,mat and mat.color_linear)
         local isCollectionGrid=(name=='AetherFruitsCollection1' or name=='AetherFruitsCollection2')
         local posKeys={}
         local doSmooth=(not meshStatic)
@@ -630,7 +898,7 @@ local function build(name,progress)
                 end
             end
             local normals,uvlookup,colorLookup,vertColors={},{},{},{}
-            local useFacetNormals=fruitSpec and (fruitSpec.mode=='FRESNEL' or fruitSpec.mode=='METAL')
+            local useFacetNormals=fruitSpec and (fruitSpec.mode=='FRESNEL' or fruitSpec.mode=='METAL' or fruitSpec.mode:sub(1,6)=='WORLD_')
             for bidx=batchStart,batchEnd do
                 local ti=validTriangles[bidx]
                 local t=d.triangles[ti]
@@ -687,9 +955,18 @@ local function build(name,progress)
             part:SetAttribute('BlenderMaterial',d.material.name)
             local color=mat.color_linear
             if fruitSpec then
-                part.Color=Color3.new(1,1,1)
-                part.Material=Enum.Material.SmoothPlastic
+                part.Color=fruitSpec.neon and (fruitSpec.neonColor or Color3.new(1,1,1)) or Color3.new(1,1,1)
+                part.Material=fruitSpec.mat or Enum.Material.SmoothPlastic
                 part.Reflectance=fruitSpec.refl or 0
+                if fruitSpec.lightColor and batchIdx==1 then
+                    local pl=Instance.new('PointLight')
+                    pl.Name='WorldCrystalLight'
+                    pl.Color=fruitSpec.lightColor
+                    pl.Brightness=1.85
+                    pl.Range=32
+                    pl.Shadows=false
+                    pl.Parent=part
+                end
             else
             local em=mat.emission_linear or {0,0,0,1}
             local emMax=math.max(em[1] or 0,em[2] or 0,em[3] or 0)
@@ -812,7 +1089,7 @@ local function build(name,progress)
                 end
             end
             end
-            part.Transparency=isHandOrElemFX and 0.80 or (1-color[4]*(mat.alpha or 1));part.Parent=model
+            part.Transparency=isHandOrElemFX and 0.80 or ((fruitSpec and fruitSpec.trans) or (1-color[4]*(mat.alpha or 1)));part.Parent=model
             if (not meshStatic) and #h.bones>0 then local weld=Instance.new('WeldConstraint');weld.Part0=root;weld.Part1=part;weld.Parent=part end
             if index%4==0 then task.wait() end
         end

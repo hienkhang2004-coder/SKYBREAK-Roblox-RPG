@@ -2083,59 +2083,59 @@ end
 
 local REALM_ELEMENTAL_PALETTES = {
     VerdantCrown = {
-        Crystal = Color3.fromRGB(76, 238, 138),
-        CrystalAlt = Color3.fromRGB(192, 248, 96),
-        Water = Color3.fromRGB(58, 212, 168),
-        Foliage = Color3.fromRGB(46, 168, 92),
-        FoliageAlt = Color3.fromRGB(82, 208, 118),
-        Wood = Color3.fromRGB(106, 74, 46),
-        Metal = Color3.fromRGB(208, 176, 82),
-        Plaza = Color3.fromRGB(184, 206, 186),
-        Cliff = Color3.fromRGB(108, 124, 106),
+        Crystal = Color3.fromRGB(92, 255, 156),
+        CrystalAlt = Color3.fromRGB(208, 255, 112),
+        Water = Color3.fromRGB(72, 232, 188),
+        Foliage = Color3.fromRGB(86, 224, 128),
+        FoliageAlt = Color3.fromRGB(128, 248, 152),
+        Wood = Color3.fromRGB(168, 124, 82),
+        Metal = Color3.fromRGB(242, 206, 98),
+        Plaza = Color3.fromRGB(218, 238, 218),
+        Cliff = Color3.fromRGB(154, 182, 148),
     },
     EmberforgeWastes = {
-        Crystal = Color3.fromRGB(255, 112, 28),
-        CrystalAlt = Color3.fromRGB(255, 182, 48),
-        Water = Color3.fromRGB(248, 96, 22),
-        Foliage = Color3.fromRGB(178, 76, 34),
-        FoliageAlt = Color3.fromRGB(218, 108, 42),
-        Wood = Color3.fromRGB(72, 46, 38),
-        Metal = Color3.fromRGB(204, 114, 52),
-        Plaza = Color3.fromRGB(122, 92, 82),
-        Cliff = Color3.fromRGB(58, 40, 36),
+        Crystal = Color3.fromRGB(255, 132, 38),
+        CrystalAlt = Color3.fromRGB(255, 204, 64),
+        Water = Color3.fromRGB(255, 118, 32),
+        Foliage = Color3.fromRGB(232, 114, 56),
+        FoliageAlt = Color3.fromRGB(255, 148, 68),
+        Wood = Color3.fromRGB(142, 94, 76),
+        Metal = Color3.fromRGB(244, 152, 78),
+        Plaza = Color3.fromRGB(198, 158, 142),
+        Cliff = Color3.fromRGB(136, 96, 86),
     },
     AbyssalTides = {
-        Crystal = Color3.fromRGB(38, 232, 218),
-        CrystalAlt = Color3.fromRGB(236, 108, 182),
-        Water = Color3.fromRGB(42, 176, 212),
-        Foliage = Color3.fromRGB(44, 188, 168),
-        FoliageAlt = Color3.fromRGB(224, 112, 164),
-        Wood = Color3.fromRGB(64, 92, 108),
-        Metal = Color3.fromRGB(206, 182, 104),
-        Plaza = Color3.fromRGB(182, 222, 228),
-        Cliff = Color3.fromRGB(34, 72, 96),
+        Crystal = Color3.fromRGB(54, 248, 236),
+        CrystalAlt = Color3.fromRGB(252, 128, 204),
+        Water = Color3.fromRGB(64, 206, 244),
+        Foliage = Color3.fromRGB(72, 228, 204),
+        FoliageAlt = Color3.fromRGB(248, 142, 196),
+        Wood = Color3.fromRGB(118, 162, 188),
+        Metal = Color3.fromRGB(242, 214, 124),
+        Plaza = Color3.fromRGB(212, 242, 248),
+        Cliff = Color3.fromRGB(88, 146, 184),
     },
     ChronosBastion = {
-        Crystal = Color3.fromRGB(124, 214, 255),
-        CrystalAlt = Color3.fromRGB(252, 206, 88),
-        Water = Color3.fromRGB(142, 198, 248),
-        Foliage = Color3.fromRGB(228, 192, 98),
-        FoliageAlt = Color3.fromRGB(164, 136, 228),
-        Wood = Color3.fromRGB(128, 112, 98),
-        Metal = Color3.fromRGB(232, 184, 78),
-        Plaza = Color3.fromRGB(222, 216, 236),
-        Cliff = Color3.fromRGB(132, 128, 152),
+        Crystal = Color3.fromRGB(138, 228, 255),
+        CrystalAlt = Color3.fromRGB(255, 218, 102),
+        Water = Color3.fromRGB(158, 216, 255),
+        Foliage = Color3.fromRGB(248, 214, 118),
+        FoliageAlt = Color3.fromRGB(196, 168, 252),
+        Wood = Color3.fromRGB(184, 166, 148),
+        Metal = Color3.fromRGB(252, 206, 96),
+        Plaza = Color3.fromRGB(238, 232, 250),
+        Cliff = Color3.fromRGB(178, 172, 202),
     },
     VeilsEnd = {
-        Crystal = Color3.fromRGB(184, 78, 252),
-        CrystalAlt = Color3.fromRGB(244, 92, 212),
-        Water = Color3.fromRGB(118, 56, 196),
-        Foliage = Color3.fromRGB(142, 64, 198),
-        FoliageAlt = Color3.fromRGB(196, 84, 232),
-        Wood = Color3.fromRGB(54, 38, 72),
-        Metal = Color3.fromRGB(192, 174, 224),
-        Plaza = Color3.fromRGB(88, 68, 124),
-        Cliff = Color3.fromRGB(36, 24, 58),
+        Crystal = Color3.fromRGB(204, 98, 255),
+        CrystalAlt = Color3.fromRGB(255, 114, 228),
+        Water = Color3.fromRGB(156, 84, 238),
+        Foliage = Color3.fromRGB(184, 96, 242),
+        FoliageAlt = Color3.fromRGB(224, 118, 255),
+        Wood = Color3.fromRGB(124, 92, 158),
+        Metal = Color3.fromRGB(224, 206, 252),
+        Plaza = Color3.fromRGB(164, 136, 212),
+        Cliff = Color3.fromRGB(108, 82, 154),
     },
 }
 
@@ -2171,9 +2171,9 @@ local function applyRealmElementalTheme(model, realmName)
                 or m:find('lava') or m:find('ice') or m:find('glacier')
             local isFoliage = m:find('foliage') or m:find('leaf') or m:find('canopy') or m:find('moss')
                 or m:find('grass') or m:find('pine') or m:find('palm') or m:find('meadow')
-                or m:find('cypress') or m:find('sakura')
+                or m:find('cypress') or m:find('sakura') or m:find('turf')
             local isWood = m:find('bark') or m:find('wood') or m:find('timber') or m:find('trunk')
-                or m:find('rope') or m:find('pier')
+                or m:find('rope') or m:find('pier') or m:find('plank') or m:find('deck')
             local isMetal = m:find('gold') or m:find('bronze') or m:find('brass') or m:find('iron')
                 or m:find('steel') or m:find('metal') or m:find('trim') or m:find('chain')
                 or m:find('banner') or m:find('roof') or m:find('sail')
@@ -2186,32 +2186,32 @@ local function applyRealmElementalTheme(model, realmName)
             if isCrystal then
                 local useAlt = m:find('magenta') or m:find('pink') or m:find('violet') or m:find('gold') or m:find('warm') or m:find('sun')
                 p.Color = useAlt and pal.CrystalAlt or pal.Crystal
-                p.Material = Enum.Material.SmoothPlastic
-                p.Reflectance = 0.04
+                p.Material = m:find('crystal') and Enum.Material.Glass or Enum.Material.Neon
+                p.Reflectance = m:find('crystal') and 0.22 or 0.0
             elseif isWater then
                 p.Color = pal.Water
-                p.Material = Enum.Material.SmoothPlastic
-                p.Reflectance = 0.06
+                p.Material = (m:find('ice') or m:find('glacier')) and Enum.Material.Glacier or Enum.Material.Glass
+                p.Reflectance = 0.24
             elseif isFoliage then
                 local useAlt = m:find('pink') or m:find('sakura') or m:find('lavender') or m:find('sunlit') or m:find('gold')
                 p.Color = useAlt and pal.FoliageAlt or pal.Foliage
-                p.Material = Enum.Material.SmoothPlastic
+                p.Material = (m:find('turf') or m:find('grass') or m:find('moss')) and Enum.Material.LeafyGrass or Enum.Material.Grass
                 p.Reflectance = 0
             elseif isWood then
                 p.Color = pal.Wood
-                p.Material = Enum.Material.SmoothPlastic
+                p.Material = (m:find('plank') or m:find('deck') or m:find('pier')) and Enum.Material.WoodPlanks or Enum.Material.Wood
                 p.Reflectance = 0
             elseif isMetal then
                 p.Color = pal.Metal
-                p.Material = Enum.Material.Metal
-                p.Reflectance = 0.10
+                p.Material = (m:find('banner') or m:find('sail')) and Enum.Material.Fabric or Enum.Material.Metal
+                p.Reflectance = (m:find('banner') or m:find('sail')) and 0 or 0.18
             elseif isPlaza then
                 p.Color = pal.Plaza
-                p.Material = Enum.Material.SmoothPlastic
-                p.Reflectance = 0.02
+                p.Material = m:find('marble') and Enum.Material.Marble or Enum.Material.Limestone
+                p.Reflectance = m:find('marble') and 0.06 or 0.02
             else
                 p.Color = pal.Cliff
-                p.Material = Enum.Material.SmoothPlastic
+                p.Material = (realmName == 'EmberforgeWastes' or realmName == 'VeilsEnd') and Enum.Material.Basalt or Enum.Material.Sandstone
                 p.Reflectance = 0
             end
         end

@@ -19,20 +19,26 @@ local function enforceAntiGlareLock()
         return
     end
     lightingGuardBusy = true
-    if Lighting.Brightness > 1.55 then
-        Lighting.Brightness = 1.42
+    if Lighting.Brightness > 2.25 then
+        Lighting.Brightness = 1.95
     end
-    if Lighting.ExposureCompensation > 0.05 or Lighting.ExposureCompensation < -0.15 then
-        Lighting.ExposureCompensation = -0.04
+    if Lighting.ExposureCompensation > 0.14 or Lighting.ExposureCompensation < -0.12 then
+        Lighting.ExposureCompensation = 0.04
     end
     local foundBloom = false
+    local foundGrade = false
     for _, child in ipairs(Lighting:GetChildren()) do
         if child:IsA("BloomEffect") then
             foundBloom = true
             child.Enabled = true
-            child.Intensity = math.clamp(child.Intensity, 0.45, 0.68)
-            child.Threshold = math.clamp(child.Threshold, 0.88, 0.98)
-            child.Size = math.clamp(child.Size, 24, 36)
+            child.Intensity = math.clamp(child.Intensity, 0.48, 0.68)
+            child.Threshold = math.clamp(child.Threshold, 0.86, 0.96)
+            child.Size = math.clamp(child.Size, 26, 36)
+        elseif child:IsA("ColorCorrectionEffect") and (child.Name == "SkybreakGrade" or child.Name == "SkybreakColorGrade") then
+            foundGrade = true
+            child.Enabled = true
+            child.Saturation = math.clamp(math.max(child.Saturation, 0.26), 0.22, 0.34)
+            child.Contrast = math.clamp(math.max(child.Contrast, 0.14), 0.10, 0.22)
         elseif child:IsA("Atmosphere") then
             if child.Glare > 0.10 then
                 child.Glare = 0.08
@@ -44,9 +50,19 @@ local function enforceAntiGlareLock()
         bl.Name = "SkybreakVFXBloom"
         bl.Enabled = true
         bl.Intensity = 0.58
-        bl.Threshold = 0.92
+        bl.Threshold = 0.88
         bl.Size = 28
         bl.Parent = Lighting
+    end
+    if not foundGrade then
+        local gr = Instance.new("ColorCorrectionEffect")
+        gr.Name = "SkybreakGrade"
+        gr.Enabled = true
+        gr.Brightness = 0.03
+        gr.Contrast = 0.14
+        gr.Saturation = 0.26
+        gr.TintColor = Color3.fromRGB(255, 250, 242)
+        gr.Parent = Lighting
     end
     lightingGuardBusy = false
 end
@@ -175,77 +191,77 @@ local TIME_KEYFRAMES = {
         U = 0.00,
         Tag = "[BÌNH MINH]",
         Name = "Bình Minh",
-        Clock = 6.35,
-        Brightness = 1.12,
-        Exposure = -0.20,
-        Ambient = Color3.fromRGB(88, 92, 114),
-        Outdoor = Color3.fromRGB(128, 126, 150),
-        ShiftTop = Color3.fromRGB(228, 186, 156),
-        AtmoColor = Color3.fromRGB(214, 196, 206),
-        AtmoDecay = Color3.fromRGB(186, 152, 148),
-        CloudUpper = Color3.fromRGB(204, 186, 192),
-        CloudMid = Color3.fromRGB(168, 154, 174),
-        CloudDeep = Color3.fromRGB(116, 108, 138),
+        Clock = 7.20,
+        Brightness = 1.65,
+        Exposure = 0.02,
+        Ambient = Color3.fromRGB(128, 124, 148),
+        Outdoor = Color3.fromRGB(176, 164, 186),
+        ShiftTop = Color3.fromRGB(255, 212, 176),
+        AtmoColor = Color3.fromRGB(232, 212, 224),
+        AtmoDecay = Color3.fromRGB(218, 174, 162),
+        CloudUpper = Color3.fromRGB(242, 224, 228),
+        CloudMid = Color3.fromRGB(196, 186, 218),
+        CloudDeep = Color3.fromRGB(118, 146, 204),
     },
     {
         U = 0.26,
         Tag = "[BAN NGÀY]",
         Name = "Ban Ngày",
-        Clock = 13.60,
-        Brightness = 1.38,
-        Exposure = -0.22,
-        Ambient = Color3.fromRGB(92, 100, 118),
-        Outdoor = Color3.fromRGB(136, 146, 168),
-        ShiftTop = Color3.fromRGB(232, 228, 218),
-        AtmoColor = Color3.fromRGB(204, 218, 236),
-        AtmoDecay = Color3.fromRGB(196, 188, 170),
-        CloudUpper = Color3.fromRGB(198, 206, 220),
-        CloudMid = Color3.fromRGB(162, 174, 196),
-        CloudDeep = Color3.fromRGB(118, 132, 158),
+        Clock = 13.50,
+        Brightness = 1.95,
+        Exposure = 0.04,
+        Ambient = Color3.fromRGB(138, 148, 168),
+        Outdoor = Color3.fromRGB(182, 192, 214),
+        ShiftTop = Color3.fromRGB(255, 248, 232),
+        AtmoColor = Color3.fromRGB(185, 224, 255),
+        AtmoDecay = Color3.fromRGB(235, 215, 185),
+        CloudUpper = Color3.fromRGB(238, 246, 255),
+        CloudMid = Color3.fromRGB(168, 208, 248),
+        CloudDeep = Color3.fromRGB(78, 148, 224),
     },
     {
         U = 0.56,
         Tag = "[HOÀNG HÔN]",
         Name = "Hoàng Hôn Vàng Kim",
-        Clock = 17.65,
-        Brightness = 1.15,
-        Exposure = -0.20,
-        Ambient = Color3.fromRGB(98, 82, 92),
-        Outdoor = Color3.fromRGB(146, 118, 108),
-        ShiftTop = Color3.fromRGB(238, 172, 112),
-        AtmoColor = Color3.fromRGB(218, 174, 146),
-        AtmoDecay = Color3.fromRGB(168, 112, 106),
-        CloudUpper = Color3.fromRGB(206, 168, 148),
-        CloudMid = Color3.fromRGB(158, 124, 128),
-        CloudDeep = Color3.fromRGB(96, 78, 104),
+        Clock = 17.35,
+        Brightness = 1.68,
+        Exposure = 0.02,
+        Ambient = Color3.fromRGB(142, 114, 126),
+        Outdoor = Color3.fromRGB(192, 148, 132),
+        ShiftTop = Color3.fromRGB(255, 192, 128),
+        AtmoColor = Color3.fromRGB(242, 192, 158),
+        AtmoDecay = Color3.fromRGB(198, 128, 116),
+        CloudUpper = Color3.fromRGB(246, 204, 176),
+        CloudMid = Color3.fromRGB(198, 154, 164),
+        CloudDeep = Color3.fromRGB(112, 104, 158),
     },
     {
         U = 0.78,
         Tag = "[ĐÊM TINH VÂN]",
         Name = "Đêm Tinh Vân",
-        Clock = 21.85,
-        Brightness = 0.88,
-        Exposure = -0.18,
-        Ambient = Color3.fromRGB(58, 66, 98),
-        Outdoor = Color3.fromRGB(86, 98, 138),
-        ShiftTop = Color3.fromRGB(128, 148, 224),
-        AtmoColor = Color3.fromRGB(92, 108, 158),
-        AtmoDecay = Color3.fromRGB(58, 68, 118),
-        CloudUpper = Color3.fromRGB(74, 88, 132),
-        CloudMid = Color3.fromRGB(52, 64, 104),
-        CloudDeep = Color3.fromRGB(34, 42, 74),
+        Clock = 21.50,
+        Brightness = 1.38,
+        Exposure = 0.00,
+        Ambient = Color3.fromRGB(96, 112, 156),
+        Outdoor = Color3.fromRGB(132, 152, 204),
+        ShiftTop = Color3.fromRGB(164, 188, 255),
+        AtmoColor = Color3.fromRGB(122, 148, 212),
+        AtmoDecay = Color3.fromRGB(82, 104, 168),
+        CloudUpper = Color3.fromRGB(134, 162, 224),
+        CloudMid = Color3.fromRGB(92, 124, 192),
+        CloudDeep = Color3.fromRGB(54, 84, 152),
     },
 }
 
 local REALM_ATMOSPHERE_BIAS = {
-    GoldenSky = { Tint = Color3.fromRGB(235, 224, 198), Sea = 1, Blend = 0.20 },
-    VerdantCrown = { Tint = Color3.fromRGB(196, 232, 208), Sea = 1, Blend = 0.24 },
-    ChronosBastion = { Tint = Color3.fromRGB(224, 214, 238), Sea = 1, Blend = 0.22 },
-    FrozenCyber = { Tint = Color3.fromRGB(168, 214, 245), Sea = 2, Blend = 0.34 },
-    AbyssalTides = { Tint = Color3.fromRGB(152, 206, 238), Sea = 2, Blend = 0.34 },
-    ShadowRealm = { Tint = Color3.fromRGB(184, 124, 212), Sea = 3, Blend = 0.38 },
-    EmberforgeWastes = { Tint = Color3.fromRGB(224, 148, 126), Sea = 3, Blend = 0.34 },
-    VeilsEnd = { Tint = Color3.fromRGB(174, 128, 226), Sea = 3, Blend = 0.38 },
+    GoldenSky = { Tint = Color3.fromRGB(255, 242, 212), Sea = 1, Blend = 0.22 },
+    VerdantCrown = { Tint = Color3.fromRGB(204, 248, 218), Sea = 1, Blend = 0.24 },
+    ChronosBastion = { Tint = Color3.fromRGB(234, 224, 252), Sea = 1, Blend = 0.22 },
+    FrozenCyber = { Tint = Color3.fromRGB(176, 228, 255), Sea = 2, Blend = 0.32 },
+    AbyssalTides = { Tint = Color3.fromRGB(158, 222, 252), Sea = 2, Blend = 0.32 },
+    ShadowRealm = { Tint = Color3.fromRGB(204, 142, 238), Sea = 3, Blend = 0.34 },
+    EmberforgeWastes = { Tint = Color3.fromRGB(246, 164, 138), Sea = 3, Blend = 0.32 },
+    VeilsEnd = { Tint = Color3.fromRGB(194, 146, 244), Sea = 3, Blend = 0.34 },
 }
 
 local function smoothAlpha(t)
@@ -271,9 +287,11 @@ local currentCloudColors = {
 }
 
 local function sampleTimeCycle()
-    local serverNow = workspace:GetServerTimeNow()
     local extraOffset = tonumber(workspace:GetAttribute("DevClockOffset")) or 0
-    local u = ((serverNow + devTimeOffsetSec + extraOffset) % DAY_CYCLE_SECONDS) / DAY_CYCLE_SECONDS
+    local u = 0.26
+    if devTimeOffsetSec ~= 0 or extraOffset ~= 0 then
+        u = ((0.26 * DAY_CYCLE_SECONDS + devTimeOffsetSec + extraOffset) % DAY_CYCLE_SECONDS) / DAY_CYCLE_SECONDS
+    end
 
     local k1 = TIME_KEYFRAMES[#TIME_KEYFRAMES]
     local k2 = TIME_KEYFRAMES[1]
@@ -409,9 +427,9 @@ local function stepAtmosphereAndWeather(camPos)
 
     lightingGuardBusy = true
     Lighting.ClockTime = sample.Clock
-    -- Balanced lighting & HDR Bloom for VFX Studio Neon & ParticleEmitters
-    Lighting.Brightness = math.clamp(sample.Brightness + 0.08, 0.90, 1.48)
-    Lighting.ExposureCompensation = math.clamp(sample.Exposure + 0.16, -0.14, -0.02)
+    -- Vibrant sunlit HDR lighting & ColorCorrection for 3D World & VFX Studio
+    Lighting.Brightness = math.clamp(sample.Brightness, 1.35, 2.15)
+    Lighting.ExposureCompensation = math.clamp(sample.Exposure, -0.02, 0.08)
     Lighting.Ambient = sample.Ambient:Lerp(rBias.Tint, blend * 0.35)
     Lighting.OutdoorAmbient = sample.Outdoor:Lerp(rBias.Tint, blend * 0.45)
     Lighting.ColorShift_Top = sample.ShiftTop:Lerp(rBias.Tint, blend * 0.40)
@@ -421,16 +439,21 @@ local function stepAtmosphereAndWeather(camPos)
         atmo.Color = sample.AtmoColor:Lerp(rBias.Tint, blend * 0.55)
         atmo.Decay = sample.AtmoDecay:Lerp(rBias.Tint, blend * 0.45)
         atmo.Glare = math.min(atmo.Glare, 0.08)
-        atmo.Haze = math.min(atmo.Haze, 0.38)
+        atmo.Haze = math.min(atmo.Haze, 0.16)
         Lighting.FogColor = atmo.Color
     end
 
     for _, child in ipairs(Lighting:GetChildren()) do
         if child:IsA("BloomEffect") then
             child.Enabled = true
-            child.Intensity = math.clamp(child.Intensity, 0.48, 0.65)
-            child.Threshold = math.clamp(child.Threshold, 0.90, 0.96)
+            child.Intensity = math.clamp(child.Intensity, 0.52, 0.68)
+            child.Threshold = math.clamp(child.Threshold, 0.86, 0.94)
             child.Size = math.clamp(child.Size, 26, 34)
+        elseif child:IsA("ColorCorrectionEffect") and (child.Name == "SkybreakGrade" or child.Name == "SkybreakColorGrade") then
+            child.Enabled = true
+            child.Saturation = 0.26
+            child.Contrast = 0.14
+            child.Brightness = 0.03
         end
     end
     lightingGuardBusy = false
