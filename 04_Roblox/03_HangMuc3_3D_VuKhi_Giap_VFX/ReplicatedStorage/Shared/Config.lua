@@ -1454,21 +1454,35 @@ do
             if item.CritDmg and item.CritDmg > 0 then item.CritDmg = math.clamp(math.floor(item.CritDmg * 0.45 + 0.5), 3, 12) end
         end
     end
+    for _, sk in pairs(C.SkillDetails or {}) do
+        if type(sk) == "table" then sk.Cost = 0; sk.EnergyCost = 0 end
+    end
+    for _, act in pairs(C.Actions or {}) do
+        if type(act) == "table" then act.Cost = 0; act.EnergyCost = 0 end
+    end
     local function normMoves(cat, skipId)
         for id, entry in pairs(cat or {}) do
-            if id ~= skipId and type(entry) == "table" then
-                if entry.ATK and entry.ATK > 0 then entry.ATK = math.max(5, math.floor(entry.ATK * 0.45 + 0.5)) end
-                if entry.CritRate and entry.CritRate > 0 then entry.CritRate = math.clamp(math.floor(entry.CritRate * 0.45 + 0.5), 1, 8) end
-                if entry.CritDmg and entry.CritDmg > 0 then entry.CritDmg = math.clamp(math.floor(entry.CritDmg * 0.45 + 0.5), 3, 12) end
-                if type(entry.Moves) == "table" then
-                    for k, mv in pairs(entry.Moves) do
-                        if type(mv) == "table" then
-                            local ku = string.upper(tostring(mv.Key or k or "Z"))
-                            local minCd = (ku == "V" and 15.0) or (ku == "C" and 10.5) or (ku == "X" and 7.5) or (ku == "F" and 6.0) or 5.0
-                            mv.Cooldown = math.max(minCd, math.floor(((tonumber(mv.Cooldown) or 5.0) * 1.20) * 10 + 0.5) / 10)
-                            mv.Cost = math.max(10, math.floor((tonumber(mv.Cost) or 10) * 1.25 + 0.5))
-                            if mv.Multiplier and mv.Multiplier > 0 then mv.Multiplier = math.clamp(math.floor((mv.Multiplier * 0.65) * 100 + 0.5) / 100, 1.05, 3.40) end
-                            if mv.Break and mv.Break > 0 then mv.Break = math.clamp(math.floor(mv.Break * 0.48 + 0.5), 6, 26) end
+            if type(entry) == "table" then
+                if id ~= skipId then
+                    if entry.ATK and entry.ATK > 0 then entry.ATK = math.max(5, math.floor(entry.ATK * 0.45 + 0.5)) end
+                    if entry.CritRate and entry.CritRate > 0 then entry.CritRate = math.clamp(math.floor(entry.CritRate * 0.45 + 0.5), 1, 8) end
+                    if entry.CritDmg and entry.CritDmg > 0 then entry.CritDmg = math.clamp(math.floor(entry.CritDmg * 0.45 + 0.5), 3, 12) end
+                end
+                for _, tblKey in ipairs({ "Moves", "Form1Moves", "Form2Moves" }) do
+                    local mTbl = entry[tblKey]
+                    if type(mTbl) == "table" then
+                        for k, mv in pairs(mTbl) do
+                            if type(mv) == "table" then
+                                mv.Cost = 0
+                                mv.EnergyCost = 0
+                                if id ~= skipId then
+                                    local ku = string.upper(tostring(mv.Key or k or "Z"))
+                                    local minCd = (ku == "V" and 15.0) or (ku == "C" and 10.5) or (ku == "X" and 7.5) or (ku == "F" and 6.0) or 5.0
+                                    mv.Cooldown = math.max(minCd, math.floor(((tonumber(mv.Cooldown) or 5.0) * 1.20) * 10 + 0.5) / 10)
+                                    if mv.Multiplier and mv.Multiplier > 0 then mv.Multiplier = math.clamp(math.floor((mv.Multiplier * 0.65) * 100 + 0.5) / 100, 1.05, 3.40) end
+                                    if mv.Break and mv.Break > 0 then mv.Break = math.clamp(math.floor(mv.Break * 0.48 + 0.5), 6, 26) end
+                                end
+                            end
                         end
                     end
                 end
@@ -1851,6 +1865,7 @@ task.spawn(function()
                     G.Action = function(p, action, payload)
                         local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
                         local rt = G.Runtime and G.Runtime[p]
+                        if rt then rt.Energy = math.max(100, tonumber(rt.MaxEnergy) or 100); rt.Stamina = math.max(100, tonumber(rt.MaxStamina) or 100) end
                         local act = tostring(action or "")
                         if (act == "Attack" or act == "Light" or act == "M1") and profile and rt then
                             local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
@@ -1890,12 +1905,15 @@ task.spawn(function()
                                 end
                             end
                         end
-                        return prevAction(p, action, payload)
+                        local res = prevAction(p, action, payload)
+                        if rt then rt.Energy = math.max(100, tonumber(rt.MaxEnergy) or 100); rt.Stamina = math.max(100, tonumber(rt.MaxStamina) or 100) end
+                        return res
                     end
 
                     G.UseSlotMove = function(p, rawKey, payload)
                         local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
                         local rt = G.Runtime and G.Runtime[p]
+                        if rt then rt.Energy = math.max(100, tonumber(rt.MaxEnergy) or 100); rt.Stamina = math.max(100, tonumber(rt.MaxStamina) or 100) end
                         if profile and rt then
                             local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
                             local key = string.upper(tostring(rawKey or "Z"))
@@ -1960,10 +1978,8 @@ task.spawn(function()
                                 if moveSpec then
                                     local cdKey = "Slot_" .. key
                                     if now < (rt.Cooldowns[cdKey] or 0) then return end
-                                    local cost = tonumber(moveSpec.Cost) or 12
-                                    if (rt.Energy or 100) < cost then G.Notify(p, "Không đủ Aether Energy!"); return end
                                     rt.Cooldowns[cdKey] = now + (tonumber(moveSpec.Cooldown) or 5.0)
-                                    rt.Energy = math.max(0, (rt.Energy or 100) - cost)
+                                    rt.Energy = math.max(100, tonumber(rt.MaxEnergy) or 100)
                                     local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
                                     local atk = (stats and stats.ATK) or 65
                                     local originPos = hrp.Position
@@ -2089,16 +2105,31 @@ task.spawn(function()
                                 end
                             end
                         end
-                        return prevUseSlotMove(p, rawKey, payload)
+                        local res = prevUseSlotMove(p, rawKey, payload)
+                        if rt then rt.Energy = math.max(100, tonumber(rt.MaxEnergy) or 100); rt.Stamina = math.max(100, tonumber(rt.MaxStamina) or 100) end
+                        return res
+                    end
+
+                    if type(G.UseSkill) == "function" then
+                        local prevUseSkill = G.UseSkill
+                        G.UseSkill = function(p, skillId, ...)
+                            local rt = G.Runtime and G.Runtime[p]
+                            if rt then rt.Energy = math.max(100, tonumber(rt.MaxEnergy) or 100); rt.Stamina = math.max(100, tonumber(rt.MaxStamina) or 100) end
+                            local res = prevUseSkill(p, skillId, ...)
+                            if rt then rt.Energy = math.max(100, tonumber(rt.MaxEnergy) or 100); rt.Stamina = math.max(100, tonumber(rt.MaxStamina) or 100) end
+                            return res
+                        end
                     end
 
                     task.spawn(function()
                         while true do
-                            task.wait(0.5)
+                            task.wait(0.25)
                             if type(G.Runtime) == "table" then
                                 for plr, rt in pairs(G.Runtime) do
                                     if type(rt) == "table" then
                                         rt.FuryMeter = 100
+                                        rt.Energy = math.max(100, tonumber(rt.MaxEnergy) or 100)
+                                        rt.Stamina = math.max(100, tonumber(rt.MaxStamina) or 100)
                                         if plr and plr.Parent and (plr:GetAttribute("FuryMeter") or 0) < 100 then
                                             plr:SetAttribute("FuryMeter", 100)
                                         end
