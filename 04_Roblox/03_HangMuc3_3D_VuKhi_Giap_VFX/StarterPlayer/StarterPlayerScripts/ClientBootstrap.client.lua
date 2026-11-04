@@ -2728,12 +2728,90 @@ end)
 -- ============================================================================
 -- 6. ACTION DISPATCHER & HOTKEY BINDINGS (1-4, Z-X-C-V-F, J, U, H, Y, G)
 -- ============================================================================
+local TRUE_FLIGHT_FRUIT_MAP = {
+	GaleCore = true,
+	SandstoneCore = true,
+	SolarFlameCore = true,
+	CelestialLightCore = true,
+	StarforgedMagmaCore = true,
+	AstralGravityCore = true,
+	-- Legacy aliases
+	Gale = true,
+	Smoke = true,
+	Flame = true,
+	Light = true,
+	Magma = true,
+	Gravity = true,
+}
+
+local lastFMoveCastAt = 0
+local lastFMoveStartPos = nil
+local lastFMoveFruitId = ""
+local lastFMoveSlot = 1
+
+local function resolveClientEquippedFruit()
+	local ch = player.Character
+	local raw = tostring(
+		(ch and (ch:GetAttribute("EquippedFruit") or ch:GetAttribute("ActiveFruit")))
+		or player:GetAttribute("EquippedFruit")
+		or player:GetAttribute("FruitSlot1")
+		or (UI and UI.State and UI.State.EquippedFruit)
+		or ""
+	)
+	local canonical = raw:match("^([^|]+)") or raw
+	if canonical == "SweetDoughCore" or canonical == "Dough" then
+		return "AetherflowCore"
+	end
+	return canonical
+end
+
+local function isCurrentSlotTrueFlightF()
+	local activeSlot = tonumber(player:GetAttribute("ActiveSlot")) or tonumber(UI and UI.State and UI.State.ActiveSlot) or 1
+	if activeSlot ~= 2 then
+		return false
+	end
+	local fruitKey = resolveClientEquippedFruit()
+	if fruitKey == "" or fruitKey == "None" then
+		return false
+	end
+	local ch = player.Character
+	if fruitKey == "AbyssalSovereignCore" or fruitKey == "Dragon" then
+		local tier = tonumber(ch and ch:GetAttribute("DragonFormTier")) or tonumber(player:GetAttribute("DragonFormTier")) or 0
+		local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
+		return (tier >= 2) or (tf == "AbyssalSovereign")
+	end
+	return TRUE_FLIGHT_FRUIT_MAP[fruitKey] == true
+end
+
+local function hasUnlockedFruitFMastery()
+	local fruitKey = resolveClientEquippedFruit()
+	local reqMastery = 10
+	local styles = Config and Config.CombatStyles
+	local styleDef = styles and styles[fruitKey]
+	if styleDef and type(styleDef.Moves) == "table" and type(styleDef.Moves.F) == "table" then
+		reqMastery = tonumber(styleDef.Moves.F.Mastery) or 10
+	end
+	local curMastery = tonumber(player:GetAttribute("FruitMastery_" .. tostring(fruitKey)))
+		or tonumber(player:GetAttribute("FruitMastery"))
+		or tonumber(player:GetAttribute("StyleMastery"))
+		or 1
+	return curMastery >= reqMastery
+end
+
 local function fireSlotMove(keyLetter)
 	if UI.BlocksCombat() or UIS:GetFocusedTextBox() then return end
 	faceLockedTarget()
-	if player.Character then
-		player.Character:SetAttribute("LastClientSkillKey",tostring(keyLetter or "Z"))
-		player.Character:SetAttribute("LastClientSkillAt",os.clock())
+	local ch = player.Character
+	if ch then
+		ch:SetAttribute("LastClientSkillKey",tostring(keyLetter or "Z"))
+		ch:SetAttribute("LastClientSkillAt",os.clock())
+		if keyLetter == "F" then
+			local r = ch:FindFirstChild("HumanoidRootPart")
+			lastFMoveCastAt = os.clock()
+			lastFMoveStartPos = r and r.Position or nil
+			lastFMoveFruitId = resolveClientEquippedFruit()
+			lastFMoveSlot = tonumber(player:GetAttribute("ActiveSlot")) or tonumber(UI and UI.State and UI.State.ActiveSlot) or 1
+		end
 	end
 	remotes.AbilityRequest:FireServer({action="SlotMove",key=keyLetter})
 end
@@ -3024,17 +3102,15 @@ for name,key in pairs(keys) do
 				if shiftDown or UI.Page=="Forge" then
 					if UI.Toggle then UI.Toggle("Forge") else UI.Show(UI.Page=="Forge" and "HUD" or "Forge") end
 				elseif not UI.BlocksCombat() then
-					if player.Character then
-						player.Character:SetAttribute("LastClientSkillKey","F")
-						player.Character:SetAttribute("LastClientSkillAt",os.clock())
-					end
-					if player:GetAttribute("SkybreakFlightActive")~=true then
-						task.delay(0.18,function()
-							if player:GetAttribute("SkybreakFlightActive")~=true and not UI.BlocksCombat() then
-								faceLockedTarget()
-								remotes.AbilityRequest:FireServer({action="SlotMove",key="F"})
-							end
-						end)
+					if isCurrentSlotTrueFlightF() and hasUnlockedFruitFMastery() then
+						-- True flight Devil Fruit on Slot 2: SkybreakFlightAndCamera toggles 6-DOF Free Flight
+						if player.Character then
+							player.Character:SetAttribute("LastClientSkillKey","F")
+							player.Character:SetAttribute("LastClientSkillAt",os.clock())
+						end
+					else
+						-- Non-flight [F] skill (GlacierIce, ThunderRumble, DimensionalPortal, SolarTitan, Aetherflow, Dragon Form 0/1, or Slots 1/3/4): fire immediately (0ms)!
+						fireSlotMove("F")
 					end
 				else
 					if UI.Toggle then UI.Toggle("Forge") else UI.Show("Forge") end
@@ -3076,20 +3152,185 @@ for name,key in pairs(keys) do
 	end,false,Enum.ContextActionPriority.High.Value,key)
 end
 
+local activeFTraversalToken = 0
+
+local function animateBespokeFTraversal(ch, r, h, startPos, targetPos, fruitId)
+	activeFTraversalToken += 1
+	local myToken = activeFTraversalToken
+	local delta = targetPos - startPos
+	local flatDir = Vector3.new(delta.X, 0, delta.Z)
+	local lookCF = flatDir.Magnitude > 0.5 and CFrame.lookAt(Vector3.zero, flatDir.Unit) or r.CFrame.Rotation
+
+	local fxFolder = Instance.new("Folder")
+	fxFolder.Name = "SkybreakFTraversal_" .. tostring(fruitId)
+	fxFolder.Parent = tempFX
+
+	local dur = 0.26
+	local arcHeight = 0
+	local wheelPart, rimPart
+
+	if fruitId == "SolarTitanCore" or fruitId == "Buddha" then
+		dur = 0.32
+		arcHeight = 16.5
+		-- Takeoff Golden Dharma Lotus Ring
+		local takeoffRing = Instance.new("Part")
+		takeoffRing.Shape = Enum.PartType.Cylinder
+		takeoffRing.Size = Vector3.new(0.35, 6, 6)
+		takeoffRing.CFrame = CFrame.new(startPos - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		takeoffRing.Color = Color3.fromRGB(255, 215, 65)
+		takeoffRing.Material = Enum.Material.Neon
+		takeoffRing.Transparency = 0.15
+		takeoffRing.Anchored = true
+		takeoffRing.CanCollide = false
+		takeoffRing.CanQuery = false
+		takeoffRing.Parent = fxFolder
+		TweenService:Create(takeoffRing, TweenInfo.new(0.30, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = Vector3.new(0.12, 22, 22),
+			Transparency = 1,
+		}):Play()
+	elseif fruitId == "AetherflowCore" then
+		dur = 0.28
+		arcHeight = 0
+		-- 3D Spiked Mochi Roller Donut encasing character
+		wheelPart = Instance.new("Part")
+		wheelPart.Shape = Enum.PartType.Cylinder
+		wheelPart.Size = Vector3.new(2.4, 8.2, 8.2)
+		wheelPart.Color = Color3.fromRGB(255, 238, 198)
+		wheelPart.Material = Enum.Material.SmoothPlastic
+		wheelPart.Anchored = true
+		wheelPart.CanCollide = false
+		wheelPart.CanQuery = false
+		wheelPart.Parent = fxFolder
+
+		rimPart = Instance.new("Part")
+		rimPart.Shape = Enum.PartType.Cylinder
+		rimPart.Size = Vector3.new(2.55, 5.4, 5.4)
+		rimPart.Color = Color3.fromRGB(225, 35, 85)
+		rimPart.Material = Enum.Material.Neon
+		rimPart.Transparency = 0.18
+		rimPart.Anchored = true
+		rimPart.CanCollide = false
+		rimPart.CanQuery = false
+		rimPart.Parent = fxFolder
+	elseif fruitId == "GlacierIceCore" or fruitId == "Ice" then
+		dur = 0.26
+		arcHeight = 0
+	elseif fruitId == "AbyssalSovereignCore" or fruitId == "Dragon" then
+		dur = 0.22
+		arcHeight = 2.2
+	end
+
+	Debris:AddItem(fxFolder, dur + 0.65)
+
+	local t0 = os.clock()
+	local lastTrackAt = 0
+	task.spawn(function()
+		while myToken == activeFTraversalToken and r and r.Parent do
+			local alpha = math.clamp((os.clock() - t0) / dur, 0, 1)
+			local eased = 1 - (1 - alpha) * (1 - alpha)
+			local pos = startPos:Lerp(targetPos, eased)
+			if arcHeight > 0 then
+				pos = pos + Vector3.new(0, 4 * arcHeight * alpha * (1 - alpha), 0)
+			end
+			r.Anchored = false
+			r.CFrame = CFrame.new(pos) * lookCF
+			r.AssemblyLinearVelocity = Vector3.zero
+			r.AssemblyAngularVelocity = Vector3.zero
+
+			if wheelPart and rimPart then
+				local spinAngle = -alpha * math.pi * 5
+				local wheelCF = CFrame.new(pos) * lookCF * CFrame.Angles(spinAngle, 0, 0) * CFrame.Angles(0, math.rad(90), 0)
+				wheelPart.CFrame = wheelCF
+				rimPart.CFrame = wheelCF
+			end
+
+			if (fruitId == "GlacierIceCore" or fruitId == "Ice") and (os.clock() - lastTrackAt > 0.045) then
+				lastTrackAt = os.clock()
+				local iceTrack = Instance.new("Part")
+				iceTrack.Size = Vector3.new(4.2, 0.35, 5.5)
+				iceTrack.CFrame = CFrame.new(pos - Vector3.new(0, 2.7, 0)) * lookCF
+				iceTrack.Color = Color3.fromRGB(135, 232, 255)
+				iceTrack.Material = Enum.Material.Ice
+				iceTrack.Transparency = 0.18
+				iceTrack.Anchored = true
+				iceTrack.CanCollide = false
+				iceTrack.CanQuery = false
+				iceTrack.Parent = fxFolder
+				TweenService:Create(iceTrack, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Transparency = 1,
+					Size = Vector3.new(1.6, 0.1, 5.5),
+				}):Play()
+			end
+
+			if alpha >= 1 then
+				break
+			end
+			RunService.Heartbeat:Wait()
+		end
+
+		if myToken == activeFTraversalToken and r and r.Parent then
+			r.CFrame = CFrame.new(targetPos) * lookCF
+			r.AssemblyLinearVelocity = Vector3.zero
+			r.AssemblyAngularVelocity = Vector3.zero
+			if wheelPart then wheelPart:Destroy() end
+			if rimPart then rimPart:Destroy() end
+			if fruitId == "SolarTitanCore" or fruitId == "Buddha" then
+				local slamRing = Instance.new("Part")
+				slamRing.Shape = Enum.PartType.Cylinder
+				slamRing.Size = Vector3.new(0.45, 5, 5)
+				slamRing.CFrame = CFrame.new(targetPos - Vector3.new(0, 2.6, 0)) * CFrame.Angles(0, 0, math.rad(90))
+				slamRing.Color = Color3.fromRGB(255, 205, 50)
+				slamRing.Material = Enum.Material.Neon
+				slamRing.Transparency = 0.1
+				slamRing.Anchored = true
+				slamRing.CanCollide = false
+				slamRing.CanQuery = false
+				slamRing.Parent = fxFolder
+				TweenService:Create(slamRing, TweenInfo.new(0.38, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+					Size = Vector3.new(0.15, 28, 28),
+					Transparency = 1,
+				}):Play()
+			end
+		end
+		if h then
+			h.PlatformStand = false
+			airJumpCount = 0
+		end
+	end)
+end
+
 remotes.StateUpdate.OnClientEvent:Connect(function(payload)
 	if payload.TeleportSnap and typeof(payload.TeleportSnap)=="Vector3" then
 		local ch=player.Character
 		local r=ch and ch:FindFirstChild("HumanoidRootPart")
 		local h=ch and ch:FindFirstChildOfClass("Humanoid")
-		if r then
-			r.Anchored=false
-			r.CFrame=CFrame.new(payload.TeleportSnap)*r.CFrame.Rotation
-			r.AssemblyLinearVelocity=Vector3.zero
-			r.AssemblyAngularVelocity=Vector3.zero
+		local isBespokeFMove = false
+		if r and (os.clock() - lastFMoveCastAt) < 0.48 and lastFMoveSlot == 2 and lastFMoveStartPos then
+			local dist = (payload.TeleportSnap - lastFMoveStartPos).Magnitude
+			local fId = lastFMoveFruitId
+			if dist > 6 and dist < 135 and (
+				fId == "SolarTitanCore" or fId == "Buddha"
+				or fId == "AetherflowCore"
+				or fId == "GlacierIceCore" or fId == "Ice"
+				or fId == "AbyssalSovereignCore" or fId == "Dragon"
+			) then
+				isBespokeFMove = true
+				local startP = lastFMoveStartPos
+				lastFMoveCastAt = 0
+				animateBespokeFTraversal(ch, r, h, startP, payload.TeleportSnap, fId)
+			end
 		end
-		if h then
-			h.PlatformStand=false
-			airJumpCount=0
+		if not isBespokeFMove then
+			if r then
+				r.Anchored=false
+				r.CFrame=CFrame.new(payload.TeleportSnap)*r.CFrame.Rotation
+				r.AssemblyLinearVelocity=Vector3.zero
+				r.AssemblyAngularVelocity=Vector3.zero
+			end
+			if h then
+				h.PlatformStand=false
+				airJumpCount=0
+			end
 		end
 	end
 	if payload.State then

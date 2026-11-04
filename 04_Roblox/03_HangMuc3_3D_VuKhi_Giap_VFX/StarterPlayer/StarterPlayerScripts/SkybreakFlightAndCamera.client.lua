@@ -167,6 +167,42 @@ local function resolveEquippedFruitKey()
 	return "GaleCore"
 end
 
+-- Canonical set of Devil Fruits whose [F] move is a true 6-DOF Free Flight skill.
+-- Non-flight [F] fruits (GlacierIceCore, ThunderRumbleCore, DimensionalPortalCore,
+-- SolarTitanCore, AetherflowCore, and AbyssalSovereignCore in Human/Form 1 Hybrid)
+-- execute ground/dash/leap/teleport skills and must NEVER enter 6-DOF Free Flight.
+local TRUE_FLIGHT_FRUITS = {
+	GaleCore = true,             -- Wind Ride • Cưỡi Gió
+	SandstoneCore = true,        -- Sand Flight • Cát Lưu
+	SolarFlameCore = true,       -- Rocket Flight • Hỏa Tiễn Phi Hành
+	CelestialLightCore = true,   -- Light Flight • Hóa Tia Sáng
+	StarforgedMagmaCore = true,  -- Magma Hound • Cưỡi Thú Dung Nham
+	AstralGravityCore = true,    -- Boulder Ride • Cưỡi Đá Không Trung
+}
+
+local function canFruitUseFreeFlight(fruitKey, ch)
+	if TRUE_FLIGHT_FRUITS[fruitKey] then
+		return true
+	end
+	if fruitKey == "AbyssalSovereignCore" then
+		local c = ch or player.Character
+		local tier = tonumber((c and c:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
+		local tf = tostring((c and c:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
+		return (tier >= 2 or tf == "AbyssalSovereign" or tf == "DragonFull")
+	end
+	return false
+end
+
+local function canUseFreeFlightNow()
+	local ch = player.Character
+	local activeSlot = tonumber((ch and ch:GetAttribute("ActiveSlot")) or player:GetAttribute("ActiveSlot")) or 1
+	if activeSlot ~= 2 then
+		return false
+	end
+	local fruitKey = resolveEquippedFruitKey()
+	return canFruitUseFreeFlight(fruitKey, ch)
+end
+
 -- ============================================================================
 -- OVERLAY SCREENGUI (OTS CROSSHAIR + GAMEPAD HINTS)
 -- ============================================================================
@@ -624,7 +660,7 @@ local function stopFreeFlight(silent)
 end
 
 local function startFreeFlight()
-	if flightActive or blocksCombat() then return end
+	if flightActive or blocksCombat() or not canUseFreeFlightNow() then return end
 	local ch = player.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart")
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
@@ -696,14 +732,14 @@ local function stepFreeFlight(dt)
 		end
 	end
 
-	-- Auto-engage if server explicitly sets FreeFlightUntil
+	-- Auto-engage if server explicitly sets FreeFlightUntil (only for true flight fruits)
 	local serverFlightUntil = tonumber((ch and ch:GetAttribute("FreeFlightUntil")) or player:GetAttribute("FreeFlightUntil")) or 0
-	if not flightActive and not blocksCombat() and serverFlightUntil > Workspace:GetServerTimeNow() + 0.15 then
+	if not flightActive and not blocksCombat() and serverFlightUntil > Workspace:GetServerTimeNow() + 0.15 and canUseFreeFlightNow() then
 		startFreeFlight()
 	end
 
 	if not flightActive then return end
-	if not root or not hum or hum.Health <= 0 or not flightLV or not flightAO or blocksCombat() or player:GetAttribute("SkybreakPhotoMode") == true then
+	if not root or not hum or hum.Health <= 0 or not flightLV or not flightAO or blocksCombat() or player:GetAttribute("SkybreakPhotoMode") == true or not canFruitUseFreeFlight(resolveEquippedFruitKey(), ch) then
 		stopFreeFlight(true)
 		return
 	end
@@ -1774,7 +1810,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		stopActiveEmote()
 	end
 
-	-- #81 [F] 3D Free Flight (Hold [F] on any slot or press/hold [F] on sustained-flight Slot 2 Fruits; Shift+F ignored so Forge UI works)
+	-- #81 [F] 3D Free Flight (ONLY on Slot 2 Devil Fruits whose [F] skill is a true flight skill; Shift+F ignored so Forge UI works)
 	if kc == Enum.KeyCode.F and not (UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)) then
 		if not blocksCombat() then
 			if flightActive then
@@ -1783,17 +1819,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			end
 			flightFKeyHeld = true
 			flightHoldStartedAt = os.clock()
-			local activeSlot = tonumber(player:GetAttribute("ActiveSlot")) or 1
-			local fruitKey = resolveEquippedFruitKey()
-			local INSTANT_F_SKILL_FRUITS = {
-				ThunderRumbleCore = true,
-				DimensionalPortalCore = true,
-				GlacierIceCore = true,
-				SweetDoughCore = true,
-				SolarTitanCore = true,
-			}
-			if activeSlot == 2 and not INSTANT_F_SKILL_FRUITS[fruitKey] then
-				-- Check Mastery requirement for F move before engaging instant Slot 2 flight
+			if canUseFreeFlightNow() then
+				local fruitKey = resolveEquippedFruitKey()
+				-- Check Mastery requirement for F move before engaging Slot 2 flight
 				local reqMastery = 10
 				local styles = Config and Config.CombatStyles
 				local styleDef = styles and styles[fruitKey]
@@ -1805,18 +1833,12 @@ UserInputService.InputBegan:Connect(function(input, processed)
 					or tonumber(player:GetAttribute("StyleMastery"))
 					or 1
 				if curMastery >= reqMastery then
-					task.delay(0.08, function()
-						if not flightActive and not blocksCombat() then
+					task.delay(0.06, function()
+						if not flightActive and not blocksCombat() and canUseFreeFlightNow() then
 							startFreeFlight()
 						end
 					end)
 				end
-			else
-				task.delay(0.30, function()
-					if flightFKeyHeld and not flightActive and not blocksCombat() then
-						startFreeFlight()
-					end
-				end)
 			end
 		end
 	end
@@ -1841,7 +1863,14 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	elseif kc == Enum.KeyCode.DPadRight then
 		EquipmentRequest:FireServer({ action = "ToggleInstinct" })
 	elseif kc == Enum.KeyCode.DPadUp then
-		if flightActive then stopFreeFlight(false) else startFreeFlight() end
+		if flightActive then
+			stopFreeFlight(false)
+		elseif canUseFreeFlightNow() then
+			startFreeFlight()
+		else
+			faceLockedTarget()
+			AbilityRequest:FireServer({ action = "SlotMove", key = "F" })
+		end
 	elseif gamepadR2Held then
 		-- R2 + Face Buttons = Skill Moves [Z] [X] [C] [V]
 		if kc == Enum.KeyCode.ButtonX then
