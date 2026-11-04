@@ -196,7 +196,7 @@ function UniversalVFXOverhaul.SpawnStage3Aftermath(impactPos, prof, radius, scal
 end
 
 -- ============================================================================
--- 2. CURVED CRESCENT WAVE & RIBBON TRAVELER HELPER (USED BY MELEE, SWORD, FRUITS)
+-- 2. FADE / HAYMAKER CURVED CRESCENT WAVE & RIBBON TRAVELER HELPER
 -- ============================================================================
 local function spawnLayeredSlashWave(originPos, targetPos, tiltRad, widthScale, cPrimary, cSecondary, dur, folder)
 	local dir = (targetPos - originPos)
@@ -205,68 +205,142 @@ local function spawnLayeredSlashWave(originPos, targetPos, tiltRad, widthScale, 
 	local startCF = Lib.SafeLookAt(originPos, safeTarget, unitDir) * CFrame.Angles(0, 0, tiltRad)
 	local endCF = Lib.SafeLookAt(safeTarget, safeTarget + unitDir, unitDir) * CFrame.Angles(0, 0, tiltRad)
 	local d = dur or 0.32
+	local w = math.clamp(widthScale or 1.0, 0.65, 2.5)
 
-	-- Outer glowing crescent disc + Obsidian inner cutout contrast disc
-	local outer = Lib.MakePart(
-		"SlashWaveOuter",
-		Enum.PartType.Cylinder,
-		Vector3.new(0.24 * widthScale, 5.6 * widthScale, 5.6 * widthScale),
-		startCF * CFrame.Angles(0, math.pi * 0.5, 0),
-		cPrimary,
-		0.12,
-		Enum.Material.ForceField,
-		folder
-	)
-	local core = Lib.MakePart(
-		"SlashWaveCore",
-		Enum.PartType.Cylinder,
-		Vector3.new(0.28 * widthScale, 3.8 * widthScale, 3.8 * widthScale),
-		startCF * CFrame.new(0, 0, 0.45 * widthScale) * CFrame.Angles(0, math.pi * 0.5, 0),
-		PAL.Obsidian,
-		0.16,
-		Enum.Material.SmoothPlastic,
-		folder
-	)
-	local tipRunner = Lib.MakePart("SlashRibbonTip", Enum.PartType.Ball, Vector3.new(0.45, 0.45, 0.45) * widthScale, startCF, cSecondary or PAL.HotWhite, 0.15, Enum.Material.ForceField, folder)
-	Lib.AttachRibbonTrail(tipRunner, PAL.HotWhite, cPrimary, PAL.Obsidian, 1.35 * widthScale, 0.22)
+	-- 1. Traveling 3D Hollow Curved-Beam Crescent Blade (Dark Obsidian Silhouette + Elemental Glow + White Razor Core)
+	local host = Instance.new("Part")
+	host.Name = "FadeTravelingCrescent"
+	host.Size = Vector3.new(0.2, 0.2, 0.2)
+	host.CFrame = startCF
+	host.Transparency = 1
+	host.Anchored = true
+	host.CanCollide = false
+	host.CanQuery = false
+	host.CanTouch = false
+	host.Parent = folder
+
+	local span0 = 3.2 * w
+	local aL = Instance.new("Attachment")
+	aL.Position = Vector3.new(-span0, 0, 0)
+	aL.Orientation = Vector3.new(0, 90, 0)
+	aL.Parent = host
+	local aR = Instance.new("Attachment")
+	aR.Position = Vector3.new(span0, 0, 0)
+	aR.Orientation = Vector3.new(0, -90, 0)
+	aR.Parent = host
+
+	local darkCrescent = Instance.new("Beam")
+	darkCrescent.Attachment0 = aL
+	darkCrescent.Attachment1 = aR
+	darkCrescent.Texture = Lib.Textures.FirePlasma
+	darkCrescent.Segments = 28
+	darkCrescent.CurveSize0 = span0 * 1.18
+	darkCrescent.CurveSize1 = span0 * 1.18
+	darkCrescent.Width0 = 0.25 * w
+	darkCrescent.Width1 = 2.2 * w
+	darkCrescent.Color = ColorSequence.new(PAL.Obsidian)
+	darkCrescent.LightEmission = 0
+	darkCrescent.LightInfluence = 0
+	darkCrescent.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.2, 0.08),
+		NumberSequenceKeypoint.new(0.8, 0.08),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	darkCrescent.Parent = host
+
+	local glowCrescent = Instance.new("Beam")
+	glowCrescent.Attachment0 = aL
+	glowCrescent.Attachment1 = aR
+	glowCrescent.Texture = Lib.Textures.FirePlasma
+	glowCrescent.Segments = 28
+	glowCrescent.CurveSize0 = span0 * 1.15
+	glowCrescent.CurveSize1 = span0 * 1.15
+	glowCrescent.Width0 = 0.18 * w
+	glowCrescent.Width1 = 1.65 * w
+	glowCrescent.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, cSecondary or PAL.HotWhite),
+		ColorSequenceKeypoint.new(0.5, cPrimary),
+		ColorSequenceKeypoint.new(1, PAL.HotWhite),
+	})
+	glowCrescent.LightEmission = 1.0
+	glowCrescent.LightInfluence = 0
+	pcall(function() glowCrescent.Brightness = 5.2 end)
+	glowCrescent.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.18, 0.02),
+		NumberSequenceKeypoint.new(0.82, 0.02),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	glowCrescent.FaceCamera = true
+	glowCrescent.Parent = host
+
+	local whiteCore = Instance.new("Beam")
+	whiteCore.Attachment0 = aL
+	whiteCore.Attachment1 = aR
+	whiteCore.Segments = 24
+	whiteCore.CurveSize0 = span0 * 1.12
+	whiteCore.CurveSize1 = span0 * 1.12
+	whiteCore.Width0 = 0.08 * w
+	whiteCore.Width1 = 0.58 * w
+	whiteCore.Color = ColorSequence.new(PAL.HotWhite)
+	whiteCore.LightEmission = 1.0
+	whiteCore.LightInfluence = 0
+	pcall(function() whiteCore.Brightness = 6.8 end)
+	whiteCore.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.25, 0),
+		NumberSequenceKeypoint.new(0.75, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	whiteCore.FaceCamera = true
+	whiteCore.Parent = host
+
+	local tipRunner = Lib.MakePart("SlashRibbonTip", Enum.PartType.Ball, Vector3.new(0.42, 0.42, 0.42) * w, startCF, cSecondary or PAL.HotWhite, 0.12, Enum.Material.ForceField, folder)
+	Lib.AttachRibbonTrail(tipRunner, PAL.HotWhite, cPrimary, PAL.Obsidian, 1.45 * w, 0.24)
 
 	animateOver(d, function(a)
 		local curCF = startCF:Lerp(endCF, a)
-		local curDiam = (5.6 + a * 5.2) * widthScale
-		if outer.Parent then
-			outer.CFrame = curCF * CFrame.Angles(0, math.pi * 0.5, 0)
-			outer.Size = Vector3.new(math.max(0.06, 0.24 * (1 - a * 0.65) * widthScale), curDiam, curDiam)
-			outer.Transparency = 0.12 + a * 0.85
-		end
-		if core.Parent then
-			core.CFrame = curCF * CFrame.new(0, 0, (0.45 + a * 0.5) * widthScale) * CFrame.Angles(0, math.pi * 0.5, 0)
-			core.Size = Vector3.new(math.max(0.08, 0.28 * (1 - a * 0.7) * widthScale), curDiam * 0.72, curDiam * 0.72)
-			core.Transparency = 0.16 + a * 0.84
+		local curSpan = (3.2 + a * 3.8) * w
+		local fadeFactor = 1 - a * 0.85
+		if host.Parent then
+			host.CFrame = curCF
+			aL.Position = Vector3.new(-curSpan, 0, 0)
+			aR.Position = Vector3.new(curSpan, 0, 0)
+			darkCrescent.CurveSize0 = curSpan * 1.18
+			darkCrescent.CurveSize1 = curSpan * 1.18
+			darkCrescent.Width1 = 2.2 * w * fadeFactor
+			glowCrescent.CurveSize0 = curSpan * 1.15
+			glowCrescent.CurveSize1 = curSpan * 1.15
+			glowCrescent.Width1 = 1.65 * w * fadeFactor
+			whiteCore.CurveSize0 = curSpan * 1.12
+			whiteCore.CurveSize1 = curSpan * 1.12
+			whiteCore.Width1 = 0.58 * w * fadeFactor
 		end
 		if tipRunner.Parent then
-			local sweepAng = (a - 0.5) * 2.4
-			tipRunner.CFrame = curCF * CFrame.new(math.sin(sweepAng) * curDiam * 0.42, math.cos(sweepAng) * curDiam * 0.22, -0.4)
+			local sweepAng = (a - 0.5) * 2.5
+			tipRunner.CFrame = curCF * CFrame.new(math.sin(sweepAng) * curSpan * 0.85, math.cos(sweepAng) * curSpan * 0.35, -0.5)
 		end
 	end)
 
-	Debris:AddItem(outer, d + 0.06)
-	Debris:AddItem(core, d + 0.06)
+	Debris:AddItem(host, d + 0.06)
 	Debris:AddItem(tipRunner, d + 0.24)
 end
 
 -- ============================================================================
 -- 2B. BESPOKE 3D SIGNATURE CONSTRUCTS FOR EACH OF THE 11 NON-DRAGON FRUITS
+--     (DISTINCT PER-MOVE CHOREOGRAPHY FOR Z / X / C / V / F — ZERO REPETITION!)
 -- ============================================================================
 local FRUIT_SKILL_DISPLAY_NAMES = {
-	GaleCore = { Z = "Phong Đao • Gale Blades", X = "Lốc Xoáy Không Trung • Cyclone Burst", C = "Bão Phong Nghiền Nát • Tornado Crush", V = "Đại Cuồng Phong • Skyborn Typhoon", F = "Cưỡi Gió • Wind Ride" },
-	SandstoneCore = { Z = "Sa Đao • Desert Blade", X = "Quan Tài Cát • Sand Coffin", C = "Hố Cát Tử Thần • Quicksand Vortex", V = "Bão Cát Hoàng Kim • Pharaoh's Tempest", F = "Cát Lưu • Sand Flight" },
-	SolarFlameCore = { Z = "Hỏa Đạn Liên Hoàn • Fire Bullets", X = "Hỏa Quyền Xuyên Thấu • Prominence Fist", C = "Hỏa Trụ Xung Thiên • Flame Pillar", V = "Thái Dương Viêm Đế • Supernova Sun", F = "Hỏa Tiễn Phi Hành • Plasma Jet" },
-	GlacierIceCore = { Z = "Băng Tiêu Tam Liên • Ice Shards", X = "Băng Sơn Trỗi Dậy • Glacial Surge", C = "Băng Điểu Xung Kích • Cryo Phoenix", V = "Tuyệt Độ Hàn Băng • Absolute Zero", F = "Trượt Băng Tốc Độ • Glacier Glide" },
-	CelestialLightCore = { Z = "Tia Sáng Phán Quyết • Light Ray", X = "Mưa Kiếm Ánh Sáng • Barrage of Light", C = "Bát Chỉ Kính Thiểm • Reflection Kick", V = "Đại Quang Vũ • Wrath of Aureon", F = "Hóa Tia Sáng • Light Flight" },
-	StarforgedMagmaCore = { Z = "Dung Nham Thiết Chưởng • Magma Clap", X = "Nanh Chó Địa Ngục • Hellhound Fang", C = "Cú Đấm Nham Thạch • Magma Fist", V = "Mưa Sao Băng Dung Nham • Meteor Volcano", F = "Cưỡi Thú Dung Nham • Magma Hound" },
-	ThunderRumbleCore = { Z = "Lôi Long Phá • Rumble Dragon", X = "Thiên Lôi Giáng Thế • Sky Thunder", C = "Pháo Từ Trường Lôi Đế • Storm Judgement", V = "Quả Cầu Lôi Thần • Raigo Sphere", F = "Lôi Bộ Tam Đoạn • Lightning Dash" },
-	AstralGravityCore = { Z = "Xung Lực Đẩy • Gravity Push", X = "Vùng Trọng Lực Đè Nén • Gravity Crush", C = "Triệu Hồi Thiên Thạch • Meteor Strike", V = "Mưa Thiên Thạch Vũ Trụ • Cosmic Extinction", F = "Phi Thăng Quỹ Đạo • Boulder Ride" },
-	DimensionalPortalCore = { Z = "Đột Kích Xuyên Không • Rift Slash", X = "Ẩn Thân Dị Giới • Void Shift", C = "Cổng Dịch Chuyển Thế Giới • Nexus Gate", V = "Chiều Không Gian Thứ Tư • Dimensional Rift", F = "Bước Nhảy Lượng Tử • Quantum Leap" },
+	GaleCore = { Z = "Phong Đao • Gale Blades", X = "Lốc Xoáy Không Trung • Cyclone Burst", C = "Bão Phong Nghiền Nát • Tornado Crush", V = "Đại Cuồng Phong • Skyborn Typhoon", F = "Phong Dực Phi Hành • Wind Ride" },
+	SandstoneCore = { Z = "Sa Đao • Desert Blade", X = "Quan Tài Cát • Sand Coffin", C = "Hố Cát Tử Thần • Quicksand Vortex", V = "Bão Cát Hoàng Kim • Pharaoh's Tempest", F = "Sa Bão Phi Hành • Sand Flight" },
+	SolarFlameCore = { Z = "Hỏa Đạn Liên Hoàn • Fire Bullets", X = "Hỏa Quyền Xuyên Thấu • Prominence Fist", C = "Hỏa Trụ Xung Thiên • Flame Pillar", V = "Thái Dương Viêm Đế • Supernova Sun", F = "Hỏa Dực Xung Kích • Plasma Jet" },
+	GlacierIceCore = { Z = "Băng Tiêu Tam Liên • Ice Shards", X = "Băng Sơn Trỗi Dậy • Glacial Surge", C = "Băng Điểu Xung Kích • Cryo Phoenix", V = "Tuyệt Độ Hàn Băng • Absolute Zero", F = "Trượt Băng Tốc Độ • Ice Skate" },
+	CelestialLightCore = { Z = "Tia Sáng Phán Quyết • Light Ray", X = "Mưa Kiếm Ánh Sáng • Barrage of Light", C = "Bát Chỉ Kính Thiểm • Reflection Kick", V = "Đại Quang Vũ • Wrath of Aureon", F = "Thiên Quang Tốc Hành • Light Flight" },
+	StarforgedMagmaCore = { Z = "Dung Nham Thiết Chưởng • Magma Clap", X = "Nanh Chó Địa Ngục • Hellhound Fang", C = "Cú Đấm Nham Thạch • Magma Fist", V = "Mưa Sao Băng Dung Nham • Meteor Volcano", F = "Thiên Thạch Phản Lực • Magma Jet" },
+	ThunderRumbleCore = { Z = "Lôi Long Phá • Rumble Dragon", X = "Thiên Lôi Giáng Thế • Sky Thunder", C = "Pháo Từ Trường Lôi Đế • Storm Judgement", V = "Quả Cầu Lôi Thần • Raigo Sphere", F = "Lôi Bộ Tam Đoạn • Lightning Flash" },
+	AstralGravityCore = { Z = "Xung Lực Đẩy • Gravity Push", X = "Vùng Trọng Lực Đè Nén • Gravity Crush", C = "Triệu Hồi Thiên Thạch • Meteor Strike", V = "Mưa Thiên Thạch Vũ Trụ • Cosmic Extinction", F = "Thiên Thạch Ngự Không • Boulder Ride" },
+	DimensionalPortalCore = { Z = "Đột Kích Xuyên Không • Rift Slash", X = "Ẩn Thân Dị Giới • Void Shift", C = "Cổng Dịch Chuyển Thế Giới • Nexus Gate", V = "Chiều Không Gian Thứ Tư • Dimensional Rift", F = "Bước Nhảy Lượng Tử • Warp Step" },
 	SolarTitanCore = { Z = "Hóa Kim Thân Khổng Lồ • Solar Titan", X = "Thiên Địa Chấn Động • Halo Shockwave", C = "Như Lai Thần Chưởng • Solar Palm", V = "Hoàng Hôn Chư Thần • Divine Retribution", F = "Bước Nhảy Kim Thân • Titan Leap" },
 	AetherflowCore = { Z = "Thiết Quyền Tinh Thể • Piercing Fist", X = "Gai Tinh Thể Trỗi Dậy • Aether Spikes", C = "Bánh Xe Gai Hủy Diệt • Carved Aether", V = "Vạn Quyền Diệt Thế • Restless Barrage", F = "Bánh Xe Tốc Độ • Roller Donut" },
 }
@@ -278,18 +352,18 @@ local function spawnOverheadSkillCallout(startPos, fruitKey, moveKey, prof, spec
 	local anchor = Lib.MakePart("SkillCalloutAnchor", Enum.PartType.Ball, Vector3.new(0.2, 0.2, 0.2), CFrame.new(startPos + Vector3.new(0, 4.4, 0)), prof.Primary, 1, Enum.Material.SmoothPlastic, folder)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "FruitSkillCallout"
-	bb.Size = UDim2.fromOffset(300, 44)
+	bb.Size = UDim2.fromOffset(320, 46)
 	bb.StudsOffset = Vector3.new(0, 1.2, 0)
 	bb.AlwaysOnTop = true
 	bb.MaxDistance = 120
 	bb.Parent = anchor
 
 	local bg = Instance.new("Frame")
-	bg.Size = UDim2.fromScale(1, 0.78)
+	bg.Size = UDim2.fromScale(1, 0.80)
 	bg.Position = UDim2.fromScale(0.5, 0.5)
 	bg.AnchorPoint = Vector2.new(0.5, 0.5)
 	bg.BackgroundColor3 = Color3.fromRGB(10, 14, 24)
-	bg.BackgroundTransparency = 0.18
+	bg.BackgroundTransparency = 0.14
 	bg.BorderSizePixel = 0
 	bg.Parent = bb
 	local corner = Instance.new("UICorner")
@@ -297,7 +371,7 @@ local function spawnOverheadSkillCallout(startPos, fruitKey, moveKey, prof, spec
 	corner.Parent = bg
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = prof.Primary
-	stroke.Thickness = 1.8
+	stroke.Thickness = 2.0
 	stroke.Parent = bg
 
 	local lbl = Instance.new("TextLabel")
@@ -308,14 +382,14 @@ local function spawnOverheadSkillCallout(startPos, fruitKey, moveKey, prof, spec
 	lbl.TextSize = 14
 	lbl.TextColor3 = Color3.fromRGB(255, 250, 240)
 	lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-	lbl.TextStrokeTransparency = 0.15
+	lbl.TextStrokeTransparency = 0.12
 	lbl.Text = "[" .. tostring(moveKey) .. "] " .. moveTitle
 	lbl.Parent = bg
 
 	TweenService:Create(bb, TweenInfo.new(0.95, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-		StudsOffset = Vector3.new(0, 3.6, 0),
+		StudsOffset = Vector3.new(0, 3.8, 0),
 	}):Play()
-	task.delay(0.55, function()
+	task.delay(0.58, function()
 		if bg.Parent then
 			TweenService:Create(bg, TweenInfo.new(0.38), { BackgroundTransparency = 1 }):Play()
 			TweenService:Create(stroke, TweenInfo.new(0.38), { Transparency = 1 }):Play()
@@ -325,218 +399,203 @@ local function spawnOverheadSkillCallout(startPos, fruitKey, moveKey, prof, spec
 	Debris:AddItem(anchor, 1.0)
 end
 
-local function spawnBespokeFruitSignature(fruitKey, moveKey, startPos, endPos, lookDir, prof, sc, isAwakened, folder, low)
+local function spawnBespokeFruitSignature(fruitKey, moveKey, startPos, endPos, lookDir, prof, sc, isAwakened, folder, low, isLocal, actorChar)
 	local gEnd = Lib.FindGround(endPos)
 	local gStart = Lib.FindGround(startPos)
 	local pathCF = Lib.SafeLookAt(startPos, endPos, lookDir)
+	local k = tostring(moveKey or "Z")
 
+	-- Dynamic Cast Pose on Character + FADE Showcase Core Layering per Move Key (Z vs X vs C vs V vs F)
+	if actorChar then
+		Lib.PlaySkillCastPose(actorChar, k, (k == "V") and 0.50 or ((k == "C") and 0.42 or 0.32))
+	end
+
+	-- Distinct Per-Key FADE Showcase Backbone so Z, X, C, V, F NEVER look identical:
+	if k == "Z" then
+		-- [Z] Opening Razor Ground Slash Ribbon + Suspended Void/Element Orbs (Screenshot 2 style)
+		Lib.SpawnFadeGroundSlashRibbon(startPos, endPos, 1.8 * sc, prof.Primary, prof.Secondary, 0.44, folder)
+	elseif k == "X" then
+		-- [X] Haymaker Corkscrew Shockwave Tunnel (Screenshot 3 style)
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.4, 0), endPos + Vector3.new(0, 1.2, 0), 2.8 * sc, 6, prof.Primary, prof.Secondary, 0.44, folder)
+		Lib.SpawnFadeGroundSlashRibbon(startPos, endPos, 2.2 * sc, prof.Primary, prof.Secondary, 0.48, folder)
+	elseif k == "C" then
+		-- [C] Cataclysmic Jagged Dark-Core Impact Spikes + Crown Crescent Arcs (Screenshot 1 style) + Mini Impact Frame
+		Lib.SpawnFadeJaggedImpactSpikes(endPos, 12.5 * sc, low and 6 or 10, prof.Primary, prof.Secondary, 0.62, folder)
+		if isLocal then
+			Lib.TriggerAnimeImpactFrame(prof.Primary, 0.035, 3.8, 0.42)
+		end
+	elseif k == "V" then
+		-- [V] Sovereign Ultimate: Corkscrew Tunnel + Colossal Jagged Impact Spikes + Ground Slash + 0.048s Anime Impact Frame!
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.8, 0), endPos + Vector3.new(0, 1.6, 0), 4.2 * sc, 8, prof.Primary, prof.Secondary, 0.56, folder)
+		Lib.SpawnFadeGroundSlashRibbon(startPos, endPos, 3.6 * sc, prof.Primary, prof.Secondary, 0.62, folder)
+		Lib.SpawnFadeJaggedImpactSpikes(endPos, 19.5 * sc, low and 8 or 14, prof.Primary, prof.Secondary, 0.78, folder)
+		if isLocal then
+			Lib.TriggerAnimeImpactFrame(prof.Primary, 0.050, 6.2, 0.64)
+		end
+	elseif k == "F" then
+		-- [F] Traversal Burst Signature
+		Lib.SpawnFadeGroundSlashRibbon(startPos, endPos, 2.4 * sc, prof.Primary, prof.Secondary, 0.46, folder)
+		Lib.SpawnFadeCrescentArc(pathCF, 1.8 * sc, 8.5 * sc, 1.6 * sc, prof.Primary, PAL.HotWhite, 0.38, folder)
+	end
+
+	-- Fruit-Specific 3D Construct tailored to Move Key (Z / X / C / V / F)
 	if fruitKey == "GaleCore" then
-		-- Unique Signature: Dual Counter-Rotating Vacuum Wind Scythe Rings + Floating Wind Blades
-		local bladeCount = low and 4 or 8
-		for i = 1, bladeCount do
-			local ang = (i / bladeCount) * math.pi * 2
-			local scythe = Lib.MakePart(
-				"GaleVacuumScythe_" .. i,
-				Enum.PartType.Wedge,
-				Vector3.new(0.22 * sc, 1.6 * sc, 5.2 * sc),
-				CFrame.new(endPos + Vector3.new(math.cos(ang) * 4.5 * sc, (i % 3) * 1.8 * sc, math.sin(ang) * 4.5 * sc)) * CFrame.Angles(0.25, ang + math.pi * 0.5, 0.45),
-				(i % 2 == 0) and prof.Primary or prof.Secondary,
-				0.12,
-				Enum.Material.ForceField,
-				folder
-			)
-			Lib.AttachRibbonTrail(scythe, PAL.HotWhite, prof.Primary, PAL.Obsidian, 0.9 * sc, 0.22)
-			animateOver(0.48, function(a)
-				if scythe.Parent then
-					local curAng = ang + a * math.pi * 4.5
-					local rad = (3.2 + a * 7.8) * sc
-					scythe.CFrame = CFrame.new(gEnd + Vector3.new(math.cos(curAng) * rad, (1.2 + a * 8.5 + (i % 3) * 1.4) * sc, math.sin(curAng) * rad))
-						* CFrame.Angles(0.3, curAng + math.pi * 0.5, 0.55)
-					scythe.Transparency = 0.12 + a * 0.85
-				end
-			end)
-			Debris:AddItem(scythe, 0.54)
+		local arcCount = (k == "V") and (low and 6 or 12) or ((k == "C") and 8 or 4)
+		for i = 1, arcCount do
+			local ang = (i / arcCount) * math.pi * 2
+			local rad = ((k == "V") and 9.5 or ((k == "C") and 6.2 or 3.8)) * sc
+			local hOff = ((k == "C" or k == "V") and (i * 1.4) or 1.2) * sc
+			local arcCF = CFrame.new(gEnd + Vector3.new(math.cos(ang) * rad * 0.5, hOff, math.sin(ang) * rad * 0.5)) * CFrame.Angles(0.35, ang, (i % 2 == 0) and 0.45 or -0.45)
+			Lib.SpawnFadeCrescentArc(arcCF, rad * 0.35, rad * 1.35, 1.4 * sc, (i % 2 == 0) and prof.Primary or prof.Secondary, PAL.HotWhite, 0.48, folder)
 		end
 
 	elseif fruitKey == "SandstoneCore" then
-		-- Unique Signature: 4-Sided Golden Pharaoh Pyramid Tomb closing around target + Desert Obelisks
-		local pyrR = ((moveKey == "V") and 11.5 or 7.2) * sc
-		local pyrH = ((moveKey == "V") and 14.0 or 9.2) * sc
-		for side = 1, 4 do
-			local ang = (side - 1) * (math.pi * 0.5)
-			local dirVec = Vector3.new(math.cos(ang), 0, math.sin(ang))
-			local startFacePos = gEnd + dirVec * (pyrR * 1.45) + Vector3.new(0, pyrH * 0.45, 0)
-			local targetFacePos = gEnd + dirVec * (pyrR * 0.42) + Vector3.new(0, pyrH * 0.45, 0)
-			local startCF = Lib.SafeLookAt(startFacePos, gEnd + Vector3.new(0, pyrH * 0.9, 0), Vector3.yAxis)
-			local closeCF = Lib.SafeLookAt(targetFacePos, gEnd + Vector3.new(0, pyrH * 0.95, 0), Vector3.yAxis)
-			local wall = Lib.MakePart("PharaohPyramidWall_" .. side, Enum.PartType.Wedge, Vector3.new(pyrR * 1.15, pyrH, 1.2 * sc), startCF, prof.Primary, 0.08, Enum.Material.Sandstone, folder)
-			local glyph = Lib.MakePart("PharaohGlyph_" .. side, Enum.PartType.Block, Vector3.new(pyrR * 0.65, pyrH * 0.55, 1.35 * sc), startCF, prof.Secondary, 0.14, Enum.Material.ForceField, folder)
-			TweenService:Create(wall, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = closeCF }):Play()
-			TweenService:Create(glyph, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = closeCF }):Play()
-			task.delay(0.32, function()
-				if wall.Parent then
-					TweenService:Create(wall, TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(pyrR * 1.5, 0.4, 0.4), Transparency = 1 }):Play()
-				end
-				if glyph.Parent then
-					TweenService:Create(glyph, TweenInfo.new(0.24), { Transparency = 1 }):Play()
-				end
-			end)
-			Debris:AddItem(wall, 0.62)
-			Debris:AddItem(glyph, 0.60)
+		if k == "X" or k == "V" then
+			-- 4-Sided Golden Pharaoh Pyramid Tomb slamming shut around target
+			local pyrR = ((k == "V") and 12.5 or 7.5) * sc
+			local pyrH = ((k == "V") and 15.0 or 9.6) * sc
+			for side = 1, 4 do
+				local ang = (side - 1) * (math.pi * 0.5)
+				local dirVec = Vector3.new(math.cos(ang), 0, math.sin(ang))
+				local startFacePos = gEnd + dirVec * (pyrR * 1.45) + Vector3.new(0, pyrH * 0.45, 0)
+				local targetFacePos = gEnd + dirVec * (pyrR * 0.42) + Vector3.new(0, pyrH * 0.45, 0)
+				local startCF = Lib.SafeLookAt(startFacePos, gEnd + Vector3.new(0, pyrH * 0.9, 0), Vector3.yAxis)
+				local closeCF = Lib.SafeLookAt(targetFacePos, gEnd + Vector3.new(0, pyrH * 0.95, 0), Vector3.yAxis)
+				local wall = Lib.MakePart("PharaohPyramidWall_" .. side, Enum.PartType.Wedge, Vector3.new(pyrR * 1.15, pyrH, 1.2 * sc), startCF, prof.Primary, 0.08, Enum.Material.Sandstone, folder)
+				local glyph = Lib.MakePart("PharaohGlyph_" .. side, Enum.PartType.Block, Vector3.new(pyrR * 0.65, pyrH * 0.55, 1.35 * sc), startCF, prof.Secondary, 0.14, Enum.Material.ForceField, folder)
+				TweenService:Create(wall, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = closeCF }):Play()
+				TweenService:Create(glyph, TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = closeCF }):Play()
+				task.delay(0.32, function()
+					if wall.Parent then
+						TweenService:Create(wall, TweenInfo.new(0.26, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(pyrR * 1.5, 0.4, 0.4), Transparency = 1 }):Play()
+					end
+					if glyph.Parent then
+						TweenService:Create(glyph, TweenInfo.new(0.24), { Transparency = 1 }):Play()
+					end
+				end)
+				Debris:AddItem(wall, 0.62)
+				Debris:AddItem(glyph, 0.60)
+			end
+		else
+			-- Swirling Golden Sand Obelisk Spires & Quicksand Crescent Vortex
+			for i = 1, 4 do
+				local ang = (i / 4) * math.pi * 2
+				local vCF = CFrame.new(gEnd + Vector3.new(0, 0.5 * i, 0)) * CFrame.Angles(0, ang, 0.25)
+				Lib.SpawnFadeCrescentArc(vCF, 2.2 * sc, (7.5 + i * 2.2) * sc, 1.5 * sc, prof.Primary, prof.Secondary, 0.46, folder)
+			end
 		end
 
 	elseif fruitKey == "SolarFlameCore" then
-		-- Unique Signature: 8-Ray Blazing Solar Corona Crest + Twin Flame Phoenix Wings behind caster
-		for side = -1, 1, 2 do
-			local wingCF = pathCF * CFrame.new(side * 2.4 * sc, 1.8 * sc, 0.8) * CFrame.Angles(0.2, side * -0.55, side * 0.48)
-			local wing = Lib.MakePart("SolarPhoenixWing_" .. side, Enum.PartType.Wedge, Vector3.new(0.45 * sc, 4.6 * sc, 7.8 * sc), wingCF, prof.Primary, 0.14, Enum.Material.ForceField, folder)
-			TweenService:Create(wing, TweenInfo.new(0.42, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				CFrame = wingCF * CFrame.Angles(0, side * 0.45, side * 0.35),
-				Size = Vector3.new(0.15, 6.4 * sc, 10.5 * sc),
-				Transparency = 1,
-			}):Play()
-			Debris:AddItem(wing, 0.46)
+		if k == "C" or k == "V" then
+			-- Blazing Curved-Beam Phoenix Wings + Descending Supernova Sun Core
+			for side = -1, 1, 2 do
+				local wingCF = pathCF * CFrame.new(side * 2.4 * sc, 2.0 * sc, 0.5) * CFrame.Angles(0.25, side * -0.45, side * 0.52)
+				Lib.SpawnFadeCrescentArc(wingCF, 2.5 * sc, 11.5 * sc, 2.2 * sc, prof.Primary, PAL.Gold, 0.48, folder)
+			end
 		end
-		local rayCount = low and 4 or 8
-		local sunCenter = (moveKey == "V") and (endPos + Vector3.new(0, 6 * sc, 0)) or (endPos + Vector3.new(0, 2.2 * sc, 0))
-		for r = 1, rayCount do
-			local ang = (r / rayCount) * math.pi * 2
-			local rayCF = CFrame.new(sunCenter) * CFrame.Angles(0, ang, math.pi * 0.25) * CFrame.new(0, 3.8 * sc, 0)
-			local spike = Lib.MakePart("SolarCoronaSpike_" .. r, Enum.PartType.Wedge, Vector3.new(0.85 * sc, 4.8 * sc, 1.4 * sc), rayCF, (r % 2 == 0) and prof.Primary or prof.Secondary, 0.10, Enum.Material.ForceField, folder)
-			TweenService:Create(spike, TweenInfo.new(0.44, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				CFrame = rayCF * CFrame.new(0, 4.5 * sc, 0),
-				Size = Vector3.new(0.2, 7.2 * sc, 0.4),
-				Transparency = 1,
-			}):Play()
-			Debris:AddItem(spike, 0.48)
+		if k == "V" then
+			local sunCenter = endPos + Vector3.new(0, 8 * sc, 0)
+			for r = 1, 6 do
+				local ang = (r / 6) * math.pi * 2
+				local arcCF = CFrame.new(sunCenter) * CFrame.Angles(ang, ang * 0.7, 0)
+				Lib.SpawnFadeCrescentArc(arcCF, 3.5 * sc, 16.5 * sc, 2.4 * sc, PAL.Gold, prof.Primary, 0.56, folder)
+			end
 		end
 
 	elseif fruitKey == "GlacierIceCore" then
-		-- Unique Signature: 6-Pointed Hexagonal Frost Snowflake Mandala + Crystalline Ice Monolith Cage
-		local hexCount = 6
-		local snowR = ((moveKey == "V") and 14.5 or 8.8) * sc
+		-- Crystalline Hexagonal Frost Snowflake & Shattering Glacier Needles scaled by Move Key
+		local hexCount = (k == "V") and 8 or ((k == "C") and 6 or 4)
+		local snowR = ((k == "V") and 15.5 or ((k == "C") and 10.5 or 6.8)) * sc
 		for i = 1, hexCount do
-			local ang = (i - 1) * (math.pi / 3)
-			local armCF = CFrame.new(gEnd + Vector3.new(0, 0.22, 0)) * CFrame.Angles(0, ang, 0)
-			local arm = Lib.MakePart("FrostSnowflakeArm_" .. i, Enum.PartType.Block, Vector3.new(0.45 * sc, 0.18, snowR * 1.8), armCF, prof.Primary, 0.12, Enum.Material.Glass, folder)
-			local crystalPos = gEnd + Vector3.new(math.cos(ang) * snowR * 0.65, 0, math.sin(ang) * snowR * 0.65)
-			local crystalH = (5.8 + (i % 2) * 2.6) * sc
-			local pillar = Lib.MakePart("GlacierCrystalSpire_" .. i, Enum.PartType.Wedge, Vector3.new(1.8 * sc, crystalH, 2.2 * sc), CFrame.new(crystalPos + Vector3.new(0, crystalH * 0.45, 0)) * CFrame.Angles(0, ang, 0.22), (i % 2 == 0) and prof.Primary or prof.Secondary, 0.10, Enum.Material.Glass, folder)
-			TweenService:Create(arm, TweenInfo.new(0.52, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = Vector3.new(0.15, 0.08, snowR * 2.35),
+			local ang = (i - 1) * ((math.pi * 2) / hexCount)
+			local crystalPos = gEnd + Vector3.new(math.cos(ang) * snowR * 0.62, 0, math.sin(ang) * snowR * 0.62)
+			local crystalH = ((k == "V") and 11.5 or 6.4) * sc
+			local pillar = Lib.MakePart("GlacierCrystalSpire_" .. i, Enum.PartType.Block, Vector3.new(1.4 * sc, crystalH, 1.4 * sc), CFrame.new(crystalPos + Vector3.new(0, crystalH * 0.45, 0)) * CFrame.Angles(0.24, ang, 0.18), (i % 2 == 0) and prof.Primary or prof.Secondary, 0.08, Enum.Material.Glass, folder)
+			local sm = Instance.new("SpecialMesh")
+			sm.MeshType = Enum.MeshType.Sphere
+			sm.Parent = pillar
+			TweenService:Create(pillar, TweenInfo.new(0.52, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = pillar.CFrame * CFrame.new(0, 2.8 * sc, 0),
+				Size = Vector3.new(0.2, crystalH * 1.35, 0.2),
 				Transparency = 1,
 			}):Play()
-			TweenService:Create(pillar, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				CFrame = pillar.CFrame * CFrame.new(0, 2.4 * sc, 0),
-				Transparency = 1,
-			}):Play()
-			Debris:AddItem(arm, 0.56)
-			Debris:AddItem(pillar, 0.60)
+			Debris:AddItem(pillar, 0.56)
 		end
 
 	elseif fruitKey == "CelestialLightCore" then
-		-- Unique Signature: 8-Mirror Sacred Yata Halo Array + Descending 3D Golden Greatswords of Light
-		local swordCount = low and 4 or 7
+		local swordCount = (k == "V") and (low and 6 or 12) or ((k == "X") and 7 or 3)
 		for i = 1, swordCount do
-			task.delay((i - 1) * 0.035, function()
+			task.delay((i - 1) * 0.028, function()
 				local ang = (i / swordCount) * math.pi * 2
-				local rad = (i == 1) and 0 or (4.2 * sc)
+				local rad = (i == 1) and 0 or (((k == "V") and 8.5 or 4.2) * sc)
 				local impactP = gEnd + Vector3.new(math.cos(ang) * rad, 0, math.sin(ang) * rad)
-				local spawnP = impactP + Vector3.new(0, 18 * sc, 0)
-				local blade = Lib.MakePart("SacredLightSword_" .. i, Enum.PartType.Block, Vector3.new(0.65 * sc, 8.6 * sc, 0.24 * sc), CFrame.new(spawnP), prof.Primary, 0.06, Enum.Material.ForceField, folder)
-				local guard = Lib.MakePart("SacredLightGuard_" .. i, Enum.PartType.Block, Vector3.new(2.8 * sc, 0.45 * sc, 0.55 * sc), CFrame.new(spawnP + Vector3.new(0, 2.8 * sc, 0)), prof.Secondary, 0.08, Enum.Material.ForceField, folder)
-				TweenService:Create(blade, TweenInfo.new(0.20, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				local spawnP = impactP + Vector3.new(0, 19 * sc, 0)
+				local blade = Lib.MakePart("SacredLightSword_" .. i, Enum.PartType.Block, Vector3.new(0.65 * sc, 9.5 * sc, 0.28 * sc), CFrame.new(spawnP), prof.Primary, 0.04, Enum.Material.ForceField, folder)
+				TweenService:Create(blade, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 					Position = impactP + Vector3.new(0, 3.2 * sc, 0),
 				}):Play()
-				TweenService:Create(guard, TweenInfo.new(0.20, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-					Position = impactP + Vector3.new(0, 6.0 * sc, 0),
-				}):Play()
-				task.delay(0.28, function()
-					if blade.Parent then TweenService:Create(blade, TweenInfo.new(0.24), { Transparency = 1 }):Play() end
-					if guard.Parent then TweenService:Create(guard, TweenInfo.new(0.24), { Transparency = 1 }):Play() end
+				task.delay(0.24, function()
+					if blade.Parent then TweenService:Create(blade, TweenInfo.new(0.22), { Transparency = 1, Size = Vector3.new(0.1, 12 * sc, 0.1) }):Play() end
 				end)
-				Debris:AddItem(blade, 0.56)
-				Debris:AddItem(guard, 0.56)
+				Debris:AddItem(blade, 0.50)
 			end)
 		end
 
 	elseif fruitKey == "StarforgedMagmaCore" then
-		-- Unique Signature: 3D Hellhound Magma Fang Jaws (Upper + Lower Snapping Jaw) + Bubbling Lava Pools
-		local jawOrigin = startPos + lookDir * 2.5 + Vector3.new(0, 1.8 * sc, 0)
-		local jawTarget = endPos + Vector3.new(0, 1.5 * sc, 0)
-		local upperJaw = Lib.MakePart("HellhoundUpperJaw", Enum.PartType.Wedge, Vector3.new(4.2 * sc, 2.4 * sc, 5.6 * sc), Lib.SafeLookAt(jawOrigin, jawTarget, lookDir) * CFrame.Angles(0.35, 0, 0), prof.Primary, 0.08, Enum.Material.Slate, folder)
-		local lowerJaw = Lib.MakePart("HellhoundLowerJaw", Enum.PartType.Wedge, Vector3.new(3.8 * sc, 1.8 * sc, 5.0 * sc), Lib.SafeLookAt(jawOrigin - Vector3.new(0, 1.4 * sc, 0), jawTarget, lookDir) * CFrame.Angles(-0.35, 0, math.pi), PAL.Obsidian, 0.10, Enum.Material.Slate, folder)
-		TweenService:Create(upperJaw, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			CFrame = Lib.SafeLookAt(jawTarget, jawTarget + lookDir, lookDir) * CFrame.Angles(-0.08, 0, 0),
-			Transparency = 0.85,
-		}):Play()
-		TweenService:Create(lowerJaw, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			CFrame = Lib.SafeLookAt(jawTarget, jawTarget + lookDir, lookDir) * CFrame.Angles(0.08, 0, math.pi),
-			Transparency = 0.85,
-		}):Play()
-		Debris:AddItem(upperJaw, 0.34)
-		Debris:AddItem(lowerJaw, 0.34)
-
-		local poolCount = low and 3 or 5
-		for p = 1, poolCount do
-			local ang = (p / poolCount) * math.pi * 2
-			local poolPos = gEnd + Vector3.new(math.cos(ang) * 4.5 * sc, 0.12, math.sin(ang) * 4.5 * sc)
-			local pool = Lib.MakePart("BubblingMagmaPool_" .. p, Enum.PartType.Cylinder, Vector3.new(0.24, 5.2 * sc, 5.2 * sc), CFrame.new(poolPos) * CFrame.Angles(0, 0, math.pi * 0.5), prof.Primary, 0.14, Enum.Material.ForceField, folder)
-			local crust = Lib.MakePart("MagmaObsidianCrust_" .. p, Enum.PartType.Cylinder, Vector3.new(0.28, 3.4 * sc, 3.4 * sc), pool.CFrame, PAL.Obsidian, 0.18, Enum.Material.Slate, folder)
-			TweenService:Create(pool, TweenInfo.new(0.75, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = Vector3.new(0.08, 8.8 * sc, 8.8 * sc),
-				Transparency = 1,
+		if k == "X" or k == "C" or k == "V" then
+			-- 3D Hellhound Magma Fang Jaws tearing forward
+			local jawOrigin = startPos + lookDir * 2.5 + Vector3.new(0, 1.8 * sc, 0)
+			local jawTarget = endPos + Vector3.new(0, 1.5 * sc, 0)
+			local jawSc = (k == "V") and (sc * 1.45) or sc
+			local upperJaw = Lib.MakePart("HellhoundUpperJaw", Enum.PartType.Wedge, Vector3.new(4.4 * jawSc, 2.5 * jawSc, 5.8 * jawSc), Lib.SafeLookAt(jawOrigin, jawTarget, lookDir) * CFrame.Angles(0.35, 0, 0), prof.Primary, 0.06, Enum.Material.Slate, folder)
+			local lowerJaw = Lib.MakePart("HellhoundLowerJaw", Enum.PartType.Wedge, Vector3.new(4.0 * jawSc, 1.9 * jawSc, 5.2 * jawSc), Lib.SafeLookAt(jawOrigin - Vector3.new(0, 1.4 * jawSc, 0), jawTarget, lookDir) * CFrame.Angles(-0.35, 0, math.pi), PAL.Obsidian, 0.08, Enum.Material.Slate, folder)
+			TweenService:Create(upperJaw, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = Lib.SafeLookAt(jawTarget, jawTarget + lookDir, lookDir) * CFrame.Angles(-0.08, 0, 0),
+				Transparency = 0.85,
 			}):Play()
-			TweenService:Create(crust, TweenInfo.new(0.65), { Transparency = 1 }):Play()
-			Debris:AddItem(pool, 0.80)
-			Debris:AddItem(crust, 0.70)
+			TweenService:Create(lowerJaw, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				CFrame = Lib.SafeLookAt(jawTarget, jawTarget + lookDir, lookDir) * CFrame.Angles(0.08, 0, math.pi),
+				Transparency = 0.85,
+			}):Play()
+			Debris:AddItem(upperJaw, 0.34)
+			Debris:AddItem(lowerJaw, 0.34)
 		end
 
 	elseif fruitKey == "ThunderRumbleCore" then
-		-- Unique Signature: 6 Floating Raijin Thunder Drums behind caster + Cumulonimbus Storm Cloud & Kirin Strikes
+		-- 6 Raijin Thunder Drums + Multi-Arc Kirin Lightning Crown
 		local drumCount = 6
 		local drumRadius = 3.6 * sc
 		for d = 1, drumCount do
 			local ang = (d / drumCount) * math.pi * 2
-			local drumCF = pathCF * CFrame.new(math.cos(ang) * drumRadius, 1.8 * sc + math.sin(ang) * drumRadius, 1.4) * CFrame.Angles(0, math.pi * 0.5, 0)
-			local drum = Lib.MakePart("RaijinThunderDrum_" .. d, Enum.PartType.Cylinder, Vector3.new(0.55 * sc, 1.35 * sc, 1.35 * sc), drumCF, prof.Primary, 0.10, Enum.Material.ForceField, folder)
-			local rim = Lib.MakePart("RaijinDrumCore_" .. d, Enum.PartType.Cylinder, Vector3.new(0.62 * sc, 0.75 * sc, 0.75 * sc), drumCF, PAL.Obsidian, 0.08, Enum.Material.SmoothPlastic, folder)
-			TweenService:Create(drum, TweenInfo.new(0.48), { Transparency = 1 }):Play()
-			TweenService:Create(rim, TweenInfo.new(0.45), { Transparency = 1 }):Play()
-			Debris:AddItem(drum, 0.52)
-			Debris:AddItem(rim, 0.50)
+			local drumCF = pathCF * CFrame.new(math.cos(ang) * drumRadius, 1.8 * sc + math.sin(ang) * drumRadius, 1.4)
+			Lib.SpawnFadeCrescentArc(drumCF, 0.55 * sc, 1.45 * sc, 0.45 * sc, prof.Primary, PAL.HotWhite, 0.42, folder)
 		end
-		local cloudPos = endPos + Vector3.new(0, 18 * sc, 0)
-		local stormCloud = Lib.MakePart("ThunderStormCloud", Enum.PartType.Ball, Vector3.new(14 * sc, 3.6 * sc, 14 * sc), CFrame.new(cloudPos), PAL.Obsidian, 0.18, Enum.Material.SmoothPlastic, folder)
-		TweenService:Create(stormCloud, TweenInfo.new(0.55), { Size = Vector3.new(20 * sc, 4.2 * sc, 20 * sc), Transparency = 1 }):Play()
-		Debris:AddItem(stormCloud, 0.60)
-		Lib.SpawnJaggedLightning(cloudPos, gEnd, 7, 1.8 * sc, 0.42 * sc, PAL.HotWhite, prof.Primary, 0.42, folder)
+		if k == "X" or k == "C" or k == "V" then
+			local cloudPos = endPos + Vector3.new(0, ((k == "V") and 22 or 16) * sc, 0)
+			Lib.SpawnJaggedLightning(cloudPos, gEnd, 8, 2.2 * sc, ((k == "V") and 0.65 or 0.42) * sc, PAL.HotWhite, prof.Primary, 0.45, folder)
+		end
 
 	elseif fruitKey == "AstralGravityCore" then
-		-- Unique Signature: Black Hole Singularity Core + Tilted Accretion Disks & Crushing Gravity Rings
-		local bhCenter = endPos + Vector3.new(0, 3.2 * sc, 0)
-		local singularity = Lib.MakePart("GravityBlackHole", Enum.PartType.Ball, Vector3.new(4.2, 4.2, 4.2) * sc, CFrame.new(bhCenter), PAL.Obsidian, 0.04, Enum.Material.SmoothPlastic, folder)
-		local lensShell = Lib.MakePart("GravityLensShell", Enum.PartType.Ball, Vector3.new(5.2, 5.2, 5.2) * sc, CFrame.new(bhCenter), prof.Primary, 0.24, Enum.Material.ForceField, folder)
-		local diskA = Lib.MakePart("AccretionDiskA", Enum.PartType.Cylinder, Vector3.new(0.18, 12.5 * sc, 12.5 * sc), CFrame.new(bhCenter) * CFrame.Angles(0.38, 0, math.pi * 0.5), prof.Primary, 0.12, Enum.Material.ForceField, folder)
-		local diskB = Lib.MakePart("AccretionDiskB", Enum.PartType.Cylinder, Vector3.new(0.14, 16.0 * sc, 16.0 * sc), CFrame.new(bhCenter) * CFrame.Angles(-0.38, 0.6, math.pi * 0.5), prof.Secondary, 0.18, Enum.Material.ForceField, folder)
-		animateOver(0.52, function(a)
-			local rot = a * math.pi * 5
-			if diskA.Parent then diskA.CFrame = CFrame.new(bhCenter) * CFrame.Angles(0.38, rot, math.pi * 0.5); diskA.Transparency = 0.12 + a * 0.88 end
-			if diskB.Parent then diskB.CFrame = CFrame.new(bhCenter) * CFrame.Angles(-0.38, -rot * 1.2, math.pi * 0.5); diskB.Transparency = 0.18 + a * 0.82 end
-			if singularity.Parent then singularity.Size = Vector3.new(4.2, 4.2, 4.2) * sc * (1 - a * 0.85); singularity.Transparency = a end
-			if lensShell.Parent then lensShell.Size = Vector3.new(5.2, 5.2, 5.2) * sc * (1 + a * 1.4); lensShell.Transparency = 0.24 + a * 0.76 end
-		end)
-		for _, pt in ipairs({ singularity, lensShell, diskA, diskB }) do Debris:AddItem(pt, 0.56) end
+		-- Black Hole Singularity Core + Dual Curved-Beam Accretion Disks
+		local bhCenter = endPos + Vector3.new(0, ((k == "V") and 6.5 or 3.2) * sc, 0)
+		local bhScale = ((k == "V") and 1.65 or ((k == "C") and 1.25 or 0.85)) * sc
+		local singularity = Lib.MakePart("GravityBlackHole", Enum.PartType.Ball, Vector3.new(4.2, 4.2, 4.2) * bhScale, CFrame.new(bhCenter), PAL.Obsidian, 0.02, Enum.Material.SmoothPlastic, folder)
+		local lensShell = Lib.MakePart("GravityLensShell", Enum.PartType.Ball, Vector3.new(5.2, 5.2, 5.2) * bhScale, CFrame.new(bhCenter), prof.Primary, 0.22, Enum.Material.ForceField, folder)
+		Lib.SpawnFadeCrescentArc(CFrame.new(bhCenter) * CFrame.Angles(0.38, 0, 0), 3.2 * bhScale, 12.5 * bhScale, 1.8 * bhScale, prof.Primary, PAL.HotWhite, 0.52, folder)
+		Lib.SpawnFadeCrescentArc(CFrame.new(bhCenter) * CFrame.Angles(-0.38, math.pi, 0), 3.2 * bhScale, 14.0 * bhScale, 1.6 * bhScale, prof.Secondary, prof.Primary, 0.52, folder)
+		TweenService:Create(singularity, TweenInfo.new(0.50), { Size = Vector3.new(0.4, 0.4, 0.4), Transparency = 1 }):Play()
+		TweenService:Create(lensShell, TweenInfo.new(0.50), { Size = Vector3.new(11, 11, 11) * bhScale, Transparency = 1 }):Play()
+		Debris:AddItem(singularity, 0.54)
+		Debris:AddItem(lensShell, 0.54)
 
 	elseif fruitKey == "DimensionalPortalCore" then
-		-- Unique Signature: 6-Edge Hexagonal Rift Gate Frames + Rotating 4D Tesseract Cube & Floating Glass Shards
 		local function spawnHexGate(centerPos, scaleGate, col)
 			local baseCF = Lib.SafeLookAt(centerPos, centerPos + lookDir, lookDir)
 			local rGate = 4.2 * scaleGate
 			for e = 1, 6 do
 				local a1 = (e - 1) * (math.pi / 3)
 				local edgeCF = baseCF * CFrame.Angles(0, 0, a1) * CFrame.new(0, rGate, 0)
-				local bar = Lib.MakePart("HexPortalEdge_" .. e, Enum.PartType.Block, Vector3.new(rGate * 1.18, 0.34 * scaleGate, 0.34 * scaleGate), edgeCF, col, 0.08, Enum.Material.ForceField, folder)
+				local bar = Lib.MakePart("HexPortalEdge_" .. e, Enum.PartType.Block, Vector3.new(rGate * 1.18, 0.34 * scaleGate, 0.34 * scaleGate), edgeCF, col, 0.06, Enum.Material.ForceField, folder)
 				TweenService:Create(bar, TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 					CFrame = edgeCF * CFrame.new(0, 1.8 * scaleGate, 0),
 					Transparency = 1,
@@ -545,72 +604,59 @@ local function spawnBespokeFruitSignature(fruitKey, moveKey, startPos, endPos, l
 			end
 		end
 		spawnHexGate(startPos + lookDir * 2.2 + Vector3.new(0, 1.5, 0), sc, prof.Primary)
-		spawnHexGate(endPos + Vector3.new(0, 1.5, 0), sc * 1.25, prof.Secondary)
-		local tesseract = Lib.MakePart("DimensionTesseract", Enum.PartType.Block, Vector3.new(5.5, 5.5, 5.5) * sc, CFrame.new(endPos + Vector3.new(0, 2.5 * sc, 0)), prof.Primary, 0.22, Enum.Material.Glass, folder)
-		TweenService:Create(tesseract, TweenInfo.new(0.48, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			CFrame = tesseract.CFrame * CFrame.Angles(1.2, 1.6, 0.8),
-			Size = Vector3.new(11.5, 11.5, 11.5) * sc,
-			Transparency = 1,
-		}):Play()
-		Debris:AddItem(tesseract, 0.52)
+		if k ~= "Z" then
+			spawnHexGate(endPos + Vector3.new(0, 1.5, 0), sc * ((k == "V") and 1.65 or 1.25), prof.Secondary)
+		end
 
 	elseif fruitKey == "SolarTitanCore" then
-		-- Unique Signature: 12-Spoke Golden Dharma Wheel Halo + Colossal Descending 3D Buddha Palm & 8-Petal Golden Lotus
-		local palmSky = endPos + Vector3.new(0, 19 * sc, 0)
-		local palmGround = gEnd + Vector3.new(0, 1.6 * sc, 0)
-		local palmBase = Lib.MakePart("BuddhaGiantPalm", Enum.PartType.Block, Vector3.new(7.5 * sc, 1.6 * sc, 7.5 * sc), CFrame.new(palmSky), PAL.Gold, 0.08, Enum.Material.ForceField, folder)
-		local fingers = {}
-		for f = -2, 2 do
-			local fPart = Lib.MakePart("BuddhaFinger_" .. f, Enum.PartType.Block, Vector3.new(1.15 * sc, 1.4 * sc, 4.6 * sc), CFrame.new(palmSky + Vector3.new(f * 1.45 * sc, 0, -5.2 * sc)), PAL.Gold, 0.08, Enum.Material.ForceField, folder)
-			table.insert(fingers, { Part = fPart, OffX = f * 1.45 * sc })
-		end
-		animateOver(0.28, function(a)
-			local curP = palmSky:Lerp(palmGround, a)
-			if palmBase.Parent then palmBase.Position = curP end
-			for _, fg in ipairs(fingers) do
-				if fg.Part.Parent then
-					fg.Part.Position = curP + Vector3.new(fg.OffX, 0, -5.2 * sc)
+		if k == "C" or k == "V" then
+			-- Colossal Descending 3D Buddha Palm with Sonic Entry Crescent Rings
+			local palmSky = endPos + Vector3.new(0, 19 * sc, 0)
+			local palmGround = gEnd + Vector3.new(0, 1.6 * sc, 0)
+			local palmSc = ((k == "V") and 1.45 or 1.0) * sc
+			local palmBase = Lib.MakePart("BuddhaGiantPalm", Enum.PartType.Block, Vector3.new(7.5 * palmSc, 1.6 * palmSc, 7.5 * palmSc), CFrame.new(palmSky), PAL.Gold, 0.06, Enum.Material.ForceField, folder)
+			local fingers = {}
+			for f = -2, 2 do
+				local fPart = Lib.MakePart("BuddhaFinger_" .. f, Enum.PartType.Block, Vector3.new(1.15 * palmSc, 1.4 * palmSc, 4.6 * palmSc), CFrame.new(palmSky + Vector3.new(f * 1.45 * palmSc, 0, -5.2 * palmSc)), PAL.Gold, 0.06, Enum.Material.ForceField, folder)
+				table.insert(fingers, { Part = fPart, OffX = f * 1.45 * palmSc })
+			end
+			animateOver(0.26, function(a)
+				local curP = palmSky:Lerp(palmGround, a)
+				if palmBase.Parent then palmBase.Position = curP end
+				for _, fg in ipairs(fingers) do
+					if fg.Part.Parent then
+						fg.Part.Position = curP + Vector3.new(fg.OffX, 0, -5.2 * palmSc)
+					end
 				end
-			end
-		end, function()
-			if palmBase.Parent then TweenService:Create(palmBase, TweenInfo.new(0.28), { Transparency = 1, Size = palmBase.Size * 1.35 }):Play() end
-			for _, fg in ipairs(fingers) do
-				if fg.Part.Parent then TweenService:Create(fg.Part, TweenInfo.new(0.28), { Transparency = 1 }):Play() end
-			end
-		end)
-		Debris:AddItem(palmBase, 0.60)
-		for _, fg in ipairs(fingers) do Debris:AddItem(fg.Part, 0.60) end
-
-		for petal = 1, 8 do
-			local ang = (petal / 8) * math.pi * 2
-			local pCF = CFrame.new(gStart + Vector3.new(math.cos(ang) * 3.8 * sc, 0.35, math.sin(ang) * 3.8 * sc)) * CFrame.Angles(0.35, ang, 0)
-			local lotus = Lib.MakePart("GoldenLotusPetal_" .. petal, Enum.PartType.Wedge, Vector3.new(2.2 * sc, 1.4 * sc, 4.2 * sc), pCF, PAL.Gold, 0.14, Enum.Material.ForceField, folder)
-			TweenService:Create(lotus, TweenInfo.new(0.48), { CFrame = pCF * CFrame.new(0, 0, -2.5 * sc), Transparency = 1 }):Play()
-			Debris:AddItem(lotus, 0.52)
+			end, function()
+				if palmBase.Parent then TweenService:Create(palmBase, TweenInfo.new(0.28), { Transparency = 1, Size = palmBase.Size * 1.35 }):Play() end
+				for _, fg in ipairs(fingers) do
+					if fg.Part.Parent then TweenService:Create(fg.Part, TweenInfo.new(0.28), { Transparency = 1 }):Play() end
+				end
+			end)
+			Debris:AddItem(palmBase, 0.58)
+			for _, fg in ipairs(fingers) do Debris:AddItem(fg.Part, 0.58) end
 		end
 
 	elseif fruitKey == "AetherflowCore" then
-		-- Unique Signature: Spiked Mochi Portal Rings + Giant Armament-Haki-Coated Fists & Crimson Haki Lightning
-		local ringCount = (moveKey == "V") and (low and 4 or 7) or (low and 2 or 4)
+		local ringCount = (k == "V") and (low and 5 or 8) or ((k == "C") and 4 or 2)
 		for i = 1, ringCount do
-			task.delay((i - 1) * 0.04, function()
+			task.delay((i - 1) * 0.038, function()
 				local ang = (i / ringCount) * math.pi * 2
-				local ringPos = endPos + Vector3.new(math.cos(ang) * 8.2 * sc, (2.4 + (i % 3) * 1.8) * sc, math.sin(ang) * 8.2 * sc)
+				local ringPos = endPos + Vector3.new(math.cos(ang) * 7.8 * sc, (2.2 + (i % 3) * 1.8) * sc, math.sin(ang) * 7.8 * sc)
 				local aimCF = Lib.SafeLookAt(ringPos, endPos + Vector3.new(0, 1.2, 0), lookDir)
-				local mochiPortal = Lib.MakePart("MochiPortalDonut_" .. i, Enum.PartType.Cylinder, Vector3.new(0.65 * sc, 4.2 * sc, 4.2 * sc), aimCF * CFrame.Angles(0, math.pi * 0.5, 0), prof.Primary, 0.08, Enum.Material.SmoothPlastic, folder)
+				Lib.SpawnFadeCrescentArc(aimCF, 1.4 * sc, 3.8 * sc, 0.9 * sc, prof.Primary, PAL.Crimson, 0.36, folder)
 				local hakiFist = Lib.MakePart("MochiHakiGiantFist_" .. i, Enum.PartType.Ball, Vector3.new(2.6 * sc, 2.6 * sc, 3.8 * sc), aimCF, PAL.Obsidian, 0.04, Enum.Material.SmoothPlastic, folder)
-				local crimsonAura = Lib.MakePart("MochiHakiCrimsonShell_" .. i, Enum.PartType.Ball, Vector3.new(3.1 * sc, 3.1 * sc, 4.3 * sc), aimCF, PAL.Crimson, 0.22, Enum.Material.ForceField, folder)
-				TweenService:Create(hakiFist, TweenInfo.new(0.20, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				local crimsonAura = Lib.MakePart("MochiHakiCrimsonShell_" .. i, Enum.PartType.Ball, Vector3.new(3.1 * sc, 3.1 * sc, 4.3 * sc), aimCF, PAL.Crimson, 0.18, Enum.Material.ForceField, folder)
+				TweenService:Create(hakiFist, TweenInfo.new(0.19, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 					CFrame = Lib.SafeLookAt(endPos, endPos + aimCF.LookVector, Vector3.yAxis),
 				}):Play()
-				TweenService:Create(crimsonAura, TweenInfo.new(0.20, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+				TweenService:Create(crimsonAura, TweenInfo.new(0.19, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 					CFrame = Lib.SafeLookAt(endPos, endPos + aimCF.LookVector, Vector3.yAxis),
 					Transparency = 0.85,
 				}):Play()
-				TweenService:Create(mochiPortal, TweenInfo.new(0.34), { Size = Vector3.new(0.2, 6.2 * sc, 6.2 * sc), Transparency = 1 }):Play()
-				Debris:AddItem(mochiPortal, 0.38)
-				Debris:AddItem(hakiFist, 0.26)
-				Debris:AddItem(crimsonAura, 0.26)
+				Debris:AddItem(hakiFist, 0.25)
+				Debris:AddItem(crimsonAura, 0.25)
 			end)
 		end
 	end
@@ -643,23 +689,24 @@ function UniversalVFXOverhaul.ExecuteFruitArchetype(arch, fruitKey, moveKey, sta
 	UniversalVFXOverhaul.SpawnStage1Sigil(Lib.SafeLookAt(startPos, startPos + lookDir, lookDir), prof, sc, isAwakened)
 	Lib.EmitElement(prof.Element, Lib.SafeLookAt(startPos + lookDir * 1.8, endPos, lookDir), sc * 0.85, prof.Primary, prof.Secondary)
 	pcall(spawnOverheadSkillCallout, startPos, fruitKey, moveKey, prof, spec)
-	pcall(spawnBespokeFruitSignature, fruitKey, moveKey, startPos, endPos, lookDir, prof, sc, isAwakened, folder, low)
+	pcall(spawnBespokeFruitSignature, fruitKey, moveKey, startPos, endPos, lookDir, prof, sc, isAwakened, folder, low, isLocal, actorChar)
 
 	-- ========================================================================
 	-- VIBEGG (@vibeggvn) 5-STEP ELEMENTAL SPELL & FINISHER INTEGRATION
+	-- (Scoped to specific moves so Z / X / C / V remain visually distinct!)
 	-- ========================================================================
-	local isFinisherMove = (moveKey == "V" or moveKey == "C" or moveKey == "X" or isAwakened)
-	local isUltimatePaperCrush = (moveKey == "V" or moveKey == "C" or isAwakened)
+	local isFinisherMove = (moveKey == "V" or moveKey == "C" or isAwakened)
+	local isUltimatePaperCrush = (moveKey == "V" or isAwakened)
 	local elem = tostring(prof and prof.Element or "")
-	if fruitKey == "SolarFlameCore" or elem == "Flame" or elem == "Fire" or elem == "Solar" then
+	if (fruitKey == "SolarFlameCore" or elem == "Flame") and (moveKey == "Z" or moveKey == "V") then
 		Lib.VibeGG_Fireball5Steps(startPos + Vector3.new(0, 1.2, 0), endPos, sc, isFinisherMove, isLocal, actorChar)
-	elseif fruitKey == "GlacierIceCore" or elem == "Frost" or elem == "Ice" then
+	elseif (fruitKey == "GlacierIceCore" or elem == "Frost" or elem == "Ice") and (moveKey == "X" or moveKey == "V") then
 		Lib.VibeGG_IceSpikes5Steps(startPos, endPos, lookDir, sc, isFinisherMove, isLocal, actorChar)
-	elseif fruitKey == "ThunderRumbleCore" or elem == "Lightning" or elem == "Thunder" then
+	elseif (fruitKey == "ThunderRumbleCore" or elem == "Lightning" or elem == "Thunder") and (moveKey == "X" or moveKey == "C" or moveKey == "V") then
 		Lib.VibeGG_Lightning5Steps(startPos + Vector3.new(0, 1.5, 0), endPos, sc, prof.Primary, prof.Secondary, isFinisherMove, isLocal, actorChar)
-	elseif fruitKey == "AstralGravityCore" or elem == "Gravity" or arch == "GravityCrushZone" then
+	elseif (fruitKey == "AstralGravityCore" or elem == "Gravity") and (moveKey == "X" or moveKey == "V") then
 		Lib.VibeGG_GravitySpell5Steps(endPos, sc, isUltimatePaperCrush, isLocal, actorChar)
-	elseif fruitKey == "StarforgedMagmaCore" or elem == "Magma" then
+	elseif (fruitKey == "StarforgedMagmaCore" or elem == "Magma") and (moveKey == "Z" or moveKey == "C" or moveKey == "V") then
 		Lib.VibeGG_MagmaSpell5Steps(endPos, sc, isFinisherMove, isLocal, actorChar)
 	end
 
@@ -1117,6 +1164,23 @@ function UniversalVFXOverhaul.SpawnMartialKata(styleProf, moveKey, startPos, end
 	local dst = ((endPos - startPos).Magnitude > 3.5) and endPos or (startPos + lookDir * 20 * sc)
 	Lib.Emit("Combat", "Martial_KataBurst", Lib.SafeLookAt(startPos + lookDir * 1.8, dst, lookDir), sc, prof.Primary, prof.Secondary)
 
+	-- FADE / Haymaker Martial Kata Backbone per Move Key (Z / X / C / V)
+	local mk = tostring(moveKey or "Z")
+	if mk == "Z" then
+		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 1.8 * sc, prof.Primary, prof.Secondary, 0.38, folder)
+	elseif mk == "X" then
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.2, 0), dst + Vector3.new(0, 1.2, 0), 2.6 * sc, 5, prof.Primary, prof.Secondary, 0.40, folder)
+		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 2.1 * sc, prof.Primary, prof.Secondary, 0.42, folder)
+	elseif mk == "C" then
+		Lib.SpawnFadeJaggedImpactSpikes(dst, 11.5 * sc, low and 5 or 8, prof.Primary, prof.Secondary, 0.56, folder)
+		if isLocal then Lib.TriggerAnimeImpactFrame(prof.Primary, 0.032, 3.2, 0.38) end
+	elseif mk == "V" then
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.5, 0), dst + Vector3.new(0, 1.4, 0), 3.6 * sc, 7, prof.Primary, prof.Secondary, 0.50, folder)
+		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 3.2 * sc, prof.Primary, prof.Secondary, 0.55, folder)
+		Lib.SpawnFadeJaggedImpactSpikes(dst, 16.5 * sc, low and 7 or 12, prof.Primary, prof.Secondary, 0.68, folder)
+		if isLocal then Lib.TriggerAnimeImpactFrame(prof.Primary, 0.045, 5.4, 0.56) end
+	end
+
 	local count = (moveKey == "V") and 8 or ((moveKey == "C") and 6 or 4)
 	if low then count = math.max(2, math.floor(count * 0.35 + 0.5)) end
 	local style = styleProf.Style
@@ -1170,29 +1234,11 @@ function UniversalVFXOverhaul.SpawnMartialKata(styleProf, moveKey, startPos, end
 		end
 
 	elseif style == "GodhumanPrism" then
-		-- Celestial Godhuman: Multi-beam radiant spear convergence + golden-cyan prism shock rings
-		local midBeam = (startPos + dst) * 0.5
-		local dist = math.max(1, (dst - startPos).Magnitude)
-		local spear = Lib.MakePart("GodhumanPrismBeam", Enum.PartType.Cylinder, Vector3.new(dist, 2.2 * sc, 2.2 * sc), Lib.SafeLookAt(midBeam, dst, lookDir) * CFrame.Angles(0, math.pi * 0.5, 0), PAL.Gold, 0.12, Enum.Material.ForceField, folder)
-		local cyanCore = Lib.MakePart("GodhumanCyanCore", Enum.PartType.Cylinder, Vector3.new(dist, 1.0 * sc, 1.0 * sc), spear.CFrame, PAL.Cyan, 0.06, Enum.Material.ForceField, folder)
-		TweenService:Create(spear, TweenInfo.new(0.34, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(dist, 5.4 * sc, 5.4 * sc), Transparency = 1 }):Play()
-		TweenService:Create(cyanCore, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(dist, 0.1, 0.1), Transparency = 1 }):Play()
-		Debris:AddItem(spear, 0.38)
-		Debris:AddItem(cyanCore, 0.32)
-		for i = 1, count do
-			local frac = i / count
-			local p = startPos:Lerp(dst, frac)
-			Lib.SpawnShockRing(p, Lib.SafeLookAt(p, p + lookDir, lookDir) * CFrame.Angles(math.pi * 0.5, 0, 0), (i % 2 == 0) and PAL.Gold or PAL.Cyan, 2.0 * sc, 10.4 * sc, 0.22, 0.34, Enum.Material.ForceField, folder)
-		end
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.3, 0), dst + Vector3.new(0, 1.3, 0), 3.0 * sc, count, PAL.Gold, PAL.Cyan, 0.38, folder)
 
 	else
 		-- PalmRings (Skyborn Combat)
-		for i = 1, count do
-			task.delay((i - 1) * 0.030, function()
-				local p = startPos:Lerp(dst, i / count)
-				Lib.SpawnShockRing(p, Lib.SafeLookAt(p, p + lookDir, lookDir) * CFrame.Angles(math.pi * 0.5, 0, 0), (i % 2 == 0) and prof.Secondary or prof.Primary, 2.4 * sc, 9.0 * sc, 0.24, 0.30, Enum.Material.ForceField, folder)
-			end)
-		end
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.2, 0), dst + Vector3.new(0, 1.2, 0), 2.6 * sc, count, prof.Primary, prof.Secondary, 0.36, folder)
 	end
 
 	local rad = (moveKey == "V") and 18 or ((moveKey == "C") and 13 or 9)
@@ -1202,7 +1248,7 @@ function UniversalVFXOverhaul.SpawnMartialKata(styleProf, moveKey, startPos, end
 end
 
 -- ============================================================================
--- 5. BASIC MELEE M1 COMBOS 1-4 & HEAVY CLEAVE
+-- 5. BASIC MELEE M1 COMBOS 1-4 & HEAVY CLEAVE (FADE SHOWCASE SLASH & TUNNEL)
 -- ============================================================================
 function UniversalVFXOverhaul.SpawnMeleeCombo(actorChar, startPos, lookDir, combo, isHeavy, hakiColor, isAwakened, isLocal)
 	local folder = Lib.GetTempFolder("UniversalVFX")
@@ -1222,9 +1268,11 @@ function UniversalVFXOverhaul.SpawnMeleeCombo(actorChar, startPos, lookDir, comb
 	Lib.VibeGG_MeleeHit5Steps(dst, lookDir, isFinisher, isHeavy, nil, isLocal)
 
 	if isFinisher then
-		-- X-Cross Dual Cleave Wave + Ground Shockwave + Sword_SlashWave Prefab
+		-- X-Cross Dual Curved Crescent Wave + Haymaker Corkscrew Finisher Tunnel + Ground Slash Ribbon
 		spawnLayeredSlashWave(startPos + lookDir * 1.4, dst, 0.56, sc, primary, secondary, 0.28, folder)
 		spawnLayeredSlashWave(startPos + lookDir * 1.4, dst, -0.56, sc, secondary, primary, 0.28, folder)
+		Lib.SpawnFadeCorkscrewTunnel(startPos + lookDir * 1.2 + Vector3.new(0, 1.0, 0), dst + Vector3.new(0, 1.0, 0), 2.1 * sc, 4, primary, secondary, 0.30, folder)
+		Lib.SpawnFadeGroundSlashRibbon(startPos + lookDir * 1.0, dst, 1.8 * sc, primary, secondary, 0.34, folder)
 		Lib.Emit("Combat", "Sword_SlashWave", Lib.SafeLookAt(startPos + lookDir * 2.5, dst, lookDir), sc, primary, PAL.Obsidian)
 		local gPos = Lib.FindGround(startPos + lookDir * 4.2)
 		Lib.SpawnShockRing(gPos + Vector3.new(0, 0.14, 0), nil, primary, 1.8 * sc, 11.2 * sc, 0.22, 0.32, Enum.Material.ForceField, folder)
@@ -1234,6 +1282,7 @@ function UniversalVFXOverhaul.SpawnMeleeCombo(actorChar, startPos, lookDir, comb
 	else
 		local tilts = { -0.52, 0.54, -0.18 }
 		spawnLayeredSlashWave(startPos + lookDir * 1.4, dst, tilts[cNum] or 0.48, sc, primary, secondary, 0.22, folder)
+		Lib.SpawnFadeGroundSlashRibbon(startPos + lookDir * 1.2, dst, 1.15 * sc, primary, secondary, 0.26, folder)
 		Lib.Emit("Combat", "Sword_SlashWave", Lib.SafeLookAt(startPos + lookDir * 2.2, dst, lookDir), sc * 0.72, primary, PAL.Obsidian)
 	end
 end
@@ -1313,7 +1362,7 @@ function UniversalVFXOverhaul.SpawnClassOrWeaponSkill(action, kind, moveKey, act
 		return true
 	end
 
-	-- A. Slot 4 Guns / Railgun Tracer Shots
+	-- A. Slot 4 Guns / Railgun Tracer Shots (FADE Corkscrew Tunnel + Muzzle Crescent Ring)
 	if k == "GunShot" or act:find("Gun") or act:find("Rifle") or act:find("Shot") or act:find("Bullet") or act:find("Rail") then
 		if moveKey == "Z" or moveKey == "X" then
 			if ExpansionVFX.SpawnExpansionSkillVFX(Lib, UniversalVFXOverhaul, spawnLayeredSlashWave, folder, act, k, moveKey, actorChar, startPos, dst, lookDir, sc, isAwakened, isLocal, fx) then
@@ -1326,19 +1375,10 @@ function UniversalVFXOverhaul.SpawnClassOrWeaponSkill(action, kind, moveKey, act
 		local col = PAL.Cyan
 		local sub = PAL.Violet
 		local aimCF = Lib.SafeLookAt(muzzlePos, dst, lookDir)
-		-- VibeGG 5-Step Gunplay (Muzzle Flash + PointLight, Spread & Tracer, Recoil, Brass Shell Ejection, Decals + Slow-Mo Ragdoll Finisher)
+		if actorChar then Lib.PlaySkillCastPose(actorChar, moveKey or "Z", 0.26) end
 		Lib.VibeGG_Gunplay5Steps(muzzlePos, dst, lookDir, col, sub, sc, (moveKey == "X" or moveKey == "V" or isAwakened), isLocal, actorChar)
 		Lib.Emit("Combat", "Gun_RailBurst", aimCF, sc, col, sub)
-		Lib.SpawnShockRing(muzzlePos, aimCF * CFrame.Angles(math.pi * 0.5, 0, 0), col, 0.8 * sc, 5.2 * sc, 0.18, 0.22, Enum.Material.ForceField, folder)
-
-		local dist = math.max(1, (dst - muzzlePos).Magnitude)
-		local mid = (muzzlePos + dst) * 0.5
-		local rail = Lib.MakePart("RailTracerBeam", Enum.PartType.Cylinder, Vector3.new(dist, 0.52 * sc, 0.52 * sc), Lib.SafeLookAt(mid, dst, lookDir) * CFrame.Angles(0, math.pi * 0.5, 0), col, 0.08, Enum.Material.ForceField, folder)
-		local core = Lib.MakePart("RailTracerCore", Enum.PartType.Cylinder, Vector3.new(dist, 0.20 * sc, 0.20 * sc), rail.CFrame, PAL.HotWhite, 0.04, Enum.Material.SmoothPlastic, folder)
-		TweenService:Create(rail, TweenInfo.new(0.24, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(dist, 1.6 * sc, 1.6 * sc), Transparency = 1 }):Play()
-		TweenService:Create(core, TweenInfo.new(0.18), { Size = Vector3.new(dist, 0.04, 0.04), Transparency = 1 }):Play()
-		Debris:AddItem(rail, 0.28)
-		Debris:AddItem(core, 0.22)
+		Lib.SpawnFadeCorkscrewTunnel(muzzlePos, dst, 1.85 * sc, 5, col, sub, 0.32, folder)
 
 		local bullet = Lib.MakePart("RailSlug", Enum.PartType.Ball, Vector3.new(0.4, 0.4, 0.4), CFrame.new(muzzlePos), PAL.HotWhite, 1, Enum.Material.SmoothPlastic, folder)
 		Lib.AttachRibbonTrail(bullet, PAL.HotWhite, col, PAL.Obsidian, 0.9 * sc, 0.22)
@@ -1353,17 +1393,25 @@ function UniversalVFXOverhaul.SpawnClassOrWeaponSkill(action, kind, moveKey, act
 		return true
 	end
 
-	-- B. Slot 3 Swords / SkySlash / ChargedSlash
+	-- B. Slot 3 Swords / SkySlash / ChargedSlash (FADE Ground Slash Ribbon + Crescent Waves + Jagged Spikes)
 	if k == "ChargedSlash" or act == "SkySlash" or act:find("Slash") or act:find("Blade") or act:find("Sword") then
 		if ExpansionVFX.SpawnExpansionSkillVFX(Lib, UniversalVFXOverhaul, spawnLayeredSlashWave, folder, act, k, moveKey, actorChar, startPos, dst, lookDir, sc, isAwakened, isLocal, fx) then
 			return true
 		end
 		local col = (act:find("Void") or act:find("Abyss")) and PAL.Violet or PAL.Gold
 		local sub = PAL.Cyan
+		if actorChar then Lib.PlaySkillCastPose(actorChar, moveKey or "Z", 0.34) end
 		UniversalVFXOverhaul.SpawnStage1Sigil(Lib.SafeLookAt(startPos, dst, lookDir), { Primary = col, Secondary = sub, Accent = PAL.Slate, Element = "Light" }, sc * 0.9, isAwakened)
 		Lib.Emit("Combat", "Sword_SlashWave", Lib.SafeLookAt(startPos + lookDir * 2.2, dst, lookDir), sc * 1.2, col, sub)
+		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 2.2 * sc, col, sub, 0.44, folder)
 		spawnLayeredSlashWave(startPos + Vector3.new(0, 0.6, 0), dst, 0.36, sc * 1.18, col, sub, 0.32, folder)
 		spawnLayeredSlashWave(startPos + Vector3.new(0, 0.6, 0), dst, -0.36, sc * 1.05, sub, col, 0.32, folder)
+		if moveKey == "X" or moveKey == "C" or moveKey == "V" then
+			Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.1, 0), dst + Vector3.new(0, 1.1, 0), 2.5 * sc, 5, col, sub, 0.38, folder)
+		end
+		if moveKey == "C" or moveKey == "V" then
+			if isLocal then Lib.TriggerAnimeImpactFrame(col, 0.038, 4.2, 0.45) end
+		end
 		task.delay(0.28, function()
 			UniversalVFXOverhaul.SpawnStage3Aftermath(dst, { Primary = col, Secondary = sub, Accent = PAL.Slate, Element = "Light" }, (moveKey == "V" and 16 or 10), sc, isAwakened, isLocal)
 		end)

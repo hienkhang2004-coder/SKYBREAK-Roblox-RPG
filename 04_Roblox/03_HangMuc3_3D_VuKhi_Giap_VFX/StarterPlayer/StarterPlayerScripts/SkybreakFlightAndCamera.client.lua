@@ -539,6 +539,92 @@ local function buildBespokeFlightRig(ch, root, fruitKey, spec)
 	folder.Parent = tempFX
 	local data = { Mode = spec.Mode, Parts = {}, SpinAngle = 0 }
 
+	-- FADE Showcase Swept Curved-Beam Wings + Wingtip Slipstream Trails attached to Flight Rig
+	local wingHost = makeFXPart("FadeFlightWingHost", Enum.PartType.Ball, Vector3.new(0.2, 0.2, 0.2), root.CFrame, spec.Primary, 1, Enum.Material.SmoothPlastic, folder)
+	local wWeld = Instance.new("WeldConstraint")
+	wWeld.Part0 = root
+	wWeld.Part1 = wingHost
+	wWeld.Parent = wingHost
+
+	for side = -1, 1, 2 do
+		local aRoot = Instance.new("Attachment")
+		aRoot.Position = Vector3.new(side * 0.65, 0.6, 0.5)
+		aRoot.Orientation = Vector3.new(0, side * 35, side * 18)
+		aRoot.Parent = wingHost
+
+		local aTip = Instance.new("Attachment")
+		aTip.Position = Vector3.new(side * 5.8, 1.8, 2.4)
+		aTip.Orientation = Vector3.new(0, side * -55, 0)
+		aTip.Parent = wingHost
+
+		local darkWing = Instance.new("Beam")
+		darkWing.Attachment0 = aRoot
+		darkWing.Attachment1 = aTip
+		darkWing.Texture = "rbxasset://textures/particles/fire_main.dds"
+		darkWing.TextureSpeed = 2.8
+		darkWing.Segments = 24
+		darkWing.CurveSize0 = 2.6
+		darkWing.CurveSize1 = 1.8
+		darkWing.Width0 = 1.85
+		darkWing.Width1 = 0.15
+		darkWing.Color = ColorSequence.new(Color3.fromRGB(16, 12, 28))
+		darkWing.LightEmission = 0
+		darkWing.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.12),
+			NumberSequenceKeypoint.new(0.75, 0.22),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		darkWing.Parent = wingHost
+
+		local glowWing = Instance.new("Beam")
+		glowWing.Attachment0 = aRoot
+		glowWing.Attachment1 = aTip
+		glowWing.Texture = "rbxasset://textures/particles/fire_main.dds"
+		glowWing.TextureSpeed = 3.6
+		glowWing.Segments = 24
+		glowWing.CurveSize0 = 2.5
+		glowWing.CurveSize1 = 1.7
+		glowWing.Width0 = 1.35
+		glowWing.Width1 = 0.08
+		glowWing.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(250, 252, 255)),
+			ColorSequenceKeypoint.new(0.45, spec.Primary),
+			ColorSequenceKeypoint.new(1, spec.Secondary),
+		})
+		glowWing.LightEmission = 1.0
+		pcall(function() glowWing.Brightness = 4.6 end)
+		glowWing.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.04),
+			NumberSequenceKeypoint.new(0.78, 0.16),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		glowWing.FaceCamera = true
+		glowWing.Parent = wingHost
+
+		-- Wingtip Vortex Ribbon Trail
+		local aTrail0 = Instance.new("Attachment")
+		aTrail0.Position = Vector3.new(side * 5.6, 1.95, 2.3)
+		aTrail0.Parent = wingHost
+		local aTrail1 = Instance.new("Attachment")
+		aTrail1.Position = Vector3.new(side * 5.6, 1.65, 2.3)
+		aTrail1.Parent = wingHost
+		local tr = Instance.new("Trail")
+		tr.Attachment0 = aTrail0
+		tr.Attachment1 = aTrail1
+		tr.Color = glowWing.Color
+		tr.LightEmission = 1.0
+		tr.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.08),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		tr.WidthScale = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		tr.Lifetime = 0.28
+		tr.Parent = wingHost
+	end
+
 	if spec.Mode == "LightBeam" then
 		-- Pure Golden Photon Beam Body + Star Prism Fins
 		for _, p in ipairs(ch:GetChildren()) do

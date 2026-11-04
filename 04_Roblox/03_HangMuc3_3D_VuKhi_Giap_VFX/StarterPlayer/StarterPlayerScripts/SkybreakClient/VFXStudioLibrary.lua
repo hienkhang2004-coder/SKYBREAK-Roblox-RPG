@@ -288,30 +288,163 @@ function VFXStudioLibrary.SafeLookAt(fromPos, toPos, fallbackDir)
 	return CFrame.lookAt(fromPos, fromPos + dir, upVec)
 end
 
+function VFXStudioLibrary.SpawnFadeCrescentArc(centerCF, startR, endR, width, cPrimary, cSecondary, dur, parent)
+	local d = dur or 0.38
+	local col1 = cPrimary or PAL.Cyan
+	local col2 = cSecondary or PAL.HotWhite
+	local folder = parent or VFXStudioLibrary.GetTempFolder("UniversalVFX")
+
+	local host = Instance.new("Part")
+	host.Name = "FadeCrescentHost"
+	host.Size = Vector3.new(0.2, 0.2, 0.2)
+	host.CFrame = centerCF
+	host.Transparency = 1
+	host.Anchored = true
+	host.CanCollide = false
+	host.CanQuery = false
+	host.CanTouch = false
+	host.Parent = folder
+
+	local aLeft = Instance.new("Attachment")
+	aLeft.Position = Vector3.new(-startR, 0, 0)
+	aLeft.Orientation = Vector3.new(0, 90, 0)
+	aLeft.Parent = host
+
+	local aRight = Instance.new("Attachment")
+	aRight.Position = Vector3.new(startR, 0, 0)
+	aRight.Orientation = Vector3.new(0, -90, 0)
+	aRight.Parent = host
+
+	local w = math.max(0.45, width or 1.6)
+
+	-- 1. Dark Obsidian Silhouette Backing Beam (FADE high-contrast edge)
+	local darkBeam = Instance.new("Beam")
+	darkBeam.Name = "FadeDarkSilhouette"
+	darkBeam.Attachment0 = aLeft
+	darkBeam.Attachment1 = aRight
+	darkBeam.Texture = TEX_FIRE_PLASMA
+	darkBeam.TextureMode = Enum.TextureMode.Stretch
+	darkBeam.TextureSpeed = 2.2
+	darkBeam.Segments = 28
+	darkBeam.CurveSize0 = startR * 1.35
+	darkBeam.CurveSize1 = startR * 1.35
+	darkBeam.Width0 = w * 0.22
+	darkBeam.Width1 = w * 1.45
+	darkBeam.Color = ColorSequence.new(PAL.Obsidian)
+	darkBeam.LightEmission = 0
+	darkBeam.LightInfluence = 0
+	darkBeam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.22, 0.12),
+		NumberSequenceKeypoint.new(0.75, 0.08),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	darkBeam.FaceCamera = false
+	darkBeam.Parent = host
+
+	-- 2. Primary Elemental Glow Crescent Beam
+	local elemBeam = Instance.new("Beam")
+	elemBeam.Name = "FadeElementCrescent"
+	elemBeam.Attachment0 = aLeft
+	elemBeam.Attachment1 = aRight
+	elemBeam.Texture = TEX_FIRE_PLASMA
+	elemBeam.TextureMode = Enum.TextureMode.Stretch
+	elemBeam.TextureSpeed = 3.0
+	elemBeam.Segments = 28
+	elemBeam.CurveSize0 = startR * 1.32
+	elemBeam.CurveSize1 = startR * 1.32
+	elemBeam.Width0 = w * 0.15
+	elemBeam.Width1 = w * 1.05
+	elemBeam.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, col2),
+		ColorSequenceKeypoint.new(0.45, col1),
+		ColorSequenceKeypoint.new(1, PAL.HotWhite),
+	})
+	elemBeam.LightEmission = 1.0
+	elemBeam.LightInfluence = 0
+	pcall(function() elemBeam.Brightness = 4.8 end)
+	elemBeam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.18, 0.05),
+		NumberSequenceKeypoint.new(0.82, 0.02),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	elemBeam.FaceCamera = true
+	elemBeam.Parent = host
+
+	-- 3. Overbright White Razor Core Beam
+	local coreBeam = Instance.new("Beam")
+	coreBeam.Name = "FadeRazorWhiteCore"
+	coreBeam.Attachment0 = aLeft
+	coreBeam.Attachment1 = aRight
+	coreBeam.Segments = 24
+	coreBeam.CurveSize0 = startR * 1.30
+	coreBeam.CurveSize1 = startR * 1.30
+	coreBeam.Width0 = w * 0.05
+	coreBeam.Width1 = w * 0.42
+	coreBeam.Color = ColorSequence.new(PAL.HotWhite)
+	coreBeam.LightEmission = 1.0
+	coreBeam.LightInfluence = 0
+	pcall(function() coreBeam.Brightness = 6.5 end)
+	coreBeam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.25, 0),
+		NumberSequenceKeypoint.new(0.80, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	coreBeam.FaceCamera = true
+	coreBeam.Parent = host
+
+	TweenService:Create(aLeft, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		Position = Vector3.new(-endR, 0, 0),
+	}):Play()
+	TweenService:Create(aRight, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		Position = Vector3.new(endR, 0, 0),
+	}):Play()
+	TweenService:Create(darkBeam, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		CurveSize0 = endR * 1.35,
+		CurveSize1 = endR * 1.35,
+		Width0 = 0,
+		Width1 = 0.05,
+	}):Play()
+	TweenService:Create(elemBeam, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		CurveSize0 = endR * 1.32,
+		CurveSize1 = endR * 1.32,
+		Width0 = 0,
+		Width1 = 0.04,
+	}):Play()
+	TweenService:Create(coreBeam, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		CurveSize0 = endR * 1.30,
+		CurveSize1 = endR * 1.30,
+		Width0 = 0,
+		Width1 = 0.02,
+	}):Play()
+	TweenService:Create(host, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		CFrame = centerCF * CFrame.Angles(0, 1.35, 0),
+	}):Play()
+
+	Debris:AddItem(host, d + 0.06)
+	return host
+end
+
 function VFXStudioLibrary.SpawnShockRing(pos, upCF, color, startR, endR, thickness, dur, mat, parent)
 	local baseCF = upCF or CFrame.new(pos)
 	local d = dur or 0.42
 	local col = color or PAL.Cyan
-	local ring = VFXStudioLibrary.MakePart(
-		"ShockRing",
-		Enum.PartType.Cylinder,
-		Vector3.new(thickness or 0.26, startR, startR),
-		baseCF * CFrame.Angles(0, 0, math.pi * 0.5),
-		col,
-		0.10,
-		mat or Enum.Material.Neon,
-		parent
-	)
-	TweenService:Create(ring, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-		Size = Vector3.new(math.max(0.06, (thickness or 0.26) * 0.3), endR, endR),
-		Transparency = 1,
-	}):Play()
+	local folder = parent or VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local r0 = math.max(0.6, (startR or 2.0) * 0.5)
+	local r1 = math.max(r0 + 1.5, (endR or 8.0) * 0.5)
+	local w = math.clamp((thickness or 0.28) * 4.2, 0.55, 3.2)
 
-	-- Authentic 3D Planar VFX Studio Shockwave Ring Emitter (VelocityPerpendicular)
-	if not VFXStudioLibrary.IsLowFX() then
+	-- Dual opposing Curved-Beam Crescent Arcs forming a true 360° Hollow Shockwave Torus (zero flat cylinder pancakes!)
+	local host = VFXStudioLibrary.SpawnFadeCrescentArc(baseCF, r0, r1, w, col, PAL.HotWhite, d, folder)
+	VFXStudioLibrary.SpawnFadeCrescentArc(baseCF * CFrame.Angles(0, math.pi, 0), r0 * 0.92, r1 * 0.96, w * 0.85, col, PAL.Obsidian, d * 0.95, folder)
+
+	-- Authentic 3D Planar VFX Studio Shockwave Ring + Directional Velocity-Stretched Wind Streaks
+	if not VFXStudioLibrary.IsLowFX() and host then
 		local att = Instance.new("Attachment")
-		att.CFrame = CFrame.Angles(0, 0, -math.pi * 0.5)
-		att.Parent = ring
+		att.Parent = host
+
 		local pe = Instance.new("ParticleEmitter")
 		pe.Name = "StudioShockRingEmitter"
 		pe.Texture = TEX_SHOCK_RING
@@ -321,30 +454,64 @@ function VFXStudioLibrary.SpawnShockRing(pos, upCF, color, startR, endR, thickne
 		pe.Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, PAL.HotWhite),
 			ColorSequenceKeypoint.new(0.45, col),
-			ColorSequenceKeypoint.new(1, col),
+			ColorSequenceKeypoint.new(1, PAL.Obsidian),
 		})
 		pe.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, math.max(1.0, startR * 0.55)),
-			NumberSequenceKeypoint.new(0.65, endR * 0.72),
-			NumberSequenceKeypoint.new(1, endR * 0.92),
+			NumberSequenceKeypoint.new(0, math.max(1.0, r0 * 0.9)),
+			NumberSequenceKeypoint.new(0.65, r1 * 1.35),
+			NumberSequenceKeypoint.new(1, r1 * 1.65),
 		})
 		pe.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.04),
-			NumberSequenceKeypoint.new(0.65, 0.35),
+			NumberSequenceKeypoint.new(0, 0.05),
+			NumberSequenceKeypoint.new(0.65, 0.38),
 			NumberSequenceKeypoint.new(1, 1),
 		})
 		pe.LightEmission = 1.0
 		pe.LightInfluence = 0
-		pcall(function() pe.Brightness = 4.0 end)
+		pcall(function() pe.Brightness = 4.5 end)
 		pe.Lifetime = NumberRange.new(d * 0.85, d)
 		pe.Speed = NumberRange.new(0.05, 0.12)
 		pe.SpreadAngle = Vector2.new(0, 0)
 		pe.Parent = att
 		pe:Emit(2)
+
+		-- Velocity-stretched anime speed lines bursting radially
+		local streaks = Instance.new("ParticleEmitter")
+		streaks.Name = "FadeRadialStreaks"
+		streaks.Texture = TEX_SPARK_FLARE
+		streaks.Orientation = Enum.ParticleOrientation.VelocityParallel
+		streaks.Enabled = false
+		streaks.Rate = 0
+		streaks.Squash = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, -1.8),
+			NumberSequenceKeypoint.new(1, -2.6),
+		})
+		streaks.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, PAL.HotWhite),
+			ColorSequenceKeypoint.new(0.55, col),
+			ColorSequenceKeypoint.new(1, PAL.Obsidian),
+		})
+		streaks.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, math.clamp(r1 * 0.12, 0.35, 1.4)),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		streaks.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.75, 0.25),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		streaks.LightEmission = 1.0
+		streaks.LightInfluence = 0
+		pcall(function() streaks.Brightness = 5.0 end)
+		streaks.Lifetime = NumberRange.new(0.14, 0.28)
+		streaks.Speed = NumberRange.new(r1 * 1.8, r1 * 3.4)
+		streaks.SpreadAngle = Vector2.new(90, 90)
+		streaks.Drag = 6.5
+		streaks.Parent = att
+		streaks:Emit(10)
 	end
 
-	Debris:AddItem(ring, d + 0.08)
-	return ring
+	return host
 end
 
 function VFXStudioLibrary.SpawnJaggedLightning(p0, p1, segments, jitterAmp, thickness, c1, c2, dur, parent)
@@ -370,12 +537,12 @@ function VFXStudioLibrary.SpawnJaggedLightning(p0, p1, segments, jitterAmp, thic
 			Vector3.new(thickness, thickness, segLen + thickness * 0.4),
 			VFXStudioLibrary.SafeLookAt((prev + nxt) * 0.5, nxt, aimCF.LookVector),
 			(s % 2 == 0) and (c2 or c1) or c1,
-			0.05,
+			0.02,
 			Enum.Material.ForceField,
 			parent
 		)
 		TweenService:Create(bolt, TweenInfo.new(d, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = Vector3.new(thickness * 0.15, thickness * 0.15, segLen),
+			Size = Vector3.new(thickness * 0.12, thickness * 0.12, segLen),
 			Transparency = 1,
 		}):Play()
 		Debris:AddItem(bolt, d + 0.04)
@@ -387,41 +554,82 @@ function VFXStudioLibrary.SpawnShatterCrater(centerPos, primaryCol, secondaryCol
 	local gPos = VFXStudioLibrary.FindGround(centerPos)
 	local n = count or 8
 	if VFXStudioLibrary.IsLowFX() then
-		n = math.max(3, math.floor(n * 0.45))
+		n = math.max(4, math.floor(n * 0.5))
 	end
 	local d = dur or 0.56
-	VFXStudioLibrary.SpawnShockRing(gPos + Vector3.new(0, 0.14, 0), nil, primaryCol, radius * 0.3, radius * 1.45, 0.26, d * 0.85, Enum.Material.ForceField, parent)
-	VFXStudioLibrary.SpawnShockRing(gPos + Vector3.new(0, 0.32, 0), nil, secondaryCol or primaryCol, radius * 0.2, radius * 1.05, 0.18, d * 0.72, Enum.Material.ForceField, parent)
+	local folder = parent or VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local col1 = primaryCol or PAL.Cyan
+	local col2 = secondaryCol or PAL.HotWhite
 
+	-- Dual Hollow Crescent Shockwave Rings + Ground Wind-Dust Curtain
+	VFXStudioLibrary.SpawnShockRing(gPos + Vector3.new(0, 0.18, 0), nil, col1, radius * 0.35, radius * 1.55, 0.32, d * 0.88, Enum.Material.ForceField, folder)
+	VFXStudioLibrary.SpawnShockRing(gPos + Vector3.new(0, 0.36, 0), CFrame.new(gPos + Vector3.new(0, 0.36, 0)) * CFrame.Angles(0.18, 0.6, 0), col2, radius * 0.25, radius * 1.18, 0.24, d * 0.75, Enum.Material.ForceField, folder)
+
+	-- FADE Showcase Jagged Dark-Core Impact Spikes (Obsidian silhouette needles + Neon elemental edge + Crown Crescent Arcs)
 	for i = 1, n do
-		local ang = (i - 1) * ((math.pi * 2) / n)
-		local r0 = radius * 0.42
-		local r1 = radius * 0.98
-		local p0 = gPos + Vector3.new(math.cos(ang) * r0, -0.25, math.sin(ang) * r0)
-		local p1 = gPos + Vector3.new(math.cos(ang) * r1, 0.45, math.sin(ang) * r1)
-		local isElem = (i % 2 == 0)
-		local shard = VFXStudioLibrary.MakePart(
-			"CraterFang_" .. i,
-			Enum.PartType.Wedge,
-			Vector3.new(1.15, math.clamp(radius * 0.28, 1.4, 5.2), 1.65),
-			VFXStudioLibrary.SafeLookAt(p0, gPos + Vector3.new(0, 2.4, 0)) * CFrame.Angles(-0.34, 0, (isElem and 0.18 or -0.18)),
-			isElem and primaryCol or (rockCol or PAL.Slate),
-			isElem and 0.08 or 0.04,
-			isElem and Enum.Material.ForceField or Enum.Material.Slate,
-			parent
+		local ang = (i - 1) * ((math.pi * 2) / n) + (math.random() - 0.5) * 0.18
+		local r0 = radius * 0.28
+		local r1 = radius * (0.68 + (i % 3) * 0.16)
+		local p0 = gPos + Vector3.new(math.cos(ang) * r0, -0.4, math.sin(ang) * r0)
+		local p1 = gPos + Vector3.new(math.cos(ang) * r1, 0.2, math.sin(ang) * r1)
+		local spikeH = math.clamp(radius * (0.72 + (i % 3) * 0.28), 3.8, 16.5)
+		local spikeW = math.clamp(radius * 0.14, 0.65, 2.4)
+		local outwardTilt = -0.32 - (i % 2) * 0.16
+		local aimOutCF = VFXStudioLibrary.SafeLookAt(p0, p1 + Vector3.new(0, spikeH * 0.85, 0)) * CFrame.Angles(outwardTilt, 0, 0)
+		local targetOutCF = VFXStudioLibrary.SafeLookAt(p1, p1 + (p1 - gPos).Unit * 2 + Vector3.new(0, spikeH, 0)) * CFrame.Angles(outwardTilt - 0.12, 0, 0)
+
+		-- Dark Obsidian Core Needle
+		local darkSpike = VFXStudioLibrary.MakePart(
+			"FadeImpactDarkSpike_" .. i,
+			Enum.PartType.Block,
+			Vector3.new(spikeW * 0.65, spikeW * 0.65, spikeH * 0.35),
+			aimOutCF,
+			PAL.Obsidian,
+			0.04,
+			Enum.Material.SmoothPlastic,
+			folder
 		)
-		TweenService:Create(shard, TweenInfo.new(d * 0.42, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-			CFrame = VFXStudioLibrary.SafeLookAt(p1, gPos + Vector3.new(0, 3.4, 0)) * CFrame.Angles(-0.48, 0, 0),
+		local smDark = Instance.new("SpecialMesh")
+		smDark.MeshType = Enum.MeshType.Sphere
+		smDark.Parent = darkSpike
+
+		-- Glowing Elemental Razor Rim Needle
+		local glowSpike = VFXStudioLibrary.MakePart(
+			"FadeImpactGlowRim_" .. i,
+			Enum.PartType.Block,
+			Vector3.new(spikeW * 0.88, spikeW * 0.32, spikeH * 0.42),
+			aimOutCF * CFrame.new(0, 0.12, 0),
+			(i % 2 == 0) and col1 or col2,
+			0.08,
+			Enum.Material.ForceField,
+			folder
+		)
+
+		TweenService:Create(darkSpike, TweenInfo.new(d * 0.36, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			CFrame = targetOutCF,
+			Size = Vector3.new(spikeW, spikeW * 0.85, spikeH),
 		}):Play()
-		task.delay(d * 0.55, function()
-			if shard and shard.Parent then
-				TweenService:Create(shard, TweenInfo.new(d * 0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		TweenService:Create(glowSpike, TweenInfo.new(d * 0.36, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			CFrame = targetOutCF * CFrame.new(0, 0.16, 0),
+			Size = Vector3.new(spikeW * 1.25, spikeW * 0.38, spikeH * 1.12),
+		}):Play()
+
+		task.delay(d * 0.48, function()
+			if darkSpike and darkSpike.Parent then
+				TweenService:Create(darkSpike, TweenInfo.new(d * 0.48, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
 					Transparency = 1,
-					Size = shard.Size * 0.45,
+					Size = Vector3.new(0.1, 0.1, spikeH * 1.25),
+				}):Play()
+			end
+			if glowSpike and glowSpike.Parent then
+				TweenService:Create(glowSpike, TweenInfo.new(d * 0.48, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+					Transparency = 1,
+					Size = Vector3.new(0.08, 0.08, spikeH * 1.35),
 				}):Play()
 			end
 		end)
-		Debris:AddItem(shard, d + 0.06)
+		Debris:AddItem(darkSpike, d + 0.06)
+		Debris:AddItem(glowSpike, d + 0.06)
 	end
 end
 
@@ -2544,6 +2752,338 @@ function VFXStudioLibrary.VibeGG_MagmaSpell5Steps(targetPos, scale, isHotFootFin
 				end
 			end
 		end)
+	end)
+end
+
+-- ============================================================================
+-- FADE / HAYMAKER SHOWCASE STUDIO PRIMITIVES:
+-- 1. SpawnFadeCorkscrewTunnel (Screenshot 3: Haymaker spiraling crescent rings + central dual-beam + wind shear)
+-- 2. SpawnFadeGroundSlashRibbon (Screenshot 2: Ground-hugging razor slash + suspended void/element orbs + wind fins)
+-- 3. SpawnFadeJaggedImpactSpikes (Screenshot 1: Tall jagged dark-core spikes + crown crescent arcs + mist curtain)
+-- 4. TriggerAnimeImpactFrame (0.04s Anime Showcase Impact Frame + FOV Zoom)
+-- 5. PlaySkillCastPose (Dynamic Lunge / Punch / Slam / Sovereign Cast Pose with Token Safety)
+-- ============================================================================
+function VFXStudioLibrary.SpawnFadeCorkscrewTunnel(startPos, endPos, radius, ringCount, cPrimary, cSecondary, dur, parent)
+	local d = dur or 0.42
+	local col1 = cPrimary or PAL.Cyan
+	local col2 = cSecondary or PAL.HotWhite
+	local folder = parent or VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local delta = endPos - startPos
+	local dist = math.clamp(delta.Magnitude, 6, 52)
+	local dir = (delta.Magnitude > 0.05) and delta.Unit or Vector3.new(0, 0, -1)
+	local actualEnd = startPos + dir * dist
+	local pathCF = VFXStudioLibrary.SafeLookAt(startPos, actualEnd, dir)
+	local r = math.clamp(radius or 3.2, 1.2, 12.0)
+	local nRings = VFXStudioLibrary.IsLowFX() and math.max(3, math.floor((ringCount or 6) * 0.5)) or (ringCount or 6)
+
+	-- 1. Central Dual-Layer Piercing Beam (Dark Obsidian outer contrast + Elemental Plasma + Overbright White Core)
+	local beamHost = Instance.new("Part")
+	beamHost.Name = "HaymakerTunnelBeamHost"
+	beamHost.Size = Vector3.new(0.2, 0.2, 0.2)
+	beamHost.CFrame = pathCF
+	beamHost.Transparency = 1
+	beamHost.Anchored = true
+	beamHost.CanCollide = false
+	beamHost.CanQuery = false
+	beamHost.CanTouch = false
+	beamHost.Parent = folder
+
+	local aStart = Instance.new("Attachment")
+	aStart.Position = Vector3.zero
+	aStart.Parent = beamHost
+	local aEnd = Instance.new("Attachment")
+	aEnd.Position = Vector3.new(0, 0, -dist)
+	aEnd.Parent = beamHost
+
+	local function makeTunnelBeam(nm, w0, w1, colSeq, lightEm, bright, c0, c1)
+		local b = Instance.new("Beam")
+		b.Name = nm
+		b.Attachment0 = aStart
+		b.Attachment1 = aEnd
+		b.Texture = TEX_FIRE_PLASMA
+		b.TextureMode = Enum.TextureMode.Stretch
+		b.TextureSpeed = 3.6
+		b.Segments = 28
+		b.Width0 = w0
+		b.Width1 = w1
+		b.CurveSize0 = c0 or 0
+		b.CurveSize1 = c1 or 0
+		b.Color = colSeq
+		b.LightEmission = lightEm
+		b.LightInfluence = 0
+		if bright then pcall(function() b.Brightness = bright end) end
+		b.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.08),
+			NumberSequenceKeypoint.new(0.85, 0.04),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		b.FaceCamera = true
+		b.Parent = beamHost
+		TweenService:Create(b, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Width0 = 0,
+			Width1 = 0,
+		}):Play()
+		return b
+	end
+
+	makeTunnelBeam("DarkContrastBeam", r * 1.15, r * 1.45, ColorSequence.new(PAL.Obsidian), 0, nil, 0, 0)
+	makeTunnelBeam("ElementOuterBeam", r * 0.85, r * 1.10, ColorSequence.new({
+		ColorSequenceKeypoint.new(0, col2),
+		ColorSequenceKeypoint.new(0.5, col1),
+		ColorSequenceKeypoint.new(1, PAL.Obsidian),
+	}), 1.0, 4.8, 0, 0)
+	makeTunnelBeam("RazorWhiteCoreBeam", r * 0.35, r * 0.42, ColorSequence.new(PAL.HotWhite), 1.0, 6.8, 0, 0)
+
+	-- 2. Dual Helical Wind-Shear Ribbon Beams coiling around the central beam
+	makeTunnelBeam("HelixShearA", r * 0.32, r * 0.12, ColorSequence.new({
+		ColorSequenceKeypoint.new(0, PAL.HotWhite),
+		ColorSequenceKeypoint.new(1, col1),
+	}), 1.0, 5.2, r * 2.2, -r * 2.2)
+	makeTunnelBeam("HelixShearB", r * 0.32, r * 0.12, ColorSequence.new({
+		ColorSequenceKeypoint.new(0, col2),
+		ColorSequenceKeypoint.new(1, PAL.Obsidian),
+	}), 0.85, 4.2, -r * 2.2, r * 2.2)
+
+	Debris:AddItem(beamHost, d + 0.06)
+
+	-- 3. Spiraling Tilted Hollow Crescent Shockwave Rings along the tunnel (Screenshot 3 exact look!)
+	for i = 1, nRings do
+		local frac = (i - 0.5) / nRings
+		task.delay((i - 1) * 0.018, function()
+			local ringPos = startPos:Lerp(actualEnd, frac)
+			local tiltX = ((i % 2 == 0) and 0.36 or -0.36)
+			local tiltY = ((i % 2 == 0) and -0.28 or 0.28)
+			local spinZ = i * 1.15
+			local ringCF = VFXStudioLibrary.SafeLookAt(ringPos, ringPos + dir, Vector3.yAxis)
+				* CFrame.Angles(math.pi * 0.5 + tiltX, tiltY, spinZ)
+			local rStart = r * (0.45 + frac * 0.35)
+			local rEnd = r * (1.55 + frac * 0.85)
+			VFXStudioLibrary.SpawnFadeCrescentArc(ringCF, rStart, rEnd, r * 0.52, col1, col2, d * 0.92, folder)
+			VFXStudioLibrary.SpawnFadeCrescentArc(ringCF * CFrame.Angles(0, math.pi * 0.85, 0), rStart * 0.85, rEnd * 0.90, r * 0.38, col2, PAL.HotWhite, d * 0.85, folder)
+		end)
+	end
+end
+
+function VFXStudioLibrary.SpawnFadeGroundSlashRibbon(startPos, endPos, width, cPrimary, cSecondary, dur, parent)
+	local d = dur or 0.52
+	local col1 = cPrimary or PAL.Cyan
+	local col2 = cSecondary or PAL.Violet
+	local folder = parent or VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local gStart = VFXStudioLibrary.FindGround(startPos)
+	local gEnd = VFXStudioLibrary.FindGround(endPos)
+	local delta = gEnd - gStart
+	local dist = math.clamp(delta.Magnitude, 6, 54)
+	local dir = (delta.Magnitude > 0.05) and delta.Unit or Vector3.new(0, 0, -1)
+	local actualEnd = gStart + dir * dist
+	local slashCF = VFXStudioLibrary.SafeLookAt(gStart + Vector3.new(0, 0.22, 0), actualEnd + Vector3.new(0, 0.22, 0), dir)
+	local w = math.clamp(width or 2.4, 0.8, 7.5)
+
+	-- 1. Razor-Tapered Ground Chasm Cut (Obsidian Dark Core + Neon Edge + White Center Line)
+	local midPos = (gStart + actualEnd) * 0.5 + Vector3.new(0, 0.18, 0)
+	local midCF = VFXStudioLibrary.SafeLookAt(midPos, actualEnd + Vector3.new(0, 0.18, 0), dir)
+
+	local darkCut = VFXStudioLibrary.MakePart("FadeGroundDarkCut", Enum.PartType.Block, Vector3.new(w * 0.95, 0.16, dist * 1.04), midCF, PAL.Obsidian, 0.04, Enum.Material.SmoothPlastic, folder)
+	local smCut = Instance.new("SpecialMesh")
+	smCut.MeshType = Enum.MeshType.Sphere
+	smCut.Parent = darkCut
+
+	local glowEdge = VFXStudioLibrary.MakePart("FadeGroundGlowCut", Enum.PartType.Block, Vector3.new(w * 1.35, 0.10, dist * 1.08), midCF, col1, 0.10, Enum.Material.ForceField, folder)
+	local whiteLine = VFXStudioLibrary.MakePart("FadeGroundWhiteCore", Enum.PartType.Block, Vector3.new(w * 0.36, 0.22, dist * 0.98), midCF, PAL.HotWhite, 0.02, Enum.Material.ForceField, folder)
+
+	TweenService:Create(darkCut, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.08, 0.04, dist * 1.08),
+		Transparency = 1,
+	}):Play()
+	TweenService:Create(glowEdge, TweenInfo.new(d * 0.92, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		Size = Vector3.new(w * 2.1, 0.04, dist * 1.12),
+		Transparency = 1,
+	}):Play()
+	TweenService:Create(whiteLine, TweenInfo.new(d * 0.78, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.04, 0.04, dist * 1.02),
+		Transparency = 1,
+	}):Play()
+	Debris:AddItem(darkCut, d + 0.06)
+	Debris:AddItem(glowEdge, d + 0.06)
+	Debris:AddItem(whiteLine, d + 0.06)
+
+	-- 2. Diagonal Peeling Wind-Smoke Fins & Suspended Void/Elemental Orbs (Screenshot 2 exact look!)
+	local orbCount = VFXStudioLibrary.IsLowFX() and 8 or 18
+	for i = 1, orbCount do
+		local frac = i / orbCount
+		local baseP = gStart:Lerp(actualEnd, frac)
+		local side = (i % 2 == 0) and 1 or -1
+		local lat = (0.4 + math.random() * 1.4) * w * side
+		local h0 = 0.35 + math.random() * 1.2
+		local spawnP = baseP + slashCF.RightVector * lat + Vector3.new(0, h0, 0)
+		local driftP = spawnP + slashCF.RightVector * (side * w * (0.8 + math.random() * 1.2)) + Vector3.new(0, 1.4 + math.random() * 2.8, 0) + dir * 1.8
+		local isDarkOrb = (i % 3 ~= 0)
+		local orbSz = (0.24 + math.random() * 0.38) * math.clamp(w * 0.45, 0.7, 1.8)
+		local orb = VFXStudioLibrary.MakePart(
+			isDarkOrb and ("FadeVoidOrb_" .. i) or ("FadeSparkOrb_" .. i),
+			Enum.PartType.Ball,
+			Vector3.new(orbSz, orbSz, orbSz),
+			CFrame.new(spawnP),
+			isDarkOrb and PAL.Obsidian or ((i % 2 == 0) and PAL.HotWhite or col1),
+			isDarkOrb and 0.04 or 0.02,
+			isDarkOrb and Enum.Material.SmoothPlastic or Enum.Material.ForceField,
+			folder
+		)
+		local orbDur = d * (0.85 + math.random() * 0.45)
+		TweenService:Create(orb, TweenInfo.new(orbDur, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Position = driftP,
+			Size = Vector3.new(0.04, 0.04, 0.04),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(orb, orbDur + 0.05)
+	end
+
+	-- Peeling Wind-Shear Crescent Fins at 3 points along the ground slash
+	for k = 1, 3 do
+		local finP = gStart:Lerp(actualEnd, k / 3.2) + Vector3.new(0, 0.8, 0)
+		local finCF = VFXStudioLibrary.SafeLookAt(finP, finP + dir, Vector3.yAxis) * CFrame.Angles(0.35, 0, (k % 2 == 0) and 0.45 or -0.45)
+		VFXStudioLibrary.SpawnFadeCrescentArc(finCF, w * 0.45, w * 2.1, w * 0.42, col2, PAL.HotWhite, d * 0.75, folder)
+	end
+end
+
+function VFXStudioLibrary.SpawnFadeJaggedImpactSpikes(centerPos, radius, spikeCount, cPrimary, cSecondary, dur, parent)
+	local gPos = VFXStudioLibrary.FindGround(centerPos)
+	local r = math.clamp(radius or 10, 4, 32)
+	local n = spikeCount or 8
+	local d = dur or 0.58
+	local folder = parent or VFXStudioLibrary.GetTempFolder("UniversalVFX")
+	local col1 = cPrimary or PAL.Cyan
+	local col2 = cSecondary or PAL.HotWhite
+
+	-- Spawn Jagged Dark-Core Spikes + Crown Crescent Arcs (Screenshot 1 exact look!)
+	VFXStudioLibrary.SpawnShatterCrater(gPos, col1, col2, PAL.Obsidian, r, n, d, folder)
+
+	local arcCount = VFXStudioLibrary.IsLowFX() and 2 or 4
+	for a = 1, arcCount do
+		local ang = (a / arcCount) * math.pi * 2
+		local arcPos = gPos + Vector3.new(math.cos(ang) * r * 0.48, r * 0.42, math.sin(ang) * r * 0.48)
+		local arcCF = CFrame.new(arcPos) * CFrame.Angles(0.55, ang, 0.35)
+		VFXStudioLibrary.SpawnFadeCrescentArc(arcCF, r * 0.25, r * 0.95, math.clamp(r * 0.16, 0.8, 2.8), col1, PAL.HotWhite, d * 0.88, folder)
+	end
+end
+
+local lastImpactFrameAt = 0
+function VFXStudioLibrary.TriggerAnimeImpactFrame(cPrimary, duration, fovPunch, trauma)
+	local lp = Players.LocalPlayer
+	if not lp or VFXStudioLibrary.IsLowFX() then return end
+	if fovPunch or trauma then
+		VFXStudioLibrary.EmitCameraTrauma(trauma or 0.42, fovPunch or 4.5)
+	end
+	local now = os.clock()
+	if (now - lastImpactFrameAt) < 0.22 then return end
+	lastImpactFrameAt = now
+
+	local Lighting = game:GetService("Lighting")
+	local cc = Lighting:FindFirstChild("SkybreakAnimeImpactCC")
+	if not cc then
+		cc = Instance.new("ColorCorrectionEffect")
+		cc.Name = "SkybreakAnimeImpactCC"
+		cc.Parent = Lighting
+	end
+	local flashDur = math.clamp(duration or 0.045, 0.03, 0.07)
+	local col = cPrimary or PAL.HotWhite
+	local tint = Color3.new(
+		0.82 + col.R * 0.18,
+		0.82 + col.G * 0.18,
+		0.82 + col.B * 0.18
+	)
+	cc.Enabled = true
+	cc.Contrast = 0.62
+	cc.Saturation = 0.28
+	cc.Brightness = 0.07
+	cc.TintColor = tint
+
+	task.delay(flashDur, function()
+		if cc and cc.Parent then
+			TweenService:Create(cc, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Contrast = 0,
+				Saturation = 0,
+				Brightness = 0,
+				TintColor = Color3.fromRGB(255, 255, 255),
+			}):Play()
+		end
+	end)
+end
+
+function VFXStudioLibrary.PlaySkillCastPose(actorChar, moveKey, dur)
+	if not actorChar or not actorChar.Parent then return end
+	local upperTorso = actorChar:FindFirstChild("UpperTorso") or actorChar:FindFirstChild("Torso")
+	local rootPart = actorChar:FindFirstChild("HumanoidRootPart")
+	if not upperTorso or not rootPart then return end
+
+	local waist = upperTorso:FindFirstChild("Waist") or rootPart:FindFirstChild("RootJoint")
+	local rArm = actorChar:FindFirstChild("RightUpperArm") or actorChar:FindFirstChild("Right Arm")
+	local lArm = actorChar:FindFirstChild("LeftUpperArm") or actorChar:FindFirstChild("Left Arm")
+	local rShoulder = (rArm and rArm:FindFirstChild("RightShoulder")) or upperTorso:FindFirstChild("Right Shoulder")
+	local lShoulder = (lArm and lArm:FindFirstChild("LeftShoulder")) or upperTorso:FindFirstChild("Left Shoulder")
+
+	local nextToken = (tonumber(actorChar:GetAttribute("SkybreakCastPoseToken")) or 0) + 1
+	actorChar:SetAttribute("SkybreakCastPoseToken", nextToken)
+
+	-- Cache base C0s once per rig joint
+	local function getBaseC0(motor)
+		if not motor or not motor:IsA("Motor6D") then return nil end
+		local saved = motor:GetAttribute("SkybreakBaseC0")
+		if typeof(saved) ~= "CFrame" then
+			saved = motor.C0
+			motor:SetAttribute("SkybreakBaseC0", saved)
+		end
+		return saved
+	end
+
+	local wBase = getBaseC0(waist)
+	local rBase = getBaseC0(rShoulder)
+	local lBase = getBaseC0(lShoulder)
+	local d = math.clamp(dur or 0.34, 0.22, 0.55)
+	local k = tostring(moveKey or "Z")
+
+	local wOffset = CFrame.Angles(-0.22, -0.32, 0)
+	local rOffset = CFrame.new(0, 0.15, -0.35) * CFrame.Angles(math.rad(88), 0, math.rad(-14))
+	local lOffset = CFrame.Angles(math.rad(-28), 0, math.rad(-22))
+
+	if k == "X" then
+		-- Haymaker Deep Lunge / Two-Hand Surge Pose (Screenshot 2 & 3!)
+		wOffset = CFrame.new(0, -0.15, -0.25) * CFrame.Angles(-0.38, 0.42, 0)
+		rOffset = CFrame.new(0, 0.2, -0.45) * CFrame.Angles(math.rad(96), math.rad(12), math.rad(-8))
+		lOffset = CFrame.new(0, 0.1, -0.25) * CFrame.Angles(math.rad(72), math.rad(-14), math.rad(12))
+	elseif k == "C" then
+		-- Ground Slam / Wide-Arm Cataclysm Release Pose (Screenshot 1!)
+		wOffset = CFrame.new(0, -0.22, 0) * CFrame.Angles(-0.32, 0, 0)
+		rOffset = CFrame.Angles(math.rad(110), 0, math.rad(42))
+		lOffset = CFrame.Angles(math.rad(110), 0, math.rad(-42))
+	elseif k == "V" then
+		-- Sovereign Skyward Ultimate Release Pose
+		wOffset = CFrame.new(0, 0.25, 0) * CFrame.Angles(0.24, 0, 0)
+		rOffset = CFrame.Angles(math.rad(148), 0, math.rad(32))
+		lOffset = CFrame.Angles(math.rad(148), 0, math.rad(-32))
+	end
+
+	if waist and wBase then
+		TweenService:Create(waist, TweenInfo.new(d * 0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { C0 = wBase * wOffset }):Play()
+	end
+	if rShoulder and rBase then
+		TweenService:Create(rShoulder, TweenInfo.new(d * 0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { C0 = rBase * rOffset }):Play()
+	end
+	if lShoulder and lBase then
+		TweenService:Create(lShoulder, TweenInfo.new(d * 0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { C0 = lBase * lOffset }):Play()
+	end
+
+	task.delay(d * 0.58, function()
+		if not actorChar or not actorChar.Parent then return end
+		if actorChar:GetAttribute("SkybreakCastPoseToken") ~= nextToken then return end
+		if waist and waist.Parent and wBase then
+			TweenService:Create(waist, TweenInfo.new(d * 0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { C0 = wBase }):Play()
+		end
+		if rShoulder and rShoulder.Parent and rBase then
+			TweenService:Create(rShoulder, TweenInfo.new(d * 0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { C0 = rBase }):Play()
+		end
+		if lShoulder and lShoulder.Parent and lBase then
+			TweenService:Create(lShoulder, TweenInfo.new(d * 0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { C0 = lBase }):Play()
+		end
 	end)
 end
 

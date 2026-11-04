@@ -268,62 +268,10 @@ local function findGroundPos(origin, ignoreChar)
 	return hit and hit.Position or (origin - Vector3.new(0, 2.6, 0))
 end
 
+local Lib = require(script.Parent:WaitForChild("VFXStudioLibrary"))
+
 local function spawnShockRing(pos, upCF, color, startR, endR, thickness, dur, mat, parent)
-	local baseCF = upCF or CFrame.new(pos)
-	local d = dur or 0.44
-	local col = color or PALETTE.Crimson
-	local ring = makePart(
-		"DragonShockRing",
-		Enum.PartType.Cylinder,
-		Vector3.new(thickness or 0.28, startR, startR),
-		baseCF * CFrame.Angles(0, 0, math.pi * 0.5),
-		col,
-		0.10,
-		mat or Enum.Material.Neon,
-		parent
-	)
-	TweenService:Create(ring, TweenInfo.new(d, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-		Size = Vector3.new(math.max(0.06, (thickness or 0.28) * 0.3), endR, endR),
-		Transparency = 1,
-	}):Play()
-
-	if not isLowFX() then
-		local att = Instance.new("Attachment")
-		att.CFrame = CFrame.Angles(0, 0, -math.pi * 0.5)
-		att.Parent = ring
-		local pe = Instance.new("ParticleEmitter")
-		pe.Name = "DragonShockRingEmitter"
-		pe.Texture = TEX_SHOCK_RING
-		pe.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
-		pe.Enabled = false
-		pe.Rate = 0
-		pe.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, PALETTE.HotCore),
-			ColorSequenceKeypoint.new(0.45, col),
-			ColorSequenceKeypoint.new(1, col),
-		})
-		pe.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, math.max(1.2, startR * 0.55)),
-			NumberSequenceKeypoint.new(0.65, endR * 0.72),
-			NumberSequenceKeypoint.new(1, endR * 0.92),
-		})
-		pe.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.04),
-			NumberSequenceKeypoint.new(0.65, 0.35),
-			NumberSequenceKeypoint.new(1, 1),
-		})
-		pe.LightEmission = 1.0
-		pe.LightInfluence = 0
-		pcall(function() pe.Brightness = 4.2 end)
-		pe.Lifetime = NumberRange.new(d * 0.85, d)
-		pe.Speed = NumberRange.new(0.05, 0.12)
-		pe.SpreadAngle = Vector2.new(0, 0)
-		pe.Parent = att
-		pe:Emit(2)
-	end
-
-	Debris:AddItem(ring, d + 0.08)
-	return ring
+	return Lib.SpawnShockRing(pos, upCF, color or PALETTE.Crimson, startR, endR, thickness, dur, mat, parent)
 end
 
 local function spawnDraconicLightningArc(p0, p1, colMain, colCore, thickness, segments, dur, parent)
@@ -2609,14 +2557,45 @@ function DragonSovereignVFX.DispatchMove(moveKey, actorChar, startPos, endPos, l
 
 	pcall(spawnDragonSkillCallout, startPos, tier, k)
 
+	local sc = math.clamp(scale or 1, 0.7, 2.2)
+	local safeDir = (typeof(lookDir) == "Vector3" and lookDir.Magnitude > 0.05) and lookDir.Unit or Vector3.new(0, 0, -1)
+	local dst = (typeof(endPos) == "Vector3" and (endPos - startPos).Magnitude > 4) and endPos or (startPos + safeDir * 28 * sc)
+	local folder = getTempFolder()
+	local cMain = ((tier or 0) >= 2) and PALETTE.Violet or PALETTE.Crimson
+	local cSub = PALETTE.AwakenedGold
+
+	if actorChar and (tier or 0) < 2 then
+		Lib.PlaySkillCastPose(actorChar, k, 0.36)
+	end
+
 	if k == "V" then
 		local vTier = tier
 		if not vTier or vTier < 0 then
 			local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
 			vTier = (anchors.Tier > 0) and anchors.Tier or 1
 		end
+		Lib.SpawnFadeJaggedImpactSpikes(startPos, 20.0 * sc, isLowFX() and 6 or 12, cMain, cSub, 0.75, folder)
+		if isLocal then
+			Lib.TriggerAnimeImpactFrame(cMain, 0.050, 6.4, 0.68)
+		end
 		DragonSovereignVFX.SpawnTransformAscension(actorChar, startPos, vTier, isAwakened, isLocal)
 		return
+	end
+
+	-- FADE / Haymaker Showcase Layering for Dragon Moves (Z / X / C / F)
+	if k == "Z" then
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.8 * sc, 0), dst + Vector3.new(0, 1.4 * sc, 0), 3.4 * sc, 6, cMain, cSub, 0.46, folder)
+		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 2.4 * sc, cMain, cSub, 0.48, folder)
+	elseif k == "X" then
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.6 * sc, 0), dst + Vector3.new(0, 1.2 * sc, 0), 3.8 * sc, 7, cMain, cSub, 0.50, folder)
+		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 2.8 * sc, cMain, cSub, 0.52, folder)
+		if isLocal then Lib.TriggerAnimeImpactFrame(cMain, 0.036, 4.2, 0.46) end
+	elseif k == "C" then
+		Lib.SpawnFadeJaggedImpactSpikes(dst, 18.0 * sc, isLowFX() and 6 or 12, cMain, cSub, 0.68, folder)
+		if isLocal then Lib.TriggerAnimeImpactFrame(cMain, 0.044, 5.2, 0.58) end
+	elseif k == "F" then
+		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 2.6 * sc, cMain, cSub, 0.46, folder)
+		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.2 * sc, 0), dst + Vector3.new(0, 1.2 * sc, 0), 2.8 * sc, 5, cMain, cSub, 0.38, folder)
 	end
 
 	if (tier or 0) >= 2 then
