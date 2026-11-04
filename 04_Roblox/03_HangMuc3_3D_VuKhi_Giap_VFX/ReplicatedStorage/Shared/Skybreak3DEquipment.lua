@@ -923,9 +923,6 @@ function M.BuildRaceV4Wings(Renderer, s, raceName)
     if type(raceName) ~= 'string' or raceName == '' then
         return
     end
-    if s.IsNativeAvatar and not s.NativeRaceV4Toggled then
-        return
-    end
 
     computeBindBasis(s)
     local wingAsset = (Renderer.GetRaceWingAsset and Renderer.GetRaceWingAsset(raceName)) or 'Wing_Skyborn'
@@ -1296,9 +1293,6 @@ function M.BuildCharacterAccessories(s, rawKey)
     end
     s.AccessoryFX = nil
     s.AccessoryKey = rawKey or ''
-    if s.IsNativeAvatar then
-        return
-    end
     if s.AccessoryKey == '' or s.AccessoryKey:gsub('|', '') == '' then
         return
     end
@@ -1639,14 +1633,6 @@ end
 
 function M.StepCharacterAccessories(s, now, capeWind)
     if not s or not s.Visual or not s.Visual.Parent or not s.Root or not s.Root.Parent then
-        return
-    end
-    if s.IsNativeAvatar then
-        local old = s.Visual:FindFirstChild('CharacterAccessories3D')
-        if old then
-            old:Destroy()
-        end
-        s.AccessoryFX = nil
         return
     end
     local key = readAccessoryKey(s.Character, s.Owner)

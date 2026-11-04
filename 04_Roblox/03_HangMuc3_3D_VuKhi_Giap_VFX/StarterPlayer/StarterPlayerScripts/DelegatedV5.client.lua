@@ -122,14 +122,20 @@ local function makeAuraPart(parent, name, size, color, shape, transparency, clas
     end
     p.Size = size
     p.Color = color
-    p.Material = (material and material ~= Enum.Material.Neon) and material or Enum.Material.SmoothPlastic
+    p.Material = material or Enum.Material.Neon
     p.Reflectance = reflectance or 0
-    p.Transparency = math.max(transparency or 0.55, 0.45)
+    p.Transparency = transparency or 0.18
     p.Anchored = true
     p.CanCollide = false
     p.CanQuery = false
     p.CanTouch = false
     p.Massless = true
+    p.CastShadow = false
+    if (not className or className == 'Part') and p.Shape == Enum.PartType.Block and p.Material == Enum.Material.Neon then
+        local sm = Instance.new('SpecialMesh')
+        sm.MeshType = Enum.MeshType.Sphere
+        sm.Parent = p
+    end
     p.Parent = parent
     return p
 end
@@ -146,6 +152,7 @@ local FX_MANAGED_CONTAINERS = {
     WeaponAwakeningAura = true,
     FruitTransformFX = true,
     HakiAuraFX = true,
+    SkybreakBusoCoating = true,
     RaceV4FX = true,
     RaceV4WingsFX = true,
     HeldFruit3D = true,
@@ -172,7 +179,7 @@ local function restoreNativeAvatarVisibility(ch, allowFallbackFace)
     if not ch or not ch.Parent then
         return
     end
-    for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual', 'CharacterAccessories3D' }) do
+    for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual' }) do
         local oldVis = ch:FindFirstChild(oldVisName)
         if oldVis then
             oldVis:Destroy()
@@ -372,9 +379,6 @@ local function buildWeaponAwakeningAura(s)
     s.EnhanceLevel = level
     s.EquippedSword = swordId
     s.EquippedGun = gunId
-    if s.IsNativeAvatar then
-        return
-    end
 
     for _, part in s.Model:GetDescendants() do
         if part:IsA('BasePart') and part:GetAttribute('EquipmentRole') == 'Weapon' then
@@ -1239,6 +1243,9 @@ local function buildHakiAuraFX(s, enabled)
     local stage = math.clamp(tonumber((ch and ch:GetAttribute('HakiStage')) or (plr and plr:GetAttribute('HakiStage'))) or 1, 0, 5)
     s.HakiColorRGB = hakiPrimary
     s.HakiStage = stage
+    if plr == player then
+        return
+    end
 
     local folder = Instance.new('Folder')
     folder.Name = 'HakiAuraFX'
@@ -1281,6 +1288,7 @@ local function buildHakiAuraFX(s, enabled)
 
         local emitter = Instance.new('ParticleEmitter')
         emitter.Name = 'HakiLightningEmitter'
+        emitter.Texture = 'rbxassetid://1084969995'
         emitter.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, hakiPrimary),
             ColorSequenceKeypoint.new(0.55, hakiMid),
@@ -1740,8 +1748,7 @@ local function spawnWorld3DDevilFruits()
     for idx, spec in ipairs(PEDESTAL_FRUITS) do
         local rawX = pedestalHubCenter.X + spec.Offset.X
         local rawZ = pedestalHubCenter.Z + spec.Offset.Z
-        local hit = workspace:Raycast(Vector3.new(rawX, 90, rawZ), Vector3.new(0, -60, 0))
-        local floorY = hit and hit.Position.Y or 46.5
+        local floorY = Equipment3D.RaycastSolidFloor(Vector3.new(rawX, 46.5, rawZ), 46.5)
         local pedPos = Vector3.new(rawX, floorY + 3.85 + spec.Offset.Y, rawZ)
 
         local pedBase = Instance.new('Part')
