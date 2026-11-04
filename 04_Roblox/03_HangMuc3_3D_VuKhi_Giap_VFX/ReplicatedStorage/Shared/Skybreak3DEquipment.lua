@@ -1311,182 +1311,73 @@ local function isInsideStarterManagedFX(inst, ch)
     return false
 end
 
+local HIDDEN_SERVER_PARTS = {
+    HumanoidRootPart = true,
+    SkybornBlade = true,
+    GuardianBreastplate = true,
+    GuardianCrest = true,
+    CrimsonCape = true,
+}
+
 function M.EnsureStarterCharacterForm(ch)
     if not ch or not ch.Parent then
         return
     end
+    for _, oldVisName in ipairs({ 'SkybreakStarterForm', 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual', 'CharacterAccessories3D' }) do
+        local oldVis = ch:FindFirstChild(oldVisName)
+        if oldVis then
+            oldVis:Destroy()
+        end
+    end
     local animScript = ch:FindFirstChild('Animate')
-    if animScript then
-        local mood = animScript:FindFirstChild('mood')
-        if mood then
-            mood:Destroy()
-        end
-        if animScript:IsA('BaseScript') then
-            animScript.Disabled = true
-        end
+    if animScript and animScript:IsA('BaseScript') then
+        animScript.Disabled = true
     end
-    -- Strip external Roblox UGC accessories, SurfaceAppearances, shirts/pants, and dynamic head textures
-    -- so external avatar faces/collars never bleed through SkybreakStarterForm
-    for _, child in ipairs(ch:GetChildren()) do
-        if child:IsA('Accessory') or child:IsA('Hat') or child:IsA('Shirt') or child:IsA('Pants') or child:IsA('ShirtGraphic') or child:IsA('CharacterMesh') or child:IsA('BodyColors') then
-            child:Destroy()
-        end
+    if ch:GetAttribute('SkybreakBeastHidden') == true then
+        return
     end
+
+    -- Preserve 100% of the player's real outside Roblox Avatar (Body, Head, Face, Hair, Hats, Accessories, 2D/3D Clothes)
+    -- while overriding CosmeticService.Guardian's server-side Transparency = 1 hiding.
     for _, desc in ipairs(ch:GetDescendants()) do
         if not isInsideStarterManagedFX(desc, ch) then
-            if desc:IsA('SurfaceAppearance') or desc:IsA('WrapLayer') or desc:IsA('WrapTarget') or desc:IsA('FaceControls') then
-                desc:Destroy()
-            elseif desc:IsA('MeshPart') and desc.TextureID ~= '' then
-                pcall(function()
-                    desc.TextureID = ''
-                end)
-            elseif (desc:IsA('Decal') or desc:IsA('Texture')) and desc.Transparency ~= 1 then
-                desc.Transparency = 1
+            if desc:IsA('BasePart') then
+                if HIDDEN_SERVER_PARTS[desc.Name] then
+                    if desc.Transparency ~= 1 then
+                        desc.Transparency = 1
+                    end
+                else
+                    if desc.Transparency ~= 0 then
+                        desc.Transparency = 0
+                    end
+                    if desc.LocalTransparencyModifier ~= 0 then
+                        desc.LocalTransparencyModifier = 0
+                    end
+                    if not desc:GetAttribute('SkybreakVisGuard') then
+                        desc:SetAttribute('SkybreakVisGuard', true)
+                        desc:GetPropertyChangedSignal('Transparency'):Connect(function()
+                            if ch.Parent and ch:GetAttribute('SkybreakBeastHidden') ~= true and not HIDDEN_SERVER_PARTS[desc.Name] and desc.Transparency ~= 0 then
+                                desc.Transparency = 0
+                            end
+                        end)
+                    end
+                end
+            elseif desc:IsA('Decal') or desc:IsA('Texture') then
+                local parentPart = desc.Parent
+                if not (parentPart and HIDDEN_SERVER_PARTS[parentPart.Name]) then
+                    if desc.Transparency ~= 0 then
+                        desc.Transparency = 0
+                    end
+                    if not desc:GetAttribute('SkybreakVisGuard') then
+                        desc:SetAttribute('SkybreakVisGuard', true)
+                        desc:GetPropertyChangedSignal('Transparency'):Connect(function()
+                            if ch.Parent and ch:GetAttribute('SkybreakBeastHidden') ~= true and desc.Transparency ~= 0 then
+                                desc.Transparency = 0
+                            end
+                        end)
+                    end
+                end
             end
-        end
-    end
-
-    local folder = ch:FindFirstChild('SkybreakStarterForm')
-    if not folder or not folder:IsA('Model') then
-        if folder then
-            folder:Destroy()
-        end
-        folder = Instance.new('Model')
-        folder.Name = 'SkybreakStarterForm'
-        folder.Parent = ch
-    end
-    local function weldPart(host, name, size, color, offsetCF, meshType, scale, mat)
-        local p = Instance.new('Part')
-        p.Name = name
-        p.Size = size
-        p.Color = color
-        p.Material = mat or Enum.Material.SmoothPlastic
-        p.TopSurface = Enum.SurfaceType.Smooth
-        p.BottomSurface = Enum.SurfaceType.Smooth
-        p.CanCollide = false
-        p.CanQuery = false
-        p.CanTouch = false
-        p.Massless = true
-        p.CastShadow = true
-        p.CFrame = host.CFrame * (offsetCF or CFrame.identity)
-        if meshType then
-            local sm = Instance.new('SpecialMesh')
-            sm.MeshType = meshType
-            if scale then
-                sm.Scale = scale
-            end
-            sm.Parent = p
-        end
-        local w = Instance.new('WeldConstraint')
-        w.Part0 = host
-        w.Part1 = p
-        w.Parent = p
-        p.Parent = folder
-        return p
-    end
-
-    local skinCol = Color3.fromRGB(238, 192, 156)
-    local hairGold = Color3.fromRGB(238, 204, 106)
-    local hairDark = Color3.fromRGB(206, 168, 76)
-    local browDark = Color3.fromRGB(68, 50, 28)
-    local lashBlack = Color3.fromRGB(20, 22, 30)
-    local irisSapphire = Color3.fromRGB(48, 138, 235)
-    local eyeWhite = Color3.fromRGB(248, 250, 255)
-    local coatBlack = Color3.fromRGB(22, 24, 32)
-    local pantsBlack = Color3.fromRGB(18, 20, 26)
-    local shirtWhite = Color3.fromRGB(242, 244, 248)
-    local trimGold = Color3.fromRGB(232, 188, 76)
-
-    local head = ch:FindFirstChild('Head')
-    if head and head:IsA('BasePart') and not folder:GetAttribute('B_Head') then
-        folder:SetAttribute('B_Head', true)
-        weldPart(head, 'SculptedFace_StarterHead', Vector3.new(2, 1, 1), skinCol, CFrame.identity, Enum.MeshType.Head, Vector3.new(1.25, 1.25, 1.25))
-
-        -- 3D Sculpted Anime Hero Face (Eyes, Irises, Highlights, Upper Lashes, Brows & Confident Mouth)
-        for _, side in ipairs({ -1, 1 }) do
-            local tag = side < 0 and 'L' or 'R'
-            weldPart(head, 'SculptedFace_Sclera' .. tag, Vector3.new(0.24, 0.13, 0.06), eyeWhite, CFrame.new(side * 0.23, 0.04, -0.575))
-            weldPart(head, 'SculptedFace_EyeCore' .. tag, Vector3.new(0.13, 0.13, 0.06), irisSapphire, CFrame.new(side * 0.22, 0.04, -0.585))
-            weldPart(head, 'SculptedFace_Pupil' .. tag, Vector3.new(0.065, 0.085, 0.06), lashBlack, CFrame.new(side * 0.22, 0.04, -0.592))
-            weldPart(head, 'SculptedFace_Catchlight' .. tag, Vector3.new(0.045, 0.045, 0.06), eyeWhite, CFrame.new(side * 0.25, 0.075, -0.598), Enum.MeshType.Sphere)
-            weldPart(head, 'SculptedFace_DarkLash' .. tag, Vector3.new(0.26, 0.042, 0.06), lashBlack, CFrame.new(side * 0.23, 0.11, -0.588) * CFrame.Angles(0, 0, -side * 0.06))
-            weldPart(head, 'SculptedFace_Brow' .. tag, Vector3.new(0.27, 0.042, 0.06), browDark, CFrame.new(side * 0.23, 0.20, -0.582) * CFrame.Angles(0, 0, side * 0.11))
-        end
-        weldPart(head, 'SculptedFace_MouthLine', Vector3.new(0.17, 0.032, 0.06), Color3.fromRGB(142, 86, 72), CFrame.new(0, -0.18, -0.576))
-
-        -- Layered Swept Anime Hair (Elevated above Y = 0.28 so eyes and brows are 100% clear)
-        weldPart(head, 'HairCrown', Vector3.new(1.54, 0.68, 1.54), hairGold, CFrame.new(0, 0.48, 0.04), Enum.MeshType.Sphere)
-        weldPart(head, 'HairBack', Vector3.new(1.48, 0.96, 0.84), hairDark, CFrame.new(0, 0.08, 0.42) * CFrame.Angles(0.16, 0, 0), Enum.MeshType.Sphere)
-        weldPart(head, 'HairBangL', Vector3.new(0.54, 0.40, 0.36), hairGold, CFrame.new(-0.36, 0.40, -0.48) * CFrame.Angles(0.12, 0.24, 0.32), Enum.MeshType.Sphere)
-        weldPart(head, 'HairBangR', Vector3.new(0.54, 0.40, 0.36), hairGold, CFrame.new(0.36, 0.40, -0.48) * CFrame.Angles(0.12, -0.24, -0.32), Enum.MeshType.Sphere)
-        weldPart(head, 'HairBangCenter', Vector3.new(0.32, 0.36, 0.32), hairGold, CFrame.new(0.03, 0.43, -0.52) * CFrame.Angles(0.16, 0, -0.08), Enum.MeshType.Sphere)
-        weldPart(head, 'HairLockL', Vector3.new(0.34, 0.86, 0.54), hairDark, CFrame.new(-0.67, 0.04, -0.10) * CFrame.Angles(0.08, 0, 0.12), Enum.MeshType.Sphere)
-        weldPart(head, 'HairLockR', Vector3.new(0.34, 0.86, 0.54), hairDark, CFrame.new(0.67, 0.04, -0.10) * CFrame.Angles(0.08, 0, -0.12), Enum.MeshType.Sphere)
-    end
-
-    local uTorso = ch:FindFirstChild('UpperTorso') or ch:FindFirstChild('Torso')
-    if uTorso and uTorso:IsA('BasePart') and not folder:GetAttribute('B_UTorso') then
-        folder:SetAttribute('B_UTorso', true)
-        weldPart(uTorso, 'StarterShirt', Vector3.new(1.94, 1.88, 0.96), shirtWhite, CFrame.new(0, -0.12, 0))
-        weldPart(uTorso, 'StarterCoatBack', Vector3.new(2.04, 1.92, 0.56), coatBlack, CFrame.new(0, -0.12, 0.24))
-        weldPart(uTorso, 'StarterCoatL', Vector3.new(0.68, 1.92, 1.04), coatBlack, CFrame.new(-0.68, -0.12, 0))
-        weldPart(uTorso, 'StarterCoatR', Vector3.new(0.68, 1.92, 1.04), coatBlack, CFrame.new(0.68, -0.12, 0))
-        weldPart(uTorso, 'StarterCollar', Vector3.new(1.42, 0.30, 0.86), coatBlack, CFrame.new(0, 0.82, 0.08))
-        weldPart(uTorso, 'StarterGoldL', Vector3.new(0.09, 1.56, 1.06), trimGold, CFrame.new(-0.36, -0.12, 0))
-        weldPart(uTorso, 'StarterGoldR', Vector3.new(0.09, 1.56, 1.06), trimGold, CFrame.new(0.36, -0.12, 0))
-    end
-
-    local lTorso = ch:FindFirstChild('LowerTorso')
-    if lTorso and lTorso:IsA('BasePart') and not folder:GetAttribute('B_LTorso') then
-        folder:SetAttribute('B_LTorso', true)
-        weldPart(lTorso, 'StarterWaist', Vector3.new(2.00, 0.76, 1.02), pantsBlack, CFrame.new(0, 0.08, 0))
-        weldPart(lTorso, 'StarterBelt', Vector3.new(2.04, 0.22, 1.05), Color3.fromRGB(14, 15, 20), CFrame.new(0, 0.14, 0))
-        weldPart(lTorso, 'StarterBuckle', Vector3.new(0.38, 0.24, 1.08), trimGold, CFrame.new(0, 0.14, 0), nil, nil, Enum.Material.Metal)
-        weldPart(lTorso, 'StarterCoatTailL', Vector3.new(0.66, 0.58, 1.04), coatBlack, CFrame.new(-0.68, -0.16, 0.03) * CFrame.Angles(0.05, 0, 0.05))
-        weldPart(lTorso, 'StarterCoatTailR', Vector3.new(0.66, 0.58, 1.04), coatBlack, CFrame.new(0.68, -0.16, 0.03) * CFrame.Angles(0.05, 0, -0.05))
-    end
-
-    for _, side in ipairs({ 'Left', 'Right' }) do
-        local uArm = ch:FindFirstChild(side .. 'UpperArm')
-        if uArm and uArm:IsA('BasePart') and not folder:GetAttribute('B_UA_' .. side) then
-            folder:SetAttribute('B_UA_' .. side, true)
-            weldPart(uArm, 'StarterUA_' .. side, Vector3.new(1.00, 1.28, 1.00), coatBlack, CFrame.new(0, 0.04, 0))
-        end
-        local lArm = ch:FindFirstChild(side .. 'LowerArm')
-        if lArm and lArm:IsA('BasePart') and not folder:GetAttribute('B_LA_' .. side) then
-            folder:SetAttribute('B_LA_' .. side, true)
-            weldPart(lArm, 'StarterLA_' .. side, Vector3.new(0.98, 1.08, 0.98), coatBlack, CFrame.new(0, 0.08, 0))
-            weldPart(lArm, 'StarterCuff_' .. side, Vector3.new(0.95, 0.18, 0.95), shirtWhite, CFrame.new(0, -0.44, 0))
-        end
-        local hand = ch:FindFirstChild(side .. 'Hand')
-        if hand and hand:IsA('BasePart') and not folder:GetAttribute('B_H_' .. side) then
-            folder:SetAttribute('B_H_' .. side, true)
-            weldPart(hand, 'StarterHand_' .. side, Vector3.new(0.92, 0.42, 0.92), skinCol, CFrame.new(0, 0.02, 0))
-        end
-        local uLeg = ch:FindFirstChild(side .. 'UpperLeg')
-        if uLeg and uLeg:IsA('BasePart') and not folder:GetAttribute('B_UL_' .. side) then
-            folder:SetAttribute('B_UL_' .. side, true)
-            weldPart(uLeg, 'StarterUL_' .. side, Vector3.new(1.00, 1.38, 1.00), pantsBlack, CFrame.new(0, 0.08, 0))
-        end
-        local lLeg = ch:FindFirstChild(side .. 'LowerLeg')
-        if lLeg and lLeg:IsA('BasePart') and not folder:GetAttribute('B_LL_' .. side) then
-            folder:SetAttribute('B_LL_' .. side, true)
-            weldPart(lLeg, 'StarterLL_' .. side, Vector3.new(0.98, 1.28, 0.98), pantsBlack, CFrame.new(0, 0.06, 0))
-        end
-        local foot = ch:FindFirstChild(side .. 'Foot')
-        if foot and foot:IsA('BasePart') and not folder:GetAttribute('B_F_' .. side) then
-            folder:SetAttribute('B_F_' .. side, true)
-            weldPart(foot, 'StarterShoe_' .. side, Vector3.new(1.00, 0.36, 1.08), Color3.fromRGB(18, 19, 24), CFrame.new(0, 0.04, -0.03))
-            weldPart(foot, 'StarterSole_' .. side, Vector3.new(1.02, 0.12, 1.10), shirtWhite, CFrame.new(0, -0.14, -0.03))
-        end
-    end
-
-    for _, d in ipairs(folder:GetDescendants()) do
-        if d:IsA('BasePart') then
-            d.Transparency = 0
-            d.LocalTransparencyModifier = 0
-        elseif d:IsA('Decal') then
-            d.Transparency = 0
         end
     end
 end

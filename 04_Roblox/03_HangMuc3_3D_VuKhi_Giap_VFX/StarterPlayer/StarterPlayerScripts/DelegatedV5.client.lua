@@ -182,26 +182,7 @@ local function restoreNativeAvatarVisibility(ch)
     if not ch or not ch.Parent then
         return
     end
-    for _, oldVisName in ipairs({ 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual', 'CharacterAccessories3D' }) do
-        local oldVis = ch:FindFirstChild(oldVisName)
-        if oldVis then
-            oldVis:Destroy()
-        end
-    end
     ensureStarterCharacterForm(ch)
-    for _, o in ipairs(ch:GetDescendants()) do
-        if not isInsideManagedFXContainer(o, ch) then
-            if o:IsA('BasePart') then
-                if o.Transparency ~= 1 then
-                    o.Transparency = 1
-                end
-            elseif o:IsA('Decal') or o:IsA('Texture') then
-                if o.Transparency ~= 1 then
-                    o.Transparency = 1
-                end
-            end
-        end
-    end
 end
 
 local function setCharacterBaseVisibilityForBeast(s, hidden)
@@ -211,21 +192,12 @@ local function setCharacterBaseVisibilityForBeast(s, hidden)
     local lowFX = Equipment3D.IsLowFX(s.Owner)
     if hidden then
         if s.IsNativeAvatar then
-            local sf = s.Visual:FindFirstChild('SkybreakStarterForm')
-            if sf then
-                for _, d in ipairs(sf:GetDescendants()) do
-                    if d:IsA('BasePart') then
-                        d.LocalTransparencyModifier = 1
-                    elseif d:IsA('Decal') then
-                        d.Transparency = 1
-                    end
-                end
-            end
+            s.Visual:SetAttribute('SkybreakBeastHidden', true)
             for _, o in ipairs(s.Visual:GetDescendants()) do
                 if not isInsideManagedFXContainer(o, s.Visual) then
                     if o:IsA('BasePart') then
                         o.LocalTransparencyModifier = 1
-                    elseif o:IsA('Decal') then
+                    elseif o:IsA('Decal') or o:IsA('Texture') then
                         o.Transparency = 1
                     end
                 end
@@ -250,6 +222,7 @@ local function setCharacterBaseVisibilityForBeast(s, hidden)
         end
     else
         if s.IsNativeAvatar then
+            s.Visual:SetAttribute('SkybreakBeastHidden', nil)
             restoreNativeAvatarVisibility(s.Visual)
         else
             for _, chPart in ipairs(s.Visual:GetChildren()) do
@@ -2514,11 +2487,16 @@ local function boot()
                 local animInst = Instance.new('Animator')
                 animInst.Parent = h
             end
-            local animateScript = ch:FindFirstChild('Animate')
-            if animateScript and animateScript:IsA('BaseScript') then
-                animateScript.Disabled = false
-            end
             restoreNativeAvatarVisibility(ch)
+            chChildConnection = ch.DescendantAdded:Connect(function(desc)
+                if not isInsideManagedFXContainer(desc, ch) and (desc:IsA('BasePart') or desc:IsA('Decal') or desc:IsA('Texture') or desc:IsA('Accessory') or desc:IsA('Hat')) then
+                    task.defer(function()
+                        if ch.Parent and ch:GetAttribute('SkybreakBeastHidden') ~= true then
+                            restoreNativeAvatarVisibility(ch)
+                        end
+                    end)
+                end
+            end)
             if owner and not owner:HasAppearanceLoaded() then
                 task.spawn(function()
                     local appDeadline = os.clock() + 8
