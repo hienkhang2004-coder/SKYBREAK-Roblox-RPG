@@ -135,27 +135,27 @@ C.SkillNames = {
 }
 
 C.SkillDetails = {
-    SkySlash = {Id='SkySlash', Name='Sky Slash', Key='1', Type='Active', Element='Sky', ClassId='SkyGuardian', Cooldown=6, Cost=10, Range=18, Multiplier=2.2, Break=22, Level=1, Desc='Chém vòng cung ánh sáng tầm trung, gây 220% sát thương ATK và phá giáp mạnh.'},
-    GuardianShield = {Id='GuardianShield', Name='Guardian Shield', Key='2', Type='Defense', Element='Sky', ClassId='SkyGuardian', Cooldown=14, Cost=15, Range=20, Multiplier=0, Break=0, Level=1, Desc='Tạo khiên thánh quang cho bản thân và đồng đội xung quanh trong 5 giây, giảm 65% sát thương nhận vào.'},
-    JudgmentStrike = {Id='JudgmentStrike', Name='Judgment Strike', Key='3', Type='Heavy Skill', Element='Sky', ClassId='SkyGuardian', Cooldown=10, Cost=18, Range=20, Multiplier=3.1, Break=35, Level=1, Desc='Giáng đòn phán xét từ trên cao xuống mục tiêu phía trước, gây 310% sát thương ATK và 35 Break.'},
-    CelestialAegis = {Id='CelestialAegis', Name='Celestial Aegis', Key='R', Type='Ultimate', Element='Sky', ClassId='SkyGuardian', Cooldown=20, Cost=25, Range=24, Multiplier=4.5, Break=50, Level=1, Desc='Tuyệt kỹ Thiên Khiên: Bùng nổ thánh quang diện rộng gây 450% sát thương ATK và ban khiên bất diệt 6 giây.'},
+    SkySlash = {Id='SkySlash', Name='Sky Slash', Key='1', Type='Active', Element='Sky', ClassId='SkyGuardian', Cooldown=6.5, Cost=12, Range=18, Multiplier=1.65, Break=14, Level=1, Desc='Chém vòng cung ánh sáng tầm trung, gây 165% sát thương ATK và phá giáp.'},
+    GuardianShield = {Id='GuardianShield', Name='Guardian Shield', Key='2', Type='Defense', Element='Sky', ClassId='SkyGuardian', Cooldown=16, Cost=18, Range=20, Multiplier=0, Break=0, Level=1, Desc='Tạo khiên thánh quang cho bản thân và đồng đội xung quanh trong 4 giây, giảm 35% sát thương nhận vào.'},
+    JudgmentStrike = {Id='JudgmentStrike', Name='Judgment Strike', Key='3', Type='Heavy Skill', Element='Sky', ClassId='SkyGuardian', Cooldown=11, Cost=20, Range=20, Multiplier=2.25, Break=20, Level=1, Desc='Giáng đòn phán xét từ trên cao xuống mục tiêu phía trước, gây 225% sát thương ATK và 20 Break.'},
+    CelestialAegis = {Id='CelestialAegis', Name='Celestial Aegis', Key='R', Type='Ultimate', Element='Sky', ClassId='SkyGuardian', Cooldown=22, Cost=28, Range=24, Multiplier=3.1, Break=28, Level=1, Desc='Tuyệt kỹ Thiên Khiên: Bùng nổ thánh quang diện rộng gây 310% sát thương ATK và ban khiên hộ thể.'},
 
-    ArcCut = {Id='ArcCut', Name='Arc Cut', Key='1', Type='Combo Skill', Element='Lightning', ClassId='ThunderStriker', Cooldown=5, Cost=10, Range=12, Multiplier=0.95, Break=10, Level=1, Desc='Tung 3 nhát chém lôi điện cực nhanh liên tiếp, mỗi đòn gây 95% sát thương ATK.'},
-    FlashStep = {Id='FlashStep', Name='Flash Step', Key='2', Type='Mobility', Element='Lightning', ClassId='ThunderStriker', Cooldown=8, Cost=15, Range=20, Multiplier=1.4, Break=12, Level=1, Desc='Lướt chớp nhoáng 20m qua không trung ở trạng thái vô địch ngắn, gây sát thương lôi điện trên đường lướt.'},
-    StormBlitz = {Id='StormBlitz', Name='Storm Blitz', Key='3', Type='Burst Skill', Element='Lightning', ClassId='ThunderStriker', Cooldown=11, Cost=18, Range=16, Multiplier=3.3, Break=30, Level=1, Desc='Bão kiếm sấm sét càn quét xung quanh, gây 330% sát thương ATK và kích hoạt 5 tầng tốc đánh.'},
-    ThunderJudgement = {Id='ThunderJudgement', Name='Thunder Judgement', Key='R', Type='Ultimate', Element='Lightning', ClassId='ThunderStriker', Cooldown=20, Cost=25, Range=24, Multiplier=4.8, Break=45, Level=1, Desc='Tuyệt kỹ Lôi Phạt: Triệu hồi thiên lôi giáng xuống toàn bộ kẻ địch trong bán kính 24m, gây 480% sát thương ATK.'},
+    ArcCut = {Id='ArcCut', Name='Arc Cut', Key='1', Type='Combo Skill', Element='Lightning', ClassId='ThunderStriker', Cooldown=5.5, Cost=12, Range=12, Multiplier=0.72, Break=6, Level=1, Desc='Tung 3 nhát chém lôi điện cực nhanh liên tiếp, mỗi đòn gây 72% sát thương ATK.'},
+    FlashStep = {Id='FlashStep', Name='Flash Step', Key='2', Type='Mobility', Element='Lightning', ClassId='ThunderStriker', Cooldown=9, Cost=16, Range=20, Multiplier=1.1, Break=8, Level=1, Desc='Lướt chớp nhoáng 20m qua không trung, gây sát thương lôi điện trên đường lướt.'},
+    StormBlitz = {Id='StormBlitz', Name='Storm Blitz', Key='3', Type='Burst Skill', Element='Lightning', ClassId='ThunderStriker', Cooldown=12, Cost=20, Range=16, Multiplier=2.35, Break=18, Level=1, Desc='Bão kiếm sấm sét càn quét xung quanh, gây 235% sát thương ATK và kích hoạt 5 tầng tốc đánh.'},
+    ThunderJudgement = {Id='ThunderJudgement', Name='Thunder Judgement', Key='R', Type='Ultimate', Element='Lightning', ClassId='ThunderStriker', Cooldown=22, Cost=28, Range=24, Multiplier=3.25, Break=26, Level=1, Desc='Tuyệt kỹ Lôi Phạt: Triệu hồi thiên lôi giáng xuống toàn bộ kẻ địch trong bán kính 24m, gây 325% sát thương ATK.'},
 
-    FrostBolt = {Id='FrostBolt', Name='Frost Bolt', Key='1', Type='Ranged Spell', Element='Frost', ClassId='ArcaneMage', Cooldown=5.5, Cost=12, Range=42, Multiplier=2.3, Break=22, Level=1, Desc='Bắn mũi tên băng tinh tầm xa 42m, gây 230% sát thương phép và làm suy yếu giáp kẻ địch.'},
-    ManaBarrier = {Id='ManaBarrier', Name='Mana Barrier', Key='2', Type='Arcane Ward', Element='Frost', ClassId='ArcaneMage', Cooldown=14, Cost=15, Range=18, Multiplier=0, Break=0, Level=1, Desc='Kết giới ma lực bao bọc cơ thể trong 5 giây, hấp thụ 65% sát thương và hồi nhẹ Stamina.'},
-    ArcaneComet = {Id='ArcaneComet', Name='Arcane Comet', Key='3', Type='AoE Spell', Element='Void', ClassId='ArcaneMage', Cooldown=11, Cost=20, Range=36, Multiplier=3.4, Break=32, Level=1, Desc='Triệu hồi sao chổi cổ ngữ rơi xuống mục tiêu tầm xa, gây 340% sát thương diện rộng.'},
-    AstralCataclysm = {Id='AstralCataclysm', Name='Astral Cataclysm', Key='R', Type='Ultimate', Element='Void', ClassId='ArcaneMage', Cooldown=20, Cost=25, Range=38, Multiplier=5.0, Break=50, Level=1, Desc='Tuyệt kỹ Tinh Vân Đại Diệt: Nổ tung trường trọng lực hư không tầm xa, gây 500% sát thương phép cực đại.'},
+    FrostBolt = {Id='FrostBolt', Name='Frost Bolt', Key='1', Type='Ranged Spell', Element='Frost', ClassId='ArcaneMage', Cooldown=6.0, Cost=12, Range=40, Multiplier=1.7, Break=14, Level=1, Desc='Bắn mũi tên băng tinh tầm xa 40m, gây 170% sát thương phép và làm suy yếu giáp kẻ địch.'},
+    ManaBarrier = {Id='ManaBarrier', Name='Mana Barrier', Key='2', Type='Arcane Ward', Element='Frost', ClassId='ArcaneMage', Cooldown=16, Cost=18, Range=18, Multiplier=0, Break=0, Level=1, Desc='Kết giới ma lực bao bọc cơ thể trong 4 giây, hấp thụ 35% sát thương và hồi nhẹ Stamina.'},
+    ArcaneComet = {Id='ArcaneComet', Name='Arcane Comet', Key='3', Type='AoE Spell', Element='Void', ClassId='ArcaneMage', Cooldown=12, Cost=22, Range=34, Multiplier=2.4, Break=18, Level=1, Desc='Triệu hồi sao chổi cổ ngữ rơi xuống mục tiêu tầm xa, gây 240% sát thương diện rộng.'},
+    AstralCataclysm = {Id='AstralCataclysm', Name='Astral Cataclysm', Key='R', Type='Ultimate', Element='Void', ClassId='ArcaneMage', Cooldown=22, Cost=28, Range=36, Multiplier=3.35, Break=28, Level=1, Desc='Tuyệt kỹ Tinh Vân Đại Diệt: Nổ tung trường trọng lực hư không tầm xa, gây 335% sát thương phép.'},
 }
 
 C.Stats = function(level, classId, statAlloc)
     local lv = math.clamp(tonumber(level) or 1, 1, C.MaxLevel)
     local class = C.Classes[classId or 'SkyGuardian'] or C.Classes.SkyGuardian
-    local baseCrit = classId == 'ThunderStriker' and 12 or (classId == 'ArcaneMage' and 8 or 5)
-    local baseCritDmg = classId == 'ThunderStriker' and 60 or 50
+    local baseCrit = classId == 'ThunderStriker' and 8 or (classId == 'ArcaneMage' and 6 or 4)
+    local baseCritDmg = classId == 'ThunderStriker' and 30 or 25
     local alloc = type(statAlloc) == "table" and statAlloc or {}
     local defPts = math.clamp((tonumber(alloc.Defense) or 1) - 1, 0, C.MaxStat - 1)
     local offensePts = math.clamp(math.max(
@@ -166,9 +166,9 @@ C.Stats = function(level, classId, statAlloc)
         (tonumber(alloc.Fruit) or 1) - 1
     ), 0, C.MaxStat - 1)
     return {
-        HP = math.floor((150 + 2.5 * (lv - 1) + 5.2 * defPts) * class.HP),
-        ATK = math.floor((18 + 0.22 * (lv - 1) + 0.48 * offensePts) * class.ATK),
-        DEF = math.floor((8 + 0.09 * (lv - 1) + 0.20 * defPts) * class.DEF),
+        HP = math.floor((110 + 1.45 * (lv - 1) + 2.6 * defPts) * class.HP),
+        ATK = math.floor((10 + 0.09 * (lv - 1) + 0.18 * offensePts) * class.ATK),
+        DEF = math.floor((4 + 0.035 * (lv - 1) + 0.075 * defPts) * class.DEF),
         CritRate = baseCrit,
         CritDmg = baseCritDmg,
         Break = 100,
@@ -176,8 +176,8 @@ C.Stats = function(level, classId, statAlloc)
 end
 
 C.Actions = {
-    Attack = {Name='Attack', Cooldown=0.42, Range=10, Multiplier=1, Break=8},
-    Heavy = {Name='Heavy Attack', Cooldown=1.8, Range=11, Multiplier=2.4, Break=28, Cost=20},
+    Attack = {Name='Attack', Cooldown=0.45, Range=10, Multiplier=0.9, Break=5},
+    Heavy = {Name='Heavy Attack', Cooldown=2.0, Range=11, Multiplier=1.75, Break=14, Cost=22},
     Dodge = {Name='Dodge', Cooldown=1.2, Cost=25},
     Dash = {Name='Dash', Cooldown=1.2, Cost=25},
 
@@ -437,25 +437,25 @@ C.AetherFruits = {
         Passive = "Song Long Biến Hình (2 Dạng & 2 Bộ Kỹ Năng): [Dạng 1 - Bán Long Nhân] thiên về cận chiến tốc độ & Hỏa Long Trảo; [Dạng 2 - Thái Cổ Long Hoàng] hóa Rồng Khổng Lồ 3D bay lượn hủy diệt diện rộng!",
         Desc = "Trái Thần Thoại tối thượng sở hữu 2 Dạng Rồng 3D riêng biệt (Bán Long Nhân & Thái Cổ Long Hoàng) với 2 bộ kỹ năng hoàn toàn khác nhau.",
         Form1Moves = {
-            Z = {Key="Z", Name="Draconic Fireball Volley • Hỏa Long Liên Đạn", ShortName="Hỏa Long Đạn", AwakenedName="Crimson Fireball Volley • Hỏa Long Liên Đạn", Mastery=1, Cooldown=4.2, Cost=10, Range=34, Multiplier=3.5, Break=35, Hits=5, Mechanic="HybridFireballVolley", Element="Void", Desc="[Dạng 1 • Bán Long] Bắn liên hoàn 5 quả cầu Đầu Hỏa Long phát nổ thành cột dung nham liên tiếp."},
-            X = {Key="X", Name="Hybrid Talon Rend • Bán Long Đột Trảo", ShortName="Bán Long Trảo", AwakenedName="Abyssal Claw Slam • Bán Long Đột Trảo", Mastery=1, Cooldown=7.0, Cost=14, Range=26, Multiplier=4.1, Break=42, Hits=2, Mechanic="HybridTalonRend", Element="Void", Desc="[Dạng 1 • Bán Long] Lao vút 20m chộp cổ mục tiêu bằng song trảo Bán Long rồi quật nổ hắc hỏa."},
-            C = {Key="C", Name="Draconic Inferno Vortex • Cuồng Long Lốc Xoáy", ShortName="Cuồng Long Xoáy", AwakenedName="Hybrid Blade Cyclone • Cuồng Long Lốc Xoáy", Mastery=1, Cooldown=10.0, Cost=18, Range=28, Multiplier=4.7, Break=48, Hits=4, Mechanic="HybridInfernoCyclone", Element="Void", Desc="[Dạng 1 • Bán Long] Xoay người tạo cơn lốc 3 Hỏa Long Hồn cuốn hút kẻ địch xung quanh vào tâm và kích nổ."},
-            V = {Key="V", Name="Dragon Form Shift • Hóa Hình Bán Long / Long Hoàng", ShortName="Chuyển Dạng Rồng", AwakenedName="Sovereign Ascension • Hóa Thái Cổ Long Hoàng", Mastery=1, Cooldown=2.5, Cost=10, Range=36, Multiplier=4.2, Break=45, Mechanic="DragonFormShift", Element="Void", Desc="Chuyển đổi tuần tự: Nhân Dạng -> [Dạng 1] Bán Long Nhân -> [Dạng 2] Chân Thân Thái Cổ Long Hoàng 3D!"},
-            F = {Key="F", Name="Hybrid Wing Dash • Long Ảnh Bộ", ShortName="Long Ảnh Bộ", AwakenedName="Crimson Wing Blitz • Long Ảnh Bộ", Mastery=1, Cooldown=4.2, Cost=8, Range=36, Multiplier=2.2, Break=22, Mechanic="HybridWingDash", Element="Void", Desc="[Dạng 1 • Bán Long] Vỗ cánh Bán Long lướt chớp nhoáng 36m để lại 6 cặp tàn ảnh cánh lửa."},
+            Z = {Key="Z", Name="Draconic Fireball Volley • Hỏa Long Liên Đạn", ShortName="Hỏa Long Đạn", AwakenedName="Crimson Fireball Volley • Hỏa Long Liên Đạn", Mastery=1, Cooldown=6.0, Cost=14, Range=32, Multiplier=2.0, Break=16, Hits=5, Mechanic="HybridFireballVolley", Element="Void", Desc="[Dạng 1 • Bán Long] Bắn liên hoàn 5 quả cầu Đầu Hỏa Long phát nổ thành cột dung nham liên tiếp."},
+            X = {Key="X", Name="Hybrid Talon Rend • Bán Long Đột Trảo", ShortName="Bán Long Trảo", AwakenedName="Abyssal Claw Slam • Bán Long Đột Trảo", Mastery=1, Cooldown=8.5, Cost=18, Range=24, Multiplier=2.3, Break=20, Hits=2, Mechanic="HybridTalonRend", Element="Void", Desc="[Dạng 1 • Bán Long] Lao vút 20m chộp cổ mục tiêu bằng song trảo Bán Long rồi quật nổ hắc hỏa."},
+            C = {Key="C", Name="Draconic Inferno Vortex • Cuồng Long Lốc Xoáy", ShortName="Cuồng Long Xoáy", AwakenedName="Hybrid Blade Cyclone • Cuồng Long Lốc Xoáy", Mastery=1, Cooldown=12.0, Cost=24, Range=26, Multiplier=2.7, Break=24, Hits=4, Mechanic="HybridInfernoCyclone", Element="Void", Desc="[Dạng 1 • Bán Long] Xoay người tạo cơn lốc 3 Hỏa Long Hồn cuốn hút kẻ địch xung quanh vào tâm và kích nổ."},
+            V = {Key="V", Name="Dragon Form Shift • Hóa Hình Bán Long / Long Hoàng", ShortName="Chuyển Dạng Rồng", AwakenedName="Sovereign Ascension • Hóa Thái Cổ Long Hoàng", Mastery=1, Cooldown=3.5, Cost=15, Range=28, Multiplier=2.0, Break=18, Mechanic="DragonFormShift", Element="Void", Desc="Chuyển đổi tuần tự: Nhân Dạng -> [Dạng 1] Bán Long Nhân -> [Dạng 2] Chân Thân Thái Cổ Long Hoàng 3D!"},
+            F = {Key="F", Name="Hybrid Wing Dash • Long Ảnh Bộ", ShortName="Long Ảnh Bộ", AwakenedName="Crimson Wing Blitz • Long Ảnh Bộ", Mastery=1, Cooldown=6.5, Cost=14, Range=32, Multiplier=1.4, Break=10, Mechanic="HybridWingDash", Element="Void", Desc="[Dạng 1 • Bán Long] Vỗ cánh Bán Long lướt chớp nhoáng 32m để lại 6 cặp tàn ảnh cánh lửa."},
         },
         Form2Moves = {
-            Z = {Key="Z", Name="Sovereign Obliteration Beam • Thái Cổ Long Tức", ShortName="Thái Cổ Long Tức", AwakenedName="Abyssal Sovereign Breath • Thái Cổ Long Tức", Mastery=1, Cooldown=6.0, Cost=15, Range=54, Multiplier=5.2, Break=52, Hits=5, Mechanic="SovereignBeam", Element="Void", Desc="[Dạng 2 • Long Hoàng] Há miệng Rồng Khổng Lồ bắn đại trụ laser Hư Không 4 lõi xuyên thấu 54m cày nát mặt đất."},
-            X = {Key="X", Name="Sovereign Skyfall Dive • Long Hoàng Giáng Thế", ShortName="Long Hoàng Giáng", AwakenedName="Cataclysmic Dragon Dive • Long Hoàng Giáng Thế", Mastery=1, Cooldown=9.5, Cost=18, Range=38, Multiplier=5.8, Break=64, Hits=4, Mechanic="SovereignSkyfallDive", Element="Void", Desc="[Dạng 2 • Long Hoàng] Mở Tinh Môn trên không rồi bổ nhào xuống như thiên thạch rồng, tạo 4 vòng sóng chấn động kiến tạo."},
-            C = {Key="C", Name="Apocalyptic Eclipse Starshower • Vạn Long Thiên Hỏa Vũ", ShortName="Vạn Long Hỏa Vũ", AwakenedName="Eclipse Dragon Starshower • Vạn Long Thiên Hỏa Vũ", Mastery=1, Cooldown=13.5, Cost=25, Range=48, Multiplier=6.8, Break=72, Hits=6, Mechanic="SovereignStarshower", Element="Void", Desc="[Dạng 2 • Long Hoàng] Mở Cổng Nhật Thực Hư Không trên bầu trời, trút mưa 12 thiên thạch Đầu Rồng hủy diệt diện rộng 48m."},
-            V = {Key="V", Name="Revert Sovereign Form • Thu Hồi Long Hồn", ShortName="Thu Hồi Rồng", AwakenedName="Revert Sovereign Form • Thu Hồi Long Hồn", Mastery=1, Cooldown=2.5, Cost=0, Range=28, Multiplier=0, Break=0, Mechanic="DragonFormShift", Element="Void", Desc="[Dạng 2 • Long Hoàng] Thu hồi Chân Thân Thái Cổ Long Hoàng trở về Nhân Dạng."},
-            F = {Key="F", Name="Sovereign Supersonic Flight • Long Vũ Cửu Thiên", ShortName="Long Vũ Cửu Thiên", AwakenedName="Abyssal Supersonic Soar • Long Vũ Cửu Thiên", Mastery=1, Cooldown=4.8, Cost=10, Range=60, Multiplier=3.0, Break=32, Mechanic="SovereignSupersonicFlight", Element="Void", Desc="[Dạng 2 • Long Hoàng] Vỗ đôi cánh Hắc Long Khổng Lồ bay siêu thanh 60m kèm 8 vòng sóng xung kích Mach Cone."},
+            Z = {Key="Z", Name="Sovereign Obliteration Beam • Thái Cổ Long Tức", ShortName="Thái Cổ Long Tức", AwakenedName="Abyssal Sovereign Breath • Thái Cổ Long Tức", Mastery=1, Cooldown=8.0, Cost=22, Range=46, Multiplier=2.8, Break=24, Hits=5, Mechanic="SovereignBeam", Element="Void", Desc="[Dạng 2 • Long Hoàng] Há miệng Rồng Khổng Lồ bắn đại trụ laser Hư Không 4 lõi xuyên thấu 46m cày nát mặt đất."},
+            X = {Key="X", Name="Sovereign Skyfall Dive • Long Hoàng Giáng Thế", ShortName="Long Hoàng Giáng", AwakenedName="Cataclysmic Dragon Dive • Long Hoàng Giáng Thế", Mastery=1, Cooldown=11.5, Cost=26, Range=34, Multiplier=3.1, Break=28, Hits=4, Mechanic="SovereignSkyfallDive", Element="Void", Desc="[Dạng 2 • Long Hoàng] Mở Tinh Môn trên không rồi bổ nhào xuống như thiên thạch rồng, tạo 4 vòng sóng chấn động kiến tạo."},
+            C = {Key="C", Name="Apocalyptic Eclipse Starshower • Vạn Long Thiên Hỏa Vũ", ShortName="Vạn Long Hỏa Vũ", AwakenedName="Eclipse Dragon Starshower • Vạn Long Thiên Hỏa Vũ", Mastery=1, Cooldown=16.0, Cost=34, Range=42, Multiplier=3.6, Break=32, Hits=6, Mechanic="SovereignStarshower", Element="Void", Desc="[Dạng 2 • Long Hoàng] Mở Cổng Nhật Thực Hư Không trên bầu trời, trút mưa 12 thiên thạch Đầu Rồng hủy diệt diện rộng 42m."},
+            V = {Key="V", Name="Revert Sovereign Form • Thu Hồi Long Hồn", ShortName="Thu Hồi Rồng", AwakenedName="Revert Sovereign Form • Thu Hồi Long Hồn", Mastery=1, Cooldown=3.5, Cost=0, Range=24, Multiplier=0, Break=0, Mechanic="DragonFormShift", Element="Void", Desc="[Dạng 2 • Long Hoàng] Thu hồi Chân Thân Thái Cổ Long Hoàng trở về Nhân Dạng."},
+            F = {Key="F", Name="Sovereign Supersonic Flight • Long Vũ Cửu Thiên", ShortName="Long Vũ Cửu Thiên", AwakenedName="Abyssal Supersonic Soar • Long Vũ Cửu Thiên", Mastery=1, Cooldown=7.5, Cost=18, Range=48, Multiplier=1.8, Break=14, Mechanic="SovereignSupersonicFlight", Element="Void", Desc="[Dạng 2 • Long Hoàng] Vỗ đôi cánh Hắc Long Khổng Lồ bay siêu thanh 48m kèm 8 vòng sóng xung kích Mach Cone."},
         },
         Moves = {
-            Z = {Key="Z", Name="Draconic Fireball Volley • Hỏa Long Liên Đạn", ShortName="Hỏa Long Đạn", AwakenedName="Abyssal Sovereign Breath • Thái Cổ Long Tức", Mastery=1, Cooldown=4.2, Cost=10, Range=34, Multiplier=3.5, Break=35, Element="Void", Desc="[Dạng 1] Bắn 5 cầu lửa Đầu Rồng liên hoàn | [Dạng 2] Phun đại trụ laser Thái Cổ Long Tức 54m."},
-            X = {Key="X", Name="Hybrid Talon Rend • Bán Long Đột Trảo", ShortName="Bán Long Trảo", AwakenedName="Sovereign Skyfall Dive • Long Hoàng Giáng Thế", Mastery=1, Cooldown=7.0, Cost=14, Range=26, Multiplier=4.1, Break=42, Element="Void", Desc="[Dạng 1] Lao tới chộp cổ bằng vuốt Bán Long | [Dạng 2] Bổ nhào từ không trung chấn vỡ mặt đất."},
-            C = {Key="C", Name="Draconic Inferno Vortex • Cuồng Long Lốc Xoáy", ShortName="Cuồng Long Xoáy", AwakenedName="Apocalyptic Eclipse Starshower • Vạn Long Hỏa Vũ", Mastery=1, Cooldown=10.0, Cost=18, Range=28, Multiplier=4.7, Break=48, Element="Void", Desc="[Dạng 1] Xoay lốc đao lửa cuốn kẻ địch | [Dạng 2] Mở Cổng Nhật Thực trút mưa 12 thiên thạch rồng."},
-            V = {Key="V", Name="Dragon Form Shift • Hóa Bán Long / Long Hoàng 3D", ShortName="Chuyển Dạng Rồng", AwakenedName="Sovereign Ascension • Chân Thân Hắc Long Đế Vương", Mastery=1, Cooldown=2.5, Cost=10, Range=36, Multiplier=4.2, Break=45, Element="Void", Desc="Nhấn [V] lần 1 hóa Dạng 1 (Bán Long Nhân), nhấn [V] lần 2 hóa Dạng 2 (Thái Cổ Long Hoàng Khổng Lồ), nhấn [V] lần 3 thu hồi!"},
-            F = {Key="F", Name="Hybrid Wing Dash • Long Ảnh Bộ", ShortName="Long Ảnh Bộ", AwakenedName="Sovereign Supersonic Flight • Long Vũ Cửu Thiên", Mastery=1, Cooldown=4.2, Cost=8, Range=36, Multiplier=2.2, Break=22, Element="Void", Desc="[Dạng 1] Lướt nhanh để lại tàn ảnh lửa | [Dạng 2] Bay siêu thanh 60m tạo sóng xung kích Mach Cone."},
+            Z = {Key="Z", Name="Draconic Fireball Volley • Hỏa Long Liên Đạn", ShortName="Hỏa Long Đạn", AwakenedName="Abyssal Sovereign Breath • Thái Cổ Long Tức", Mastery=1, Cooldown=6.0, Cost=14, Range=32, Multiplier=2.0, Break=16, Element="Void", Desc="[Dạng 1] Bắn 5 cầu lửa Đầu Rồng liên hoàn | [Dạng 2] Phun đại trụ laser Thái Cổ Long Tức."},
+            X = {Key="X", Name="Hybrid Talon Rend • Bán Long Đột Trảo", ShortName="Bán Long Trảo", AwakenedName="Sovereign Skyfall Dive • Long Hoàng Giáng Thế", Mastery=1, Cooldown=8.5, Cost=18, Range=24, Multiplier=2.3, Break=20, Element="Void", Desc="[Dạng 1] Lao tới chộp cổ bằng vuốt Bán Long | [Dạng 2] Bổ nhào từ không trung chấn vỡ mặt đất."},
+            C = {Key="C", Name="Draconic Inferno Vortex • Cuồng Long Lốc Xoáy", ShortName="Cuồng Long Xoáy", AwakenedName="Apocalyptic Eclipse Starshower • Vạn Long Hỏa Vũ", Mastery=1, Cooldown=12.0, Cost=24, Range=26, Multiplier=2.7, Break=24, Element="Void", Desc="[Dạng 1] Xoay lốc đao lửa cuốn kẻ địch | [Dạng 2] Mở Cổng Nhật Thực trút mưa 12 thiên thạch rồng."},
+            V = {Key="V", Name="Dragon Form Shift • Hóa Bán Long / Long Hoàng 3D", ShortName="Chuyển Dạng Rồng", AwakenedName="Sovereign Ascension • Chân Thân Hắc Long Đế Vương", Mastery=1, Cooldown=3.5, Cost=15, Range=28, Multiplier=2.0, Break=18, Element="Void", Desc="Nhấn [V] lần 1 hóa Dạng 1 (Bán Long Nhân), nhấn [V] lần 2 hóa Dạng 2 (Thái Cổ Long Hoàng Khổng Lồ), nhấn [V] lần 3 thu hồi!"},
+            F = {Key="F", Name="Hybrid Wing Dash • Long Ảnh Bộ", ShortName="Long Ảnh Bộ", AwakenedName="Sovereign Supersonic Flight • Long Vũ Cửu Thiên", Mastery=1, Cooldown=6.5, Cost=14, Range=32, Multiplier=1.4, Break=10, Element="Void", Desc="[Dạng 1] Lướt nhanh để lại tàn ảnh lửa | [Dạng 2] Bay siêu thanh tạo sóng xung kích Mach Cone."},
         },
     },
 }
@@ -623,68 +623,68 @@ C.Companions = {}
 
 C.Enemies = {
     -- Sea 1: Golden Sky Mobs & Bosses (Lv. 1 - 700)
-    TrainingDrone = {Name="Training Drone", Level=10, VisualAsset="TrainingDrone", Element="Sky", HP=140, ATK=14, Attack=14, DEF=2, Defense=2, XP=450, Gold=150, Range=6, Speed=9, Aggro=30, Leash=30, Drop="SkyIron"},
-    SkyPirate = {Name="Sky Pirate", Level=75, VisualAsset="SkyPirate", Element="Sky", HP=420, ATK=32, Attack=32, DEF=8, Defense=8, XP=1800, Gold=320, Range=7, Speed=11, Aggro=30, Leash=30, Drop="SkyIron"},
-    CorruptedGuard = {Name="Corrupted Guard", Level=175, VisualAsset="CorruptedGuard", Element="Sky", HP=850, ATK=58, Attack=58, DEF=16, Defense=16, XP=4200, Gold=520, Range=7, Speed=11, Aggro=34, Leash=34, Drop="SunshardCore"},
-    LightArcher = {Name="Light Archer", Level=325, VisualAsset="LightArcher", Element="Sky", HP=1450, ATK=92, Attack=92, DEF=24, Defense=24, XP=8200, Gold=780, Range=27, Speed=9, Aggro=32, Leash=32, Ranged=true, Drop="CelestialFeather"},
-    SunshardRoyalGuard = {Name="Sunshard Royal Guard", Level=450, VisualAsset="SunshardRoyalGuard", Element="Sky", HP=2200, ATK=128, Attack=128, DEF=34, Defense=34, XP=12500, Gold=1050, Range=7.5, Speed=11, Aggro=34, Leash=38, Drop="SunshardCore"},
-    GoldenKnight = {Name="Golden Knight", Level=500, VisualAsset="GoldenKnight", Element="Sky", HP=5400, ATK=148, Attack=148, DEF=42, Defense=42, XP=26000, Gold=2400, Range=10, Speed=10, Aggro=35, Leash=35, Elite=true, Drop="SunshardCore"},
-    SunshardTemplar = {Name="Sunshard Templar", Level=575, VisualAsset="SunshardTemplar", Element="Sky", HP=3100, ATK=165, Attack=165, DEF=45, Defense=45, XP=18000, Gold=1400, Range=8, Speed=11, Aggro=34, Leash=42, Drop="SunshardCore"},
-    AureonSentinel = {Name="AUREON SENTINEL", Level=700, VisualAsset="AureonSentinel", Element="Sky", HP=24000, ATK=235, Attack=235, DEF=58, Defense=58, XP=145000, Gold=20000, Range=16, Speed=9, Aggro=47, Leash=47, Boss=true, Drop="CoreEssence"},
-    EnergyPylon = {Name="Energy Pylon", Level=700, VisualAsset="EnergyPylon", Element="Sky", HP=1200, ATK=0, Attack=0, DEF=0, Defense=0, XP=0, Gold=0, Range=0, Speed=0, Aggro=0, Leash=0},
+    TrainingDrone = {Name="Training Drone", Level=10, VisualAsset="TrainingDrone", Element="Sky", HP=320, ATK=28, Attack=28, DEF=8, Defense=8, XP=450, Gold=150, Range=8, Speed=12, Aggro=36, Leash=45, Drop="SkyIron"},
+    SkyPirate = {Name="Sky Pirate", Level=75, VisualAsset="SkyPirate", Element="Sky", HP=950, ATK=62, Attack=62, DEF=18, Defense=18, XP=1800, Gold=320, Range=8.5, Speed=13, Aggro=38, Leash=48, Drop="SkyIron"},
+    CorruptedGuard = {Name="Corrupted Guard", Level=175, VisualAsset="CorruptedGuard", Element="Sky", HP=1950, ATK=105, Attack=105, DEF=32, Defense=32, XP=4200, Gold=520, Range=9, Speed=13, Aggro=40, Leash=50, HasBusoHaki=true, Drop="SunshardCore"},
+    LightArcher = {Name="Light Archer", Level=325, VisualAsset="LightArcher", Element="Sky", HP=3100, ATK=155, Attack=155, DEF=45, Defense=45, XP=8200, Gold=780, Range=30, Speed=12, Aggro=44, Leash=52, Ranged=true, HasBusoHaki=true, Drop="CelestialFeather"},
+    SunshardRoyalGuard = {Name="Sunshard Royal Guard", Level=450, VisualAsset="SunshardRoyalGuard", Element="Sky", HP=4600, ATK=210, Attack=210, DEF=62, Defense=62, XP=12500, Gold=1050, Range=9.5, Speed=14, Aggro=42, Leash=52, HasBusoHaki=true, Drop="SunshardCore"},
+    GoldenKnight = {Name="Golden Knight", Level=500, VisualAsset="GoldenKnight", Element="Sky", HP=11500, ATK=255, Attack=255, DEF=78, Defense=78, XP=26000, Gold=2400, Range=11, Speed=14, Aggro=46, Leash=55, Elite=true, HasBusoHaki=true, Drop="SunshardCore"},
+    SunshardTemplar = {Name="Sunshard Templar", Level=575, VisualAsset="SunshardTemplar", Element="Sky", HP=6400, ATK=265, Attack=265, DEF=82, Defense=82, XP=18000, Gold=1400, Range=10, Speed=14, Aggro=44, Leash=55, HasBusoHaki=true, Drop="SunshardCore"},
+    AureonSentinel = {Name="AUREON SENTINEL", Level=700, VisualAsset="AureonSentinel", Element="Sky", HP=48000, ATK=420, Attack=420, DEF=110, Defense=110, XP=145000, Gold=20000, Range=18, Speed=14, Aggro=65, Leash=75, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    EnergyPylon = {Name="Energy Pylon", Level=700, VisualAsset="EnergyPylon", Element="Sky", HP=3500, ATK=0, Attack=0, DEF=30, Defense=30, XP=0, Gold=0, Range=0, Speed=0, Aggro=0, Leash=0},
 
     -- Sea 2: Frozen Cyber Mobs & Bosses (Lv. 700 - 1500)
-    FrostDrone = {Name="Frost Automaton", Level=750, VisualAsset="FrostDrone", Element="Frost", HP=4200, ATK=215, Attack=215, DEF=55, Defense=55, Speed=14, Range=6.5, Aggro=38, Leash=55, XP=24000, Gold=2200, Drop="SkyIron"},
-    FrostAutomaton = {Name="Frost Automaton", Level=750, VisualAsset="FrostAutomaton", Element="Frost", HP=4200, ATK=215, Attack=215, DEF=55, Defense=55, Speed=14, Range=6.5, Aggro=38, Leash=55, XP=24000, Gold=2200, Drop="SkyIron"},
-    CyberMercenary = {Name="Cyber Mercenary", Level=875, VisualAsset="CyberMercenary", Element="Frost", HP=5200, ATK=248, Attack=248, DEF=64, Defense=64, Speed=14, Range=24, Aggro=42, Leash=58, Ranged=true, XP=30000, Gold=2650, Drop="SkyIron"},
-    CryoGuard = {Name="Cryo Vanguard", Level=1025, VisualAsset="CryoGuard", Element="Frost", HP=6600, ATK=285, Attack=285, DEF=74, Defense=74, Speed=14, Range=7, Aggro=40, Leash=60, XP=38000, Gold=3100, Drop="SunshardCore"},
-    CryoVanguard = {Name="Cryo Vanguard", Level=1025, VisualAsset="CryoVanguard", Element="Frost", HP=6600, ATK=285, Attack=285, DEF=74, Defense=74, Speed=14, Range=7, Aggro=40, Leash=60, XP=38000, Gold=3100, Drop="SunshardCore"},
-    CyberArcher = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialMarksman", Element="Frost", HP=6200, ATK=320, Attack=320, DEF=78, Defense=78, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=44000, Gold=3500, Drop="CelestialFeather"},
-    GlacialMarksman = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialMarksman", Element="Frost", HP=6200, ATK=320, Attack=320, DEF=78, Defense=78, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=44000, Gold=3500, Drop="CelestialFeather"},
-    GlacialSniper = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialSniper", Element="Frost", HP=6200, ATK=320, Attack=320, DEF=78, Defense=78, Speed=13, Range=28, Aggro=45, Leash=60, Ranged=true, XP=44000, Gold=3500, Drop="CelestialFeather"},
-    MechaDrone = {Name="Mecha Security Drone", Level=1250, VisualAsset="MechaDrone", Element="Frost", HP=7800, ATK=345, Attack=345, DEF=86, Defense=86, Speed=15, Range=7.5, Aggro=42, Leash=60, XP=50000, Gold=3900, Drop="SkyIron"},
-    ArcticCorsair = {Name="Arctic Corsair", Level=1375, VisualAsset="ArcticCorsair", Element="Frost", HP=8900, ATK=375, Attack=375, DEF=94, Defense=94, Speed=15, Range=7.5, Aggro=42, Leash=60, XP=58000, Gold=4400, Drop="SkyIron"},
-    CryonPillar = {Name="Cryon Glacial Pillar", Level=1500, VisualAsset="CryonPillar", Element="Frost", HP=2400, ATK=0, Attack=0, DEF=25, Defense=25, Speed=0, Range=0, Aggro=0, Leash=999, XP=5000, Gold=500},
-    CryonPrime = {Name="CRYON PRIME", Level=1500, VisualAsset="CryonPrime", Element="Frost", HP=64000, ATK=470, Attack=470, DEF=115, Defense=115, XP=420000, Gold=55000, Range=24, Speed=0, Aggro=55, Leash=55, Boss=true, Drop="CoreEssence"},
+    FrostDrone = {Name="Frost Automaton", Level=750, VisualAsset="FrostDrone", Element="Frost", HP=8800, ATK=350, Attack=350, DEF=95, Defense=95, Speed=15, Range=9, Aggro=45, Leash=60, XP=24000, Gold=2200, HasBusoHaki=true, Drop="SkyIron"},
+    FrostAutomaton = {Name="Frost Automaton", Level=750, VisualAsset="FrostAutomaton", Element="Frost", HP=8800, ATK=350, Attack=350, DEF=95, Defense=95, Speed=15, Range=9, Aggro=45, Leash=60, XP=24000, Gold=2200, HasBusoHaki=true, Drop="SkyIron"},
+    CyberMercenary = {Name="Cyber Mercenary", Level=875, VisualAsset="CyberMercenary", Element="Frost", HP=10800, ATK=405, Attack=405, DEF=110, Defense=110, Speed=15, Range=28, Aggro=48, Leash=62, Ranged=true, XP=30000, Gold=2650, HasBusoHaki=true, Drop="SkyIron"},
+    CryoGuard = {Name="Cryo Vanguard", Level=1025, VisualAsset="CryoGuard", Element="Frost", HP=13800, ATK=465, Attack=465, DEF=125, Defense=125, Speed=15, Range=9.5, Aggro=46, Leash=65, XP=38000, Gold=3100, HasBusoHaki=true, Drop="SunshardCore"},
+    CryoVanguard = {Name="Cryo Vanguard", Level=1025, VisualAsset="CryoVanguard", Element="Frost", HP=13800, ATK=465, Attack=465, DEF=125, Defense=125, Speed=15, Range=9.5, Aggro=46, Leash=65, XP=38000, Gold=3100, HasBusoHaki=true, Drop="SunshardCore"},
+    CyberArcher = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialMarksman", Element="Frost", HP=13200, ATK=515, Attack=515, DEF=132, Defense=132, Speed=14, Range=32, Aggro=50, Leash=65, Ranged=true, XP=44000, Gold=3500, HasBusoHaki=true, Drop="CelestialFeather"},
+    GlacialMarksman = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialMarksman", Element="Frost", HP=13200, ATK=515, Attack=515, DEF=132, Defense=132, Speed=14, Range=32, Aggro=50, Leash=65, Ranged=true, XP=44000, Gold=3500, HasBusoHaki=true, Drop="CelestialFeather"},
+    GlacialSniper = {Name="Glacial Sniper", Level=1150, VisualAsset="GlacialSniper", Element="Frost", HP=13200, ATK=515, Attack=515, DEF=132, Defense=132, Speed=14, Range=32, Aggro=50, Leash=65, Ranged=true, XP=44000, Gold=3500, HasBusoHaki=true, Drop="CelestialFeather"},
+    MechaDrone = {Name="Mecha Security Drone", Level=1250, VisualAsset="MechaDrone", Element="Frost", HP=16500, ATK=555, Attack=555, DEF=145, Defense=145, Speed=16, Range=10, Aggro=48, Leash=65, XP=50000, Gold=3900, HasBusoHaki=true, Drop="SkyIron"},
+    ArcticCorsair = {Name="Arctic Corsair", Level=1375, VisualAsset="ArcticCorsair", Element="Frost", HP=19200, ATK=600, Attack=600, DEF=158, Defense=158, Speed=16, Range=10, Aggro=48, Leash=65, XP=58000, Gold=4400, HasBusoHaki=true, Drop="SkyIron"},
+    CryonPillar = {Name="Cryon Glacial Pillar", Level=1500, VisualAsset="CryonPillar", Element="Frost", HP=6500, ATK=0, Attack=0, DEF=60, Defense=60, Speed=0, Range=0, Aggro=0, Leash=999, XP=5000, Gold=500},
+    CryonPrime = {Name="CRYON PRIME", Level=1500, VisualAsset="CryonPrime", Element="Frost", HP=140000, ATK=840, Attack=840, DEF=185, Defense=185, XP=420000, Gold=55000, Range=22, Speed=14, Aggro=70, Leash=80, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
 
     -- Sea 3: Shadow Realm Mobs & Bosses (Lv. 1500 - 2200)
-    VoidPirate = {Name="Void Marauder", Level=1550, VisualAsset="VoidMarauder", Element="Void", HP=10800, ATK=425, Attack=425, DEF=108, Defense=108, Speed=16, Range=7, Aggro=40, Leash=55, XP=72000, Gold=5500, Drop="SunshardCore"},
-    VoidMarauder = {Name="Void Marauder", Level=1550, VisualAsset="VoidMarauder", Element="Void", HP=10800, ATK=425, Attack=425, DEF=108, Defense=108, Speed=16, Range=7, Aggro=40, Leash=55, XP=72000, Gold=5500, Drop="SunshardCore"},
-    VoidRaider = {Name="Void Raider", Level=1675, VisualAsset="VoidRaider", Element="Void", HP=12400, ATK=460, Attack=460, DEF=118, Defense=118, Speed=16, Range=7.5, Aggro=40, Leash=55, XP=82000, Gold=6200, Drop="SunshardCore"},
-    ShadowArcher = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralBowman", Element="Void", HP=12000, ATK=495, Attack=495, DEF=122, Defense=122, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=94000, Gold=6800, Drop="CelestialFeather"},
-    UmbralBowman = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralBowman", Element="Void", HP=12000, ATK=495, Attack=495, DEF=122, Defense=122, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=94000, Gold=6800, Drop="CelestialFeather"},
-    UmbralRanger = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralRanger", Element="Void", HP=12000, ATK=495, Attack=495, DEF=122, Defense=122, Speed=14, Range=28, Aggro=45, Leash=60, Ranged=true, XP=94000, Gold=6800, Drop="CelestialFeather"},
-    ShadowSpecter = {Name="Shadow Specter", Level=1925, VisualAsset="ShadowSpecter", Element="Void", HP=14800, ATK=530, Attack=530, DEF=135, Defense=135, Speed=17, Range=8, Aggro=44, Leash=60, XP=108000, Gold=7600, Drop="CelestialFeather"},
-    AbyssalKnight = {Name="Abyssal Dreadknight", Level=2000, VisualAsset="AbyssalKnight", Element="Void", HP=24000, ATK=580, Attack=580, DEF=150, Defense=150, Speed=14, Range=8, Aggro=42, Leash=65, Elite=true, XP=165000, Gold=11500, Drop="CoreEssence"},
-    AbyssalDreadknight = {Name="Abyssal Dreadknight", Level=2000, VisualAsset="AbyssalDreadknight", Element="Void", HP=24000, ATK=580, Attack=580, DEF=150, Defense=150, Speed=14, Range=8, Aggro=42, Leash=65, Elite=true, XP=165000, Gold=11500, Drop="CoreEssence"},
-    TerrorSkyShark = {Name="Terror Sky-Shark", Level=2100, VisualAsset="TerrorSkyShark", Element="Void", HP=32000, ATK=630, Attack=630, DEF=160, Defense=160, Speed=15, Range=11, Aggro=52, Leash=75, Elite=true, XP=210000, Gold=14500, Drop="CoreEssence"},
-    NoxarVoidFX = {Name="Void Singularity", Level=2200, VisualAsset="NoxarVoidFX", Element="Void", HP=4500, ATK=0, Attack=0, DEF=40, Defense=40, Speed=0, Range=0, Aggro=0, Leash=999, XP=15000, Gold=1200},
-    Noxar = {Name="NOXAR • VOID SOVEREIGN", Level=2200, VisualAsset="Noxar", Element="Void", HP=150000, ATK=780, Attack=780, DEF=195, Defense=195, XP=1050000, Gold=135000, Range=26, Speed=0, Aggro=58, Leash=58, Boss=true, Drop="CoreEssence"},
+    VoidPirate = {Name="Void Marauder", Level=1550, VisualAsset="VoidMarauder", Element="Void", HP=24000, ATK=680, Attack=680, DEF=170, Defense=170, Speed=16, Range=10, Aggro=48, Leash=65, XP=72000, Gold=5500, HasBusoHaki=true, Drop="SunshardCore"},
+    VoidMarauder = {Name="Void Marauder", Level=1550, VisualAsset="VoidMarauder", Element="Void", HP=24000, ATK=680, Attack=680, DEF=170, Defense=170, Speed=16, Range=10, Aggro=48, Leash=65, XP=72000, Gold=5500, HasBusoHaki=true, Drop="SunshardCore"},
+    VoidRaider = {Name="Void Raider", Level=1675, VisualAsset="VoidRaider", Element="Void", HP=28000, ATK=740, Attack=740, DEF=185, Defense=185, Speed=16, Range=10, Aggro=48, Leash=65, XP=82000, Gold=6200, HasBusoHaki=true, Drop="SunshardCore"},
+    ShadowArcher = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralBowman", Element="Void", HP=27000, ATK=795, Attack=795, DEF=192, Defense=192, Speed=15, Range=32, Aggro=52, Leash=68, Ranged=true, XP=94000, Gold=6800, HasBusoHaki=true, Drop="CelestialFeather"},
+    UmbralBowman = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralBowman", Element="Void", HP=27000, ATK=795, Attack=795, DEF=192, Defense=192, Speed=15, Range=32, Aggro=52, Leash=68, Ranged=true, XP=94000, Gold=6800, HasBusoHaki=true, Drop="CelestialFeather"},
+    UmbralRanger = {Name="Umbral Ranger", Level=1800, VisualAsset="UmbralRanger", Element="Void", HP=27000, ATK=795, Attack=795, DEF=192, Defense=192, Speed=15, Range=32, Aggro=52, Leash=68, Ranged=true, XP=94000, Gold=6800, HasBusoHaki=true, Drop="CelestialFeather"},
+    ShadowSpecter = {Name="Shadow Specter", Level=1925, VisualAsset="ShadowSpecter", Element="Void", HP=33000, ATK=850, Attack=850, DEF=208, Defense=208, Speed=17, Range=10.5, Aggro=52, Leash=68, XP=108000, Gold=7600, HasBusoHaki=true, Drop="CelestialFeather"},
+    AbyssalKnight = {Name="Abyssal Dreadknight", Level=2000, VisualAsset="AbyssalKnight", Element="Void", HP=52000, ATK=940, Attack=940, DEF=230, Defense=230, Speed=16, Range=11, Aggro=54, Leash=72, Elite=true, XP=165000, Gold=11500, HasBusoHaki=true, Drop="CoreEssence"},
+    AbyssalDreadknight = {Name="Abyssal Dreadknight", Level=2000, VisualAsset="AbyssalDreadknight", Element="Void", HP=52000, ATK=940, Attack=940, DEF=230, Defense=230, Speed=16, Range=11, Aggro=54, Leash=72, Elite=true, XP=165000, Gold=11500, HasBusoHaki=true, Drop="CoreEssence"},
+    TerrorSkyShark = {Name="Terror Sky-Shark", Level=2100, VisualAsset="TerrorSkyShark", Element="Void", HP=68000, ATK=1020, Attack=1020, DEF=245, Defense=245, Speed=17, Range=13, Aggro=60, Leash=80, Elite=true, XP=210000, Gold=14500, HasBusoHaki=true, Drop="CoreEssence"},
+    NoxarVoidFX = {Name="Void Singularity", Level=2200, VisualAsset="NoxarVoidFX", Element="Void", HP=12000, ATK=0, Attack=0, DEF=80, Defense=80, Speed=0, Range=0, Aggro=0, Leash=999, XP=15000, Gold=1200},
+    Noxar = {Name="NOXAR • VOID SOVEREIGN", Level=2200, VisualAsset="Noxar", Element="Void", HP=320000, ATK=1450, Attack=1450, DEF=270, Defense=270, XP=1050000, Gold=135000, Range=24, Speed=15, Aggro=75, Leash=85, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
 
     -- Sea Event & Island Raid Bosses (Grand Sky Seas v12 Rigged Blender Models)
-    PirateCaptainVance = {Name="CAPTAIN VANCE • ĐÔ ĐỐC KHÔNG TẶC", Level=350, VisualAsset="PirateCaptainVance", Element="Sky", HP=8200, ATK=125, Attack=125, DEF=32, Defense=32, XP=42000, Gold=6500, Range=14, Speed=12, Aggro=42, Leash=50, Boss=true, Drop="SunshardCore"},
-    OrderCyborg = {Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", Level=1250, VisualAsset="OrderCyborg", Element="Frost", HP=45000, ATK=395, Attack=395, DEF=96, Defense=96, XP=260000, Gold=36000, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
-    OrderCyborgBoss = {Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", Level=1250, VisualAsset="OrderCyborgBoss", Element="Frost", HP=45000, ATK=395, Attack=395, DEF=96, Defense=96, XP=260000, Gold=36000, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
-    SkySeaBeast = {Name="SKY SEA BEAST • THỦY QUÁI BIỂN MÂY", Level=1400, VisualAsset="SkySeaBeast", Element="Frost", HP=54000, ATK=430, Attack=430, DEF=105, Defense=105, XP=320000, Gold=45000, Range=26, Speed=8, Aggro=70, Leash=90, Boss=true, Drop="CoreEssence"},
-    SoulReaperRift = {Name="SOUL REAPER • TỬ THẦN HƯ KHÔNG", Level=2050, VisualAsset="SoulReaperRift", Element="Void", HP=105000, ATK=650, Attack=650, DEF=165, Defense=165, XP=680000, Gold=88000, Range=20, Speed=13, Aggro=55, Leash=65, Boss=true, Drop="CoreEssence"},
-    AbyssalDragonHybrid = {Name="ABYSSAL DRAGON HYBRID • LONG NHÂN HƯ KHÔNG", Level=2125, VisualAsset="AbyssalDragonHybrid", Element="Void", HP=118000, ATK=690, Attack=690, DEF=175, Defense=175, XP=750000, Gold=98000, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
-    AbyssalLeviathan = {Name="ABYSSAL LEVIATHAN • THỦY TỔ HƯ KHÔNG", Level=2150, VisualAsset="AbyssalLeviathan", Element="Void", HP=135000, ATK=730, Attack=730, DEF=185, Defense=185, XP=880000, Gold=115000, Range=28, Speed=9, Aggro=80, Leash=100, Boss=true, Drop="CoreEssence"},
-    AbyssalSovereignDragon = {Name="ABYSSAL SOVEREIGN DRAGON • THÁI CỔ LONG HOÀNG", Level=2300, VisualAsset="AbyssalSovereignDragon", Element="Void", HP=195000, ATK=880, Attack=880, DEF=225, Defense=225, XP=1450000, Gold=175000, Range=28, Speed=10, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
+    PirateCaptainVance = {Name="CAPTAIN VANCE • ĐÔ ĐỐC KHÔNG TẶC", Level=350, VisualAsset="PirateCaptainVance", Element="Sky", HP=18000, ATK=215, Attack=215, DEF=58, Defense=58, XP=42000, Gold=6500, Range=15, Speed=14, Aggro=48, Leash=60, Boss=true, HasBusoHaki=true, Drop="SunshardCore"},
+    OrderCyborg = {Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", Level=1250, VisualAsset="OrderCyborg", Element="Frost", HP=98000, ATK=680, Attack=680, DEF=162, Defense=162, XP=260000, Gold=36000, Range=19, Speed=15, Aggro=58, Leash=72, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    OrderCyborgBoss = {Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", Level=1250, VisualAsset="OrderCyborgBoss", Element="Frost", HP=98000, ATK=680, Attack=680, DEF=162, Defense=162, XP=260000, Gold=36000, Range=19, Speed=15, Aggro=58, Leash=72, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    SkySeaBeast = {Name="SKY SEA BEAST • THỦY QUÁI BIỂN MÂY", Level=1400, VisualAsset="SkySeaBeast", Element="Frost", HP=118000, ATK=750, Attack=750, DEF=175, Defense=175, XP=320000, Gold=45000, Range=26, Speed=12, Aggro=75, Leash=95, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    SoulReaperRift = {Name="SOUL REAPER • TỬ THẦN HƯ KHÔNG", Level=2050, VisualAsset="SoulReaperRift", Element="Void", HP=235000, ATK=1140, Attack=1140, DEF=245, Defense=245, XP=680000, Gold=88000, Range=21, Speed=15, Aggro=65, Leash=80, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    AbyssalDragonHybrid = {Name="ABYSSAL DRAGON HYBRID • LONG NHÂN HƯ KHÔNG", Level=2125, VisualAsset="AbyssalDragonHybrid", Element="Void", HP=265000, ATK=1220, Attack=1220, DEF=255, Defense=255, XP=750000, Gold=98000, Range=22, Speed=15, Aggro=70, Leash=85, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    AbyssalLeviathan = {Name="ABYSSAL LEVIATHAN • THỦY TỔ HƯ KHÔNG", Level=2150, VisualAsset="AbyssalLeviathan", Element="Void", HP=295000, ATK=1310, Attack=1310, DEF=265, Defense=265, XP=880000, Gold=115000, Range=28, Speed=13, Aggro=85, Leash=105, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    AbyssalSovereignDragon = {Name="ABYSSAL SOVEREIGN DRAGON • THÁI CỔ LONG HOÀNG", Level=2300, VisualAsset="AbyssalSovereignDragon", Element="Void", HP=420000, ATK=1650, Attack=1650, DEF=295, Defense=295, XP=1450000, Gold=175000, Range=28, Speed=15, Aggro=78, Leash=95, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
 
     -- Regional Island & Expansion Realm Bosses (Lv. 100 - 2550 MAX)
-    SkyHubWatchCommander = {Name="COMMANDER VALEN • THỦ VỆ SÂN TẬP", Level=100, VisualAsset="SunshardRoyalGuard", Element="Sky", HP=2400, ATK=52, Attack=52, DEF=16, Defense=16, XP=12000, Gold=2200, Range=11, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
-    ShrineGuardianBoss = {Name="SHRINE WARDEN ORION • HỘ VỆ ĐIỆN THỜ", Level=225, VisualAsset="SunshardTemplar", Element="Sky", HP=4800, ATK=85, Attack=85, DEF=24, Defense=24, XP=24000, Gold=3800, Range=11, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
-    AetherArchonBoss = {Name="ARCHON HELIOS • LINH VỆ AETHER", Level=450, VisualAsset="GoldenKnight", Element="Sky", HP=11500, ATK=155, Attack=155, DEF=38, Defense=38, XP=58000, Gold=8500, Range=12, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
-    SolarHighPriestBoss = {Name="HIGH PRIEST SOLARIUS • ĐẠI TƯ TẾ THÁI DƯƠNG", Level=625, VisualAsset="SolarTitanBuddha", Element="Sky", HP=15500, ATK=195, Attack=195, DEF=50, Defense=50, XP=85000, Gold=12000, Range=16, Speed=11, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
-    CyberSyndicateBoss = {Name="OVERLORD KRON • TRÙM HẮC THỊ CYBERPORT", Level=950, VisualAsset="CyberMercenary", Element="Frost", HP=28000, ATK=310, Attack=310, DEF=78, Defense=78, XP=165000, Gold=22000, Range=18, Speed=13, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
-    PermafrostWardenBoss = {Name="GENERAL BOREAS • THỐNG LĨNH PHÁO ĐÀI BĂNG", Level=1125, VisualAsset="CryoVanguard", Element="Frost", HP=36000, ATK=355, Attack=355, DEF=88, Defense=88, XP=210000, Gold=28000, Range=14, Speed=12, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
-    VoidCastellanBoss = {Name="LORD MALAKOR • LÃNH CHÚA DINH THỰ HƯ KHÔNG", Level=1725, VisualAsset="AbyssalDreadknight", Element="Void", HP=76000, ATK=540, Attack=540, DEF=135, Defense=135, XP=480000, Gold=62000, Range=16, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
-    UmbralArchfiendBoss = {Name="ARCHFIEND ZERATH • KIẾM MA TINH THỂ ĐEN", Level=1875, VisualAsset="AbyssalDragonHybrid", Element="Void", HP=88000, ATK=590, Attack=590, DEF=148, Defense=148, XP=560000, Gold=72000, Range=18, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
-    Sylvaris = {Name="SYLVARIS • ĐẠI CỔ THỤ HOÀNG", Level=2250, VisualAsset="AbyssalDragonHybrid", Element="Sky", HP=175000, ATK=830, Attack=830, DEF=210, Defense=210, XP=1250000, Gold=155000, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
-    Ignivar = {Name="IGNIVAR • TITAN LÒ RÈN LỬA", Level=2325, VisualAsset="SolarTitanBuddha", Element="Sky", HP=210000, ATK=910, Attack=910, DEF=235, Defense=235, XP=1600000, Gold=190000, Range=24, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
-    Nerith = {Name="NERITH • THỦY HOÀNG VỰC SÂU", Level=2400, VisualAsset="AbyssalLeviathan", Element="Frost", HP=245000, ATK=970, Attack=970, DEF=250, Defense=250, XP=1950000, Gold=225000, Range=28, Speed=11, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
-    Aion = {Name="AION • PHÁP VƯƠNG THỜI GIAN", Level=2475, VisualAsset="OrderCyborgBoss", Element="Sky", HP=285000, ATK=1040, Attack=1040, DEF=270, Defense=270, XP=2400000, Gold=275000, Range=24, Speed=13, Aggro=70, Leash=85, Boss=true, Drop="CoreEssence"},
-    Veyr = {Name="VEYR • ĐẤNG KIẾN TẠO ĐẦU TIÊN", Level=2550, VisualAsset="AbyssalSovereignDragon", Element="Void", HP=360000, ATK=1150, Attack=1150, DEF=300, Defense=300, XP=3500000, Gold=400000, Range=30, Speed=12, Aggro=80, Leash=95, Boss=true, Drop="CoreEssence"},
+    SkyHubWatchCommander = {Name="COMMANDER VALEN • THỦ VỆ SÂN TẬP", Level=100, VisualAsset="SunshardRoyalGuard", Element="Sky", HP=5500, ATK=95, Attack=95, DEF=28, Defense=28, XP=12000, Gold=2200, Range=12, Speed=13, Aggro=44, Leash=55, Boss=true, HasBusoHaki=true, Drop="SunshardCore"},
+    ShrineGuardianBoss = {Name="SHRINE WARDEN ORION • HỘ VỆ ĐIỆN THỜ", Level=225, VisualAsset="SunshardTemplar", Element="Sky", HP=10500, ATK=145, Attack=145, DEF=42, Defense=42, XP=24000, Gold=3800, Range=12, Speed=13, Aggro=44, Leash=55, Boss=true, HasBusoHaki=true, Drop="SunshardCore"},
+    AetherArchonBoss = {Name="ARCHON HELIOS • LINH VỆ AETHER", Level=450, VisualAsset="GoldenKnight", Element="Sky", HP=25000, ATK=265, Attack=265, DEF=72, Defense=72, XP=58000, Gold=8500, Range=14, Speed=14, Aggro=48, Leash=60, Boss=true, HasBusoHaki=true, Drop="SunshardCore"},
+    SolarHighPriestBoss = {Name="HIGH PRIEST SOLARIUS • ĐẠI TƯ TẾ THÁI DƯƠNG", Level=625, VisualAsset="SolarTitanBuddha", Element="Sky", HP=35000, ATK=345, Attack=345, DEF=92, Defense=92, XP=85000, Gold=12000, Range=17, Speed=14, Aggro=52, Leash=65, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    CyberSyndicateBoss = {Name="OVERLORD KRON • TRÙM HẮC THỊ CYBERPORT", Level=950, VisualAsset="CyberMercenary", Element="Frost", HP=62000, ATK=520, Attack=520, DEF=130, Defense=130, XP=165000, Gold=22000, Range=18, Speed=15, Aggro=54, Leash=68, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    PermafrostWardenBoss = {Name="GENERAL BOREAS • THỐNG LĨNH PHÁO ĐÀI BĂNG", Level=1125, VisualAsset="CryoVanguard", Element="Frost", HP=80000, ATK=600, Attack=600, DEF=148, Defense=148, XP=210000, Gold=28000, Range=16, Speed=15, Aggro=54, Leash=68, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    VoidCastellanBoss = {Name="LORD MALAKOR • LÃNH CHÚA DINH THỰ HƯ KHÔNG", Level=1725, VisualAsset="AbyssalDreadknight", Element="Void", HP=165000, ATK=920, Attack=920, DEF=210, Defense=210, XP=480000, Gold=62000, Range=18, Speed=15, Aggro=60, Leash=75, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    UmbralArchfiendBoss = {Name="ARCHFIEND ZERATH • KIẾM MA TINH THỂ ĐEN", Level=1875, VisualAsset="AbyssalDragonHybrid", Element="Void", HP=195000, ATK=1010, Attack=1010, DEF=225, Defense=225, XP=560000, Gold=72000, Range=19, Speed=15, Aggro=60, Leash=75, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    Sylvaris = {Name="SYLVARIS • ĐẠI CỔ THỤ HOÀNG", Level=2250, VisualAsset="AbyssalDragonHybrid", Element="Sky", HP=380000, ATK=1550, Attack=1550, DEF=285, Defense=285, XP=1250000, Gold=155000, Range=23, Speed=15, Aggro=72, Leash=88, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    Ignivar = {Name="IGNIVAR • TITAN LÒ RÈN LỬA", Level=2325, VisualAsset="SolarTitanBuddha", Element="Sky", HP=460000, ATK=1750, Attack=1750, DEF=310, Defense=310, XP=1600000, Gold=190000, Range=24, Speed=15, Aggro=72, Leash=88, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    Nerith = {Name="NERITH • THỦY HOÀNG VỰC SÂU", Level=2400, VisualAsset="AbyssalLeviathan", Element="Frost", HP=530000, ATK=1920, Attack=1920, DEF=330, Defense=330, XP=1950000, Gold=225000, Range=28, Speed=15, Aggro=78, Leash=95, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    Aion = {Name="AION • PHÁP VƯƠNG THỜI GIAN", Level=2475, VisualAsset="OrderCyborgBoss", Element="Sky", HP=620000, ATK=2120, Attack=2120, DEF=355, Defense=355, XP=2400000, Gold=275000, Range=25, Speed=16, Aggro=76, Leash=92, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
+    Veyr = {Name="VEYR • ĐẤNG KIẾN TẠO ĐẦU TIÊN", Level=2550, VisualAsset="AbyssalSovereignDragon", Element="Void", HP=780000, ATK=2400, Attack=2400, DEF=390, Defense=390, XP=3500000, Gold=400000, Range=30, Speed=16, Aggro=85, Leash=100, Boss=true, HasBusoHaki=true, Drop="CoreEssence"},
 }
 
 local BALANCED_ENEMY_STATS = {}
@@ -697,6 +697,11 @@ for enemyId, enemyDef in pairs(C.Enemies) do
         Defense = enemyDef.Defense or enemyDef.DEF,
         XP = enemyDef.XP,
         Gold = enemyDef.Gold,
+        Speed = enemyDef.Speed,
+        Range = enemyDef.Range,
+        Aggro = enemyDef.Aggro,
+        Leash = enemyDef.Leash,
+        HasBusoHaki = enemyDef.HasBusoHaki,
     }
 end
 
@@ -1437,598 +1442,676 @@ do
             end
         end
     end
+
+    local RARITY_LV = { Common = 1, Uncommon = 50, Rare = 150, Epic = 350, Legendary = 700, Mythic = 1800, Mythical = 1800 }
+    for _, item in pairs(C.Items) do
+        if type(item) == "table" and item.Slot ~= "Material" and item.Slot ~= "Quest" then
+            if not item.LevelReq or item.LevelReq <= 1 then item.LevelReq = RARITY_LV[tostring(item.Rarity or "Common")] or 1 end
+            if item.ATK and item.ATK > 0 then item.ATK = math.max(5, math.floor(item.ATK * 0.45 + 0.5)) end
+            if item.DEF and item.DEF > 0 then item.DEF = math.max(2, math.floor(item.DEF * 0.45 + 0.5)) end
+            if item.HP and item.HP > 0 then item.HP = math.max(15, math.floor(item.HP * 0.45 + 0.5)) end
+            if item.CritRate and item.CritRate > 0 then item.CritRate = math.clamp(math.floor(item.CritRate * 0.45 + 0.5), 1, 8) end
+            if item.CritDmg and item.CritDmg > 0 then item.CritDmg = math.clamp(math.floor(item.CritDmg * 0.45 + 0.5), 3, 12) end
+        end
+    end
+    local function normMoves(cat, skipId)
+        for id, entry in pairs(cat or {}) do
+            if id ~= skipId and type(entry) == "table" then
+                if entry.ATK and entry.ATK > 0 then entry.ATK = math.max(5, math.floor(entry.ATK * 0.45 + 0.5)) end
+                if entry.CritRate and entry.CritRate > 0 then entry.CritRate = math.clamp(math.floor(entry.CritRate * 0.45 + 0.5), 1, 8) end
+                if entry.CritDmg and entry.CritDmg > 0 then entry.CritDmg = math.clamp(math.floor(entry.CritDmg * 0.45 + 0.5), 3, 12) end
+                if type(entry.Moves) == "table" then
+                    for k, mv in pairs(entry.Moves) do
+                        if type(mv) == "table" then
+                            local ku = string.upper(tostring(mv.Key or k or "Z"))
+                            local minCd = (ku == "V" and 15.0) or (ku == "C" and 10.5) or (ku == "X" and 7.5) or (ku == "F" and 6.0) or 5.0
+                            mv.Cooldown = math.max(minCd, math.floor(((tonumber(mv.Cooldown) or 5.0) * 1.20) * 10 + 0.5) / 10)
+                            mv.Cost = math.max(10, math.floor((tonumber(mv.Cost) or 10) * 1.25 + 0.5))
+                            if mv.Multiplier and mv.Multiplier > 0 then mv.Multiplier = math.clamp(math.floor((mv.Multiplier * 0.65) * 100 + 0.5) / 100, 1.05, 3.40) end
+                            if mv.Break and mv.Break > 0 then mv.Break = math.clamp(math.floor(mv.Break * 0.48 + 0.5), 6, 26) end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    normMoves(C.AetherFruits, "AbyssalSovereignCore")
+    normMoves(C.FightingStyles, nil)
+    normMoves(C.Swords, nil)
+    normMoves(C.Guns, nil)
 end
 
 function C.GetDragonFormMoves(tier)
-    local dragonCfg = C.AetherFruits and C.AetherFruits.AbyssalSovereignCore
-    if not dragonCfg then
-        return nil
-    end
-    if tonumber(tier) and tonumber(tier) >= 2 then
-        return dragonCfg.Form2Moves or dragonCfg.Moves
-    end
-    return dragonCfg.Form1Moves or dragonCfg.Moves
+    local d = C.AetherFruits and C.AetherFruits.AbyssalSovereignCore
+    if not d then return nil end
+    return (tonumber(tier) and tonumber(tier) >= 2) and (d.Form2Moves or d.Moves) or (d.Form1Moves or d.Moves)
 end
 
 if game:GetService("RunService"):IsServer() then
-    task.spawn(function()
-        local function isDisabledRailOrCompanionInstance(inst)
-            if not inst then
-                return false
-            end
-            local n = inst.Name
-            if n == "SkyRailPad" or string.sub(n, 1, 10) == "RailTrack_" or string.sub(n, 1, 14) == "AetherSkyRail_" then
-                return true
-            end
-            if inst:GetAttribute("CompanionId") ~= nil then
-                return true
-            end
-            return false
+task.spawn(function()
+    local function isDisabledInst(inst)
+        if not inst then return false end
+        local n = inst.Name
+        return n == "SkyRailPad" or string.sub(n, 1, 10) == "RailTrack_" or string.sub(n, 1, 14) == "AetherSkyRail_" or inst:GetAttribute("CompanionId") ~= nil
+    end
+    local function purgeWorld()
+        for _, fn in ipairs({ "JumpPads", "AetherSkyRails", "ActiveCompanions" }) do
+            local f = workspace:FindFirstChild(fn)
+            if f then f:ClearAllChildren() end
         end
-
-        local function purgeDisabledWorldFeatures()
-            for _, fname in ipairs({ "JumpPads", "AetherSkyRails", "ActiveCompanions" }) do
-                local f = workspace:FindFirstChild(fname)
-                if f then
-                    f:ClearAllChildren()
-                end
-            end
-            for _, folderName in ipairs({ "ActiveEnemies", "SkybreakWorldObjects", "SkybreakExpansionWorld" }) do
-                local ef = workspace:FindFirstChild(folderName)
-                if ef then
-                    for _, d in ipairs(ef:GetDescendants()) do
-                        if d.Name == "DummyFloorRing" and d:IsA("BasePart") then
-                            d.Transparency = 1
-                            d.CanCollide = false
-                            d.CanQuery = false
-                            d.CanTouch = false
-                        elseif isDisabledRailOrCompanionInstance(d) then
-                            pcall(function() d:Destroy() end)
-                        end
+        for _, fn in ipairs({ "ActiveEnemies", "SkybreakWorldObjects", "SkybreakExpansionWorld" }) do
+            local ef = workspace:FindFirstChild(fn)
+            if ef then
+                for _, d in ipairs(ef:GetDescendants()) do
+                    if d.Name == "DummyFloorRing" and d:IsA("BasePart") then
+                        d.Transparency = 1; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
+                    elseif isDisabledInst(d) then
+                        pcall(function() d:Destroy() end)
                     end
                 end
             end
         end
-
-        workspace.ChildAdded:Connect(function(child)
-            if child.Name == "JumpPads" or child.Name == "AetherSkyRails" or child.Name == "ActiveCompanions" then
-                task.defer(function()
-                    if child.Parent then
-                        child:ClearAllChildren()
-                    end
-                end)
-                child.ChildAdded:Connect(function(sub)
-                    task.defer(function()
-                        if sub and sub.Parent then
-                            pcall(function() sub:Destroy() end)
-                        end
-                    end)
-                end)
-            end
-        end)
-
-        workspace.DescendantAdded:Connect(function(desc)
-            if isDisabledRailOrCompanionInstance(desc) then
-                task.defer(function()
-                    if desc and desc.Parent then
-                        pcall(function() desc:Destroy() end)
-                    end
-                end)
-            elseif desc.Name == "DummyFloorRing" and desc:IsA("BasePart") then
-                task.defer(function()
-                    desc.Transparency = 1
-                    desc.CanCollide = false
-                    desc.CanQuery = false
-                    desc.CanTouch = false
-                end)
-            end
-        end)
-
-        local tickIdx = 0
-        while true do
-            tickIdx += 1
-            task.wait(tickIdx <= 40 and 0.25 or 0.5)
-            purgeDisabledWorldFeatures()
-            local sss = game:GetService("ServerScriptService")
-            local services = sss and sss:FindFirstChild("Services")
-            local gsMod = services and services:FindFirstChild("GameService")
-            local pdMod = services and services:FindFirstChild("PlayerDataService")
-            if gsMod then
-                local okG, G = pcall(require, gsMod)
-                local okD, D = false, nil
-                if pdMod then
-                    okD, D = pcall(require, pdMod)
-                end
-                if okG and type(G) == "table" then
-                    for enemyId, bal in pairs(BALANCED_ENEMY_STATS) do
-                        local ec = C.Enemies and C.Enemies[enemyId]
-                        if type(ec) == "table" then
-                            ec.HP = bal.HP
-                            ec.ATK = bal.ATK
-                            ec.Attack = bal.Attack
-                            ec.DEF = bal.DEF
-                            ec.Defense = bal.Defense
-                            ec.XP = bal.XP
-                            ec.Gold = bal.Gold
-                        end
-                    end
-                    for _, e in ipairs(G.Enemies or {}) do
-                        if type(e) == "table" and e.Id and BALANCED_ENEMY_STATS[e.Id] then
-                            local bal = BALANCED_ENEMY_STATS[e.Id]
-                            if type(e.Config) == "table" then
-                                e.Config.HP = bal.HP
-                                e.Config.ATK = bal.ATK
-                                e.Config.Attack = bal.Attack
-                                e.Config.DEF = bal.DEF
-                                e.Config.Defense = bal.Defense
-                                e.Config.XP = bal.XP
-                                e.Config.Gold = bal.Gold
-                            end
-                            if (e.MaxHP or 0) ~= bal.HP then
-                                local wasFull = (e.HP or 0) >= (e.MaxHP or 1) * 0.99
-                                e.MaxHP = bal.HP
-                                if wasFull or (e.HP or 0) > bal.HP then
-                                    e.HP = bal.HP
-                                end
-                                if e.HPText then
-                                    e.HPText.Text = string.format("%d / %d", math.floor(e.HP or bal.HP), bal.HP)
-                                end
-                            end
-                        end
-                    end
-                    if type(G.JumpPads) == "table" then
-                        table.clear(G.JumpPads)
-                    end
-                    G.SyncCompanions = function(p)
-                        if G.Runtime and G.Runtime[p] and type(G.Runtime[p].Companions) == "table" then
-                            for k, comp in pairs(G.Runtime[p].Companions) do
-                                if comp and comp.Model then
-                                    pcall(function() comp.Model:Destroy() end)
-                                end
-                                G.Runtime[p].Companions[k] = nil
-                            end
-                        end
-                        local ac = workspace:FindFirstChild("ActiveCompanions")
-                        if ac then ac:ClearAllChildren() end
-                    end
-                    G.TickCompanions = function() end
-
-                    if not G._CompanionNotifyFiltered and type(G.Notify) == "function" then
-                        G._CompanionNotifyFiltered = true
-                        local prevNotify = G.Notify
-                        G.Notify = function(p, msg, ...)
-                            if type(msg) == "string" and string.find(msg, "Đồng Hành", 1, true) then
-                                msg = string.gsub(msg, "%s*•%s*Mở khóa Đồng Hành.*", "")
-                            end
-                            return prevNotify(p, msg, ...)
-                        end
-                    end
-
-                    if not G._CompanionSyncFiltered and G.SocialEconomy ~= nil then
-                        G._CompanionSyncFiltered = true
-                        local prevBeforeSync = G.OnBeforeSync
-                        G.OnBeforeSync = function(p, profile, rt, stats, statePayload)
-                            if prevBeforeSync then
-                                prevBeforeSync(p, profile, rt, stats, statePayload)
-                            end
-                            if type(profile) == "table" then
-                                profile.PartySize = "Solo"
-                            end
-                            if type(statePayload) == "table" then
-                                statePayload.PartySize = "Solo"
-                                statePayload.Companions = {}
-                            end
-                        end
-                    end
-
-                    if type(G.Runtime) == "table" then
-                        for plr, rt in pairs(G.Runtime) do
-                            if type(rt) == "table" then
-                                rt.FuryMeter = 100
-                                if type(rt.Companions) == "table" then
-                                    for k, comp in pairs(rt.Companions) do
-                                        if comp and comp.Model then
-                                            pcall(function() comp.Model:Destroy() end)
-                                        end
-                                        rt.Companions[k] = nil
-                                    end
-                                end
-                            end
-                            if plr and plr.Parent then
-                                if (plr:GetAttribute("FuryMeter") or 0) < 100 then
-                                    plr:SetAttribute("FuryMeter", 100)
-                                end
-                                local prof = okD and D and type(D.Get) == "function" and D.Get(plr) or nil
-                                if type(prof) == "table" and prof.PartySize ~= "Solo" then
-                                    prof.PartySize = "Solo"
-                                end
-                            end
-                        end
-                    end
-
-                    -- Hook Dual-Form Dragon (Dạng 1: Bán Long Nhân vs Dạng 2: Thái Cổ Long Hoàng) AFTER expansion services initialize
-                    if not G._DragonDualFormsHooked and type(G.UseSlotMove) == "function" and (G.SocialEconomy ~= nil or tickIdx >= 16) then
-                        G._DragonDualFormsHooked = true
-                        local prevUseSlotMove = G.UseSlotMove
-                        local prevAction = G.Action
-                        local remotesFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
-                        local combatFXRemote = remotesFolder and remotesFolder:FindFirstChild("CombatFX")
-
-                        local function isDragonFruitId(fid)
-                            local s = string.lower(tostring(fid or ""))
-                            return s == "abyssalsovereigncore" or s == "dragon" or s == "abyssal_dragon" or s == "void_dragon" or s == "abyssal_sovereign"
-                        end
-
-                        local function resolveActiveDragonTier(p, rt)
-                            local ch = p and p.Character
-                            local t = tonumber(rt and rt.DragonFormTier)
-                                or tonumber(ch and ch:GetAttribute("DragonFormTier"))
-                                or tonumber(p and p:GetAttribute("DragonFormTier"))
-                                or 0
-                            local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or (p and p:GetAttribute("FruitTransform")) or "")
-                            if t >= 2 or tf == "AbyssalSovereign" then
-                                return 2
-                            elseif t == 1 or tf == "AbyssalDragonHybrid" then
-                                return 1
-                            end
-                            return 0
-                        end
-
-                        local function safeDashPlayer(p, rt, hrp, dist, invDur)
-                            local lookVec = hrp.CFrame.LookVector
-                            local originPos = hrp.Position
-                            local rp = RaycastParams.new()
-                            rp.FilterType = Enum.RaycastFilterType.Exclude
-                            rp.FilterDescendantsInstances = { p.Character, workspace:FindFirstChild("ActiveEnemies"), workspace:FindFirstChild("ActiveBosses") }
-                            rp.RespectCanCollide = true
-                            local hit = workspace:Raycast(originPos, lookVec * dist, rp)
-                            local target = hit and (hit.Position - lookVec * 2.8) or (originPos + lookVec * dist)
-                            rt.InvincibleUntil = math.max(rt.InvincibleUntil or 0, os.clock() + (invDur or 1.2))
-                            rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 1.6)
-                            if type(G.Teleport) == "function" then
-                                G.Teleport(p, target)
-                            else
-                                hrp.CFrame = CFrame.new(target) * hrp.CFrame.Rotation
-                            end
-                            return target
-                        end
-
-                        G.Action = function(p, action, payload)
-                            local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
-                            local rt = G.Runtime and G.Runtime[p]
-                            local act = tostring(action or "")
-                            if (act == "Attack" or act == "Light" or act == "M1") and profile and rt then
-                                local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
-                                if slot == 2 and isDragonFruitId(profile.EquippedFruit) then
-                                    local ch = p.Character
-                                    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-                                    local tier = resolveActiveDragonTier(p, rt)
-                                    if hrp and tier > 0 then
-                                        local now = os.clock()
-                                        local cd = (tier == 2) and 0.46 or 0.34
-                                        if now < (rt.Cooldowns and rt.Cooldowns.DragonM1 or 0) then
-                                            return
-                                        end
-                                        rt.Cooldowns = rt.Cooldowns or {}
-                                        rt.Cooldowns.DragonM1 = now + cd
-                                        rt.FuryMeter = 100
-                                        p:SetAttribute("FuryMeter", 100)
-                                        if ch then ch:SetAttribute("FuryMeter", 100) end
-
-                                        local combo = ((tonumber(rt.DragonM1Combo) or 0) % 4) + 1
-                                        rt.DragonM1Combo = combo
-                                        local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
-                                        local atk = (stats and stats.ATK) or 65
-                                        local reach = (tier == 2) and 28 or 18
-                                        local mult = (tier == 2) and (combo == 4 and 2.35 or 1.85) or (combo == 4 and 1.75 or 1.35)
-                                        local brk = (tier == 2) and 22 or 14
-                                        local center = hrp.Position + hrp.CFrame.LookVector * (reach * 0.45)
-                                        for _, e in ipairs(G.Enemies or {}) do
-                                            if e.Alive and e.Body and ((e.Body.Position - center).Magnitude <= reach or (e.Body.Position - hrp.Position).Magnitude <= reach) then
-                                                G.Hit(p, e, atk * mult, brk, tier == 2 and "SovereignDragonM1" or "HybridDragonM1")
-                                            end
-                                        end
-                                        if combatFXRemote then
-                                            combatFXRemote:FireAllClients({
-                                                Kind = "Swing",
-                                                Action = "Attack",
-                                                FruitId = "AbyssalSovereignCore",
-                                                DragonFormTier = tier,
-                                                SubMode = (tier == 2) and "AbyssalSovereign" or "AbyssalDragonHybrid",
-                                                Combo = combo,
-                                                Element = "Void",
-                                                Position = center,
-                                                Origin = hrp.Position,
-                                                Direction = hrp.CFrame.LookVector,
-                                                Actor = p.UserId,
-                                            })
-                                        end
-                                        return
-                                    end
-                                end
-                            end
-                            return prevAction(p, action, payload)
-                        end
-
-                        G.UseSlotMove = function(p, rawKey, payload)
-                            local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
-                            local rt = G.Runtime and G.Runtime[p]
-                            if profile and rt then
-                                local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
-                                local key = string.upper(tostring(rawKey or "Z"))
-                                if slot == 2 and isDragonFruitId(profile.EquippedFruit) then
-                                    profile.EquippedFruit = "AbyssalSovereignCore"
-                                    local ch = p.Character
-                                    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-                                    if not hrp then
-                                        return
-                                    end
-                                    rt.FuryMeter = 100
-                                    p:SetAttribute("FuryMeter", 100)
-                                    if ch then ch:SetAttribute("FuryMeter", 100) end
-
-                                    local curTier = resolveActiveDragonTier(p, rt)
-                                    local now = os.clock()
-                                    rt.Cooldowns = rt.Cooldowns or {}
-
-                                    -- [V]: Cycle 0 (Nhân dạng) -> 1 (Dạng 1: Bán Long Nhân) -> 2 (Dạng 2: Thái Cổ Long Hoàng) -> 0 (Nhân dạng)
-                                    if key == "V" then
-                                        if now < (rt.Cooldowns.Slot_V or 0) then
-                                            return
-                                        end
-                                        rt.Cooldowns.Slot_V = now + 2.2
-                                        local nextTier = (curTier == 0 and 1) or (curTier == 1 and 2) or 0
-                                        local tfName = (nextTier == 2 and "AbyssalSovereign") or (nextTier == 1 and "AbyssalDragonHybrid") or ""
-                                        rt.DragonFormTier = nextTier
-                                        p:SetAttribute("DragonFormTier", nextTier)
-                                        p:SetAttribute("FruitTransform", tfName)
-                                        if ch then
-                                            ch:SetAttribute("DragonFormTier", nextTier)
-                                            ch:SetAttribute("FruitTransform", tfName)
-                                        end
-
-                                        local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
-                                        local atk = (stats and stats.ATK) or 65
-                                        local canDealBurst = now >= (rt.Cooldowns.DragonAscensionDmg or 0)
-                                        if nextTier == 1 then
-                                            G.Notify(p, "[DẠNG 1 • BÁN LONG NHÂN] Mở Bộ Kỹ Năng 1: [Z] Hỏa Long Đạn • [X] Bán Long Trảo • [C] Cuồng Long Xoáy • [F] Long Ảnh Bộ! (Nhấn [V] lần nữa để hóa Rồng Khổng Lồ Dạng 2)")
-                                            if canDealBurst then
-                                                rt.Cooldowns.DragonAscensionDmg = now + 10.0
-                                                for _, e in ipairs(G.Enemies or {}) do
-                                                    if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 30 then
-                                                        G.Hit(p, e, atk * 4.0, 42, "DragonHybridAscension_T1")
-                                                    end
-                                                end
-                                            end
-                                        elseif nextTier == 2 then
-                                            rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 60)
-                                            G.Notify(p, "[DẠNG 2 • THÁI CỔ LONG HOÀNG] Mở Bộ Kỹ Năng 2: [Z] Thái Cổ Long Tức • [X] Long Hoàng Giáng Thế • [C] Vạn Long Hỏa Vũ • [F] Long Vũ Cửu Thiên!")
-                                            if canDealBurst then
-                                                rt.Cooldowns.DragonAscensionDmg = now + 10.0
-                                                for _, e in ipairs(G.Enemies or {}) do
-                                                    if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 48 then
-                                                        G.Hit(p, e, atk * 6.2, 68, "DragonSovereignAscension_T2")
-                                                    end
-                                                end
-                                            end
-                                        else
-                                            G.Notify(p, "Đã thu hồi Long Hồn, trở về nhân dạng.")
-                                        end
-
-                                        if combatFXRemote then
-                                            combatFXRemote:FireAllClients({
-                                                Kind = "DragonTransform",
-                                                DragonFormTier = nextTier,
-                                                TransformName = tfName,
-                                                SubMode = tfName,
-                                                Awakened = true,
-                                                FuryMeter = 100,
-                                                Radius = nextTier == 2 and 46 or (nextTier == 1 and 28 or 14),
-                                                Position = hrp.Position,
-                                                Actor = p.UserId,
-                                            })
-                                        end
-                                        if type(G.Sync) == "function" then
-                                            G.Sync(p)
-                                        end
-                                        return
-                                    end
-
-                                    -- [Z], [X], [C], [F]: Distinct Skill Sets for Form 1 (Hybrid / Base) vs Form 2 (Full Sovereign Dragon)
-                                    local moveSet = C.GetDragonFormMoves(curTier)
-                                    local moveSpec = moveSet and moveSet[key]
-                                    if moveSpec then
-                                        local cdKey = "Slot_" .. key
-                                        if now < (rt.Cooldowns[cdKey] or 0) then
-                                            return
-                                        end
-                                        local cost = tonumber(moveSpec.Cost) or 12
-                                        if (rt.Energy or 100) < cost then
-                                            G.Notify(p, "Không đủ Aether Energy!")
-                                            return
-                                        end
-                                        rt.Cooldowns[cdKey] = now + (tonumber(moveSpec.Cooldown) or 5.0)
-                                        rt.Energy = math.max(0, (rt.Energy or 100) - cost)
-
-                                        local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
-                                        local atk = (stats and stats.ATK) or 65
-                                        local originPos = hrp.Position
-                                        local lookVec = hrp.CFrame.LookVector
-                                        local range = tonumber(moveSpec.Range) or 32
-                                        local mult = tonumber(moveSpec.Multiplier) or 3.5
-                                        local brk = tonumber(moveSpec.Break) or 36
-                                        local hits = math.max(1, tonumber(moveSpec.Hits) or 1)
-                                        local endPos = originPos + lookVec * range
-                                        local subMode = (curTier >= 2) and "AbyssalSovereign" or "AbyssalDragonHybrid"
-
-                                        if curTier >= 2 then
-                                            -- === FORM 2 (CHÂN THÂN THÁI CỔ LONG HOÀNG) ===
-                                            if key == "Z" then
-                                                -- [Z] Thái Cổ Long Tức: 52m Colossal Beam (5 multi-hits along beam corridor)
-                                                endPos = originPos + lookVec * 52
-                                                for pulse = 1, 5 do
-                                                    task.delay((pulse - 1) * 0.10, function()
-                                                        if not p or not p.Parent then return end
-                                                        for _, e in ipairs(G.Enemies or {}) do
-                                                            if e.Alive and e.Body then
-                                                                local eb = e.Body.Position
-                                                                local proj = math.clamp((eb - originPos):Dot(lookVec), 0, 52)
-                                                                local closest = originPos + lookVec * proj
-                                                                if (eb - closest).Magnitude <= 22 then
-                                                                    G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form2_SovereignBeam_Z")
-                                                                end
-                                                            end
-                                                        end
-                                                    end)
-                                                end
-                                            elseif key == "X" then
-                                                -- [X] Long Hoàng Giáng Thế: 32m Skyfall Dive + 4 Tectonic Shockwaves (38m radius)
-                                                endPos = safeDashPlayer(p, rt, hrp, 32, 1.4)
-                                                for wave = 1, 4 do
-                                                    task.delay((wave - 1) * 0.13, function()
-                                                        if not p or not p.Parent then return end
-                                                        for _, e in ipairs(G.Enemies or {}) do
-                                                            if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 38 then
-                                                                G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form2_SovereignSkyfall_X")
-                                                                e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 1.8)
-                                                            end
-                                                        end
-                                                    end)
-                                                end
-                                            elseif key == "C" then
-                                                -- [C] Vạn Long Thiên Hỏa Vũ: 6-wave Eclipse Meteor Starshower across 48m radius
-                                                endPos = originPos + lookVec * 22
-                                                for wave = 1, 6 do
-                                                    task.delay((wave - 1) * 0.14, function()
-                                                        if not p or not p.Parent then return end
-                                                        for _, e in ipairs(G.Enemies or {}) do
-                                                            if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 48 then
-                                                                G.Hit(p, e, (atk * mult) / 6, math.ceil(brk / 6), "Form2_EclipseStarshower_C")
-                                                            end
-                                                        end
-                                                    end)
-                                                end
-                                            elseif key == "F" then
-                                                -- [F] Long Vũ Cửu Thiên: 58m Supersonic Flight Rush
-                                                endPos = safeDashPlayer(p, rt, hrp, 58, 1.8)
-                                                local mid = (originPos + endPos) * 0.5
-                                                for _, e in ipairs(G.Enemies or {}) do
-                                                    if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 26 or (e.Body.Position - mid).Magnitude <= 28) then
-                                                        G.Hit(p, e, atk * mult, brk, "Form2_SupersonicSoar_F")
-                                                    end
-                                                end
-                                            end
-                                        else
-                                            -- === FORM 1 (BÁN LONG NHÂN / HYBRID DRAGON) ===
-                                            if key == "Z" then
-                                                -- [Z] Hỏa Long Liên Đạn: 5-Fireball Volley (5 sequential explosions along 36m line)
-                                                endPos = originPos + lookVec * 36
-                                                for shot = 1, 5 do
-                                                    task.delay((shot - 1) * 0.08, function()
-                                                        if not p or not p.Parent then return end
-                                                        local impactPos = originPos + lookVec * (7 * shot)
-                                                        for _, e in ipairs(G.Enemies or {}) do
-                                                            if e.Alive and e.Body and ((e.Body.Position - impactPos).Magnitude <= 18 or (e.Body.Position - endPos).Magnitude <= 18) then
-                                                                G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form1_FireballVolley_Z")
-                                                            end
-                                                        end
-                                                    end)
-                                                end
-                                            elseif key == "X" then
-                                                -- [X] Bán Long Đột Trảo: 22m Claw Rush + Grab Slam
-                                                endPos = safeDashPlayer(p, rt, hrp, 22, 1.0)
-                                                for _, e in ipairs(G.Enemies or {}) do
-                                                    if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 22 or (e.Body.Position - originPos).Magnitude <= 20) then
-                                                        G.Hit(p, e, atk * mult, brk, "Form1_HybridTalonRend_X")
-                                                        e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 1.2)
-                                                    end
-                                                end
-                                            elseif key == "C" then
-                                                -- [C] Cuồng Long Lốc Xoáy: 4-pulse Spinning Inferno Blade Vortex around player (pulls enemies in)
-                                                endPos = originPos
-                                                for pulse = 1, 4 do
-                                                    task.delay((pulse - 1) * 0.12, function()
-                                                        if not p or not p.Parent then return end
-                                                        local curPos = (p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart.Position) or originPos
-                                                        for _, e in ipairs(G.Enemies or {}) do
-                                                            if e.Alive and e.Body and (e.Body.Position - curPos).Magnitude <= 28 then
-                                                                G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form1_InfernoCyclone_C")
-                                                                if not (e.Config and e.Config.Boss) and (e.Config and (e.Config.Speed or 0) > 0) and e.Model then
-                                                                    local pullPos = e.Body.Position:Lerp(Vector3.new(curPos.X, e.Body.Position.Y, curPos.Z), 0.35)
-                                                                    local rot = e.Body.CFrame - e.Body.Position
-                                                                    e.Model:PivotTo(CFrame.new(pullPos) * rot)
-                                                                end
-                                                            end
-                                                        end
-                                                    end)
-                                                end
-                                            elseif key == "F" then
-                                                -- [F] Long Ảnh Bộ: 38m Rapid Crimson Wing Dash
-                                                endPos = safeDashPlayer(p, rt, hrp, 38, 1.2)
-                                                for _, e in ipairs(G.Enemies or {}) do
-                                                    if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 18 then
-                                                        G.Hit(p, e, atk * mult, brk, "Form1_HybridWingDash_F")
-                                                    end
-                                                end
-                                            end
-                                        end
-
-                                        if combatFXRemote then
-                                            combatFXRemote:FireAllClients({
-                                                Kind = "FruitMove",
-                                                Action = "Fruit" .. key,
-                                                Awakened = (curTier >= 2),
-                                                FruitId = "AbyssalSovereignCore",
-                                                activeId = "AbyssalSovereignCore",
-                                                MoveKey = key,
-                                                key = key,
-                                                MoveName = moveSpec.Name,
-                                                Mechanic = moveSpec.Mechanic,
-                                                DragonFormTier = (curTier >= 2) and 2 or 1,
-                                                SubMode = subMode,
-                                                Hits = hits,
-                                                Element = "Void",
-                                                Origin = originPos,
-                                                StartPos = originPos,
-                                                Position = endPos,
-                                                EndPos = endPos,
-                                                Direction = lookVec,
-                                                Radius = range,
-                                                Actor = p.UserId,
-                                            })
-                                        end
-                                        if type(G.Sync) == "function" then
-                                            G.Sync(p)
-                                        end
-                                        return
-                                    end
-                                end
-                            end
-                            return prevUseSlotMove(p, rawKey, payload)
-                        end
-
-                        task.spawn(function()
-                            while true do
-                                task.wait(0.5)
-                                if type(G.Runtime) == "table" then
-                                    for plr, rt in pairs(G.Runtime) do
-                                        if type(rt) == "table" then
-                                            rt.FuryMeter = 100
-                                            if plr and plr.Parent then
-                                                if (plr:GetAttribute("FuryMeter") or 0) < 100 then
-                                                    plr:SetAttribute("FuryMeter", 100)
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end)
-                    end
-                end
-            end
+    end
+    workspace.ChildAdded:Connect(function(ch)
+        if ch.Name == "JumpPads" or ch.Name == "AetherSkyRails" or ch.Name == "ActiveCompanions" then
+            task.defer(function() if ch.Parent then ch:ClearAllChildren() end end)
+            ch.ChildAdded:Connect(function(sub) task.defer(function() if sub and sub.Parent then pcall(function() sub:Destroy() end) end end) end)
         end
     end)
+    workspace.DescendantAdded:Connect(function(desc)
+        if isDisabledInst(desc) then
+            task.defer(function() if desc and desc.Parent then pcall(function() desc:Destroy() end) end end)
+        elseif desc.Name == "DummyFloorRing" and desc:IsA("BasePart") then
+            task.defer(function() desc.Transparency = 1; desc.CanCollide = false; desc.CanQuery = false; desc.CanTouch = false end)
+        end
+    end)
+
+    local tickIdx = 0
+    while true do
+        tickIdx += 1
+        task.wait(tickIdx <= 40 and 0.25 or 0.5)
+        purgeWorld()
+        local sss = game:GetService("ServerScriptService")
+        local services = sss and sss:FindFirstChild("Services")
+        local gsMod = services and services:FindFirstChild("GameService")
+        local pdMod = services and services:FindFirstChild("PlayerDataService")
+        if gsMod then
+            local okG, G = pcall(require, gsMod)
+            local okD, D = false, nil
+            if pdMod then okD, D = pcall(require, pdMod) end
+            if okG and type(G) == "table" then
+                local function applyBalCfg(dst, bal)
+                    if type(dst) ~= "table" then return end
+                    dst.HP = bal.HP; dst.ATK = bal.ATK; dst.Attack = bal.Attack; dst.DEF = bal.DEF; dst.Defense = bal.Defense; dst.XP = bal.XP; dst.Gold = bal.Gold
+                    if bal.Speed ~= nil then dst.Speed = bal.Speed end
+                    if bal.Range ~= nil then dst.Range = bal.Range end
+                    if bal.Aggro ~= nil then dst.Aggro = bal.Aggro end
+                    if bal.Leash ~= nil then dst.Leash = bal.Leash end
+                    if bal.HasBusoHaki ~= nil then dst.HasBusoHaki = bal.HasBusoHaki end
+                end
+                for enemyId, bal in pairs(BALANCED_ENEMY_STATS) do
+                    applyBalCfg(C.Enemies and C.Enemies[enemyId], bal)
+                    if G.StaticData and G.StaticData.FALLBACK_ENEMIES then applyBalCfg(G.StaticData.FALLBACK_ENEMIES[enemyId], bal) end
+                end
+                for _, e in ipairs(G.Enemies or {}) do
+                    if type(e) == "table" and e.Id and BALANCED_ENEMY_STATS[e.Id] then
+                        local bal = BALANCED_ENEMY_STATS[e.Id]
+                        applyBalCfg(e.Config, bal)
+                        if e.Model and bal.HasBusoHaki then e.Model:SetAttribute("HasBusoHaki", true) end
+                        if (e.MaxHP or 0) ~= bal.HP then
+                            local wasFull = (e.HP or 0) >= (e.MaxHP or 1) * 0.99
+                            e.MaxHP = bal.HP
+                            if wasFull or (e.HP or 0) > bal.HP then e.HP = bal.HP end
+                            if e.HPText then e.HPText.Text = string.format("%d / %d", math.floor(e.HP or bal.HP), bal.HP) end
+                        end
+                    end
+                end
+                if type(G.JumpPads) == "table" then table.clear(G.JumpPads) end
+                G.SyncCompanions = function(p)
+                    if G.Runtime and G.Runtime[p] and type(G.Runtime[p].Companions) == "table" then
+                        for k, comp in pairs(G.Runtime[p].Companions) do
+                            if comp and comp.Model then pcall(function() comp.Model:Destroy() end) end
+                            G.Runtime[p].Companions[k] = nil
+                        end
+                    end
+                    local ac = workspace:FindFirstChild("ActiveCompanions")
+                    if ac then ac:ClearAllChildren() end
+                end
+                G.TickCompanions = function() end
+
+                if not G._CompanionNotifyFiltered and type(G.Notify) == "function" then
+                    G._CompanionNotifyFiltered = true
+                    local prevNotify = G.Notify
+                    G.Notify = function(p, msg, ...)
+                        if type(msg) == "string" and string.find(msg, "Đồng Hành", 1, true) then
+                            msg = string.gsub(msg, "%s*•%s*Mở khóa Đồng Hành.*", "")
+                        end
+                        return prevNotify(p, msg, ...)
+                    end
+                end
+
+                if not G._CompanionSyncFiltered and G.SocialEconomy ~= nil then
+                    G._CompanionSyncFiltered = true
+                    local prevBeforeSync = G.OnBeforeSync
+                    G.OnBeforeSync = function(p, profile, rt, stats, statePayload)
+                        if prevBeforeSync then prevBeforeSync(p, profile, rt, stats, statePayload) end
+                        if type(profile) == "table" then profile.PartySize = "Solo" end
+                        if type(statePayload) == "table" then statePayload.PartySize = "Solo"; statePayload.Companions = {} end
+                    end
+                end
+
+                if type(G.Runtime) == "table" then
+                    for plr, rt in pairs(G.Runtime) do
+                        if type(rt) == "table" then
+                            rt.FuryMeter = 100
+                            if type(rt.Companions) == "table" then
+                                for k, comp in pairs(rt.Companions) do
+                                    if comp and comp.Model then pcall(function() comp.Model:Destroy() end) end
+                                    rt.Companions[k] = nil
+                                end
+                            end
+                        end
+                        if plr and plr.Parent then
+                            if (plr:GetAttribute("FuryMeter") or 0) < 100 then plr:SetAttribute("FuryMeter", 100) end
+                            local prof = okD and D and type(D.Get) == "function" and D.Get(plr) or nil
+                            if type(prof) == "table" and prof.PartySize ~= "Solo" then prof.PartySize = "Solo" end
+                        end
+                    end
+                end
+
+                if not G._DragonDualFormsHooked and type(G.UseSlotMove) == "function" and (G.SocialEconomy ~= nil or tickIdx >= 16) then
+                    G._DragonDualFormsHooked = true
+                    local prevUseSlotMove = G.UseSlotMove
+                    local prevAction = G.Action
+                    local prevStats = G.Stats
+                    local prevHit = G.Hit
+                    local prevPlayerDamage = G.PlayerDamage
+                    local prevTickEnemy = G.TickEnemy
+                    local remotesFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+                    local combatFXRemote = remotesFolder and remotesFolder:FindFirstChild("CombatFX")
+
+                    local function isDragonFruitId(fid)
+                        local s = string.lower(tostring(fid or ""))
+                        return s == "abyssalsovereigncore" or s == "dragon" or s == "abyssal_dragon" or s == "void_dragon" or s == "abyssal_sovereign"
+                    end
+                    local function resolveActiveDragonTier(p, rt)
+                        local ch = p and p.Character
+                        local t = tonumber(rt and rt.DragonFormTier) or tonumber(ch and ch:GetAttribute("DragonFormTier")) or tonumber(p and p:GetAttribute("DragonFormTier")) or 0
+                        local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or (p and p:GetAttribute("FruitTransform")) or "")
+                        if t >= 2 or tf == "AbyssalSovereign" then return 2
+                        elseif t == 1 or tf == "AbyssalDragonHybrid" then return 1 end
+                        return 0
+                    end
+
+                    local SLOT_GROUP = { Weapon="Weapon", Helmet="Head", Helm="Head", Chest="Chest", Gloves="Hands", Gauntlets="Hands", Boots="Feet", Greaves="Feet", Ring="Ring", Necklace="Offhand", Offhand="Offhand", Artifact="Artifact" }
+                    if type(prevStats) == "function" then
+                        G.Stats = function(p)
+                            local s = prevStats(p)
+                            local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
+                            if not s or not profile then return s end
+                            local lv = math.clamp(tonumber(profile.Level) or 1, 1, C.MaxLevel)
+                            local base = C.Stats(lv, profile.ClassId, profile.StatAlloc)
+                            local eq = type(profile.Equipped) == "table" and profile.Equipped or {}
+                            local seenGrp = {}
+                            local gearHP, gearATK, gearDEF, gearCrit, gearCritDmg = 0, 0, 0, 0, 0
+                            for _, slot in ipairs(C.EquipSlots or { "Weapon", "Helmet", "Chest", "Gloves", "Boots", "Ring", "Necklace", "Artifact" }) do
+                                local grp = SLOT_GROUP[slot] or slot
+                                if not seenGrp[grp] then
+                                    local itemId = (slot == "Weapon") and ((profile.ActiveSlot == 4 and (eq.Gun or profile.EquippedGun)) or eq[slot] or profile.Weapon) or eq[slot]
+                                    local item = itemId and C.Items[itemId]
+                                    if item then
+                                        seenGrp[grp] = true
+                                        local isGunOffhand = (grp == "Offhand") and (item.Slot == "Gun" or item.WeaponType == "Gun")
+                                        if not isGunOffhand then
+                                            local reqLv = math.max(1, tonumber(item.LevelReq) or 1)
+                                            local gearScale = (lv >= reqLv) and 1.0 or math.clamp(lv / reqLv, 0.12, 1.0)
+                                            gearATK += math.floor((tonumber(item.ATK) or 0) * gearScale)
+                                            gearDEF += math.floor((tonumber(item.DEF) or 0) * gearScale)
+                                            gearHP += math.floor((tonumber(item.HP) or 0) * gearScale)
+                                            gearCrit += math.floor((tonumber(item.CritRate) or 0) * gearScale)
+                                            gearCritDmg += math.floor((tonumber(item.CritDmg) or 0) * gearScale)
+                                        end
+                                    end
+                                end
+                            end
+                            local atkBonusPct, defBonusPct, hpBonusPct = 0, 0, 0
+                            local ch = p and p.Character
+                            if (ch and ch:GetAttribute("HakiAura")) or (profile.Haki and profile.Haki.Aura) then
+                                atkBonusPct += 0.10; defBonusPct += 0.10
+                            end
+                            local bounty = math.max(tonumber(profile.Bounty) or 0, tonumber(profile.Honor) or 0)
+                            if bounty > 0 then
+                                local bPct = math.clamp(bounty / 30000000, 0, 1) * 0.08
+                                atkBonusPct += bPct; defBonusPct += bPct
+                            end
+                            local rv4 = ch and ch:GetAttribute("RaceV4")
+                            if (rv4 and rv4 ~= "") or profile.RaceV4Active then
+                                atkBonusPct += 0.14; defBonusPct += 0.14; hpBonusPct += 0.14
+                            end
+                            local rt = G.Runtime and G.Runtime[p]
+                            local dTier = resolveActiveDragonTier(p, rt)
+                            local ft = tostring((ch and ch:GetAttribute("FruitTransform")) or (p and p:GetAttribute("FruitTransform")) or "")
+                            if dTier >= 2 then
+                                atkBonusPct += 0.16; defBonusPct += 0.20
+                            elseif dTier == 1 or ft ~= "" then
+                                atkBonusPct += 0.10; defBonusPct += 0.14
+                            end
+                            s.HP = math.max(100, math.floor((base.HP + gearHP) * math.min(1.35, 1.0 + hpBonusPct)))
+                            s.ATK = math.max(10, math.floor((base.ATK + gearATK) * math.min(1.55, 1.0 + atkBonusPct)))
+                            s.DEF = math.max(4, math.floor((base.DEF + gearDEF) * math.min(1.55, 1.0 + defBonusPct)))
+                            s.CritRate = math.clamp(base.CritRate + gearCrit, 4, 32)
+                            s.CritDmg = math.clamp(base.CritDmg + gearCritDmg, 20, 42)
+                            s.StarSkillDmgPct = math.min(tonumber(s.StarSkillDmgPct) or 0, 0.12)
+                            return s
+                        end
+                    end
+
+                    if type(prevHit) == "function" then
+                        G.Hit = function(p, e, damage, breakPower, action)
+                            if not e or not e.Alive then return end
+                            local now = os.clock()
+                            local stats = type(G.Stats) == "function" and G.Stats(p) or nil
+                            local atk = math.max(12, (stats and tonumber(stats.ATK)) or 45)
+                            local actStr = tostring(action or "")
+                            local isBasic = (actStr == "Attack" or actStr == "Light" or actStr == "M1" or actStr == "HybridDragonM1" or actStr == "SovereignDragonM1")
+                            local isMultiTick = (string.find(actStr, "Form1_", 1, true) ~= nil or string.find(actStr, "Form2_", 1, true) ~= nil) and actStr ~= "Form1_HybridTalonRend_X" and actStr ~= "Form1_HybridWingDash_F" and actStr ~= "Form2_SupersonicSoar_F"
+                            local scaledDmg = math.min((tonumber(damage) or atk) * 0.58, isBasic and (atk * 1.45) or (isMultiTick and (atk * 0.68) or (atk * 2.85)))
+                            local isBoss = (e.Config and e.Config.Boss == true) or (e == G.Boss)
+                            if isBoss and (e.MaxHP or 0) > 0 then
+                                scaledDmg = math.min(scaledDmg, math.max(40, (e.MaxHP or 10000) * (isMultiTick and 0.014 or 0.038)))
+                            end
+                            local scaledBreak = math.clamp(math.floor((tonumber(breakPower) or 6) * 0.30), 1, isBoss and 10 or 14)
+                            if now < (e._BalStunImmuneUntil or 0) then
+                                scaledBreak = 0; e.StunnedUntil = 0; e.FrozenUntil = 0
+                            end
+                            prevHit(p, e, math.max(1, scaledDmg), scaledBreak, action)
+                            local afterNow = os.clock()
+                            if afterNow < (e._BalStunImmuneUntil or 0) then
+                                e.StunnedUntil = 0; e.FrozenUntil = 0
+                            else
+                                local stunned, frozen, broken = (e.StunnedUntil or 0) > afterNow, (e.FrozenUntil or 0) > afterNow, (e.BossBrokenUntil or 0) > afterNow
+                                if stunned or frozen or broken then
+                                    local maxCC = isBoss and 1.35 or 1.05
+                                    if stunned then e.StunnedUntil = math.min(e.StunnedUntil, afterNow + maxCC) end
+                                    if frozen then e.FrozenUntil = math.min(e.FrozenUntil, afterNow + maxCC) end
+                                    if broken then e.BossBrokenUntil = math.min(e.BossBrokenUntil, afterNow + 1.8) end
+                                    e._BalStunImmuneUntil = afterNow + 6.5
+                                end
+                            end
+                        end
+                    end
+
+                    if type(prevPlayerDamage) == "function" then
+                        G.PlayerDamage = function(p, amount, attackerEnemy)
+                            local ch = p and p.Character
+                            local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+                            local rt = G.Runtime and G.Runtime[p]
+                            local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
+                            local stats = type(G.Stats) == "function" and G.Stats(p) or nil
+                            if not ch or not hum or hum.Health <= 0 or not rt or not stats then return end
+                            local now = os.clock()
+                            if (rt.InvincibleUntil or 0) > now + 0.42 then rt.InvincibleUntil = now + 0.42 end
+                            if now < (rt.InvincibleUntil or 0) then return end
+                            local isBoss = attackerEnemy and ((attackerEnemy.Config and attackerEnemy.Config.Boss) or attackerEnemy == G.Boss)
+                            local isElite = attackerEnemy and (attackerEnemy.Config and attackerEnemy.Config.Elite)
+                            if profile and type(profile.Haki) == "table" and (profile.Haki.InstinctDodges or 0) > 3 then
+                                profile.Haki.InstinctDodges = 3; p:SetAttribute("InstinctDodges", 3); ch:SetAttribute("InstinctDodges", 3)
+                            end
+                            local enemyCfg = attackerEnemy and attackerEnemy.Config
+                            local enemyATK = math.max(tonumber(amount) or 18, (enemyCfg and tonumber(enemyCfg.ATK)) or 18)
+                            local enemyLv = (enemyCfg and tonumber(enemyCfg.Level)) or 10
+                            local plrLv = (profile and tonumber(profile.Level)) or 1
+                            local defVal = math.max(0, tonumber(stats.DEF) or 10)
+                            local defMit = math.clamp(defVal / (defVal + 200 + enemyLv * 0.25), 0.04, 0.40)
+                            local dTier = resolveActiveDragonTier(p, rt)
+                            local ft = tostring(ch:GetAttribute("FruitTransform") or "")
+                            local tfMult = (dTier >= 2 and 0.84) or ((dTier == 1 or ft ~= "") and 0.90) or 1.0
+                            local targetDmg = enemyATK * (1.0 - defMit) * tfMult
+                            local maxHP = math.max(100, hum.MaxHealth)
+                            if isBoss then targetDmg = math.max(targetDmg, maxHP * 0.14)
+                            elseif isElite then targetDmg = math.max(targetDmg, maxHP * 0.10)
+                            elseif enemyLv >= plrLv * 0.60 then targetDmg = math.max(targetDmg, maxHP * 0.065) end
+                            local instinctOn = (ch:GetAttribute("HakiInstinct") == true or p:GetAttribute("HakiInstinct") == true)
+                            local dodgesLeft = (profile and profile.Haki and tonumber(profile.Haki.InstinctDodges)) or 0
+                            if (isBoss or isElite) and instinctOn and dodgesLeft > 0 then
+                                profile.Haki.InstinctDodges = math.max(0, dodgesLeft - 1)
+                                p:SetAttribute("InstinctDodges", profile.Haki.InstinctDodges)
+                                ch:SetAttribute("InstinctDodges", profile.Haki.InstinctDodges)
+                                hum:TakeDamage(math.max(1, math.floor(targetDmg * 0.65)))
+                                rt.LastHurt = now
+                                return
+                            end
+                            local gsDefFactor = (100 + defVal) / 100
+                            local gsTfFactor = (ft ~= "") and (1.0 / 0.42) or 1.0
+                            prevPlayerDamage(p, math.max(1, math.floor(targetDmg * gsDefFactor * gsTfFactor + 0.5)), attackerEnemy)
+                        end
+                    end
+
+                    if type(prevTickEnemy) == "function" then
+                        local PlayersService = game:GetService("Players")
+                        G.TickEnemy = function(e, dt)
+                            if not e or not e.Alive then return end
+                            local now = os.clock()
+                            if now < (e._BalStunImmuneUntil or 0) then e.StunnedUntil = 0; e.FrozenUntil = 0 end
+                            prevTickEnemy(e, dt)
+                            if not e.Alive or not e.Body or not e.Config then return end
+                            local isBoss = (e.Config.Boss == true) or (e == G.Boss)
+                            local maxAtkCd = isBoss and 1.35 or 1.45
+                            if (e.NextAttack or 0) > now + maxAtkCd then e.NextAttack = now + maxAtkCd end
+                            if (e.RecoverUntil or 0) > now + 0.55 then e.RecoverUntil = now + 0.55 end
+                            local eAtk = tonumber(e.Config.ATK or e.Config.Attack) or 0
+                            if eAtk > 0 and now >= (e.StunnedUntil or 0) and now >= (e.BossBrokenUntil or 0) and now >= (e._BalNextDirectStrike or 0) then
+                                local reach = math.max(9.5, (tonumber(e.Config.Range) or 8) + (isBoss and 5.0 or 2.5))
+                                local ePos = e.Body.Position
+                                local bestPlr, bestDist = nil, reach
+                                for _, plr in ipairs(PlayersService:GetPlayers()) do
+                                    local ch = plr.Character
+                                    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+                                    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+                                    if hrp and hum and hum.Health > 0 then
+                                        local d = (hrp.Position - ePos).Magnitude
+                                        if d <= bestDist then bestDist = d; bestPlr = plr end
+                                    end
+                                end
+                                if bestPlr then
+                                    e._BalNextDirectStrike = now + (isBoss and 1.45 or 1.65)
+                                    if e.Model then
+                                        e.Model:SetAttribute("EnemyAttackClip", isBoss and "HeroicKata" or "Attack")
+                                        e.Model:SetAttribute("EnemyAttackDuration", 0.55)
+                                        e.Model:SetAttribute("EnemyAttackAt", workspace:GetServerTimeNow())
+                                    end
+                                    task.delay(0.30, function()
+                                        if not e or not e.Alive or not e.Body or os.clock() < (e.StunnedUntil or 0) then return end
+                                        local ch = bestPlr and bestPlr.Character
+                                        local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+                                        if hrp and (hrp.Position - e.Body.Position).Magnitude <= (reach + 3.0) then
+                                            G.PlayerDamage(bestPlr, eAtk, e)
+                                        end
+                                    end)
+                                end
+                            end
+                        end
+                    end
+
+                    local function safeDashPlayer(p, rt, hrp, dist, invDur)
+                        local lookVec = hrp.CFrame.LookVector
+                        local originPos = hrp.Position
+                        local rp = RaycastParams.new()
+                        rp.FilterType = Enum.RaycastFilterType.Exclude
+                        rp.FilterDescendantsInstances = { p.Character, workspace:FindFirstChild("ActiveEnemies"), workspace:FindFirstChild("ActiveBosses") }
+                        rp.RespectCanCollide = true
+                        local hit = workspace:Raycast(originPos, lookVec * dist, rp)
+                        local target = hit and (hit.Position - lookVec * 2.8) or (originPos + lookVec * dist)
+                        rt.InvincibleUntil = math.max(rt.InvincibleUntil or 0, os.clock() + math.min(invDur or 0.38, 0.42))
+                        rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 1.6)
+                        if type(G.Teleport) == "function" then G.Teleport(p, target) else hrp.CFrame = CFrame.new(target) * hrp.CFrame.Rotation end
+                        return target
+                    end
+
+                    G.Action = function(p, action, payload)
+                        local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
+                        local rt = G.Runtime and G.Runtime[p]
+                        local act = tostring(action or "")
+                        if (act == "Attack" or act == "Light" or act == "M1") and profile and rt then
+                            local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
+                            if slot == 2 and isDragonFruitId(profile.EquippedFruit) then
+                                local ch = p.Character
+                                local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+                                local tier = resolveActiveDragonTier(p, rt)
+                                if hrp and tier > 0 then
+                                    local now = os.clock()
+                                    local cd = (tier == 2) and 0.52 or 0.40
+                                    if now < (rt.Cooldowns and rt.Cooldowns.DragonM1 or 0) then return end
+                                    rt.Cooldowns = rt.Cooldowns or {}
+                                    rt.Cooldowns.DragonM1 = now + cd
+                                    rt.FuryMeter = 100; p:SetAttribute("FuryMeter", 100)
+                                    if ch then ch:SetAttribute("FuryMeter", 100) end
+                                    local combo = ((tonumber(rt.DragonM1Combo) or 0) % 4) + 1
+                                    rt.DragonM1Combo = combo
+                                    local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
+                                    local atk = (stats and stats.ATK) or 65
+                                    local reach = (tier == 2) and 24 or 16
+                                    local mult = (tier == 2) and (combo == 4 and 1.65 or 1.30) or (combo == 4 and 1.35 or 1.05)
+                                    local brk = (tier == 2) and 12 or 8
+                                    local center = hrp.Position + hrp.CFrame.LookVector * (reach * 0.45)
+                                    for _, e in ipairs(G.Enemies or {}) do
+                                        if e.Alive and e.Body and ((e.Body.Position - center).Magnitude <= reach or (e.Body.Position - hrp.Position).Magnitude <= reach) then
+                                            G.Hit(p, e, atk * mult, brk, tier == 2 and "SovereignDragonM1" or "HybridDragonM1")
+                                        end
+                                    end
+                                    if combatFXRemote then
+                                        combatFXRemote:FireAllClients({
+                                            Kind = "Swing", Action = "Attack", FruitId = "AbyssalSovereignCore", DragonFormTier = tier,
+                                            SubMode = (tier == 2) and "AbyssalSovereign" or "AbyssalDragonHybrid", Combo = combo, Element = "Void",
+                                            Position = center, Origin = hrp.Position, Direction = hrp.CFrame.LookVector, Actor = p.UserId,
+                                        })
+                                    end
+                                    return
+                                end
+                            end
+                        end
+                        return prevAction(p, action, payload)
+                    end
+
+                    G.UseSlotMove = function(p, rawKey, payload)
+                        local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
+                        local rt = G.Runtime and G.Runtime[p]
+                        if profile and rt then
+                            local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
+                            local key = string.upper(tostring(rawKey or "Z"))
+                            if slot == 2 and isDragonFruitId(profile.EquippedFruit) then
+                                profile.EquippedFruit = "AbyssalSovereignCore"
+                                local ch = p.Character
+                                local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+                                if not hrp then return end
+                                rt.FuryMeter = 100; p:SetAttribute("FuryMeter", 100)
+                                if ch then ch:SetAttribute("FuryMeter", 100) end
+                                local curTier = resolveActiveDragonTier(p, rt)
+                                local now = os.clock()
+                                rt.Cooldowns = rt.Cooldowns or {}
+                                if key == "V" then
+                                    if now < (rt.Cooldowns.Slot_V or 0) then return end
+                                    rt.Cooldowns.Slot_V = now + 3.5
+                                    local nextTier = (curTier == 0 and 1) or (curTier == 1 and 2) or 0
+                                    local tfName = (nextTier == 2 and "AbyssalSovereign") or (nextTier == 1 and "AbyssalDragonHybrid") or ""
+                                    rt.DragonFormTier = nextTier
+                                    p:SetAttribute("DragonFormTier", nextTier); p:SetAttribute("FruitTransform", tfName)
+                                    if ch then ch:SetAttribute("DragonFormTier", nextTier); ch:SetAttribute("FruitTransform", tfName) end
+                                    local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
+                                    local atk = (stats and stats.ATK) or 65
+                                    local canDealBurst = now >= (rt.Cooldowns.DragonAscensionDmg or 0)
+                                    if nextTier == 1 then
+                                        G.Notify(p, "[DẠNG 1 • BÁN LONG NHÂN] Mở Bộ Kỹ Năng 1: [Z] Hỏa Long Đạn • [X] Bán Long Trảo • [C] Cuồng Long Xoáy • [F] Long Ảnh Bộ! (Nhấn [V] lần nữa để hóa Rồng Khổng Lồ Dạng 2)")
+                                        if canDealBurst then
+                                            rt.Cooldowns.DragonAscensionDmg = now + 14.0
+                                            for _, e in ipairs(G.Enemies or {}) do
+                                                if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 26 then
+                                                    G.Hit(p, e, atk * 2.0, 16, "DragonHybridAscension_T1")
+                                                end
+                                            end
+                                        end
+                                    elseif nextTier == 2 then
+                                        rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 60)
+                                        G.Notify(p, "[DẠNG 2 • THÁI CỔ LONG HOÀNG] Mở Bộ Kỹ Năng 2: [Z] Thái Cổ Long Tức • [X] Long Hoàng Giáng Thế • [C] Vạn Long Hỏa Vũ • [F] Long Vũ Cửu Thiên!")
+                                        if canDealBurst then
+                                            rt.Cooldowns.DragonAscensionDmg = now + 14.0
+                                            for _, e in ipairs(G.Enemies or {}) do
+                                                if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 36 then
+                                                    G.Hit(p, e, atk * 2.6, 22, "DragonSovereignAscension_T2")
+                                                end
+                                            end
+                                        end
+                                    else
+                                        G.Notify(p, "Đã thu hồi Long Hồn, trở về nhân dạng.")
+                                    end
+                                    if combatFXRemote then
+                                        combatFXRemote:FireAllClients({
+                                            Kind = "DragonTransform", DragonFormTier = nextTier, TransformName = tfName, SubMode = tfName,
+                                            Awakened = true, FuryMeter = 100, Radius = nextTier == 2 and 46 or (nextTier == 1 and 28 or 14),
+                                            Position = hrp.Position, Actor = p.UserId,
+                                        })
+                                    end
+                                    if type(G.Sync) == "function" then G.Sync(p) end
+                                    return
+                                end
+
+                                local moveSet = C.GetDragonFormMoves(curTier)
+                                local moveSpec = moveSet and moveSet[key]
+                                if moveSpec then
+                                    local cdKey = "Slot_" .. key
+                                    if now < (rt.Cooldowns[cdKey] or 0) then return end
+                                    local cost = tonumber(moveSpec.Cost) or 12
+                                    if (rt.Energy or 100) < cost then G.Notify(p, "Không đủ Aether Energy!"); return end
+                                    rt.Cooldowns[cdKey] = now + (tonumber(moveSpec.Cooldown) or 5.0)
+                                    rt.Energy = math.max(0, (rt.Energy or 100) - cost)
+                                    local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
+                                    local atk = (stats and stats.ATK) or 65
+                                    local originPos = hrp.Position
+                                    local lookVec = hrp.CFrame.LookVector
+                                    local range = tonumber(moveSpec.Range) or 32
+                                    local mult = tonumber(moveSpec.Multiplier) or 2.5
+                                    local brk = tonumber(moveSpec.Break) or 20
+                                    local hits = math.max(1, tonumber(moveSpec.Hits) or 1)
+                                    local endPos = originPos + lookVec * range
+                                    local subMode = (curTier >= 2) and "AbyssalSovereign" or "AbyssalDragonHybrid"
+
+                                    if curTier >= 2 then
+                                        if key == "Z" then
+                                            endPos = originPos + lookVec * 46
+                                            for pulse = 1, 5 do
+                                                task.delay((pulse - 1) * 0.10, function()
+                                                    if not p or not p.Parent then return end
+                                                    for _, e in ipairs(G.Enemies or {}) do
+                                                        if e.Alive and e.Body then
+                                                            local eb = e.Body.Position
+                                                            local proj = math.clamp((eb - originPos):Dot(lookVec), 0, 46)
+                                                            if (eb - (originPos + lookVec * proj)).Magnitude <= 20 then
+                                                                G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form2_SovereignBeam_Z")
+                                                            end
+                                                        end
+                                                    end
+                                                end)
+                                            end
+                                        elseif key == "X" then
+                                            endPos = safeDashPlayer(p, rt, hrp, 30, 0.42)
+                                            for wave = 1, 4 do
+                                                task.delay((wave - 1) * 0.13, function()
+                                                    if not p or not p.Parent then return end
+                                                    for _, e in ipairs(G.Enemies or {}) do
+                                                        if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 34 then
+                                                            G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form2_SovereignSkyfall_X")
+                                                            e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 1.0)
+                                                        end
+                                                    end
+                                                end)
+                                            end
+                                        elseif key == "C" then
+                                            endPos = originPos + lookVec * 20
+                                            for wave = 1, 6 do
+                                                task.delay((wave - 1) * 0.14, function()
+                                                    if not p or not p.Parent then return end
+                                                    for _, e in ipairs(G.Enemies or {}) do
+                                                        if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 42 then
+                                                            G.Hit(p, e, (atk * mult) / 6, math.ceil(brk / 6), "Form2_EclipseStarshower_C")
+                                                        end
+                                                    end
+                                                end)
+                                            end
+                                        elseif key == "F" then
+                                            endPos = safeDashPlayer(p, rt, hrp, 48, 0.42)
+                                            local mid = (originPos + endPos) * 0.5
+                                            for _, e in ipairs(G.Enemies or {}) do
+                                                if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 22 or (e.Body.Position - mid).Magnitude <= 24) then
+                                                    G.Hit(p, e, atk * mult, brk, "Form2_SupersonicSoar_F")
+                                                end
+                                            end
+                                        end
+                                    else
+                                        if key == "Z" then
+                                            endPos = originPos + lookVec * 32
+                                            for shot = 1, 5 do
+                                                task.delay((shot - 1) * 0.08, function()
+                                                    if not p or not p.Parent then return end
+                                                    local impactPos = originPos + lookVec * (6.4 * shot)
+                                                    for _, e in ipairs(G.Enemies or {}) do
+                                                        if e.Alive and e.Body and ((e.Body.Position - impactPos).Magnitude <= 16 or (e.Body.Position - endPos).Magnitude <= 16) then
+                                                            G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form1_FireballVolley_Z")
+                                                        end
+                                                    end
+                                                end)
+                                            end
+                                        elseif key == "X" then
+                                            endPos = safeDashPlayer(p, rt, hrp, 20, 0.38)
+                                            for _, e in ipairs(G.Enemies or {}) do
+                                                if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 20 or (e.Body.Position - originPos).Magnitude <= 18) then
+                                                    G.Hit(p, e, atk * mult, brk, "Form1_HybridTalonRend_X")
+                                                    e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 0.9)
+                                                end
+                                            end
+                                        elseif key == "C" then
+                                            endPos = originPos
+                                            for pulse = 1, 4 do
+                                                task.delay((pulse - 1) * 0.12, function()
+                                                    if not p or not p.Parent then return end
+                                                    local curPos = (p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart.Position) or originPos
+                                                    for _, e in ipairs(G.Enemies or {}) do
+                                                        if e.Alive and e.Body and (e.Body.Position - curPos).Magnitude <= 26 then
+                                                            G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form1_InfernoCyclone_C")
+                                                            if not (e.Config and e.Config.Boss) and (e.Config and (e.Config.Speed or 0) > 0) and e.Model then
+                                                                local pullPos = e.Body.Position:Lerp(Vector3.new(curPos.X, e.Body.Position.Y, curPos.Z), 0.35)
+                                                                local rot = e.Body.CFrame - e.Body.Position
+                                                                e.Model:PivotTo(CFrame.new(pullPos) * rot)
+                                                            end
+                                                        end
+                                                    end
+                                                end)
+                                            end
+                                        elseif key == "F" then
+                                            endPos = safeDashPlayer(p, rt, hrp, 32, 0.38)
+                                            for _, e in ipairs(G.Enemies or {}) do
+                                                if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 16 then
+                                                    G.Hit(p, e, atk * mult, brk, "Form1_HybridWingDash_F")
+                                                end
+                                            end
+                                        end
+                                    end
+
+                                    if combatFXRemote then
+                                        combatFXRemote:FireAllClients({
+                                            Kind = "FruitMove", Action = "Fruit" .. key, Awakened = (curTier >= 2), FruitId = "AbyssalSovereignCore",
+                                            activeId = "AbyssalSovereignCore", MoveKey = key, key = key, MoveName = moveSpec.Name, Mechanic = moveSpec.Mechanic,
+                                            DragonFormTier = (curTier >= 2) and 2 or 1, SubMode = subMode, Hits = hits, Element = "Void",
+                                            Origin = originPos, StartPos = originPos, Position = endPos, EndPos = endPos, Direction = lookVec, Radius = range, Actor = p.UserId,
+                                        })
+                                    end
+                                    if type(G.Sync) == "function" then G.Sync(p) end
+                                    return
+                                end
+                            end
+                        end
+                        return prevUseSlotMove(p, rawKey, payload)
+                    end
+
+                    task.spawn(function()
+                        while true do
+                            task.wait(0.5)
+                            if type(G.Runtime) == "table" then
+                                for plr, rt in pairs(G.Runtime) do
+                                    if type(rt) == "table" then
+                                        rt.FuryMeter = 100
+                                        if plr and plr.Parent and (plr:GetAttribute("FuryMeter") or 0) < 100 then
+                                            plr:SetAttribute("FuryMeter", 100)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end
+end)
 end
 
 return C
