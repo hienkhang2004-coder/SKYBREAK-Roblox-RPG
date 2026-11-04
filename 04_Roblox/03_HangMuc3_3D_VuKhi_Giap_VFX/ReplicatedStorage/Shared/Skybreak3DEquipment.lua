@@ -464,7 +464,11 @@ local function configureWeaponTrail(entry, itemId, enhanceLv, lowFX)
 end
 
 local function computeBindBasis(s)
-    if s._EquipBindReady and s.Visual and s.Visual.Parent then
+    if s._EquipBindReady
+        and s.Visual and s.Visual.Parent
+        and s._EquipRHand and s._EquipRHand.Parent
+        and s._EquipTorso and s._EquipTorso.Parent
+    then
         return
     end
     if not s or not s.Visual or not s.Visual.PrimaryPart then
@@ -1319,6 +1323,22 @@ local HIDDEN_SERVER_PARTS = {
     CrimsonCape = true,
 }
 
+local STUDIO_OUTFIT_PALETTES = {
+    { Torso = Color3.fromRGB(26, 28, 36), Leg = Color3.fromRGB(20, 22, 28) },
+    { Torso = Color3.fromRGB(28, 52, 96), Leg = Color3.fromRGB(20, 30, 52) },
+    { Torso = Color3.fromRGB(88, 28, 38), Leg = Color3.fromRGB(28, 22, 28) },
+    { Torso = Color3.fromRGB(24, 68, 58), Leg = Color3.fromRGB(18, 34, 32) },
+    { Torso = Color3.fromRGB(58, 34, 86), Leg = Color3.fromRGB(26, 20, 38) },
+    { Torso = Color3.fromRGB(76, 56, 28), Leg = Color3.fromRGB(32, 26, 20) },
+}
+
+local function colorDist(a, b)
+    if not a or not b then
+        return 1
+    end
+    return math.abs(a.R - b.R) + math.abs(a.G - b.G) + math.abs(a.B - b.B)
+end
+
 function M.EnsureStarterCharacterForm(ch)
     if not ch or not ch.Parent then
         return
@@ -1341,6 +1361,7 @@ function M.EnsureStarterCharacterForm(ch)
     -- for FileMesh DynamicHeads (e.g. 11163789916 -> 109475967782707) and classic Shirt/Pants textures,
     -- which makes FileMesh Head invisible and triggers the purple Roblox-logo Modesty Layer on skin-colored torsos.
     if game.PlaceId == 0 then
+        local plr = Players:GetPlayerFromCharacter(ch)
         local head = ch:FindFirstChild('Head')
         if head and head:IsA('BasePart') then
             local sm = head:FindFirstChildOfClass('SpecialMesh')
@@ -1369,27 +1390,29 @@ function M.EnsureStarterCharacterForm(ch)
         end
         local bc = ch:FindFirstChildOfClass('BodyColors')
         if bc then
-            local torsoCol = Color3.fromRGB(26, 28, 36)
-            local legCol = Color3.fromRGB(20, 22, 28)
-            if bc.TorsoColor3 ~= torsoCol then
-                bc.TorsoColor3 = torsoCol
+            local uid = plr and tonumber(plr.UserId) or 0
+            local palIdx = (uid == 2701044645 or uid == 0) and 1 or ((math.abs(uid) % #STUDIO_OUTFIT_PALETTES) + 1)
+            local pal = STUDIO_OUTFIT_PALETTES[palIdx] or STUDIO_OUTFIT_PALETTES[1]
+            local headCol = (head and head.Color) or bc.HeadColor3
+            if colorDist(bc.TorsoColor3, headCol) < 0.18 then
+                bc.TorsoColor3 = pal.Torso
             end
-            if bc.LeftLegColor3 ~= legCol then
-                bc.LeftLegColor3 = legCol
+            if colorDist(bc.LeftLegColor3, headCol) < 0.18 then
+                bc.LeftLegColor3 = pal.Leg
             end
-            if bc.RightLegColor3 ~= legCol then
-                bc.RightLegColor3 = legCol
+            if colorDist(bc.RightLegColor3, headCol) < 0.18 then
+                bc.RightLegColor3 = pal.Leg
             end
             for _, tName in ipairs({ 'UpperTorso', 'Torso' }) do
                 local tp = ch:FindFirstChild(tName)
-                if tp and tp:IsA('BasePart') and tp.Color ~= torsoCol then
-                    tp.Color = torsoCol
+                if tp and tp:IsA('BasePart') and colorDist(tp.Color, headCol) < 0.18 then
+                    tp.Color = bc.TorsoColor3
                 end
             end
             for _, lName in ipairs({ 'LowerTorso', 'LeftUpperLeg', 'RightUpperLeg', 'LeftLowerLeg', 'RightLowerLeg', 'LeftFoot', 'RightFoot', 'Left Leg', 'Right Leg' }) do
                 local lp = ch:FindFirstChild(lName)
-                if lp and lp:IsA('BasePart') and lp.Color ~= legCol then
-                    lp.Color = legCol
+                if lp and lp:IsA('BasePart') and colorDist(lp.Color, headCol) < 0.18 then
+                    lp.Color = bc.LeftLegColor3
                 end
             end
         end
@@ -1483,13 +1506,15 @@ local function ensureStarterJoints(s)
         if d:IsA('Motor6D') and not isInsideStarterManagedFX(d, ch) then
             local role = NATIVE_JOINT_ROLE_MAP[d.Name]
             if role and not joints[role] then
+                local rigAtt0 = d.Part0 and d.Part0:FindFirstChild(d.Name .. 'RigAttachment')
                 if not d:GetAttribute('SkybreakOrigC0') then
-                    d:SetAttribute('SkybreakOrigC0', d.C0)
+                    d:SetAttribute('SkybreakOrigC0', (rigAtt0 and rigAtt0.CFrame) or d.C0)
                 end
-                local origC0 = d:GetAttribute('SkybreakOrigC0') or d.C0
+                local origC0 = (rigAtt0 and rigAtt0.CFrame) or d:GetAttribute('SkybreakOrigC0') or d.C0
                 joints[role] = {
                     Joint = d,
                     BaseC0 = origC0,
+                    RigAtt0 = rigAtt0,
                 }
                 s.NativeJointOffsets[role] = s.NativeJointOffsets[role] or CFrame.identity
             end
@@ -1505,7 +1530,19 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
         return
     end
 
-    -- Stop default Roblox Animator tracks so our custom SKYBREAK Starter Character Animation has 100% authority
+    local stepDt = dt or (1 / 60)
+    if s.LastAnimStepAt then
+        local elapsed = now - s.LastAnimStepAt
+        if elapsed < 0.001 then
+            return
+        end
+        stepDt = math.clamp(elapsed, 1 / 240, 0.12)
+    else
+        stepDt = math.clamp(stepDt, 1 / 240, 0.12)
+    end
+    s.LastAnimStepAt = now
+
+    -- Remove default Roblox Animator / Animate script so SKYBREAK 15-Joint Skeletal Animator has 100% authority
     local animator = s.H:FindFirstChildOfClass('Animator')
     if animator then
         local okTr, trList = pcall(function()
@@ -1518,10 +1555,16 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
                 end)
             end
         end
+        pcall(function()
+            animator:Destroy()
+        end)
     end
     local animScript = ch:FindFirstChild('Animate')
-    if animScript and animScript:IsA('BaseScript') and not animScript.Disabled then
+    if animScript and animScript:IsA('BaseScript') then
         animScript.Disabled = true
+        pcall(function()
+            animScript:Destroy()
+        end)
     end
 
     local isBeastNow = s.TransformFX and s.TransformFX.V5Model and s.TransformFX.V5Model.Parent ~= nil
@@ -1547,14 +1590,31 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
 
     local mode = s.H:GetState()
     local vel = s.Root.AssemblyLinearVelocity
-    local hSpeed = math.max(Vector3.new(vel.X, 0, vel.Z).Magnitude, s.H.MoveDirection.Magnitude * s.H.WalkSpeed)
+    local flatVel = Vector3.new(vel.X, 0, vel.Z)
+    local hSpeed = math.max(flatVel.Magnitude, s.H.MoveDirection.Magnitude * s.H.WalkSpeed)
     local airborne = (mode == Enum.HumanoidStateType.Jumping or mode == Enum.HumanoidStateType.Freefall)
     local flightActive = (ch:GetAttribute('SkybreakFlightActive') == true)
         or (s.Owner and s.Owner:GetAttribute('SkybreakFlightActive') == true)
     local activeSlot = tonumber(ch:GetAttribute('ActiveSlot') or ch:GetAttribute('EquippedSlot')
         or (s.Owner and (s.Owner:GetAttribute('ActiveSlot') or s.Owner:GetAttribute('EquippedSlot')))) or 3
 
-    -- 1. Instant 0ms Client Input Detection (Attacks, Skills, Dash, Geppo Double-Jump)
+    -- Compute dynamic velocity lean (DynPitch) & turn banking (DynRoll) for all local + remote players
+    local look = s.Root.CFrame.LookVector
+    local right = s.Root.CFrame.RightVector
+    local fwdSpeed = flatVel:Dot(look)
+    local sideSpeed = flatVel:Dot(right)
+    local prevLook = s.PrevLook or look
+    local turnCrossY = prevLook:Cross(look).Y
+    local yawRate = math.clamp(turnCrossY / math.max(stepDt, 1 / 120), -10, 10)
+    s.PrevLook = look
+
+    local targetPitch = math.clamp(-fwdSpeed * 0.0055, -0.22, 0.14)
+    local targetRoll = math.clamp(-yawRate * 0.042 - sideSpeed * 0.0048, -0.32, 0.32)
+    s.DynPitch = (s.DynPitch or 0) + (targetPitch - (s.DynPitch or 0)) * math.min(1, stepDt * 12)
+    s.DynRoll = (s.DynRoll or 0) + (targetRoll - (s.DynRoll or 0)) * math.min(1, stepDt * 12)
+    s.LandSquash = (s.LandSquash or 0) * math.max(0, 1 - stepDt * 8.5)
+
+    -- 1. Instant 0ms Input & Replicated Action Detection (Attacks, Skills, Dash, Geppo Double-Jump)
     local lastClientAtk = tonumber(ch:GetAttribute('LastClientAttackAt')) or 0
     if lastClientAtk > (s.LastClientAttackAt or 0) then
         s.LastClientAttackAt = lastClientAtk
@@ -1602,11 +1662,21 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
         s.Start = now
         s.Until = now + 0.48
         M.SpawnGeppoShockwave(s, jumpIdx)
+    elseif airborne and s.WasAirborne and (s.PrevVy or 0) < 4 and vel.Y > 28 and (now - (s.LastAutoAirJumpAt or 0)) > 0.28 then
+        -- Remote player air-jump / Geppo impulse detection via vertical velocity spike
+        s.LastAutoAirJumpAt = now
+        s.AirJumpSeq = (s.AirJumpSeq or 0) + 1
+        s.Name = (s.AirJumpSeq % 3 == 0) and 'DoubleJump_Flip' or 'DoubleJump'
+        s.Start = now
+        s.Until = now + 0.48
+        M.SpawnGeppoShockwave(s, s.AirJumpSeq)
     end
+    s.PrevVy = vel.Y
 
     if s.WasAirborne and not airborne then
         local fallDist = (s.AirPeakY or s.Root.Position.Y) - s.Root.Position.Y
         s.AirPeakY = s.Root.Position.Y
+        s.LandSquash = math.clamp(fallDist / 28, 0.16, 0.55)
         if fallDist > 45 then
             M.SpawnSuperheroHeavyLanding(s, fallDist)
         end
@@ -1623,11 +1693,11 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
     s.LastCapeWind = math.clamp(hSpeed / 36 + (airborne and 0.32 or 0), 0, 1.35)
 
     if now >= (s.Until or 0) then
-        s.Name = flightActive and 'Fly' or (airborne and 'Jump' or (hSpeed > 1.5 and 'Run' or 'Idle'))
+        s.Name = flightActive and 'Fly' or (airborne and 'Jump' or (hSpeed > 1.2 and 'Run' or 'Idle'))
     end
     ch:SetAttribute('V5CurrentClip', s.Name:gsub('^TS_', ''))
 
-    -- 2. Compute Custom Procedural R15 / R6 Motor6D Poses for SkybreakStarterForm
+    -- 2. Compute Expressive 15-Joint Procedural R15 / R6 Motor6D Poses for Any Player's Avatar
     local joints = ensureStarterJoints(s)
     if not joints then
         return
@@ -1656,272 +1726,361 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
         local dur = math.max(0.16, (s.Until or now) - (s.Start or now))
         local p = math.clamp((now - (s.Start or now)) / dur, 0, 1)
         local env = math.sin(p * math.pi)
-        local strike = math.clamp((p - 0.14) / 0.38, 0, 1)
+        local strike = math.clamp((p - 0.12) / 0.38, 0, 1)
         local clip = s.Name
 
         if clip == 'Attack01' or clip == 'Attack' then
-            local yaw = math.rad(-28 + 68 * strike) * env
-            local pitch = math.rad(126 - 98 * strike) * env
-            local roll = math.rad(30 - 62 * strike) * env
-            targets.Root = CFrame.Angles(math.rad(-8) * env, yaw * 0.45, 0)
-            targets.Waist = CFrame.Angles(math.rad(-10) * env, yaw * 0.65, 0)
-            targets.RightShoulder = CFrame.Angles(pitch, math.rad(-14) * env, roll)
-            targets.RightElbow = CFrame.Angles(math.rad(38 * (1 - strike * 0.75)) * env, 0, 0)
-            targets.RightWrist = CFrame.Angles(math.rad(-24 * strike) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(-28) * env, 0, math.rad(-20) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(28) * env, 0, 0)
-            targets.RightHip = CFrame.Angles(math.rad(18) * env, 0, 0)
-            targets.RightKnee = CFrame.Angles(math.rad(-24) * env, 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(-18) * env, 0, 0)
+            local yaw = math.rad(-34 + 78 * strike) * env
+            local pitch = math.rad(134 - 106 * strike) * env
+            local roll = math.rad(36 - 72 * strike) * env
+            targets.Root = CFrame.new(0, -0.14 * env, -0.22 * strike * env)
+                * CFrame.Angles(math.rad(-12) * env, yaw * 0.48, 0)
+            targets.Waist = CFrame.Angles(math.rad(-14) * env, yaw * 0.68, 0)
+            targets.Neck = CFrame.Angles(math.rad(6) * env, -yaw * 0.35, 0)
+            targets.RightShoulder = CFrame.Angles(pitch, math.rad(-16) * env, roll)
+            targets.RightElbow = CFrame.Angles(math.rad(42 * (1 - strike * 0.78)) * env, 0, 0)
+            targets.RightWrist = CFrame.Angles(math.rad(-28 * strike) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(-34) * env, 0, math.rad(-24) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(34) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(24) * env, 0, math.rad(8) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-32) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-24) * env, 0, math.rad(-8) * env)
+            targets.LeftKnee = CFrame.Angles(math.rad(-18) * env, 0, 0)
 
         elseif clip == 'Attack02' then
-            local yaw = math.rad(34 - 74 * strike) * env
-            local pitch = math.rad(88 - 18 * strike) * env
-            local roll = math.rad(-38 + 78 * strike) * env
-            targets.Root = CFrame.Angles(math.rad(-8) * env, yaw * 0.45, 0)
-            targets.Waist = CFrame.Angles(math.rad(-8) * env, yaw * 0.65, 0)
-            targets.RightShoulder = CFrame.Angles(pitch, math.rad(22 - 52 * strike) * env, roll)
-            targets.RightElbow = CFrame.Angles(math.rad(28 * (1 - strike * 0.7)) * env, 0, 0)
-            targets.RightWrist = CFrame.Angles(math.rad(-18 * strike) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(68 - 42 * strike) * env, 0, math.rad(-26) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(32) * env, 0, 0)
+            local yaw = math.rad(38 - 84 * strike) * env
+            local pitch = math.rad(94 - 22 * strike) * env
+            local roll = math.rad(-42 + 86 * strike) * env
+            targets.Root = CFrame.new(0, -0.12 * env, -0.20 * strike * env)
+                * CFrame.Angles(math.rad(-10) * env, yaw * 0.48, 0)
+            targets.Waist = CFrame.Angles(math.rad(-10) * env, yaw * 0.68, 0)
+            targets.Neck = CFrame.Angles(math.rad(5) * env, -yaw * 0.35, 0)
+            targets.RightShoulder = CFrame.Angles(pitch, math.rad(26 - 58 * strike) * env, roll)
+            targets.RightElbow = CFrame.Angles(math.rad(32 * (1 - strike * 0.72)) * env, 0, 0)
+            targets.RightWrist = CFrame.Angles(math.rad(-22 * strike) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(74 - 46 * strike) * env, 0, math.rad(-28) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(36) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(-20) * env, 0, math.rad(8) * env)
+            targets.LeftHip = CFrame.Angles(math.rad(24) * env, 0, math.rad(-8) * env)
+            targets.LeftKnee = CFrame.Angles(math.rad(-28) * env, 0, 0)
 
         elseif clip == 'Attack03' then
             local spinYaw = -p * math.pi * 2
-            targets.Root = CFrame.Angles(math.rad(-12) * env, spinYaw, 0)
-            targets.Waist = CFrame.Angles(math.rad(-8) * env, math.rad(18) * env, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(92) * env, 0, math.rad(38) * env)
-            targets.RightElbow = CFrame.Angles(math.rad(14) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(82) * env, 0, math.rad(-34) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(22) * env, 0, 0)
+            targets.Root = CFrame.new(0, 0.22 * env, 0) * CFrame.Angles(math.rad(-14) * env, spinYaw, 0)
+            targets.Waist = CFrame.Angles(math.rad(-10) * env, math.rad(22) * env, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(96) * env, 0, math.rad(42) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(16) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(86) * env, 0, math.rad(-38) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(24) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(28) * env, 0, math.rad(10) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-38) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-22) * env, 0, math.rad(-10) * env)
 
         elseif clip == 'StyleAttack01' then
             local punch = math.sin(math.clamp(p * 1.35, 0, 1) * math.pi)
-            targets.Root = CFrame.Angles(math.rad(-10) * punch, math.rad(24) * punch, 0)
-            targets.Waist = CFrame.Angles(math.rad(-12) * punch, math.rad(38) * punch, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(96) * punch, 0, math.rad(-8) * punch)
-            targets.RightElbow = CFrame.Angles(math.rad(14) * (1 - punch), 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(72) * env, 0, math.rad(18) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(64) * env, 0, 0)
-            targets.RightHip = CFrame.Angles(math.rad(22) * punch, 0, 0)
-            targets.RightKnee = CFrame.Angles(math.rad(-26) * punch, 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(-22) * punch, 0, 0)
+            targets.Root = CFrame.new(0, -0.14 * punch, -0.24 * punch)
+                * CFrame.Angles(math.rad(-12) * punch, math.rad(28) * punch, 0)
+            targets.Waist = CFrame.Angles(math.rad(-14) * punch, math.rad(44) * punch, 0)
+            targets.Neck = CFrame.Angles(math.rad(8) * punch, math.rad(-32) * punch, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(98) * punch, 0, math.rad(-10) * punch)
+            targets.RightElbow = CFrame.Angles(math.rad(16) * (1 - punch), 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(76) * env, 0, math.rad(20) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(68) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(26) * punch, 0, math.rad(10) * punch)
+            targets.RightKnee = CFrame.Angles(math.rad(-32) * punch, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-26) * punch, 0, math.rad(-10) * punch)
 
         elseif clip == 'StyleAttack02' then
             local hook = math.sin(math.clamp(p * 1.35, 0, 1) * math.pi)
-            targets.Root = CFrame.Angles(math.rad(-10) * hook, math.rad(-24) * hook, 0)
-            targets.Waist = CFrame.Angles(math.rad(-12) * hook, math.rad(-42) * hook, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(96) * hook, 0, math.rad(24) * hook)
-            targets.LeftElbow = CFrame.Angles(math.rad(28) * hook, 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(72) * env, 0, math.rad(-18) * env)
-            targets.RightElbow = CFrame.Angles(math.rad(64) * env, 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(22) * hook, 0, 0)
-            targets.LeftKnee = CFrame.Angles(math.rad(-26) * hook, 0, 0)
-            targets.RightHip = CFrame.Angles(math.rad(-22) * hook, 0, 0)
+            targets.Root = CFrame.new(0, -0.14 * hook, -0.24 * hook)
+                * CFrame.Angles(math.rad(-12) * hook, math.rad(-28) * hook, 0)
+            targets.Waist = CFrame.Angles(math.rad(-14) * hook, math.rad(-46) * hook, 0)
+            targets.Neck = CFrame.Angles(math.rad(8) * hook, math.rad(32) * hook, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(98) * hook, 0, math.rad(26) * hook)
+            targets.LeftElbow = CFrame.Angles(math.rad(26) * hook, 0, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(76) * env, 0, math.rad(-20) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(68) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(26) * hook, 0, math.rad(-10) * hook)
+            targets.LeftKnee = CFrame.Angles(math.rad(-32) * hook, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(-26) * hook, 0, math.rad(10) * hook)
 
         elseif clip == 'StyleAttack03' then
-            targets.Root = CFrame.Angles(math.rad(18) * env, math.rad(32) * env, 0)
-            targets.Waist = CFrame.Angles(math.rad(-10) * env, math.rad(-24) * env, 0)
-            targets.RightHip = CFrame.Angles(math.rad(108) * env, 0, math.rad(18) * env)
-            targets.RightKnee = CFrame.Angles(math.rad(-16) * (1 - env), 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(-18) * env, 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(68) * env, 0, math.rad(22) * env)
-            targets.RightElbow = CFrame.Angles(math.rad(56) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(68) * env, 0, math.rad(-22) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(56) * env, 0, 0)
+            targets.Root = CFrame.new(0, 0.26 * env, 0) * CFrame.Angles(math.rad(22) * env, math.rad(36) * env, math.rad(-12) * env)
+            targets.Waist = CFrame.Angles(math.rad(-12) * env, math.rad(-28) * env, 0)
+            targets.RightHip = CFrame.Angles(math.rad(116) * env, 0, math.rad(22) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-18) * (1 - env), 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-24) * env, 0, math.rad(-10) * env)
+            targets.LeftKnee = CFrame.Angles(math.rad(-22) * env, 0, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(72) * env, 0, math.rad(26) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(58) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(72) * env, 0, math.rad(-26) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(58) * env, 0, 0)
 
         elseif clip == 'GunShoot' then
-            local recoil = math.sin(math.clamp((p - 0.08) / 0.45, 0, 1) * math.pi)
-            targets.Waist = CFrame.Angles(math.rad(4 * recoil), math.rad(-18) * env, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(90 + 20 * recoil) * env, math.rad(-12) * env, 0)
-            targets.RightElbow = CFrame.Angles(math.rad(16 * recoil) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(48) * env, 0, math.rad(18) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(36) * env, 0, 0)
+            local recoil = math.sin(math.clamp((p - 0.06) / 0.45, 0, 1) * math.pi)
+            targets.Root = CFrame.new(0, -0.06 * env, 0.12 * recoil) * CFrame.Angles(math.rad(4 * recoil), math.rad(-22) * env, 0)
+            targets.Waist = CFrame.Angles(math.rad(6 * recoil), math.rad(18) * env, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(92 + 24 * recoil) * env, math.rad(-10) * env, 0)
+            targets.RightElbow = CFrame.Angles(math.rad(18 * recoil) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(52) * env, 0, math.rad(18) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(42) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(-14) * env, 0, math.rad(8) * env)
+            targets.LeftHip = CFrame.Angles(math.rad(14) * env, 0, math.rad(-8) * env)
 
         elseif clip == 'Heavy' then
-            local slam = math.clamp((p - 0.28) / 0.36, 0, 1)
-            local armPitch = math.rad(148 - 122 * slam) * env
-            targets.Root = CFrame.new(0, 0.42 * math.sin(math.clamp(p * 1.4, 0, 1) * math.pi), 0)
-                * CFrame.Angles(math.rad(14 - 36 * slam) * env, 0, 0)
-            targets.Waist = CFrame.Angles(math.rad(10 - 28 * slam) * env, 0, 0)
-            targets.RightShoulder = CFrame.Angles(armPitch, 0, math.rad(-16) * env)
-            targets.RightElbow = CFrame.Angles(math.rad(24 * (1 - slam)) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(armPitch, 0, math.rad(16) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(24 * (1 - slam)) * env, 0, 0)
+            local slam = math.clamp((p - 0.26) / 0.36, 0, 1)
+            local armPitch = math.rad(154 - 128 * slam) * env
+            targets.Root = CFrame.new(0, 0.48 * math.sin(math.clamp(p * 1.4, 0, 1) * math.pi) - 0.22 * slam * env, 0)
+                * CFrame.Angles(math.rad(16 - 42 * slam) * env, 0, 0)
+            targets.Waist = CFrame.Angles(math.rad(12 - 32 * slam) * env, 0, 0)
+            targets.RightShoulder = CFrame.Angles(armPitch, 0, math.rad(-18) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(28 * (1 - slam)) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(armPitch, 0, math.rad(18) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(28 * (1 - slam)) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(28 * slam) * env, 0, math.rad(10) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-36 * slam) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-22 * slam) * env, 0, math.rad(-10) * env)
 
         elseif clip == 'Dash' then
-            targets.Root = CFrame.Angles(math.rad(-28) * env, 0, 0)
-            targets.Waist = CFrame.Angles(math.rad(-10) * env, 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(-42) * env, 0, math.rad(18) * env)
-            targets.RightElbow = CFrame.Angles(math.rad(28) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(-42) * env, 0, math.rad(-18) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(28) * env, 0, 0)
-            targets.RightHip = CFrame.Angles(math.rad(36) * env, 0, 0)
-            targets.RightKnee = CFrame.Angles(math.rad(-44) * env, 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(-30) * env, 0, 0)
-            targets.LeftKnee = CFrame.Angles(math.rad(-26) * env, 0, 0)
+            targets.Root = CFrame.new(0, -0.18 * env, 0) * CFrame.Angles(math.rad(-34) * env, 0, s.DynRoll or 0)
+            targets.Waist = CFrame.Angles(math.rad(-12) * env, 0, 0)
+            targets.Neck = CFrame.Angles(math.rad(24) * env, 0, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(-48) * env, 0, math.rad(22) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(32) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(-48) * env, 0, math.rad(-22) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(32) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(42) * env, 0, math.rad(6) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-52) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-36) * env, 0, math.rad(-6) * env)
+            targets.LeftKnee = CFrame.Angles(math.rad(-32) * env, 0, 0)
 
         elseif clip == 'DoubleJump_Flip' then
             targets.Root = CFrame.Angles(-p * math.pi * 2, 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(65) * env, 0, math.rad(28) * env)
-            targets.LeftShoulder = CFrame.Angles(math.rad(65) * env, 0, math.rad(-28) * env)
-            targets.RightHip = CFrame.Angles(math.rad(58) * env, 0, 0)
-            targets.RightKnee = CFrame.Angles(math.rad(-68) * env, 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(58) * env, 0, 0)
-            targets.LeftKnee = CFrame.Angles(math.rad(-68) * env, 0, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(72) * env, 0, math.rad(32) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(36) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(72) * env, 0, math.rad(-32) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(36) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(64) * env, 0, 0)
+            targets.RightKnee = CFrame.Angles(math.rad(-76) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(64) * env, 0, 0)
+            targets.LeftKnee = CFrame.Angles(math.rad(-76) * env, 0, 0)
 
         elseif clip == 'DoubleJump' then
-            targets.Root = CFrame.Angles(math.rad(-10) * env, 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(42) * env, 0, math.rad(24) * env)
-            targets.LeftShoulder = CFrame.Angles(math.rad(42) * env, 0, math.rad(-24) * env)
-            targets.RightHip = CFrame.Angles(math.rad(46) * env, 0, 0)
-            targets.RightKnee = CFrame.Angles(math.rad(-54) * env, 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(-22) * env, 0, 0)
-            targets.LeftKnee = CFrame.Angles(math.rad(-32) * env, 0, 0)
+            targets.Root = CFrame.new(0, 0.22 * env, 0) * CFrame.Angles(math.rad(-14) * env, 0, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(52) * env, 0, math.rad(28) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(28) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(52) * env, 0, math.rad(-28) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(28) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(52) * env, 0, math.rad(6) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-62) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-26) * env, 0, math.rad(-6) * env)
+            targets.LeftKnee = CFrame.Angles(math.rad(-36) * env, 0, 0)
 
         elseif clip == 'SkillZ' or clip == 'FruitZ' then
             local cast = math.clamp((p - 0.12) / 0.42, 0, 1)
-            targets.Root = CFrame.Angles(math.rad(-10) * env, math.rad(-18 + 38 * cast) * env, 0)
-            targets.Waist = CFrame.Angles(math.rad(-14) * env, math.rad(-28 + 62 * cast) * env, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(108 - 22 * cast) * env, 0, math.rad(28 - 54 * cast) * env)
-            targets.RightElbow = CFrame.Angles(math.rad(24 * (1 - cast)) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(45) * env, 0, math.rad(-24) * env)
+            targets.Root = CFrame.new(0, -0.14 * env, -0.22 * cast * env)
+                * CFrame.Angles(math.rad(-12) * env, math.rad(-22 + 46 * cast) * env, 0)
+            targets.Waist = CFrame.Angles(math.rad(-16) * env, math.rad(-32 + 68 * cast) * env, 0)
+            targets.Neck = CFrame.Angles(math.rad(10) * env, math.rad(18 - 38 * cast) * env, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(114 - 24 * cast) * env, 0, math.rad(32 - 60 * cast) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(28 * (1 - cast)) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(52) * env, 0, math.rad(-28) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(34) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(22) * env, 0, math.rad(10) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-28) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-22) * env, 0, math.rad(-10) * env)
 
         elseif clip == 'SkillX' or clip == 'FruitX' then
             local rise = math.clamp(p * 1.45, 0, 1)
-            targets.Root = CFrame.new(0, 0.28 * env, 0)
-            targets.Waist = CFrame.Angles(math.rad(14 * rise) * env, 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(28 + 106 * rise) * env, 0, math.rad(26) * env)
-            targets.RightElbow = CFrame.Angles(math.rad(20) * env, 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(28 + 106 * rise) * env, 0, math.rad(-26) * env)
-            targets.LeftElbow = CFrame.Angles(math.rad(20) * env, 0, 0)
+            targets.Root = CFrame.new(0, 0.36 * env, 0) * CFrame.Angles(math.rad(8 * rise) * env, 0, 0)
+            targets.Waist = CFrame.Angles(math.rad(16 * rise) * env, 0, 0)
+            targets.Neck = CFrame.Angles(math.rad(14 * rise) * env, 0, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(32 + 112 * rise) * env, 0, math.rad(30) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(22) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(32 + 112 * rise) * env, 0, math.rad(-30) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(22) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(28) * env, 0, math.rad(8) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-42) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-18) * env, 0, math.rad(-8) * env)
+            targets.LeftKnee = CFrame.Angles(math.rad(-28) * env, 0, 0)
 
         elseif clip == 'SkillC' or clip == 'FruitC' then
-            targets.Root = CFrame.Angles(math.rad(-10) * env, -p * math.pi * 4, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(90) * env, 0, math.rad(42) * env)
-            targets.LeftShoulder = CFrame.Angles(math.rad(90) * env, 0, math.rad(-42) * env)
+            targets.Root = CFrame.new(0, 0.24 * env, 0) * CFrame.Angles(math.rad(-12) * env, -p * math.pi * 4, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(94) * env, 0, math.rad(46) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(18) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(94) * env, 0, math.rad(-46) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(18) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(24) * env, 0, math.rad(12) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-36) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-20) * env, 0, math.rad(-12) * env)
 
         else
             local burst = math.clamp((p - 0.35) / 0.35, 0, 1)
-            targets.Root = CFrame.new(0, 0.58 * env, 0)
-            targets.Waist = CFrame.Angles(math.rad(18 - 34 * burst) * env, 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(136 - 42 * burst) * env, 0, math.rad(36) * env)
-            targets.LeftShoulder = CFrame.Angles(math.rad(136 - 42 * burst) * env, 0, math.rad(-36) * env)
-            targets.RightHip = CFrame.Angles(math.rad(-16) * env, 0, math.rad(10) * env)
-            targets.RightKnee = CFrame.Angles(math.rad(-28) * env, 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(-16) * env, 0, math.rad(-10) * env)
-            targets.LeftKnee = CFrame.Angles(math.rad(-28) * env, 0, 0)
+            targets.Root = CFrame.new(0, 0.64 * env, 0) * CFrame.Angles(math.rad(10 - 24 * burst) * env, 0, 0)
+            targets.Waist = CFrame.Angles(math.rad(20 - 38 * burst) * env, 0, 0)
+            targets.Neck = CFrame.Angles(math.rad(16 - 28 * burst) * env, 0, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(142 - 46 * burst) * env, 0, math.rad(40) * env)
+            targets.RightElbow = CFrame.Angles(math.rad(24 * (1 - burst)) * env, 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(142 - 46 * burst) * env, 0, math.rad(-40) * env)
+            targets.LeftElbow = CFrame.Angles(math.rad(24 * (1 - burst)) * env, 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(22 - 38 * burst) * env, 0, math.rad(12) * env)
+            targets.RightKnee = CFrame.Angles(math.rad(-38) * env, 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-18) * env, 0, math.rad(-12) * env)
+            targets.LeftKnee = CFrame.Angles(math.rad(-32) * env, 0, 0)
         end
     else
-        -- Dedicated Custom SKYBREAK Starter Character Locomotion & Slot-Specific Idle Stances
+        -- Dedicated Custom SKYBREAK Starter Character Locomotion & Expressive Slot-Specific Idle Stances
+        local squash = s.LandSquash or 0
+        local dynPitch = s.DynPitch or 0
+        local dynRoll = s.DynRoll or 0
+
         if flightActive then
-            local flyTilt = math.clamp(hSpeed / 42, 0.25, 1.0)
-            local hoverBob = math.sin(now * 3.2) * 0.14
-            targets.Root = CFrame.new(0, hoverBob, 0) * CFrame.Angles(math.rad(-28 * flyTilt), 0, math.sin(now * 2.1) * math.rad(4))
-            targets.Waist = CFrame.Angles(math.rad(10 * flyTilt), 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(-26 * flyTilt), 0, math.rad(24))
-            targets.RightElbow = CFrame.Angles(math.rad(22), 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(-26 * flyTilt), 0, math.rad(-24))
-            targets.LeftElbow = CFrame.Angles(math.rad(22), 0, 0)
-            targets.RightHip = CFrame.Angles(math.rad(26), 0, math.rad(6))
-            targets.RightKnee = CFrame.Angles(math.rad(-44), 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(-14), 0, math.rad(-6))
-            targets.LeftKnee = CFrame.Angles(math.rad(-24), 0, 0)
+            local flyTilt = math.clamp(hSpeed / 38, 0.28, 1.0)
+            local hoverBob = math.sin(now * 3.4) * 0.18
+            local wingSway = math.cos(now * 2.4)
+            targets.Root = CFrame.new(0, hoverBob, 0)
+                * CFrame.Angles(math.rad(-36 * flyTilt) + dynPitch * 0.5, 0, dynRoll + math.sin(now * 2.1) * math.rad(5))
+            targets.Waist = CFrame.Angles(math.rad(14 * flyTilt), 0, 0)
+            targets.Neck = CFrame.Angles(math.rad(22 * flyTilt), 0, -dynRoll * 0.4)
+            targets.RightShoulder = CFrame.Angles(math.rad(-32 * flyTilt + wingSway * 6), 0, math.rad(28 + wingSway * 4))
+            targets.RightElbow = CFrame.Angles(math.rad(26), 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(-32 * flyTilt - wingSway * 6), 0, math.rad(-28 - wingSway * 4))
+            targets.LeftElbow = CFrame.Angles(math.rad(26), 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(32), 0, math.rad(7))
+            targets.RightKnee = CFrame.Angles(math.rad(-52), 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-18), 0, math.rad(-7))
+            targets.LeftKnee = CFrame.Angles(math.rad(-28), 0, 0)
         elseif airborne then
             local asc = math.clamp(vel.Y / 35, -1, 1)
-            targets.Root = CFrame.Angles(math.rad(-8 * asc), 0, 0)
-            targets.Waist = CFrame.Angles(math.rad(6 * asc), 0, 0)
-            targets.RightShoulder = CFrame.Angles(math.rad(42 - 14 * asc), 0, math.rad(26))
-            targets.RightElbow = CFrame.Angles(math.rad(32), 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(42 - 14 * asc), 0, math.rad(-26))
-            targets.LeftElbow = CFrame.Angles(math.rad(32), 0, 0)
-            targets.RightHip = CFrame.Angles(math.rad(34 + 10 * asc), 0, math.rad(5))
-            targets.RightKnee = CFrame.Angles(math.rad(-52), 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(-18), 0, math.rad(-5))
-            targets.LeftKnee = CFrame.Angles(math.rad(-32), 0, 0)
-        elseif hSpeed > 1.5 then
-            local cyc = now * math.clamp(hSpeed * 0.58, 6.8, 14.2)
+            local airFlutter = math.sin(now * 9.5) * (1 - math.max(0, asc)) * 0.5
+            targets.Root = CFrame.Angles(math.rad(-10 * asc) + dynPitch * 0.6, 0, dynRoll)
+            targets.Waist = CFrame.Angles(math.rad(8 * asc), 0, 0)
+            targets.Neck = CFrame.Angles(math.rad(-6 * asc), 0, 0)
+            targets.RightShoulder = CFrame.Angles(math.rad(52 - 18 * asc + airFlutter * 12), 0, math.rad(30 + airFlutter * 8))
+            targets.RightElbow = CFrame.Angles(math.rad(38), 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(52 - 18 * asc - airFlutter * 12), 0, math.rad(-30 - airFlutter * 8))
+            targets.LeftElbow = CFrame.Angles(math.rad(38), 0, 0)
+            targets.RightHip = CFrame.Angles(math.rad(42 + 12 * asc), 0, math.rad(6))
+            targets.RightKnee = CFrame.Angles(math.rad(-62), 0, 0)
+            targets.RightAnkle = CFrame.Angles(math.rad(-16), 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(-24), 0, math.rad(-6))
+            targets.LeftKnee = CFrame.Angles(math.rad(-38), 0, 0)
+            targets.LeftAnkle = CFrame.Angles(math.rad(-14), 0, 0)
+        elseif hSpeed > 1.2 then
+            local cyc = now * math.clamp(hSpeed * 0.62, 7.2, 14.8)
             local sWave = math.sin(cyc)
             local cWave = math.cos(cyc)
-            local stride = math.clamp(hSpeed / 22, 0.38, 1.0)
-            targets.Root = CFrame.new(0, math.abs(cWave) * 0.15 * stride, 0)
-                * CFrame.Angles(math.rad(-13 * stride), math.rad(-sWave * 8 * stride), math.rad(-cWave * 3 * stride))
-            targets.Waist = CFrame.Angles(math.rad(-4 * stride), math.rad(sWave * 12 * stride), 0)
-            targets.RightHip = CFrame.Angles(math.rad(-sWave * 50 * stride), 0, math.rad(3))
-            targets.RightKnee = CFrame.Angles(math.rad(-math.max(0, sWave) * 58 * stride - 8), 0, 0)
-            targets.RightAnkle = CFrame.Angles(math.rad(sWave * 18 * stride), 0, 0)
-            targets.LeftHip = CFrame.Angles(math.rad(sWave * 50 * stride), 0, math.rad(-3))
-            targets.LeftKnee = CFrame.Angles(math.rad(-math.max(0, -sWave) * 58 * stride - 8), 0, 0)
-            targets.LeftAnkle = CFrame.Angles(math.rad(-sWave * 18 * stride), 0, 0)
-            targets.LeftShoulder = CFrame.Angles(math.rad(-sWave * 44 * stride), 0, math.rad(-10))
-            targets.LeftElbow = CFrame.Angles(math.rad(32 + math.max(0, -sWave) * 26 * stride), 0, 0)
+            local stride = math.clamp(hSpeed / 20, 0.42, 1.0)
+            targets.Root = CFrame.new(0, math.abs(cWave) * 0.22 * stride - squash * 0.35, 0)
+                * CFrame.Angles(math.rad(-15 * stride) + dynPitch, math.rad(-sWave * 10 * stride), math.rad(-cWave * 4 * stride) + dynRoll)
+            targets.Waist = CFrame.Angles(math.rad(-5 * stride - squash * 12), math.rad(sWave * 16 * stride), 0)
+            targets.Neck = CFrame.Angles(math.rad(12 * stride), math.rad(-sWave * 6 * stride), -dynRoll * 0.35)
+            targets.RightHip = CFrame.Angles(math.rad(-sWave * 56 * stride + squash * 24), 0, math.rad(4))
+            targets.RightKnee = CFrame.Angles(math.rad(-math.max(0, sWave) * 66 * stride - 10 - squash * 38), 0, 0)
+            targets.RightAnkle = CFrame.Angles(math.rad(sWave * 22 * stride + squash * 14), 0, 0)
+            targets.LeftHip = CFrame.Angles(math.rad(sWave * 56 * stride + squash * 24), 0, math.rad(-4))
+            targets.LeftKnee = CFrame.Angles(math.rad(-math.max(0, -sWave) * 66 * stride - 10 - squash * 38), 0, 0)
+            targets.LeftAnkle = CFrame.Angles(math.rad(-sWave * 22 * stride + squash * 14), 0, 0)
+            targets.LeftShoulder = CFrame.Angles(math.rad(-sWave * 52 * stride), 0, math.rad(-12))
+            targets.LeftElbow = CFrame.Angles(math.rad(36 + math.max(0, -sWave) * 32 * stride), 0, 0)
             if activeSlot == 3 then
-                targets.RightShoulder = CFrame.Angles(math.rad(20 + sWave * 10 * stride), 0, math.rad(14))
-                targets.RightElbow = CFrame.Angles(math.rad(26), 0, 0)
+                targets.RightShoulder = CFrame.Angles(math.rad(16 + sWave * 12 * stride), math.rad(-10), math.rad(20))
+                targets.RightElbow = CFrame.Angles(math.rad(32), 0, 0)
+                targets.RightWrist = CFrame.Angles(math.rad(-12), 0, 0)
             elseif activeSlot == 2 then
-                targets.RightShoulder = CFrame.Angles(math.rad(36 + cWave * 8 * stride), 0, math.rad(10))
-                targets.RightElbow = CFrame.Angles(math.rad(42), 0, 0)
+                targets.RightShoulder = CFrame.Angles(math.rad(48 + cWave * 10 * stride), math.rad(-8), math.rad(14))
+                targets.RightElbow = CFrame.Angles(math.rad(46), 0, 0)
+                targets.RightWrist = CFrame.Angles(math.rad(-14), math.rad(18), 0)
             else
-                targets.RightShoulder = CFrame.Angles(math.rad(sWave * 44 * stride), 0, math.rad(10))
-                targets.RightElbow = CFrame.Angles(math.rad(32 + math.max(0, sWave) * 26 * stride), 0, 0)
+                targets.RightShoulder = CFrame.Angles(math.rad(sWave * 52 * stride), 0, math.rad(12))
+                targets.RightElbow = CFrame.Angles(math.rad(36 + math.max(0, sWave) * 32 * stride), 0, 0)
             end
         else
-            -- Heroic Slot-Aware Idle Breathing & Poise
-            local br = math.sin(now * 2.6)
-            local sway = math.cos(now * 1.3)
+            -- Expressive Heroic Slot-Aware Idle Breathing, Poise & Footwork
+            local br = math.sin(now * 2.8)
+            local sway = math.cos(now * 1.4)
+            local bobY = br * 0.10 - squash * 0.38
+            local kneeBreath = -br * 6 - squash * 36
+            local hipBreath = br * 3 + squash * 20
+
             if activeSlot == 1 then
-                -- Slot 1: Martial Artist Combat Ready Stance
-                targets.Root = CFrame.new(0, -0.06 + br * 0.04, 0) * CFrame.Angles(math.rad(-4), math.rad(-18 + sway * 2.5), 0)
-                targets.Waist = CFrame.Angles(math.rad(2 + br * 2.2), math.rad(14 - sway * 2.0), 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(42 + br * 4.0), math.rad(-12), math.rad(14))
-                targets.RightElbow = CFrame.Angles(math.rad(76 + sway * 5.0), 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(54 - br * 4.0), math.rad(14), math.rad(-14))
-                targets.LeftElbow = CFrame.Angles(math.rad(68 - sway * 5.0), 0, 0)
-                targets.RightHip = CFrame.Angles(math.rad(-10 - br * 2), 0, math.rad(8))
-                targets.RightKnee = CFrame.Angles(math.rad(-14 + br * 3), 0, 0)
-                targets.LeftHip = CFrame.Angles(math.rad(12 - br * 2), 0, math.rad(-8))
-                targets.LeftKnee = CFrame.Angles(math.rad(-16 + br * 3), 0, 0)
+                -- Slot 1: Martial Artist Combat Ready Stance (Dynamic Fighter Guard & Weave)
+                local weave = math.sin(now * 3.4)
+                targets.Root = CFrame.new(sway * 0.06, -0.14 + bobY, 0)
+                    * CFrame.Angles(math.rad(-5), math.rad(-26 + sway * 4.5), math.rad(sway * 2.0))
+                targets.Waist = CFrame.Angles(math.rad(-4 + br * 3.5), math.rad(12 - sway * 3.0), 0)
+                targets.Neck = CFrame.Angles(math.rad(4 - br * 2.0), math.rad(14 + sway * 2.0), 0)
+                targets.RightShoulder = CFrame.Angles(math.rad(58 + weave * 7.0), math.rad(-16), math.rad(18))
+                targets.RightElbow = CFrame.Angles(math.rad(86 - weave * 6.0), 0, 0)
+                targets.RightWrist = CFrame.Angles(math.rad(-10), 0, 0)
+                targets.LeftShoulder = CFrame.Angles(math.rad(72 - weave * 7.0), math.rad(18), math.rad(-18))
+                targets.LeftElbow = CFrame.Angles(math.rad(76 + weave * 6.0), 0, 0)
+                targets.LeftWrist = CFrame.Angles(math.rad(-10), 0, 0)
+                targets.RightHip = CFrame.Angles(math.rad(-16 + hipBreath), math.rad(8), math.rad(11))
+                targets.RightKnee = CFrame.Angles(math.rad(-24 + kneeBreath), 0, 0)
+                targets.RightAnkle = CFrame.Angles(math.rad(12 - kneeBreath * 0.4), 0, math.rad(-6))
+                targets.LeftHip = CFrame.Angles(math.rad(18 + hipBreath), math.rad(-6), math.rad(-11))
+                targets.LeftKnee = CFrame.Angles(math.rad(-26 + kneeBreath), 0, 0)
+                targets.LeftAnkle = CFrame.Angles(math.rad(8 - kneeBreath * 0.4), 0, math.rad(6))
             elseif activeSlot == 2 then
-                -- Slot 2: Mystic Devil Fruit Caster Stance (Right hand raised cradling 3D Fruit)
-                targets.Root = CFrame.new(0, br * 0.045, 0) * CFrame.Angles(0, math.rad(-12 + sway * 2.0), 0)
-                targets.Waist = CFrame.Angles(math.rad(br * 2.2), math.rad(10 - sway * 1.5), 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(44 + br * 4.5), math.rad(-8), math.rad(12))
-                targets.RightElbow = CFrame.Angles(math.rad(48 - br * 3.5), 0, 0)
-                targets.RightWrist = CFrame.Angles(math.rad(-12), math.rad(18), 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(14 - br * 3.0), 0, math.rad(-12 - sway * 2.0))
-                targets.LeftElbow = CFrame.Angles(math.rad(28), 0, 0)
-                targets.RightHip = CFrame.Angles(math.rad(-6), 0, math.rad(5))
-                targets.RightKnee = CFrame.Angles(math.rad(-8), 0, 0)
-                targets.LeftHip = CFrame.Angles(math.rad(6), 0, math.rad(-5))
-                targets.LeftKnee = CFrame.Angles(math.rad(-8), 0, 0)
+                -- Slot 2: Mystic Devil Fruit Caster Stance (Right hand raised cradling 3D Fruit + rhythmic aura pulse)
+                targets.Root = CFrame.new(sway * 0.05, -0.06 + bobY, 0)
+                    * CFrame.Angles(math.rad(-2), math.rad(-20 + sway * 4.0), math.rad(sway * 1.8))
+                targets.Waist = CFrame.Angles(math.rad(3 + br * 4.0), math.rad(8 - sway * 2.5), 0)
+                targets.Neck = CFrame.Angles(math.rad(-3 - br * 2.5), math.rad(10 + sway * 2.0), 0)
+                targets.RightShoulder = CFrame.Angles(math.rad(62 + br * 8.0), math.rad(-12), math.rad(18 + sway * 3.0))
+                targets.RightElbow = CFrame.Angles(math.rad(54 - br * 6.0), 0, 0)
+                targets.RightWrist = CFrame.Angles(math.rad(-16 + sway * 4.0), math.rad(22), 0)
+                targets.LeftShoulder = CFrame.Angles(math.rad(-16 - br * 5.0), math.rad(10), math.rad(-22 - sway * 4.0))
+                targets.LeftElbow = CFrame.Angles(math.rad(38 + br * 4.0), 0, 0)
+                targets.RightHip = CFrame.Angles(math.rad(-12 + hipBreath), math.rad(6), math.rad(9))
+                targets.RightKnee = CFrame.Angles(math.rad(-16 + kneeBreath), 0, 0)
+                targets.RightAnkle = CFrame.Angles(math.rad(8 - kneeBreath * 0.4), 0, math.rad(-5))
+                targets.LeftHip = CFrame.Angles(math.rad(12 + hipBreath), math.rad(-6), math.rad(-9))
+                targets.LeftKnee = CFrame.Angles(math.rad(-16 + kneeBreath), 0, 0)
+                targets.LeftAnkle = CFrame.Angles(math.rad(6 - kneeBreath * 0.4), 0, math.rad(5))
             elseif activeSlot == 4 then
                 -- Slot 4: Sharpshooter Ready Stance
-                targets.Root = CFrame.new(0, br * 0.04, 0) * CFrame.Angles(0, math.rad(-16 + sway * 1.8), 0)
-                targets.Waist = CFrame.Angles(math.rad(br * 2.0), math.rad(12), 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(28 + br * 2.8), 0, math.rad(12))
-                targets.RightElbow = CFrame.Angles(math.rad(28), 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(18 - br * 2.4), 0, math.rad(-10))
-                targets.LeftElbow = CFrame.Angles(math.rad(32), 0, 0)
-                targets.RightHip = CFrame.Angles(math.rad(-5), 0, math.rad(5))
-                targets.LeftHip = CFrame.Angles(math.rad(5), 0, math.rad(-5))
+                targets.Root = CFrame.new(sway * 0.04, -0.08 + bobY, 0)
+                    * CFrame.Angles(math.rad(-3), math.rad(-24 + sway * 3.5), 0)
+                targets.Waist = CFrame.Angles(math.rad(br * 3.2), math.rad(10 - sway * 2.0), 0)
+                targets.Neck = CFrame.Angles(math.rad(-2), math.rad(14), 0)
+                targets.RightShoulder = CFrame.Angles(math.rad(44 + br * 5.5), math.rad(-8), math.rad(16))
+                targets.RightElbow = CFrame.Angles(math.rad(38 - br * 4.0), 0, 0)
+                targets.LeftShoulder = CFrame.Angles(math.rad(26 - br * 4.5), math.rad(12), math.rad(-16))
+                targets.LeftElbow = CFrame.Angles(math.rad(46), 0, 0)
+                targets.RightHip = CFrame.Angles(math.rad(-12 + hipBreath), math.rad(6), math.rad(9))
+                targets.RightKnee = CFrame.Angles(math.rad(-18 + kneeBreath), 0, 0)
+                targets.LeftHip = CFrame.Angles(math.rad(14 + hipBreath), math.rad(-6), math.rad(-9))
+                targets.LeftKnee = CFrame.Angles(math.rad(-18 + kneeBreath), 0, 0)
             else
-                -- Slot 3: Heroic Swordsman Ready Poise
-                targets.Root = CFrame.new(0, br * 0.04, 0) * CFrame.Angles(0, math.rad(-14 + sway * 2.0), 0)
-                targets.Waist = CFrame.Angles(math.rad(br * 2.2), math.rad(10 - sway * 1.6), 0)
-                targets.RightShoulder = CFrame.Angles(math.rad(22 + br * 3.0), math.rad(-6), math.rad(14))
-                targets.RightElbow = CFrame.Angles(math.rad(26 - br * 2.0), 0, 0)
-                targets.LeftShoulder = CFrame.Angles(math.rad(-8 - br * 2.5), 0, math.rad(-10 - sway * 1.8))
-                targets.LeftElbow = CFrame.Angles(math.rad(24), 0, 0)
-                targets.RightHip = CFrame.Angles(math.rad(-6), 0, math.rad(5))
-                targets.RightKnee = CFrame.Angles(math.rad(-8), 0, 0)
-                targets.LeftHip = CFrame.Angles(math.rad(6), 0, math.rad(-5))
-                targets.LeftKnee = CFrame.Angles(math.rad(-8), 0, 0)
+                -- Slot 3: Heroic Swordsman Ready Poise (Wide grounded stance, sword poised at right side, left hand at scabbard)
+                targets.Root = CFrame.new(sway * 0.05, -0.08 + bobY, 0)
+                    * CFrame.Angles(math.rad(-3), math.rad(-22 + sway * 3.8), math.rad(sway * 1.6))
+                targets.Waist = CFrame.Angles(math.rad(-2 + br * 3.8), math.rad(8 - sway * 2.4), 0)
+                targets.Neck = CFrame.Angles(math.rad(2 - br * 2.0), math.rad(14 + sway * 2.0), 0)
+                targets.RightShoulder = CFrame.Angles(math.rad(34 + br * 6.0), math.rad(-14), math.rad(24 + sway * 3.0))
+                targets.RightElbow = CFrame.Angles(math.rad(38 - br * 5.0), 0, 0)
+                targets.RightWrist = CFrame.Angles(math.rad(-14), 0, 0)
+                targets.LeftShoulder = CFrame.Angles(math.rad(-16 - br * 4.5), math.rad(12), math.rad(-18 - sway * 3.0))
+                targets.LeftElbow = CFrame.Angles(math.rad(42 + br * 3.5), 0, 0)
+                targets.RightHip = CFrame.Angles(math.rad(-12 + hipBreath), math.rad(6), math.rad(10))
+                targets.RightKnee = CFrame.Angles(math.rad(-18 + kneeBreath), 0, 0)
+                targets.RightAnkle = CFrame.Angles(math.rad(8 - kneeBreath * 0.4), 0, math.rad(-5))
+                targets.LeftHip = CFrame.Angles(math.rad(14 + hipBreath), math.rad(-6), math.rad(-10))
+                targets.LeftKnee = CFrame.Angles(math.rad(-18 + kneeBreath), 0, 0)
+                targets.LeftAnkle = CFrame.Angles(math.rad(6 - kneeBreath * 0.4), 0, math.rad(5))
             end
         end
     end
 
-    local blendSpeed = inAction and 22 or 14
-    local alpha = 1 - math.exp(-blendSpeed * dt)
+    M.ApplyHeadTargetLookAt(s, stepDt, now)
+    if math.abs(s.HeadLookYaw or 0) > 0.004 or math.abs(s.HeadLookPitch or 0) > 0.004 then
+        targets.Neck = targets.Neck * CFrame.fromEulerAnglesYXZ((s.HeadLookPitch or 0) * 0.65, (s.HeadLookYaw or 0) * 0.75, 0)
+    end
+
+    local blendSpeed = inAction and 24 or 15
+    local alpha = 1 - math.exp(-blendSpeed * stepDt)
     for role, entry in pairs(joints) do
         local j = entry.Joint
         if j and j.Parent then
@@ -1930,12 +2089,10 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
             local goalOff = targets[role] or CFrame.identity
             local nextOff = curOff:Lerp(goalOff, alpha)
             s.NativeJointOffsets[role] = nextOff
-            local baseC0 = entry.BaseC0
+            local baseC0 = (entry.RigAtt0 and entry.RigAtt0.Parent and entry.RigAtt0.CFrame) or entry.BaseC0
             j.C0 = CFrame.new(baseC0.Position + nextOff.Position) * nextOff.Rotation * baseC0.Rotation
         end
     end
-
-    M.ApplyHeadTargetLookAt(s, dt, now)
 end
 
 function M.BuildCharacterAccessories(s, rawKey)

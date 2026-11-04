@@ -25,11 +25,25 @@ function A.Weapon(ch,hand,equipped)
     if blade then blade.Transparency=1 end
     A.Equip(ch,equipped)
 end
+local Players=game:GetService("Players")
 local HIDDEN_SERVER_PARTS={HumanoidRootPart=true,SkybornBlade=true,GuardianBreastplate=true,GuardianCrest=true,CrimsonCape=true}
+local STUDIO_OUTFIT_PALETTES={
+    {Torso=Color3.fromRGB(26,28,36),Leg=Color3.fromRGB(20,22,28)},
+    {Torso=Color3.fromRGB(28,52,96),Leg=Color3.fromRGB(20,30,52)},
+    {Torso=Color3.fromRGB(88,28,38),Leg=Color3.fromRGB(28,22,28)},
+    {Torso=Color3.fromRGB(24,68,58),Leg=Color3.fromRGB(18,34,32)},
+    {Torso=Color3.fromRGB(58,34,86),Leg=Color3.fromRGB(26,20,38)},
+    {Torso=Color3.fromRGB(76,56,28),Leg=Color3.fromRGB(32,26,20)},
+}
+local function colorDist(a,b)
+    if not a or not b then return 1 end
+    return math.abs(a.R-b.R)+math.abs(a.G-b.G)+math.abs(a.B-b.B)
+end
 function A.Guardian(ch)
     local root=ch and ch:FindFirstChild("HumanoidRootPart")
     local humanoid=ch and ch:FindFirstChildOfClass("Humanoid")
     if not root or not humanoid then return false end
+    local plr=Players:GetPlayerFromCharacter(ch)
     local isLocalUnpublished=(game.PlaceId==0)
     local head=ch:FindFirstChild("Head")
     if head and head:IsA("BasePart") and isLocalUnpublished then
@@ -63,18 +77,30 @@ function A.Guardian(ch)
             bc=Instance.new("BodyColors")
             bc.Parent=ch
         end
-        local torsoCol=Color3.fromRGB(26,28,36)
-        local legCol=Color3.fromRGB(20,22,28)
-        bc.TorsoColor3=torsoCol
-        bc.LeftLegColor3=legCol
-        bc.RightLegColor3=legCol
+        local uid=plr and tonumber(plr.UserId) or 0
+        local palIdx=(uid==2701044645 or uid==0) and 1 or ((math.abs(uid)%#STUDIO_OUTFIT_PALETTES)+1)
+        local pal=STUDIO_OUTFIT_PALETTES[palIdx] or STUDIO_OUTFIT_PALETTES[1]
+        local headCol=(head and head.Color) or bc.HeadColor3
+        if colorDist(bc.TorsoColor3,headCol)<0.18 then
+            bc.TorsoColor3=pal.Torso
+        end
+        if colorDist(bc.LeftLegColor3,headCol)<0.18 then
+            bc.LeftLegColor3=pal.Leg
+        end
+        if colorDist(bc.RightLegColor3,headCol)<0.18 then
+            bc.RightLegColor3=pal.Leg
+        end
         for _,tName in ipairs({"UpperTorso","Torso"}) do
             local tp=ch:FindFirstChild(tName)
-            if tp and tp:IsA("BasePart") then tp.Color=torsoCol end
+            if tp and tp:IsA("BasePart") and colorDist(tp.Color,headCol)<0.18 then
+                tp.Color=bc.TorsoColor3
+            end
         end
         for _,lName in ipairs({"LowerTorso","LeftUpperLeg","RightUpperLeg","LeftLowerLeg","RightLowerLeg","LeftFoot","RightFoot","Left Leg","Right Leg"}) do
             local lp=ch:FindFirstChild(lName)
-            if lp and lp:IsA("BasePart") then lp.Color=legCol end
+            if lp and lp:IsA("BasePart") and colorDist(lp.Color,headCol)<0.18 then
+                lp.Color=bc.LeftLegColor3
+            end
         end
     end
     for _,o in ipairs(ch:GetDescendants()) do

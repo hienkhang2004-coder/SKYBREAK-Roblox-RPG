@@ -896,7 +896,7 @@ local function build(name,progress)
                 end
             end
             local normals,uvlookup,colorLookup,vertColors={},{},{},{}
-            local useFacetNormals=fruitSpec and (fruitSpec.mode=='FRESNEL' or fruitSpec.mode=='METAL' or fruitSpec.mode:sub(1,6)=='WORLD_')
+            local useFacetNormals=fruitSpec and (fruitSpec.mode=='FRESNEL' or fruitSpec.mode=='METAL')
             for bidx=batchStart,batchEnd do
                 local ti=validTriangles[bidx]
                 local t=d.triangles[ti]

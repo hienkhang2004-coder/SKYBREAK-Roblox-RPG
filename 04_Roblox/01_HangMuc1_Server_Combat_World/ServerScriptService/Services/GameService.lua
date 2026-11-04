@@ -3934,7 +3934,13 @@ function G.Character(p,ch)
 	G.Teleport(p,spawnTarget)
 	G.SyncCompanions(p)
 	Cosmetics.Guardian(ch)
-	local appearanceDeadline=os.clock()+8
+	G.Sync(p)
+	p.CharacterAppearanceLoaded:Once(function(appCh)
+		if appCh==ch and ch.Parent then
+			Cosmetics.Guardian(ch)
+		end
+	end)
+	local appearanceDeadline=os.clock()+(game.PlaceId==0 and 1.2 or 6.0)
 	while p.Character==ch and not p:HasAppearanceLoaded() and os.clock()<appearanceDeadline do task.wait(.1) end
 	if p.Character~=ch or not D.Get(p) then return end
 	local hand=ch:FindFirstChild("RightHand") or ch:FindFirstChild("Right Arm") or ch:WaitForChild(h.RigType==Enum.HumanoidRigType.R15 and "RightHand" or "Right Arm",8)

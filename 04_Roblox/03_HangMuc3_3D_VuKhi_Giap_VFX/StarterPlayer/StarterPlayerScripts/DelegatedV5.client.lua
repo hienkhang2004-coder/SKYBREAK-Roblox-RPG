@@ -1484,6 +1484,9 @@ local function stepHeldFruitFX(s, now)
         end
     end
     local bob = math.sin(now * 3.2) * 0.10
+    if not s.HeldFruitHandBone or not s.HeldFruitHandBone.Parent then
+        s.HeldFruitHandBone = findBone(s.Model, { 'Hand_R', 'RightHand', 'Arm_R', 'Weapon_R' })
+    end
     local handCF = getBoneWorldCF(s, s.HeldFruitHandBone, CFrame.new(1.35, 0.35, -0.85))
     local targetPos
     if s.IsNativeAvatar then
@@ -2194,16 +2197,18 @@ end
 local function boot()
     local worldsFolder = workspace:FindFirstChild('Worlds')
     local goldenSkyBase = nil
-    if not (worldsFolder and worldsFolder:FindFirstChild('GoldenSky_3D')) then
-        local map = Renderer.Build('GoldenSky', progress)
-        if map then
-            goldenSkyBase = map:Clone()
-            goldenSkyBase.Name = 'GoldenSky_ImportedArt'
-            goldenSkyBase:PivotTo(CFrame.new(0, 0, 0))
-            goldenSkyBase.Parent = workspace
-        end
-    end
     workspace:SetAttribute('Sea1IslandsReady', true)
+    task.spawn(function()
+        if not (worldsFolder and worldsFolder:FindFirstChild('GoldenSky_3D')) then
+            local map = Renderer.Build('GoldenSky', progress)
+            if map then
+                goldenSkyBase = map:Clone()
+                goldenSkyBase.Name = 'GoldenSky_ImportedArt'
+                goldenSkyBase:PivotTo(CFrame.new(0, 0, 0))
+                goldenSkyBase.Parent = workspace
+            end
+        end
+    end)
 
     local sources = game.ReplicatedStorage.DelegatedV5Sources
     local bossScale = 1.9
@@ -2435,9 +2440,9 @@ local function boot()
         if not root or not h then
             return
         end
-        local deadline = os.clock() + 12
+        local deadline = os.clock() + 0.25
         while ch.Parent and not ch:GetAttribute('SkybreakCosmeticsReady') and os.clock() < deadline do
-            task.wait(0.1)
+            task.wait(0.05)
         end
         local owner = Players:GetPlayerFromCharacter(ch)
         local gender = owner and owner:GetAttribute('SkybornGender') or 'Male'
@@ -2483,12 +2488,36 @@ local function boot()
 
         if useNativeAvatar then
             visual = ch
-            if not h:FindFirstChildOfClass('Animator') then
-                local animInst = Instance.new('Animator')
-                animInst.Parent = h
+            local animateScript = ch:FindFirstChild('Animate')
+            if animateScript and animateScript:IsA('BaseScript') then
+                animateScript.Disabled = true
+                animateScript:Destroy()
             end
+            for _, child in ipairs(h:GetChildren()) do
+                if child:IsA('Animator') then
+                    child:Destroy()
+                end
+            end
+            hChildConnection = h.ChildAdded:Connect(function(child)
+                if child:IsA('Animator') then
+                    task.defer(function()
+                        if child.Parent then
+                            child:Destroy()
+                        end
+                    end)
+                end
+            end)
             restoreNativeAvatarVisibility(ch)
             chChildConnection = ch.DescendantAdded:Connect(function(desc)
+                if desc.Name == 'Animate' and desc:IsA('BaseScript') then
+                    desc.Disabled = true
+                    task.defer(function()
+                        if desc.Parent then
+                            desc:Destroy()
+                        end
+                    end)
+                    return
+                end
                 if not isInsideManagedFXContainer(desc, ch) and (desc:IsA('BasePart') or desc:IsA('Decal') or desc:IsA('Texture') or desc:IsA('Accessory') or desc:IsA('Hat')) then
                     task.defer(function()
                         if ch.Parent and ch:GetAttribute('SkybreakBeastHidden') ~= true then
@@ -2504,6 +2533,9 @@ local function boot()
                         task.wait(0.15)
                     end
                     if ch.Parent and states[ch] and states[ch].IsNativeAvatar then
+                        states[ch].NativeJoints = nil
+                        states[ch]._EquipBindReady = nil
+                        states[ch].HeldFruitHandBone = nil
                         local isBeastNow = states[ch].TransformFX and states[ch].TransformFX.V5Model and states[ch].TransformFX.V5Model.Parent ~= nil
                         if not isBeastNow then
                             restoreNativeAvatarVisibility(ch)
@@ -2754,6 +2786,26 @@ local function boot()
         playerConnections[p] = pConns
         table.insert(pConns, p.CharacterAdded:Connect(function(ch)
             task.spawn(avatar, ch)
+        end))
+        table.insert(pConns, p.CharacterAppearanceLoaded:Connect(function(ch)
+            task.defer(function()
+                if not ch or not ch.Parent then
+                    return
+                end
+                local st = states[ch]
+                if st and st.IsNativeAvatar then
+                    st.NativeJoints = nil
+                    st._EquipBindReady = nil
+                    st.HeldFruitHandBone = nil
+                    local isBeastNow = st.TransformFX and st.TransformFX.V5Model and st.TransformFX.V5Model.Parent ~= nil
+                    if not isBeastNow then
+                        restoreNativeAvatarVisibility(ch)
+                    end
+                    buildWeaponAwakeningAura(st)
+                else
+                    task.spawn(avatar, ch)
+                end
+            end)
         end))
         table.insert(pConns, p.CharacterRemoving:Connect(function(ch)
             if states[ch] then
@@ -3306,6 +3358,16 @@ local function boot()
     local function stepNativeAvatarAnimation(s, dt, now)
         Equipment3D.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreNativeAvatarVisibility)
     end
+
+    Run.Stepped:Connect(function(_, stepDt)
+        local now = os.clock()
+        local dt = math.clamp(stepDt or (1 / 60), 1 / 240, 0.15)
+        for ch, s in states do
+            if ch.Parent and s.Model and s.Model.Parent and s.IsNativeAvatar then
+                stepNativeAvatarAnimation(s, dt, now)
+            end
+        end
+    end)
 
     Run.RenderStepped:Connect(function(dt)
         dt = math.clamp(dt or (1 / 60), 1 / 240, 0.15)
