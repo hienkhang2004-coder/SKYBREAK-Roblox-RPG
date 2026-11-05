@@ -2658,15 +2658,6 @@ local function updateRealmAtmosphere()
 
     -- Tune Realm Lighting & Anti-Washout Crisp Horizon Settings (GoldenSky & All Realms)
 	local isGolden = (realm == "GoldenSky" or realm == "SkyHub" or realm == "VerdantCrown" or realm == "ChronosBastion")
-	if isGolden then
-		Lighting.Brightness = 1.35
-		Lighting.ExposureCompensation = -0.22
-		Lighting.OutdoorAmbient = Color3.fromRGB(112, 120, 142)
-		Lighting.Ambient = Color3.fromRGB(72, 78, 96)
-	else
-		Lighting.Brightness = math.min(Lighting.Brightness or 1.38, 1.40)
-		Lighting.ExposureCompensation = math.min(Lighting.ExposureCompensation or -0.20, -0.20)
-	end
 	local atmo = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", Lighting)
 	atmo.Density = isGolden and 0.14 or 0.16
 	atmo.Haze = math.min(atmo.Haze or 0.20, 0.20)
@@ -2676,30 +2667,8 @@ local function updateRealmAtmosphere()
 	Lighting.FogStart = (Lighting.FogStart and Lighting.FogStart >= 800 and Lighting.FogStart <= 1200) and Lighting.FogStart or 900
 	Lighting.FogEnd = (Lighting.FogEnd and Lighting.FogEnd >= 8000 and Lighting.FogEnd <= 12000) and Lighting.FogEnd or 9500
 
-	local bloom = Lighting:FindFirstChild("SkybreakBloom") or Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect", Lighting)
-	bloom.Name = "SkybreakBloom"
-	bloom.Enabled = true
-	for _, child in ipairs(Lighting:GetChildren()) do
-		if child:IsA("BloomEffect") then
-			child.Intensity = math.clamp(child.Intensity or 0.16, 0.03, 0.32)
-			child.Threshold = math.max(child.Threshold or 1.55, 1.45)
-			child.Size = 18
-		end
-	end
-
-	local grade = Lighting:FindFirstChild("SkybreakGrade") or Instance.new("ColorCorrectionEffect", Lighting)
-	grade.Name = "SkybreakGrade"
-	grade.Enabled = true
-	grade.Brightness = 0.01
-	grade.Contrast = 0.08
-	grade.Saturation = 0.12
-	for _, child in ipairs(Lighting:GetChildren()) do
-		if child:IsA("ColorCorrectionEffect") and child.Name ~= "InstinctVision" then
-			child.Contrast = 0.08
-			child.Saturation = 0.12
-		end
-	end
-
+	-- Độ sáng, phơi sáng, bloom và màu chỉ do stepAtmosphereAndWeather trong SkybreakWorldClient quyết định.
+	-- Không đặt lại các giá trị đó ở đây, vì nhiều nơi cùng ghi là nguyên nhân game lúc chói lúc nhợt.
 	local dof = Lighting:FindFirstChild("SkybreakDistanceDOF") or Instance.new("DepthOfFieldEffect", Lighting)
 	dof.Name = "SkybreakDistanceDOF"
 	dof.Enabled = true
@@ -2786,7 +2755,7 @@ end
 local function hasUnlockedFruitFMastery()
 	local fruitKey = resolveClientEquippedFruit()
 	local reqMastery = 10
-	local styles = Config and Config.CombatStyles
+	local styles = C and C.CombatStyles
 	local styleDef = styles and styles[fruitKey]
 	if styleDef and type(styleDef.Moves) == "table" and type(styleDef.Moves.F) == "table" then
 		reqMastery = tonumber(styleDef.Moves.F.Mastery) or 10
@@ -3184,7 +3153,7 @@ local function animateBespokeFTraversal(ch, r, h, startPos, targetPos, fruitId)
 		takeoffRing.CanCollide = false
 		takeoffRing.CanQuery = false
 		takeoffRing.Parent = fxFolder
-		TweenService:Create(takeoffRing, TweenInfo.new(0.30, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		Tween:Create(takeoffRing, TweenInfo.new(0.30, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 			Size = Vector3.new(0.12, 22, 22),
 			Transparency = 1,
 		}):Play()
@@ -3256,7 +3225,7 @@ local function animateBespokeFTraversal(ch, r, h, startPos, targetPos, fruitId)
 				iceTrack.CanCollide = false
 				iceTrack.CanQuery = false
 				iceTrack.Parent = fxFolder
-				TweenService:Create(iceTrack, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Tween:Create(iceTrack, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 					Transparency = 1,
 					Size = Vector3.new(1.6, 0.1, 5.5),
 				}):Play()
@@ -3265,7 +3234,7 @@ local function animateBespokeFTraversal(ch, r, h, startPos, targetPos, fruitId)
 			if alpha >= 1 then
 				break
 			end
-			RunService.Heartbeat:Wait()
+			Run.Heartbeat:Wait()
 		end
 
 		if myToken == activeFTraversalToken and r and r.Parent then
@@ -3286,7 +3255,7 @@ local function animateBespokeFTraversal(ch, r, h, startPos, targetPos, fruitId)
 				slamRing.CanCollide = false
 				slamRing.CanQuery = false
 				slamRing.Parent = fxFolder
-				TweenService:Create(slamRing, TweenInfo.new(0.38, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Tween:Create(slamRing, TweenInfo.new(0.38, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 					Size = Vector3.new(0.15, 28, 28),
 					Transparency = 1,
 				}):Play()
@@ -3514,88 +3483,6 @@ local combatEventRemote=remotes:FindFirstChild("CombatEvent")
 if combatEventRemote and combatEventRemote:IsA("RemoteEvent") then
 	combatEventRemote.OnClientEvent:Connect(handleCombatFX)
 end
-
--- Client-side cleanup for JumpPads, AetherSkyRails, DummyFloorRing, and 3 AI Companions UI
-task.spawn(function()
-	local function isRemovedWorldDescendant(inst)
-		if not inst then return false end
-		local n = inst.Name
-		if n == "SkyRailPad" or string.sub(n, 1, 10) == "RailTrack_" or string.sub(n, 1, 14) == "AetherSkyRail_" then
-			return true
-		end
-		if inst:GetAttribute("CompanionId") ~= nil then
-			return true
-		end
-		return false
-	end
-
-	local function purgeRemovedWorldClutter()
-		for _, folderName in ipairs({"JumpPads", "AetherSkyRails", "ActiveCompanions"}) do
-			local f = workspace:FindFirstChild(folderName)
-			if f then
-				f:ClearAllChildren()
-			end
-		end
-		for _, containerName in ipairs({"ActiveEnemies", "SkybreakWorldObjects", "SkybreakExpansionWorld"}) do
-			local container = workspace:FindFirstChild(containerName)
-			if container then
-				for _, desc in ipairs(container:GetDescendants()) do
-					if desc:IsA("BasePart") and desc.Name == "DummyFloorRing" then
-						desc.Transparency = 1
-						desc.LocalTransparencyModifier = 1
-						desc.CanCollide = false
-						desc.CanQuery = false
-						desc.CanTouch = false
-					elseif isRemovedWorldDescendant(desc) then
-						pcall(function() desc:Destroy() end)
-					end
-				end
-			end
-		end
-		local pgui = player:FindFirstChild("PlayerGui")
-		if pgui then
-			for _, desc in ipairs(pgui:GetDescendants()) do
-				if desc:IsA("GuiObject") and (desc.Name == "CompanionTitle" or desc.Name == "ThreeAICompanionCards" or desc.Name:sub(1, 13) == "CompanionCard") then
-					desc.Visible = false
-				end
-			end
-		end
-	end
-	purgeRemovedWorldClutter()
-	workspace.ChildAdded:Connect(function(ch)
-		if ch.Name == "JumpPads" or ch.Name == "AetherSkyRails" or ch.Name == "ActiveCompanions" then
-			task.defer(function()
-				ch:ClearAllChildren()
-			end)
-			ch.ChildAdded:Connect(function(sub)
-				task.defer(function()
-					pcall(function() sub:Destroy() end)
-				end)
-			end)
-		end
-	end)
-	workspace.DescendantAdded:Connect(function(desc)
-		if isRemovedWorldDescendant(desc) then
-			task.defer(function()
-				if desc and desc.Parent then
-					pcall(function() desc:Destroy() end)
-				end
-			end)
-		elseif desc:IsA("BasePart") and desc.Name == "DummyFloorRing" then
-			task.defer(function()
-				desc.Transparency = 1
-				desc.LocalTransparencyModifier = 1
-				desc.CanCollide = false
-				desc.CanQuery = false
-				desc.CanTouch = false
-			end)
-		end
-	end)
-	while player.Parent do
-		task.wait(0.75)
-		purgeRemovedWorldClutter()
-	end
-end)
 
 -- ============================================================================
 -- 7. BLOX FRUITS-STYLE BOTTOM-RIGHT SKILL STACK (NAME + MASTERY + LIVE COOLDOWN)

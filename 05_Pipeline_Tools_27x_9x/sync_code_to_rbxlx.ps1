@@ -91,4 +91,9 @@ if ($BlenderPy) {
     $sw.Close()
     Write-Host "   [+] Da bom $count script Luau truc tiep vao SKYBREAK_Playable_v12_PremiumUI.rbxlx!" -ForegroundColor Green
 }
+Write-Host "=== 3. KIEM TRA BIEN CHUA KHAI BAO TRONG LUAU ===" -ForegroundColor Cyan
+$LintScript = Join-Path $PSScriptRoot "lint_luau_globals.py"
+$PyForLint = if ($BlenderPy) { $BlenderPy.FullName } else { "python" }
+& $PyForLint $LintScript
+if ($LASTEXITCODE -ne 0) { Write-Host "=== CO LOI LUAU, CHUA NEN VAO GAME ===" -ForegroundColor Red; exit 1 }
 Write-Host "=== HOAN TAT! ===" -ForegroundColor Green

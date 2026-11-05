@@ -4527,7 +4527,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			if prof then
 				ensureExpansionProfile(prof)
 				if not prof.RaceV4Unlocked and (tonumber(prof.Level) or 1) < 1500 then
-					G.Notify(p, "Hãy vượt qua Thử Thách Cổ Đại tại Temple of the Core (Sea 3) để mở khóa RACE V4!")
+					G.Notify(p, "Hãy vượt qua Thử Thách Cổ Đại tại Temple of the Core (Sky 3) để mở khóa RACE V4!")
 					return
 				end
 				if not prof.RaceV4Active then

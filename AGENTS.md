@@ -52,7 +52,7 @@ Mọi bảng tra cứu (`Map` / `Table` / điều kiện `if`) bắt buộc hỗ
 
 ### Rule 4 — Sửa Phẫu Thuật Tối Thiểu (Surgical Edit) & Bảo toàn Trạng thái Nhân Vật (`Character` / `Rig`)
 - Chỉ sửa đúng hàm/nhánh gây lỗi; tuyệt đối không xóa hoặc viết lại các tính năng xung quanh đang chạy ổn định.
-- **Bảo vệ Form Nhân Vật Sơ Khai (`SkybreakStarterForm` / `IsNativeAvatar`)**: Không bao giờ ẩn `Head` hoặc đắp các khối hộp `SmoothPlastic` thô kệch đè lên cơ thể nhân vật gốc. Khuôn mặt chuẩn dùng `'SculptedFace_StarterHead'` và hào quang Vũ Khí Thức Tỉnh (`buildWeaponAwakeningAura`) vẫn hiển thị bình thường trên nhân vật gốc.
+- **Nhân vật khởi đầu là Avatar Roblox thật của người chơi (`IsNativeAvatar`)**: Quyết định đã chốt ngày 04/11/2026. Không dựng lại hình nhân giả `SkybreakStarterForm` (tên thuộc tính này chỉ còn dùng làm cờ tương thích), không ẩn `Head`, khuôn mặt, tóc, quần áo hay phụ kiện thật, không đắp khối hộp `SmoothPlastic` lên cơ thể. Khi kiểm tra avatar phải test trên bản đã publish, vì Studio offline (`game.PlaceId == 0`) hiển thị đầu R15 khác bản thật.
 - Mọi hiệu ứng can thiệp vào `HumanoidRootPart.CFrame`, `Transparency`, hoặc `Motor6D` bắt buộc có `Token` chống chồng chéo (khi người chơi spam phím) và tự dọn dẹp (`Cleanup` / `Debris`) khi kết thúc, đổi Slot, biến hình, hoặc chết.
 
 ### Rule 5 — Tự Kiểm Tra Chéo 4 Tình Huống Biên (4-Point Edge-Case Checklist) Trước Khi Hoàn Tất
@@ -66,4 +66,11 @@ Mọi bản sửa lỗi phải tự kiểm chứng qua 4 câu hỏi:
 Trước khi báo cáo hoàn thành bất kỳ thay đổi code nào, **BẮT BUỘC** chạy:
 1. `05_Pipeline_Tools_27x_9x/sync_solid3d_and_scripts_to_rbxlx.py`
 2. `05_Pipeline_Tools_27x_9x/verify_27x_9x_game_sync.py`
-Và xác nhận đạt `[PASS] ALL 27x / 9x GAME SYNC AUDITS PASSED WITH ZERO ERRORS!`.
+3. `05_Pipeline_Tools_27x_9x/lint_luau_globals.py`
+Và xác nhận đạt `[PASS]` ở cả bước 2 và 3. `[PASS]` chỉ xác nhận đóng gói và code tĩnh; thay đổi gameplay chỉ được báo hoàn tất sau khi test trong Studio.
+
+### Rule 7 — Gỡ tính năng phải gỡ từ gốc
+Khi gỡ một tính năng hoặc vật thể, xóa nơi tạo ra nó. Không dùng vòng lặp chạy nền để liên tục dọn hoặc ẩn đồ vừa sinh ra.
+
+### Rule 8 — Ánh sáng chỉ có một nơi quyết định
+Độ sáng, phơi sáng, bloom và màu do `stepAtmosphereAndWeather` trong `SkybreakWorldClient.client.lua` quyết định. Không đặt các giá trị này ở script khác.

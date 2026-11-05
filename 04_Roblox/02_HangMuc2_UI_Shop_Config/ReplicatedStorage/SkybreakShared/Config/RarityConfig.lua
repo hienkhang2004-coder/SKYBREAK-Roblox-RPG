@@ -544,7 +544,7 @@ RarityConfig.Items = {
     },
     VoidEssence = {
         Id = "VoidEssence", Name = "Void Essence", VietnameseName = "Tinh Chất Hư Không", Category = "Materials", Rarity = "Epic",
-        LevelReq = 1, Icon = "Gem", Stats = {}, Description = "Tinh chất năng lượng Hư Không thu thập từ quái và Boss Sea 3.",
+        LevelReq = 1, Icon = "Gem", Stats = {}, Description = "Tinh chất năng lượng Hư Không thu thập từ quái và Boss Sky 3.",
     },
     EnchantScroll = {
         Id = "EnchantScroll", Name = "Arcane Enchant Scroll", VietnameseName = "Cuộn Phù Phép Cổ Ngữ", Category = "Materials", Rarity = "Legendary",

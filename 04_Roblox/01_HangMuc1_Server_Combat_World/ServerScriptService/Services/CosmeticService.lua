@@ -54,13 +54,43 @@ function A.Guardian(ch)
             sm.TextureId=""
             sm.Scale=Vector3.new(1.25,1.25,1.25)
         end
-        local face=head:FindFirstChild("face") or head:FindFirstChildOfClass("Decal")
+        local faceTarget=head
+        if head:IsA("MeshPart") then
+            local proxy=head:FindFirstChild("SkybreakStudioHeadProxy")
+            if not proxy then
+                proxy=Instance.new("Part")
+                proxy.Name="SkybreakStudioHeadProxy"
+                proxy.Size=Vector3.new(2,1,1)
+                proxy.Color=head.Color
+                proxy.Material=Enum.Material.SmoothPlastic
+                proxy.CanCollide=false
+                proxy.CanQuery=false
+                proxy.CanTouch=false
+                proxy.Massless=true
+                proxy.Anchored=false
+                proxy.CastShadow=false
+                proxy.CFrame=head.CFrame
+                local pMesh=Instance.new("SpecialMesh")
+                pMesh.MeshType=Enum.MeshType.Head
+                pMesh.Scale=Vector3.new(1.25,1.25,1.25)
+                pMesh.Parent=proxy
+                local w=Instance.new("WeldConstraint")
+                w.Part0=head
+                w.Part1=proxy
+                w.Parent=proxy
+                proxy.Parent=head
+            else
+                proxy.Color=head.Color
+            end
+            faceTarget=proxy
+        end
+        local face=faceTarget:FindFirstChild("face") or faceTarget:FindFirstChildOfClass("Decal")
         if not face then
             face=Instance.new("Decal")
             face.Name="face"
             face.Face=Enum.NormalId.Front
             face.Texture="rbxasset://textures/face.png"
-            face.Parent=head
+            face.Parent=faceTarget
         elseif face.Texture=="" or face.Texture:find("rbxassetid://") or face.Texture:find("roblox.com/asset") then
             face.Texture="rbxasset://textures/face.png"
         end

@@ -659,6 +659,7 @@ function SocialRewards.Build(parent, _responsiveState)
     -- 3 Vertical 3D AI Companion Cards Side-by-Side (Kairo, Lumen, Nyx)
     local compRow = UIFactory.Create("Frame", leftPanel, {
         Name = "ThreeAICompanionCards",
+        Visible = false,
         Position = UDim2.fromOffset(12, 40),
         Size = UDim2.new(1, -24, 0, 266),
         BackgroundTransparency = 1,

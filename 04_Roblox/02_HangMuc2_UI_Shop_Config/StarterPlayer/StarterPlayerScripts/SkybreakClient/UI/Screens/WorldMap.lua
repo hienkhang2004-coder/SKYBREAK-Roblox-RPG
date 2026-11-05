@@ -42,7 +42,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "SkyHub",
         Sea = "Sea1",
-        SeaLabel = "SEA 1",
+        SeaLabel = "SKY 1",
         NameVi = "Thánh Đô Sky Hub",
         NameEn = "Sky Hub Sanctuary",
         LevelRange = "Lv. 1+",
@@ -60,7 +60,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "GoldenSky",
         Sea = "Sea1",
-        SeaLabel = "SEA 1",
+        SeaLabel = "SKY 1",
         NameVi = "Đảo Thiên Khởi (Golden Sky)",
         NameEn = "Golden Sky Archipelago",
         LevelRange = "Lv. 1 - 150",
@@ -79,7 +79,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "ZiolesGachaShrine",
         Sea = "Sea1",
-        SeaLabel = "SEA 1",
+        SeaLabel = "SKY 1",
         NameVi = "Đền Gacha Trái Ác Quỷ Zioles",
         NameEn = "Zioles Devil Fruit Shrine",
         LevelRange = "Lv. 50+",
@@ -97,7 +97,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "AetherShrines",
         Sea = "Sea1",
-        SeaLabel = "SEA 1",
+        SeaLabel = "SKY 1",
         NameVi = "Đền Thức Tỉnh Aether",
         NameEn = "Aether Awakening Shrines",
         LevelRange = "Lv. 100+",
@@ -115,7 +115,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "WestGarden",
         Sea = "Sea1",
-        SeaLabel = "SEA 1",
+        SeaLabel = "SKY 1",
         NameVi = "Pháo Đài Hải Tặc (West Garden)",
         NameEn = "West Garden Pirate Bastion",
         LevelRange = "Lv. 150 - 300",
@@ -135,7 +135,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "LumenPlaza",
         Sea = "Sea1",
-        SeaLabel = "SEA 1",
+        SeaLabel = "SKY 1",
         NameVi = "Quảng Trường Hoàng Kim (Lumen)",
         NameEn = "Lumen Golden Plaza",
         LevelRange = "Lv. 300 - 450",
@@ -153,7 +153,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "SunshardSanctuary",
         Sea = "Sea1",
-        SeaLabel = "SEA 1",
+        SeaLabel = "SKY 1",
         NameVi = "Thánh Địa Thái Dương (Sunshard)",
         NameEn = "Sunshard Sky Sanctuary",
         LevelRange = "Lv. 450 - 600",
@@ -171,7 +171,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "BossForecourt",
         Sea = "Sea1",
-        SeaLabel = "SEA 1",
+        SeaLabel = "SKY 1",
         NameVi = "Tháp Phán Quyết Aureon",
         NameEn = "Aureon Sentinel Forecourt",
         LevelRange = "Lv. 600 - 700",
@@ -179,8 +179,8 @@ local TWENTY_ISLANDS = {
         MapPos = Vector2.new(0.74, 0.80),
         AllMapPos = Vector2.new(0.37, 0.72),
         Accent = Color3.fromRGB(255, 214, 72),
-        DescVi = "Đỉnh Tháp Sea 1: Đánh bại Thần Hộ Vệ Aureon Sentinel để mở cổng tiến vào Sea 2!",
-        DescEn = "Apex of Sea 1: Defeat Raid Boss Aureon Sentinel to unlock passage into Sea 2!",
+        DescVi = "Đỉnh Tháp Sky 1: Đánh bại Thần Hộ Vệ Aureon Sentinel để mở cổng tiến vào Sky 2!",
+        DescEn = "Apex of Sky 1: Defeat Raid Boss Aureon Sentinel to unlock passage into Sky 2!",
         BossKey = "Aureon",
         BossDisplay = "Aureon Sentinel",
         RaidId = "AureonSentinel",
@@ -205,7 +205,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "FrozenCyber",
         Sea = "Sea2",
-        SeaLabel = "SEA 2",
+        SeaLabel = "SKY 2",
         NameVi = "Đảo Băng Tuyết Cơ Giới",
         NameEn = "Frozen CyberCitadel",
         LevelRange = "Lv. 700 - 875",
@@ -213,7 +213,7 @@ local TWENTY_ISLANDS = {
         MapPos = Vector2.new(0.22, 0.24),
         AllMapPos = Vector2.new(0.53, 0.18),
         Accent = Color3.fromRGB(88, 214, 255),
-        DescVi = "Quần đảo băng vĩnh cửu kết hợp công nghệ lõi cơ giới tối tân của Sea 2.",
+        DescVi = "Quần đảo băng vĩnh cửu kết hợp công nghệ lõi cơ giới tối tân của Sky 2.",
         DescEn = "Sub-zero cybernetic archipelago blending glacial spires with Aether tech.",
         BossKey = nil,
         Enemies = {
@@ -224,7 +224,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "CyberportCafe",
         Sea = "Sea2",
-        SeaLabel = "SEA 2",
+        SeaLabel = "SKY 2",
         NameVi = "Quán Cafe Giao Dịch (Cyberport)",
         NameEn = "Cyberport Trading Cafe",
         LevelRange = "Lv. 700+",
@@ -232,8 +232,8 @@ local TWENTY_ISLANDS = {
         MapPos = Vector2.new(0.56, 0.20),
         AllMapPos = Vector2.new(0.66, 0.22),
         Accent = Color3.fromRGB(116, 238, 255),
-        DescVi = "Trung tâm giao dịch Trái Ác Quỷ, nhận nhiệm vụ Sea 2 và nâng cấp Haki.",
-        DescEn = "Bustling Sea 2 safe hub for Devil Fruit trading, quests, and Haki mastery.",
+        DescVi = "Trung tâm giao dịch Trái Ác Quỷ, nhận nhiệm vụ Sky 2 và nâng cấp Haki.",
+        DescEn = "Bustling Sky 2 safe hub for Devil Fruit trading, quests, and Haki mastery.",
         BossKey = nil,
         Enemies = {
             { Name = "Mecha Drone", Level = 720, HP = 14000, IsBoss = false, Drops = { { Item = "Core Microchip", Rate = "25%" } } },
@@ -242,7 +242,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "PermafrostGarrison",
         Sea = "Sea2",
-        SeaLabel = "SEA 2",
+        SeaLabel = "SKY 2",
         NameVi = "Pháo Đài Băng Vĩnh Cửu",
         NameEn = "Permafrost Garrison Fortress",
         LevelRange = "Lv. 875 - 1100",
@@ -261,7 +261,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "MicrochipRaidLab",
         Sea = "Sea2",
-        SeaLabel = "SEA 2",
+        SeaLabel = "SKY 2",
         NameVi = "Phòng Thí Nghiệm Thức Tỉnh V2",
         NameEn = "Microchip Awakening Raid Lab",
         LevelRange = "Lv. 1100 - 1250",
@@ -290,7 +290,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "GlacialWreckage",
         Sea = "Sea2",
-        SeaLabel = "SEA 2",
+        SeaLabel = "SKY 2",
         NameVi = "Vùng Biển Băng Nguy Hiểm",
         NameEn = "Glacial Wreckage Danger Sea",
         LevelRange = "Lv. 1250 - 1375",
@@ -308,7 +308,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "CryonArena",
         Sea = "Sea2",
-        SeaLabel = "SEA 2",
+        SeaLabel = "SKY 2",
         NameVi = "Đấu Trường Băng Vương Cryon",
         NameEn = "Cryon Archon Raid Arena",
         LevelRange = "Lv. 1375 - 1500",
@@ -316,8 +316,8 @@ local TWENTY_ISLANDS = {
         MapPos = Vector2.new(0.82, 0.74),
         AllMapPos = Vector2.new(0.66, 0.78),
         Accent = Color3.fromRGB(132, 238, 255),
-        DescVi = "Đỉnh cao Sea 2: Đánh bại Băng Vương Cryon để đoạt Hàn Băng Thần Kiếm và mở Sea 3!",
-        DescEn = "Apex of Sea 2: Defeat Cryon Archon for Cryon Frostblade and unlock Sea 3!",
+        DescVi = "Đỉnh cao Sky 2: Đánh bại Băng Vương Cryon để đoạt Hàn Băng Thần Kiếm và mở Sky 3!",
+        DescEn = "Apex of Sky 2: Defeat Cryon Archon for Cryon Frostblade and unlock Sky 3!",
         BossKey = "Cryon",
         BossDisplay = "Cryon Archon",
         Enemies = {
@@ -339,7 +339,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "ShadowRealm",
         Sea = "Sea3",
-        SeaLabel = "SEA 3",
+        SeaLabel = "SKY 3",
         NameVi = "Lãnh Địa Hư Không (Shadow Realm)",
         NameEn = "Shadow Realm Rift",
         LevelRange = "Lv. 1500 - 1750",
@@ -347,8 +347,8 @@ local TWENTY_ISLANDS = {
         MapPos = Vector2.new(0.20, 0.24),
         AllMapPos = Vector2.new(0.80, 0.18),
         Accent = Color3.fromRGB(184, 102, 255),
-        DescVi = "Quần đảo pha lê tím trôi dạt giữa khe nứt Hư Không của Sea 3.",
-        DescEn = "Shattered obsidian islands drifting across the abyssal rift of Sea 3.",
+        DescVi = "Quần đảo pha lê tím trôi dạt giữa khe nứt Hư Không của Sky 3.",
+        DescEn = "Shattered obsidian islands drifting across the abyssal rift of Sky 3.",
         BossKey = nil,
         Enemies = {
             { Name = "Void Raider", Level = 1580, HP = 58000, IsBoss = false, Drops = { { Item = "Void Crystal", Rate = "45%" } } },
@@ -358,7 +358,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "CastleOnTheVoid",
         Sea = "Sea3",
-        SeaLabel = "SEA 3",
+        SeaLabel = "SKY 3",
         NameVi = "Lâu Đài Trên Hư Không",
         NameEn = "Castle on the Void Hub",
         LevelRange = "Lv. 1500+",
@@ -366,8 +366,8 @@ local TWENTY_ISLANDS = {
         MapPos = Vector2.new(0.52, 0.20),
         AllMapPos = Vector2.new(0.91, 0.22),
         Accent = Color3.fromRGB(214, 136, 255),
-        DescVi = "Thành trì trung tâm Sea 3 kết nối Cổng Dịch Chuyển tất cả Đảo và Đền Tộc V4.",
-        DescEn = "Central Sea 3 citadel linking Fast Travel portals and Race V4 trials.",
+        DescVi = "Thành trì trung tâm Sky 3 kết nối Cổng Dịch Chuyển tất cả Đảo và Đền Tộc V4.",
+        DescEn = "Central Sky 3 citadel linking Fast Travel portals and Race V4 trials.",
         BossKey = nil,
         Enemies = {
             { Name = "Void Sentinel", Level = 1650, HP = 64000, IsBoss = false, Drops = { { Item = "Void Crystal", Rate = "48%" } } },
@@ -376,7 +376,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "UmbralSanctum",
         Sea = "Sea3",
-        SeaLabel = "SEA 3",
+        SeaLabel = "SKY 3",
         NameVi = "Rừng Tinh Thể Hắc Ám (Umbral)",
         NameEn = "Umbral Crystal Sanctum",
         LevelRange = "Lv. 1750 - 2000",
@@ -395,7 +395,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "TempleOfTheCore",
         Sea = "Sea3",
-        SeaLabel = "SEA 3",
+        SeaLabel = "SKY 3",
         NameVi = "Đền Cổ Thức Tỉnh Tộc V4",
         NameEn = "Temple of the Core (Race V4)",
         LevelRange = "Lv. 2000 - 2150",
@@ -425,7 +425,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "LeviathanAbyss",
         Sea = "Sea3",
-        SeaLabel = "SEA 3",
+        SeaLabel = "SKY 3",
         NameVi = "Vực Thẳm Hải Vương Leviathan",
         NameEn = "Mirage & Leviathan Abyss",
         LevelRange = "Lv. 2150 - 2375",
@@ -454,7 +454,7 @@ local TWENTY_ISLANDS = {
     {
         Id = "NoxarArena",
         Sea = "Sea3",
-        SeaLabel = "SEA 3",
+        SeaLabel = "SKY 3",
         NameVi = "Điện Thờ Hư Không Đế Vương Noxar",
         NameEn = "Noxar Sovereign Abyssal Arena",
         LevelRange = "Lv. 2375 - 2550",
@@ -669,7 +669,7 @@ function WorldMap.Build(parent)
     -- Left Interactive 20-Island Astrolabe Map Panel (61% width)
     local mapPanel = PremiumPanel.Create(root, {
         name = "WorldMap",
-        title = I18n.Pick("BẢN ĐỒ THIÊN GIỚI 20 ĐẢO (SEA 1 • SEA 2 • SEA 3)", "CELESTIAL 20-ISLAND WORLD MAP (SEA 1 - SEA 3)"),
+        title = I18n.Pick("BẢN ĐỒ THIÊN GIỚI 20 ĐẢO (SKY 1 • SKY 2 • SKY 3)", "CELESTIAL 20-ISLAND WORLD MAP (SKY 1 - SKY 3)"),
         subtitle = I18n.Pick("Định vị trực tiếp • Trạng thái Boss Live • Dịch chuyển 1 chạm", "Live GPS Marker • Real-Time Boss Status • 1-Click Fast Travel"),
         position = UDim2.fromOffset(16, 74),
         size = UDim2.new(0.61, -12, 1, -88),
@@ -686,9 +686,9 @@ function WorldMap.Build(parent)
 
     local seaFilters = {
         { id = "All", label = I18n.Pick("TẤT CẢ (20 ĐẢO)", "ALL (20 ISLANDS)"), w = 136 },
-        { id = "Sea1", label = "SEA 1 (8 • LV.1-700)", w = 152 },
-        { id = "Sea2", label = "SEA 2 (6 • LV.700-1500)", w = 164 },
-        { id = "Sea3", label = "SEA 3 (6 • LV.1500-2550)", w = 168 },
+        { id = "Sea1", label = "SKY 1 (8 • LV.1-700)", w = 152 },
+        { id = "Sea2", label = "SKY 2 (6 • LV.700-1500)", w = 164 },
+        { id = "Sea3", label = "SKY 3 (6 • LV.1500-2550)", w = 168 },
     }
     for idx, sf in ipairs(seaFilters) do
         local isSel = (WorldMap.ActiveSeaFilter == sf.id)
@@ -755,9 +755,9 @@ function WorldMap.Build(parent)
             })
         end
         for _, zHdr in ipairs({
-            { txt = "SEA 1 • LV. 1 - 700", x = 0.22, col = colors.ACCENT_GOLD },
-            { txt = "SEA 2 • LV. 700 - 1500", x = 0.59, col = colors.ACCENT_SAPPHIRE },
-            { txt = "SEA 3 • LV. 1500 - 2550", x = 0.86, col = colors.VOID_PURPLE },
+            { txt = "SKY 1 • LV. 1 - 700", x = 0.22, col = colors.ACCENT_GOLD },
+            { txt = "SKY 2 • LV. 700 - 1500", x = 0.59, col = colors.ACCENT_SAPPHIRE },
+            { txt = "SKY 3 • LV. 1500 - 2550", x = 0.86, col = colors.VOID_PURPLE },
         }) do
             UIFactory.Label(mapCanvas, {
                 Name = "ZoneTitle",

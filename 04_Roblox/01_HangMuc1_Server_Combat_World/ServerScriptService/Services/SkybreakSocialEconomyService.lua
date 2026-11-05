@@ -321,11 +321,11 @@ local LORE_SNIPPETS = {
 	"Mảnh Lõi #08: Cryon Prime dựng 3 Cột Băng Vĩnh Cửu để giam cầm thời gian tại Pháo Đài Băng.",
 	"Mảnh Lõi #09: Quán Cà Phê Cyberport trở thành trung tâm giao dịch tự do của cả Hải Quân lẫn Hải Tặc.",
 	"Mảnh Lõi #10: Pháo Đài Permafrost cất giữ công thức cường hóa vũ khí +15 không bao giờ xịt.",
-	"Mảnh Lõi #11: Dr. Vega phát minh Microchip Thức Tỉnh V2 tại Phòng Thí Nghiệm Sea 2.",
+	"Mảnh Lõi #11: Dr. Vega phát minh Microchip Thức Tỉnh V2 tại Phòng Thí Nghiệm Sky 2.",
 	"Mảnh Lõi #12: Dưới Xác Tàu Glacial Wreckage, bầy Cá Mập Trời Terror Sky-Shark rình rập mọi con thuyền.",
 	"Mảnh Lõi #13: Vượt qua Danger Level 6, Đảo Ảo Ảnh Mirage chỉ hiện ra cho kẻ mang dòng máu Thức Tỉnh.",
 	"Mảnh Lõi #14: Blue Resonance Gear là chìa khóa duy nhất mở phong ấn Sức Mạnh Chủng Tộc V4.",
-	"Mảnh Lõi #15: Sea 3 Shadow Realm chìm trong hoàng hôn tím thẫm kể từ khi Noxar chiếm Ngai Vàng.",
+	"Mảnh Lõi #15: Sky 3 Shadow Realm chìm trong hoàng hôn tím thẫm kể từ khi Noxar chiếm Ngai Vàng.",
 	"Mảnh Lõi #16: 4 Trụ Ánh Sáng Thanh Tẩy là di vật cuối cùng có thể xóa tan Lõi Hư Không Noxar.",
 	"Mảnh Lõi #17: Tại Castle on the Void, 3 Ngọn Đuốc Linh Hồn vẫn đợi kẻ đủ can đảm gọi Soul Reaper.",
 	"Mảnh Lõi #18: Rừng Tinh Thể Umbral ẩn chứa bi kịch của Kiếm Thánh rèn song kiếm Cursed Dual Skyblades.",
@@ -584,134 +584,6 @@ local function sampleQuadraticBezier(p0, p1, p2, t)
 	return (p0 * (u * u)) + (p1 * (2 * u * t)) + (p2 * (t * t))
 end
 
-local function startSkyRailGrind(p, waypoints, durationSec, railName)
-	local r, h = root(p)
-	local rt = G.Runtime[p]
-	if not r or not h or not rt or rt.GrindingSkyRail then
-		return
-	end
-	rt.GrindingSkyRail = true
-	local dur = math.max(1.2, tonumber(durationSec) or 2.6)
-	local ch = p.Character
-	G.Notify(p, "AETHER SKY-RAIL: Đang lướt đường ray ánh sáng [" .. tostring(railName) .. "]!")
-
-	task.spawn(function()
-		local t0 = os.clock()
-		local segCount = #waypoints - 1
-		while p.Character == ch and r.Parent and h.Health > 0 do
-			RunService.Heartbeat:Wait()
-			local now = os.clock()
-			local alpha = math.clamp((now - t0) / dur, 0, 1)
-			local scaled = alpha * segCount
-			local idx = math.clamp(math.floor(scaled) + 1, 1, segCount)
-			local localT = scaled - (idx - 1)
-			local a = waypoints[idx]
-			local b = waypoints[idx + 1]
-			local pos = a:Lerp(b, localT) + Vector3.new(0, 3.0, 0)
-			local lookDir = Vector3.new(b.X - a.X, (b.Y - a.Y) * 0.5, b.Z - a.Z)
-			if lookDir.Magnitude < 0.05 then
-				lookDir = r.CFrame.LookVector
-			else
-				lookDir = lookDir.Unit
-			end
-
-			rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 2.5)
-			rt.InvincibleUntil = math.max(rt.InvincibleUntil or 0, now + 0.6)
-			rt.Safe = pos
-			rt.MoveAt = now
-			r.CFrame = CFrame.lookAt(pos, pos + lookDir)
-			r.AssemblyLinearVelocity = Vector3.zero
-
-			if alpha >= 1 then
-				break
-			end
-		end
-		rt.GrindingSkyRail = false
-	end)
-end
-
-local function buildAetherSkyRails()
-	local folder = workspace:FindFirstChild("AetherSkyRails")
-	if folder then
-		folder:Destroy()
-	end
-	folder = Instance.new("Folder")
-	folder.Name = "AetherSkyRails"
-	folder.Parent = workspace
-	SkyRailRoutes = {}
-
-	local railSpecs = {
-		{ Name = "SkyHub -> Training Courtyard", P0 = Vector3.new(-302, 46.9, 492), Mid = Vector3.new(-308, 92, 368), P2 = Vector3.new(-313.9, 46.9, 245), Dur = 2.4 },
-		{ Name = "Training Courtyard -> Lumen Plaza", P0 = Vector3.new(-282, 46.9, 192), Mid = Vector3.new(-155, 96, 128), P2 = Vector3.new(-36, 46.9, 72), Dur = 2.6 },
-		{ Name = "Lumen Plaza -> Aureon Citadel", P0 = Vector3.new(16, 46.9, -65), Mid = Vector3.new(16, 94, -168), P2 = Vector3.new(16, 46.9, -270), Dur = 2.4 },
-		{ Name = "SkyHub -> Zioles Gacha Shrine", P0 = Vector3.new(-344, 46.9, 554), Mid = Vector3.new(-452, 112, 756), P2 = Vector3.new(-548, 48.9, 960), Dur = 3.4 },
-		{ Name = "SkyHub -> Aether Home Shrine", P0 = Vector3.new(-286, 46.9, 554), Mid = Vector3.new(26, 116, 758), P2 = Vector3.new(328, 48.9, 960), Dur = 3.6 },
-	}
-
-	for rIdx, rs in ipairs(railSpecs) do
-		local m = Instance.new("Model")
-		m.Name = "AetherSkyRail_" .. rIdx
-		m.Parent = folder
-
-		local steps = 20
-		local pts = {}
-		local revPts = {}
-		for i = 0, steps do
-			local pt = sampleQuadraticBezier(rs.P0, rs.Mid, rs.P2, i / steps)
-			table.insert(pts, pt)
-		end
-		for i = #pts, 1, -1 do
-			table.insert(revPts, pts[i])
-		end
-
-		for i = 1, #pts - 1 do
-			local a, b = pts[i], pts[i + 1]
-			local seg = Instance.new("Part")
-			seg.Name = "RailTrack_" .. i
-			seg.Size = Vector3.new(0.85, 0.35, (b - a).Magnitude + 0.3)
-			seg.CFrame = CFrame.lookAt((a + b) * 0.5, b)
-			seg.Color = (i % 2 == 0) and Color3.fromRGB(255, 214, 92) or Color3.fromRGB(88, 236, 255)
-			seg.Material = Enum.Material.Neon
-			seg.Transparency = 0.38
-			seg.Anchored, seg.CanCollide, seg.CanQuery, seg.CanTouch = true, false, false, false
-			seg.Parent = m
-		end
-
-		for _, endpoint in ipairs({
-			{ Pos = rs.P0, Waypoints = pts, Label = rs.Name },
-			{ Pos = rs.P2, Waypoints = revPts, Label = rs.Name .. " (Chiều Về)" },
-		}) do
-			local pad = Instance.new("Part")
-			pad.Name = "SkyRailPad"
-			pad.Shape = Enum.PartType.Cylinder
-			pad.Size = Vector3.new(0.35, 5.4, 5.4)
-			pad.CFrame = CFrame.new(endpoint.Pos + Vector3.new(0, 0.18, 0)) * CFrame.Angles(0, 0, math.pi / 2)
-			pad.Color = Color3.fromRGB(255, 218, 96)
-			pad.Material = Enum.Material.Neon
-			pad.Transparency = 0.40
-			pad.Anchored, pad.CanCollide, pad.CanQuery, pad.CanTouch = true, false, false, false
-			pad.Parent = m
-
-			local prompt = Instance.new("ProximityPrompt")
-			prompt.ActionText = "Lướt Aether Sky-Rail"
-			prompt.ObjectText = endpoint.Label
-			prompt.MaxActivationDistance = 11
-			prompt.HoldDuration = 0
-			prompt.RequiresLineOfSight = false
-			prompt.Parent = pad
-			prompt.Triggered:Connect(function(plr)
-				startSkyRailGrind(plr, endpoint.Waypoints, rs.Dur, endpoint.Label)
-			end)
-
-			table.insert(SkyRailRoutes, {
-				PadPos = endpoint.Pos,
-				Waypoints = endpoint.Waypoints,
-				Dur = rs.Dur,
-				Label = endpoint.Label,
-			})
-		end
-	end
-end
 
 -- ============================================================================
 -- 25 & 26. #101 SMOOTH LV.1->2550 CURVE & #102 FAIR >=15% SHARED BOSS CREDIT
@@ -2876,6 +2748,10 @@ function SocialEconomy.Init(gameSvc, dataSvc, worldSvc, configSvc)
 	SocialEconomy._initialized = true
 
 	G, D, W, C = gameSvc, dataSvc, worldSvc, configSvc
+	local okCombatData, combatData = pcall(function()
+		return require(game:GetService("ReplicatedStorage").Shared.SkybreakCombatData)
+	end)
+	if okCombatData then CombatData = combatData end
 	R = ReplicatedStorage:WaitForChild("Remotes")
 
 	G.SocialEconomy = SocialEconomy
@@ -2890,7 +2766,6 @@ function SocialEconomy.Init(gameSvc, dataSvc, worldSvc, configSvc)
 	buildHomePointCrystalAnchors()
 	build30LoreTablets()
 	buildDestructibleWorldProps()
-	buildAetherSkyRails()
 	buildArcaneEnchanterPedestal()
 	build4TierTreasureChests()
 	buildQuickQuestBoards()

@@ -1268,7 +1268,9 @@ function Forge.Build(parent, responsiveState)
     })
 
     local anvilState = computeAnvilActionState(snap, selectedRecipe, ownedCount, currentUpgrade)
-    local _, craftBtnApi = PremiumButton.Create(ctaRow, {
+    local craftBtnApi
+    local _
+    _, craftBtnApi = PremiumButton.Create(ctaRow, {
         name = "CraftButton",
         icon = "Forge",
         label = anvilState.Label,

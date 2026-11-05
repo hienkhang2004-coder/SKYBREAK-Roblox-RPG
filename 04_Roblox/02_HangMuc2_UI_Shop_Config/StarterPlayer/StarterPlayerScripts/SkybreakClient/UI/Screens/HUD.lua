@@ -691,6 +691,7 @@ function HUD.Build(parent, responsiveState)
     sqIcon.ZIndex = 13
     local companionTitle = UIFactory.Label(squadPillBtn, {
         Name = "CompanionTitle",
+        Visible = false,
         Text = I18n.Pick("ĐỘI HÌNH: SOLO (1/4)", "SQUAD: SOLO (1/4)"),
         Position = UDim2.fromOffset(26, 0),
         Size = UDim2.new(1, -32, 1, 0),

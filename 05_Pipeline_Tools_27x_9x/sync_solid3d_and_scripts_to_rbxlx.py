@@ -36,6 +36,11 @@ SYNC_RUNTIME_V8_ASSETS = (
     "AetherShrinesAndRaidConsole",
     "AbyssalSovereignDragon",
     "AbyssalDragonHybrid",
+    # Pass 15 Chiseled 3D Equipment, Weapons, Guns, Armor & Crafting Relics
+    "ExpansionMeleeWeaponsSet",
+    "ExpansionGunsAndBowsSet",
+    "ArmorSetsAndAccessoriesSet",
+    "CraftingMaterialsAndRelicsSet",
 )
 HARD_BYTE_LIMIT = 199000
 CHUNK_SIZE = 150000

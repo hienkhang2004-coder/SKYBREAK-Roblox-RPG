@@ -664,7 +664,7 @@ function M.Build(W)
     local labels={
         Lyra='Lyra • Chỉ Huy Skyborn (Nhiệm Vụ)',
         Kael='Kael • Thợ Rèn Thần Khí (Forge)',
-        FrozenPortal='Cổng Sea 2 • Frozen Cyber',
+        FrozenPortal='Cổng Sky 2 • Frozen Cyber',
         ReturnHub='Đài Dịch Chuyển • Về Sky Hub',
         Station1='Trạm Năng Lượng Aether I',
         Station2='Trạm Năng Lượng Aether II',
@@ -689,7 +689,7 @@ function M.Build(W)
         ReturnHub={Action='Dịch Chuyển Về Sky Hub', Object='Đài Dịch Chuyển • Sky Hub', Offset=Vector3.new(0, 2.8, 0)},
         ArenaGate={Action='Bước Vào Đấu Trường Boss Aureon', Object='Cổng Đấu Trường Aureon Sentinel', Offset=Vector3.new(0, 3.2, 0)},
         LeaveArena={Action='Rời Khỏi Đấu Trường', Object='Lối Ra Đấu Trường Aureon', Offset=Vector3.new(0, 2.8, 0)},
-        FrozenPortal={Action='Dịch Chuyển Sang Sea 2', Object='Cổng Sea 2 • Frozen Cyber', Offset=Vector3.new(0, 4.2, 0)},
+        FrozenPortal={Action='Dịch Chuyển Sang Sky 2', Object='Cổng Sky 2 • Frozen Cyber', Offset=Vector3.new(0, 4.2, 0)},
     }
     for id,pos in locations do
         local vpos = Vector3.new(table.unpack(pos))
@@ -746,7 +746,7 @@ function M.Build(W)
         if frHub then frHub.Transparency=1 end
         buildWaypointBeacon3D(frozen, 'FrozenReturnHub', frHubPos, 46.9, false)
         local shPortalPos = Vector3.new(12610.0, 49.9, -475.0)
-        local shPortal=W.Interactable(frozen,'ShadowPortal',shPortalPos,'Cổng Sea 3 • Shadow Realm')
+        local shPortal=W.Interactable(frozen,'ShadowPortal',shPortalPos,'Cổng Sky 3 • Shadow Realm')
         if shPortal then
             shPortal.Transparency=1
             for _,ch in ipairs(shPortal:GetChildren()) do

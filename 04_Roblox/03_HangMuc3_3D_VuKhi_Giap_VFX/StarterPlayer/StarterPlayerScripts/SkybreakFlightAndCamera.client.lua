@@ -308,6 +308,34 @@ local currentPullBack = 0
 local currentHeightOff = Vector3.zero
 local otsActive = false
 local currentOtsOffset = Vector3.zero
+local firstPersonNear = false
+local firstPersonHidden = {}
+local firstPersonSweepAt = 0
+
+-- Roblox tự làm mờ nhân vật khi zoom sát (TransparencyController). Cờ này báo cho
+-- Skybreak3DEquipment dừng ép LocalTransparencyModifier = 0 trong lúc đó.
+local function setFirstPersonNear(active)
+	if firstPersonNear == active then return end
+	firstPersonNear = active
+	player:SetAttribute("SkybreakFirstPerson", active or nil)
+	if not active then
+		for part in pairs(firstPersonHidden) do
+			if part.Parent then part.LocalTransparencyModifier = 0 end
+		end
+		table.clear(firstPersonHidden)
+	end
+end
+
+-- Quét định kỳ vì giáp, cánh, vũ khí có thể được gắn thêm trong lúc đang ở góc nhìn thứ nhất.
+local function sweepFirstPersonBody(ch)
+	if ch:GetAttribute("SkybreakBeastHidden") == true then return end
+	for _, d in ipairs(ch:GetDescendants()) do
+		if d:IsA("BasePart") and d.LocalTransparencyModifier ~= 1 and not d:FindFirstAncestorOfClass("Tool") then
+			d.LocalTransparencyModifier = 1
+			firstPersonHidden[d] = true
+		end
+	end
+end
 
 local lockedTarget = nil
 local lockReticleModel = nil
@@ -2162,8 +2190,19 @@ RunService:BindToRenderStep("SkybreakCombatCamera", Enum.RenderPriority.Camera.V
 		return
 	end
 
-	local targetOts = allowOtsLock and Vector3.new(2.4, 0.8, 0) or Vector3.zero
-	currentOtsOffset = currentOtsOffset:Lerp(targetOts, math.clamp(dt * 12, 0, 1))
+	-- Khoảng cách camera-tiêu điểm chính là mức zoom thật, không đổi theo CameraOffset.
+	local zoomDist = (cam.CFrame.Position - cam.Focus.Position).Magnitude
+	local inFirstPerson = zoomDist < 0.9
+	setFirstPersonNear(zoomDist < 2.2)
+	if inFirstPerson and os.clock() >= firstPersonSweepAt then
+		firstPersonSweepAt = os.clock() + 0.25
+		sweepFirstPersonBody(ch)
+	end
+
+	-- Offset vai thu dần khi zoom vào và về 0 ở góc nhìn thứ nhất, nếu không camera nằm ngoài đầu.
+	local shoulderAlpha = math.clamp((zoomDist - 1) / 4, 0, 1)
+	local targetOts = allowOtsLock and Vector3.new(2.4, 0.8, 0) * shoulderAlpha or Vector3.zero
+	currentOtsOffset = inFirstPerson and Vector3.zero or currentOtsOffset:Lerp(targetOts, math.clamp(dt * 12, 0, 1))
 
 	if allowOtsLock and not flightActive and not skydiveActive and not isMantling and hum.Health > 0 then
 		local flatCam = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)

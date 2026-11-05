@@ -88,7 +88,7 @@ function Settings.ApplyLowFXWorld(enabled)
     if Settings.CachedOrigShadows == nil then
         Settings.CachedOrigShadows = Lighting.GlobalShadows
     end
-    Lighting.GlobalShadows = isLow and false or (Settings.CachedOrigShadows ~= false)
+    Lighting.GlobalShadows = (not isLow) and (Settings.CachedOrigShadows ~= false)
 
     for _, desc in ipairs(workspace:GetDescendants()) do
         if desc:IsA("ParticleEmitter") or desc:IsA("Trail") then

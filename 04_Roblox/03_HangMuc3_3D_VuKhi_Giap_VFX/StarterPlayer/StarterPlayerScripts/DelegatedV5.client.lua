@@ -752,14 +752,14 @@ local function buildFruitTransformFX(s, mode)
         local hl = Instance.new('Highlight')
         hl.Name = 'AbyssalDragonHighlight'
         hl.Adornee = s.Visual
-        hl.FillColor = Color3.fromRGB(168, 35, 255)
-        hl.FillTransparency = 0.92
-        hl.OutlineColor = Color3.fromRGB(255, 55, 145)
-        hl.OutlineTransparency = 0.60
+        hl.FillColor = Color3.fromRGB(122, 44, 255)
+        hl.FillTransparency = 1
+        hl.OutlineColor = Color3.fromRGB(255, 28, 70)
+        hl.OutlineTransparency = 0.78
         hl.Parent = folder
 
         local voidPurple = Color3.fromRGB(168, 35, 255)
-        local dragonCrimson = Color3.fromRGB(255, 55, 145)
+        local dragonCrimson = Color3.fromRGB(255, 28, 70)
         local obsidian = Color3.fromRGB(22, 12, 36)
 
         local fxData = {
@@ -2210,10 +2210,10 @@ local function boot()
         end
     end)
 
-    local sources = game.ReplicatedStorage.DelegatedV5Sources
+    local sources = game.ReplicatedStorage:WaitForChild('DelegatedV5Sources')
     local bossScale = 1.9
     local bossClips = nil
-    local GuardianAnimator = require(script.Parent.GuardianAnimator)
+    local GuardianAnimator = require(script.Parent:WaitForChild('GuardianAnimator'))
 
     local grandIslandsFolder = workspace:FindFirstChild('GrandSkyIslands')
     if not grandIslandsFolder then
@@ -2292,8 +2292,8 @@ local function boot()
         }
         workspace:SetAttribute('GrandSkyIslandsV8Ready', true)
 
-        local frozenOrigin = require(game.ReplicatedStorage.Shared.RealmConfig).FrozenCyber.Origin
-        local shadowOrigin = require(game.ReplicatedStorage.Shared.RealmConfig).ShadowRealm.Origin
+        local frozenOrigin = require(game.ReplicatedStorage.Shared:WaitForChild('RealmConfig')).FrozenCyber.Origin
+        local shadowOrigin = require(game.ReplicatedStorage.Shared:WaitForChild('RealmConfig')).ShadowRealm.Origin
 
         if sources:FindFirstChild('FrozenCyber') then
             local frozenBase = workspace:FindFirstChild('FrozenCyber_ImportedArt')
@@ -2316,8 +2316,8 @@ local function boot()
                     portal,
                     Vector3.new(42.0, 46.5, -435.0),
                     'FrozenPortal',
-                    '[E] Dịch Chuyển Sea 2 • Frozen Cyber',
-                    '❄ Cổng Không Gian Sea 2 (Frozen Cyber)',
+                    '[E] Dịch Chuyển Sky 2 • Frozen Cyber',
+                    '❄ Cổng Không Gian Sky 2 (Frozen Cyber)',
                     Color3.fromRGB(86, 238, 255)
                 )
                 local okC, c = pcall(Renderer.Clips, 'FrozenPortal', 1)
@@ -2347,8 +2347,8 @@ local function boot()
                     shadowPortal,
                     Vector3.new(12610.0, 46.9, -475.0),
                     'ShadowPortal',
-                    'Dịch Chuyển Sea 3 • Shadow Realm',
-                    'Cổng Không Gian Sea 3 (Shadow Realm)',
+                    'Dịch Chuyển Sky 3 • Shadow Realm',
+                    'Cổng Không Gian Sky 3 (Shadow Realm)',
                     Color3.fromRGB(186, 72, 255)
                 )
                 local okGC, gateClips = pcall(Renderer.Clips, 'ShadowPortal', 1)

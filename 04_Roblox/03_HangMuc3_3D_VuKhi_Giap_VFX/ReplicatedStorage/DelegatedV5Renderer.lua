@@ -85,6 +85,8 @@ local STATIC_WORLD_MODELS={
     CelestialAetherGalleon=true,CyberEnforcerShip=true,LeviathanHunterShip=true,
     AetherFruitsCollection1=true,AetherFruitsCollection2=true,
     MythicalWeaponsSet=true,
+    ExpansionMeleeWeaponsSet=true,ExpansionGunsAndBowsSet=true,
+    ArmorSetsAndAccessoriesSet=true,CraftingMaterialsAndRelicsSet=true,
 }
 local function hexRGB(h)
     h=h:gsub('#','')
@@ -695,6 +697,76 @@ local VIRTUAL_SPLIT_SPECS={
     Shrine_CryoAether={source='AetherShrinesAndRaidConsole',minMesh=0,maxMesh=16,minX=0,minY=7.0,anchorBottom=true},
     Shrine_VoidAether={source='AetherShrinesAndRaidConsole',minMesh=17,maxMesh=21,maxX=0,anchorBottom=true},
     Console_RaidMicrochip={source='AetherShrinesAndRaidConsole',minMesh=0,maxMesh=16,minX=0,maxY=7.0,anchorBottom=true},
+    -- Sheet 25: 8 Expansion Melee Weapons & Staves (Pass 15 Chiseled Blender 5.2)
+    ExpSword_aion_chrono_scythe={source='ExpansionMeleeWeaponsSet',bones={ExpSword_aion_chrono_scythe=true},meshes={[0]=true,[1]=true,[3]=true,[21]=true,[26]=true,[27]=true},anchorGrip=true},
+    ExpSword_architect_severance={source='ExpansionMeleeWeaponsSet',bones={ExpSword_architect_severance=true},meshes={[1]=true,[3]=true,[5]=true,[19]=true,[23]=true,[27]=true},anchorGrip=true},
+    ExpSword_cyber_katana_mk2={source='ExpansionMeleeWeaponsSet',bones={ExpSword_cyber_katana_mk2=true},meshes={[6]=true,[7]=true,[11]=true,[12]=true,[29]=true},anchorGrip=true},
+    ExpSword_eternal_frost_staff={source='ExpansionMeleeWeaponsSet',bones={ExpSword_eternal_frost_staff=true},meshes={[6]=true,[7]=true,[14]=true,[22]=true,[29]=true},anchorGrip=true},
+    ExpSword_ignivar_magma_breaker={source='ExpansionMeleeWeaponsSet',bones={ExpSword_ignivar_magma_breaker=true},meshes={[2]=true,[12]=true,[15]=true,[16]=true,[23]=true,[28]=true},anchorGrip=true},
+    ExpSword_nerith_abyssal_trident={source='ExpansionMeleeWeaponsSet',bones={ExpSword_nerith_abyssal_trident=true},meshes={[1]=true,[4]=true,[6]=true,[13]=true,[14]=true,[20]=true,[25]=true},anchorGrip=true},
+    ExpSword_sunshard_halberd={source='ExpansionMeleeWeaponsSet',bones={ExpSword_sunshard_halberd=true},meshes={[1]=true,[2]=true,[7]=true,[22]=true,[23]=true,[29]=true},anchorGrip=true},
+    ExpSword_sylvaris_thornblade={source='ExpansionMeleeWeaponsSet',bones={ExpSword_sylvaris_thornblade=true},meshes={[1]=true,[3]=true,[8]=true,[9]=true,[10]=true,[17]=true,[18]=true,[24]=true},anchorGrip=true},
+    -- Sheet 26: 7 Expansion Guns, Cannons & Bows (Pass 15 Chiseled Blender 5.2)
+    ExpGun_aether_flintlock={source='ExpansionGunsAndBowsSet',bones={ExpGun_aether_flintlock=true},meshes={[3]=true,[4]=true,[9]=true,[10]=true,[14]=true,[16]=true}},
+    ExpGun_aion_chrono_pistols={source='ExpansionGunsAndBowsSet',bones={ExpGun_aion_chrono_pistols=true},meshes={[0]=true,[3]=true,[4]=true,[5]=true,[6]=true,[15]=true,[21]=true}},
+    ExpGun_bizarre_rifle_cyber={source='ExpansionGunsAndBowsSet',bones={ExpGun_bizarre_rifle_cyber=true},meshes={[10]=true,[15]=true,[26]=true}},
+    ExpGun_ignivar_hellcannon={source='ExpansionGunsAndBowsSet',bones={ExpGun_ignivar_hellcannon=true},meshes={[2]=true,[3]=true,[4]=true,[11]=true,[17]=true,[18]=true,[22]=true,[23]=true,[25]=true}},
+    ExpGun_kabucha_wind={source='ExpansionGunsAndBowsSet',bones={ExpGun_kabucha_wind=true},meshes={[3]=true,[4]=true,[7]=true,[9]=true,[10]=true,[23]=true}},
+    ExpGun_sylvaris_thornbow={source='ExpansionGunsAndBowsSet',bones={ExpGun_sylvaris_thornbow=true},meshes={[1]=true,[3]=true,[9]=true,[12]=true,[13]=true,[19]=true}},
+    ExpGun_veyr_singularity_cannon={source='ExpansionGunsAndBowsSet',bones={ExpGun_veyr_singularity_cannon=true},meshes={[3]=true,[4]=true,[8]=true,[11]=true,[15]=true,[20]=true,[24]=true,[26]=true}},
+    -- Sheet 27: 6 Modular 4-Slot Armor Sets + Full Set Previews + Shield, Hood & 4 Boss Relics (Pass 15 Chiseled Blender 5.2)
+    Acc_LeviathanShield={source='ArmorSetsAndAccessoriesSet',bones={Acc_LeviathanShield=true},meshes={[0]=true,[7]=true,[8]=true,[24]=true,[29]=true}},
+    Acc_MiragePhantomHood={source='ArmorSetsAndAccessoriesSet',bones={Acc_MiragePhantomHood=true},meshes={[7]=true,[8]=true,[14]=true,[15]=true,[22]=true,[27]=true}},
+    Armor_Aureon_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Chest=true},meshes={[0]=true,[4]=true,[5]=true,[23]=true,[29]=true}},
+    Armor_Aureon_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Gauntlets=true},meshes={[0]=true,[4]=true,[29]=true}},
+    Armor_Aureon_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Greaves=true},meshes={[0]=true,[4]=true,[23]=true,[29]=true}},
+    Armor_Aureon_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Helm=true},meshes={[0]=true,[23]=true,[29]=true}},
+    ArmorSet_Aureon={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Helm=true,Armor_Aureon_Chest=true,Armor_Aureon_Gauntlets=true,Armor_Aureon_Greaves=true},meshes={[0]=true,[4]=true,[5]=true,[23]=true,[29]=true}},
+    Armor_Cryon_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Chest=true},meshes={[2]=true,[7]=true,[8]=true,[12]=true,[29]=true}},
+    Armor_Cryon_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Gauntlets=true},meshes={[2]=true,[7]=true,[29]=true}},
+    Armor_Cryon_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Greaves=true},meshes={[2]=true,[7]=true,[12]=true,[29]=true}},
+    Armor_Cryon_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Helm=true},meshes={[2]=true,[7]=true,[13]=true,[29]=true}},
+    ArmorSet_Cryon={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Helm=true,Armor_Cryon_Chest=true,Armor_Cryon_Gauntlets=true,Armor_Cryon_Greaves=true},meshes={[2]=true,[7]=true,[8]=true,[12]=true,[13]=true,[29]=true}},
+    Armor_Nerith_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Chest=true},meshes={[0]=true,[7]=true,[8]=true,[20]=true,[21]=true,[23]=true,[24]=true}},
+    Armor_Nerith_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Gauntlets=true},meshes={[0]=true,[21]=true,[24]=true}},
+    Armor_Nerith_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Greaves=true},meshes={[0]=true,[7]=true,[24]=true}},
+    Armor_Nerith_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Helm=true},meshes={[0]=true,[7]=true,[15]=true,[24]=true}},
+    ArmorSet_Nerith={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Helm=true,Armor_Nerith_Chest=true,Armor_Nerith_Gauntlets=true,Armor_Nerith_Greaves=true},meshes={[0]=true,[7]=true,[8]=true,[15]=true,[20]=true,[21]=true,[23]=true,[24]=true}},
+    Armor_Noxar_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Chest=true},meshes={[13]=true,[19]=true,[20]=true,[25]=true,[26]=true,[27]=true,[28]=true}},
+    Armor_Noxar_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Gauntlets=true},meshes={[13]=true,[20]=true,[25]=true,[28]=true}},
+    Armor_Noxar_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Greaves=true},meshes={[13]=true,[20]=true,[25]=true,[28]=true}},
+    Armor_Noxar_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Helm=true},meshes={[9]=true,[20]=true,[25]=true,[28]=true}},
+    ArmorSet_Noxar={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Helm=true,Armor_Noxar_Chest=true,Armor_Noxar_Gauntlets=true,Armor_Noxar_Greaves=true},meshes={[9]=true,[13]=true,[19]=true,[20]=true,[25]=true,[26]=true,[27]=true,[28]=true}},
+    Armor_Sylvaris_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Chest=true},meshes={[5]=true,[11]=true,[16]=true,[17]=true,[18]=true,[28]=true}},
+    Armor_Sylvaris_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Gauntlets=true},meshes={[11]=true,[16]=true,[17]=true,[18]=true}},
+    Armor_Sylvaris_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Greaves=true},meshes={[10]=true,[11]=true,[18]=true,[28]=true}},
+    Armor_Sylvaris_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Helm=true},meshes={[10]=true,[16]=true,[18]=true,[28]=true}},
+    ArmorSet_Sylvaris={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Helm=true,Armor_Sylvaris_Chest=true,Armor_Sylvaris_Gauntlets=true,Armor_Sylvaris_Greaves=true},meshes={[5]=true,[10]=true,[11]=true,[16]=true,[17]=true,[18]=true,[28]=true}},
+    Armor_Veyr_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Chest=true},meshes={[0]=true,[3]=true,[4]=true,[6]=true,[27]=true,[29]=true}},
+    Armor_Veyr_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Gauntlets=true},meshes={[0]=true,[4]=true,[29]=true}},
+    Armor_Veyr_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Greaves=true},meshes={[0]=true,[4]=true,[6]=true,[29]=true}},
+    Armor_Veyr_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Helm=true},meshes={[0]=true,[6]=true,[29]=true}},
+    ArmorSet_Veyr={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Helm=true,Armor_Veyr_Chest=true,Armor_Veyr_Gauntlets=true,Armor_Veyr_Greaves=true},meshes={[0]=true,[3]=true,[4]=true,[6]=true,[27]=true,[29]=true}},
+    Relic_AureonSunRing={source='ArmorSetsAndAccessoriesSet',bones={Relic_AureonSunRing=true},meshes={[0]=true,[1]=true,[23]=true,[29]=true}},
+    Relic_CoreOfLight={source='ArmorSetsAndAccessoriesSet',bones={Relic_CoreOfLight=true},meshes={[0]=true,[7]=true,[15]=true,[19]=true,[20]=true,[23]=true}},
+    Relic_CryonFrostReactor={source='ArmorSetsAndAccessoriesSet',bones={Relic_CryonFrostReactor=true},meshes={[2]=true,[7]=true,[29]=true}},
+    Relic_NoxarEclipseRing={source='ArmorSetsAndAccessoriesSet',bones={Relic_NoxarEclipseRing=true},meshes={[0]=true,[19]=true,[20]=true,[21]=true,[27]=true}},
+    -- Sheet 28: 15 Crafting Materials, Gears, Microchip & Quest Relics (Pass 15 Chiseled Blender 5.2)
+    Mat_AwakeningMicrochip={source='CraftingMaterialsAndRelicsSet',bones={Mat_AwakeningMicrochip=true},meshes={[1]=true,[3]=true,[4]=true,[5]=true,[6]=true,[10]=true,[14]=true}},
+    Mat_BlueResonanceGear={source='CraftingMaterialsAndRelicsSet',bones={Mat_BlueResonanceGear=true},meshes={[1]=true,[4]=true,[5]=true,[14]=true}},
+    Mat_CelestialFeather={source='CraftingMaterialsAndRelicsSet',bones={Mat_CelestialFeather=true},meshes={[1]=true,[3]=true,[4]=true,[8]=true,[15]=true,[20]=true}},
+    Mat_CitadelBossKey={source='CraftingMaterialsAndRelicsSet',bones={Mat_CitadelBossKey=true},meshes={[1]=true,[2]=true,[4]=true,[20]=true}},
+    Mat_CoreEssence={source='CraftingMaterialsAndRelicsSet',bones={Mat_CoreEssence=true},meshes={[1]=true,[3]=true,[4]=true,[10]=true,[12]=true,[15]=true}},
+    Mat_CoreGear={source='CraftingMaterialsAndRelicsSet',bones={Mat_CoreGear=true},meshes={[1]=true,[2]=true,[15]=true}},
+    Mat_CoreOfLight={source='CraftingMaterialsAndRelicsSet',bones={Mat_CoreOfLight=true},meshes={[1]=true,[2]=true,[4]=true,[9]=true,[15]=true}},
+    Mat_DawnbringerBlueprint={source='CraftingMaterialsAndRelicsSet',bones={Mat_DawnbringerBlueprint=true},meshes={[1]=true,[3]=true,[4]=true,[13]=true}},
+    Mat_EnchantScroll={source='CraftingMaterialsAndRelicsSet',bones={Mat_EnchantScroll=true},meshes={[1]=true,[11]=true,[15]=true}},
+    Mat_LeviathanHeart={source='CraftingMaterialsAndRelicsSet',bones={Mat_LeviathanHeart=true},meshes={[1]=true,[3]=true,[4]=true,[7]=true,[8]=true,[16]=true}},
+    Mat_SkyCrystal={source='CraftingMaterialsAndRelicsSet',bones={Mat_SkyCrystal=true},meshes={[3]=true,[4]=true,[8]=true,[19]=true}},
+    Mat_SkyIron={source='CraftingMaterialsAndRelicsSet',bones={Mat_SkyIron=true},meshes={[3]=true,[4]=true,[14]=true}},
+    Mat_SunshardCore={source='CraftingMaterialsAndRelicsSet',bones={Mat_SunshardCore=true},meshes={[1]=true,[2]=true,[15]=true}},
+    Mat_VoidEssence={source='CraftingMaterialsAndRelicsSet',bones={Mat_VoidEssence=true},meshes={[10]=true,[12]=true,[17]=true,[18]=true}},
+    Mat_VoidShard={source='CraftingMaterialsAndRelicsSet',bones={Mat_VoidShard=true},meshes={[0]=true,[12]=true,[17]=true,[18]=true}},
 }
 M.VirtualSplitSpecs=VIRTUAL_SPLIT_SPECS
 local function build(name,progress)
@@ -726,7 +798,7 @@ local function build(name,progress)
     end
     for index=0,h.mesh_count-1 do
         if progress then progress(name,index+1,h.mesh_count) end
-        if vspec and ((vspec.minMesh and index<vspec.minMesh) or (vspec.maxMesh and index>vspec.maxMesh)) then
+        if vspec and ((vspec.minMesh and index<vspec.minMesh) or (vspec.maxMesh and index>vspec.maxMesh) or (vspec.meshes and not vspec.meshes[index])) then
             continue
         end
         local d=require(folder[string.format('Mesh%03d',index)])
@@ -902,7 +974,7 @@ local function build(name,progress)
             for bidx=batchStart,batchEnd do
                 local ti=validTriangles[bidx]
                 local t=d.triangles[ti]
-                local face=e:AddTriangle(ids[t[1]+1],ids[t[2]+1],ids[t[3]+1]);local ns,uvs,fcs={},{},fruitSpec and {} or nil
+                local face=e:AddTriangle(ids[t[1]+1],ids[t[2]+1],ids[t[3]+1]);local ns,uvs,fcs={},{},(fruitSpec or d.vcol) and {} or nil
                 for j,normal in d.normals[ti] do
                     local vi=t[j]+1
                     local rawNx,rawNy,rawNz=normal[1],normal[2],normal[3]
@@ -938,6 +1010,19 @@ local function build(name,progress)
                                 colorLookup[ckey]=cid
                             end
                             vertColors[vkey]=cid
+                        end
+                        fcs[j]=cid
+                    elseif d.vcol then
+                        -- Mau theo dinh: chuyen mau muot tren mang canh rong
+                        local vc=d.vcol[vi]
+                        local kr=math.floor(vc[1]*63+0.5)
+                        local kg=math.floor(vc[2]*63+0.5)
+                        local kb=math.floor(vc[3]*63+0.5)
+                        local ckey=kr*4096+kg*64+kb
+                        local cid=colorLookup[ckey]
+                        if not cid then
+                            cid=e:AddColor(Color3.new(kr/63,kg/63,kb/63),1)
+                            colorLookup[ckey]=cid
                         end
                         fcs[j]=cid
                     end
@@ -1022,7 +1107,9 @@ local function build(name,progress)
             end
             local peak=math.max(cr,cg,cb)
             local minC=math.min(cr,cg,cb)
-            if not isHandOrElemFX then
+            -- Bo vat lieu rong v2 giu dung mau da chinh, khong nang sang va khong tone map.
+            local isAuthoredDragon=matNameLower:sub(1,9)=='mat_asd2_' or matNameLower:sub(1,9)=='mat_adh2_'
+            if not isHandOrElemFX and not isAuthoredDragon then
                 if d.role=='Environment' then
                     if peak>0.90 then
                         local tone=0.90+(peak-0.90)*0.30
@@ -1052,7 +1139,15 @@ local function build(name,progress)
             part.Color=Color3.new(math.clamp(cr,0,1),math.clamp(cg,0,1),math.clamp(cb,0,1))
             local metalness=mat.metalness or mat.metallic or 0
             part.Material=metalness>.5 and Enum.Material.Metal or Enum.Material.SmoothPlastic
-            if metalness>.5 then
+            if isAuthoredDragon then
+                part.Reflectance=0
+                if d.vcol then
+                    part.Color=Color3.new(1,1,1)
+                elseif (mat.emission_strength or 0)>=1.5 then
+                    part.Material=Enum.Material.Neon
+                    part.Color=Color3.new(math.clamp(srgb(em[1] or 0),0,1),math.clamp(srgb(em[2] or 0),0,1),math.clamp(srgb(em[3] or 0),0,1))
+                end
+            elseif metalness>.5 then
                 part.Reflectance=math.clamp((1-(mat.roughness or 0.45))*0.12,0.03,0.12)
             elseif matNameLower:find('hair') then
                 part.Reflectance=0.04
@@ -1295,7 +1390,7 @@ local ALIAS={
     Fruit_CyberPhoenixCore='Fruit_SolarFlameCore',
     VoidShadowCore='Fruit_AbyssalSovereignCore',
     Fruit_VoidShadowCore='Fruit_AbyssalSovereignCore',
-    -- Weapon IDs -> Separated 3D Blender Weapon Models
+    -- Weapon IDs -> Separated 3D Blender Weapon Models (MythicalWeaponsSet + Sheet 25 ExpansionMeleeWeaponsSet + Sheet 26 ExpansionGunsAndBowsSet)
     starter_sword='Wep_Dawnbringer',
     dawnbringer_sword='Wep_Dawnbringer',
     Dawnbringer='Wep_Dawnbringer',
@@ -1306,20 +1401,108 @@ local ALIAS={
     cursed_dual_skyblades='Wep_CursedDualSkyblades',
     CursedDualSkyblades='Wep_CursedDualSkyblades',
     yamo_voidblade='Wep_CursedBladeLeft',
-    starter_staff='Wep_CryonFrostblade',
-    astral_staff='Wep_CryonFrostblade',
-    EternalFrost='Wep_CryonFrostblade',
     cryon_frostblade='Wep_CryonFrostblade',
     noxar_abyssal_greatsword='Wep_NoxarGreatsword',
     noxar_greatsword='Wep_NoxarGreatsword',
     abyssal_greatsword='Wep_NoxarGreatsword',
-    ArchitectsSeverance='Wep_NoxarGreatsword',
-    aether_flintlock='Wep_CryoRailgun',
-    solar_kabucha='Wep_CryoRailgun',
-    kabucha_wind='Wep_CryoRailgun',
+    starter_staff='ExpSword_eternal_frost_staff',
+    astral_staff='ExpSword_eternal_frost_staff',
+    EternalFrost='ExpSword_eternal_frost_staff',
+    eternal_frost_staff='ExpSword_eternal_frost_staff',
+    ArchitectsSeverance='ExpSword_architect_severance',
+    architect_severance='ExpSword_architect_severance',
+    sunshard_halberd='ExpSword_sunshard_halberd',
+    cyber_katana_mk2='ExpSword_cyber_katana_mk2',
+    sylvaris_thornblade='ExpSword_sylvaris_thornblade',
+    ignivar_magma_breaker='ExpSword_ignivar_magma_breaker',
+    nerith_abyssal_trident='ExpSword_nerith_abyssal_trident',
+    aion_chrono_scythe='ExpSword_aion_chrono_scythe',
+    aether_flintlock='ExpGun_aether_flintlock',
+    solar_kabucha='ExpGun_kabucha_wind',
+    kabucha_wind='ExpGun_kabucha_wind',
     cryo_railgun='Wep_CryoRailgun',
-    bizarre_rifle_cyber='Wep_CryoRailgun',
+    bizarre_rifle_cyber='ExpGun_bizarre_rifle_cyber',
     soul_guitar_void='Wep_SoulGuitarVoid',
+    sylvaris_thornbow='ExpGun_sylvaris_thornbow',
+    ignivar_hellcannon='ExpGun_ignivar_hellcannon',
+    aion_chrono_pistols='ExpGun_aion_chrono_pistols',
+    veyr_singularity_cannon='ExpGun_veyr_singularity_cannon',
+    -- Sheet 27 Wearable 3D Armor Pieces, Full Sets, Shields, Hoods & Boss Relics
+    SkyHelm='Armor_Aureon_Helm',
+    CelestialPlate='Armor_Aureon_Chest',
+    StarlightGauntlets='Armor_Aureon_Gauntlets',
+    WindstriderGreaves='Armor_Aureon_Greaves',
+    skyward_helm='Armor_Cryon_Helm',
+    skyward_chest='Armor_Cryon_Chest',
+    skyward_gloves='Armor_Cryon_Gauntlets',
+    azure_gauntlets='Armor_Cryon_Gauntlets',
+    skyward_boots='Armor_Cryon_Greaves',
+    azure_greaves='Armor_Cryon_Greaves',
+    aureon_halo_helm='Armor_Aureon_Helm',
+    aureon_sunplate='Armor_Aureon_Chest',
+    aureon_gauntlets='Armor_Aureon_Gauntlets',
+    aureon_greaves='Armor_Aureon_Greaves',
+    cryon_cyber_helm='Armor_Cryon_Helm',
+    cryon_reactor_plate='Armor_Cryon_Chest',
+    cryon_gauntlets='Armor_Cryon_Gauntlets',
+    cryon_greaves='Armor_Cryon_Greaves',
+    noxar_horns='Armor_Noxar_Helm',
+    sovereign_cloak='Armor_Noxar_Chest',
+    noxar_abyss_gauntlets='Armor_Noxar_Gauntlets',
+    noxar_abyss_greaves='Armor_Noxar_Greaves',
+    sylvaris_antler_crown='Armor_Sylvaris_Helm',
+    ignivar_drake_cuirass='Armor_Sylvaris_Chest',
+    ignivar_lava_gauntlets='Armor_Sylvaris_Gauntlets',
+    sylvaris_root_greaves='Armor_Sylvaris_Greaves',
+    nerith_tidal_diadem='Armor_Nerith_Helm',
+    aion_chrono_vestment='Armor_Nerith_Chest',
+    aion_chrono_cloak='Armor_Nerith_Chest',
+    aion_astral_gauntlets='Armor_Nerith_Gauntlets',
+    nerith_abyss_greaves='Armor_Nerith_Greaves',
+    veyr_architect_crown='Armor_Veyr_Helm',
+    veyr_singularity_armor='Armor_Veyr_Chest',
+    veyr_void_gauntlets='Armor_Veyr_Gauntlets',
+    veyr_genesis_greaves='Armor_Veyr_Greaves',
+    AureonCrestShield='Acc_LeviathanShield',
+    leviathan_shield='Acc_LeviathanShield',
+    mirage_phantom_hood='Acc_MiragePhantomHood',
+    SolarBand='Relic_AureonSunRing',
+    aether_ring='Relic_AureonSunRing',
+    aureon_sun_ring='Relic_AureonSunRing',
+    cryon_frost_reactor='Relic_CryonFrostReactor',
+    noxar_eclipse_ring='Relic_NoxarEclipseRing',
+    nerith_leviathan_ring='Relic_NoxarEclipseRing',
+    CoreShardArtifact='Relic_CoreOfLight',
+    core_artifact='Relic_CoreOfLight',
+    celestial_necklace='Relic_CoreOfLight',
+    sylvaris_life_amulet='Mat_LeviathanHeart',
+    ignivar_molten_heart='Mat_SunshardCore',
+    veyr_genesis_core='Mat_CoreEssence',
+    -- Sheet 28 Crafting Materials, Gears, Microchip & Quest Relics
+    SkyIron='Mat_SkyIron',
+    upgrade_material='Mat_SkyIron',
+    SkyCrystal='Mat_SkyCrystal',
+    SunshardCore='Mat_SunshardCore',
+    CelestialFeather='Mat_CelestialFeather',
+    sylvaris_heartwood='Mat_CelestialFeather',
+    VoidShard='Mat_VoidShard',
+    VoidEssence='Mat_VoidEssence',
+    CoreEssence='Mat_CoreEssence',
+    veyr_architect_sigil='Mat_CoreEssence',
+    LeviathanHeart='Mat_LeviathanHeart',
+    nerith_pearl_core='Mat_LeviathanHeart',
+    BlueResonanceGear='Mat_BlueResonanceGear',
+    CoreGear='Mat_CoreGear',
+    AwakeningMicrochip='Mat_AwakeningMicrochip',
+    EnchantScroll='Mat_EnchantScroll',
+    CoreOfLight='Mat_CoreOfLight',
+    DawnbringerBlueprint='Mat_DawnbringerBlueprint',
+    BossKey='Mat_CitadelBossKey',
+    -- Ships
+    Ship_Dinghy='CelestialAetherGalleon',
+    Ship_Galleon='CelestialAetherGalleon',
+    Ship_Brigantine='CyberEnforcerShip',
+    Ship_Dreadnought='LeviathanHunterShip',
 }
 M.Alias=ALIAS
 function M.GetWeaponAsset(itemId)
@@ -1327,13 +1510,29 @@ function M.GetWeaponAsset(itemId)
     if VIRTUAL_SPLIT_SPECS[itemId] then return itemId end
     if ALIAS[itemId] and VIRTUAL_SPLIT_SPECS[ALIAS[itemId]] then return ALIAS[itemId] end
     local low=string.lower(tostring(itemId))
-    if low:find('dual') or low:find('cdk') or low:find('stormfang') then return 'Wep_CursedDualSkyblades'
+    if ALIAS[low] and VIRTUAL_SPLIT_SPECS[ALIAS[low]] then return ALIAS[low] end
+    if low:find('dual') and not low:find('pistol') or low:find('cdk') or low:find('stormfang') then return 'Wep_CursedDualSkyblades'
+    elseif low:find('halberd') then return 'ExpSword_sunshard_halberd'
+    elseif low:find('katana') then return 'ExpSword_cyber_katana_mk2'
+    elseif low:find('thornblade') or low:find('greatsaber') then return 'ExpSword_sylvaris_thornblade'
+    elseif low:find('magma_breaker') or low:find('warhammer') then return 'ExpSword_ignivar_magma_breaker'
+    elseif low:find('trident') then return 'ExpSword_nerith_abyssal_trident'
+    elseif low:find('scythe') then return 'ExpSword_aion_chrono_scythe'
+    elseif low:find('severance') or low:find('architect') then return 'ExpSword_architect_severance'
+    elseif low:find('frost_staff') or low:find('eternalfrost') or low:find('staff') then return 'ExpSword_eternal_frost_staff'
+    elseif low:find('thornbow') or low:find('longbow') then return 'ExpGun_sylvaris_thornbow'
+    elseif low:find('hellcannon') then return 'ExpGun_ignivar_hellcannon'
+    elseif low:find('chrono_pistol') then return 'ExpGun_aion_chrono_pistols'
+    elseif low:find('singularity_cannon') then return 'ExpGun_veyr_singularity_cannon'
+    elseif low:find('kabucha') then return 'ExpGun_kabucha_wind'
+    elseif low:find('flintlock') then return 'ExpGun_aether_flintlock'
+    elseif low:find('bizarre') or low:find('rifle') then return 'ExpGun_bizarre_rifle_cyber'
     elseif low:find('dagger') or low:find('yamo') then return 'Wep_CursedBladeLeft'
     elseif low:find('aureon') or low:find('celestial') then return 'Wep_CursedBladeRight'
-    elseif low:find('frost') or low:find('cryon') or low:find('staff') then return 'Wep_CryonFrostblade'
-    elseif low:find('noxar') or low:find('greatsword') or low:find('architect') or low:find('abyss') then return 'Wep_NoxarGreatsword'
+    elseif low:find('frostblade') or low:find('cryon') then return 'Wep_CryonFrostblade'
+    elseif low:find('noxar') or low:find('greatsword') or low:find('abyss') then return 'Wep_NoxarGreatsword'
     elseif low:find('guitar') then return 'Wep_SoulGuitarVoid'
-    elseif low:find('railgun') or low:find('rifle') or low:find('flintlock') or low:find('kabucha') then return 'Wep_CryoRailgun'
+    elseif low:find('railgun') then return 'Wep_CryoRailgun'
     end
     return 'Wep_Dawnbringer'
 end

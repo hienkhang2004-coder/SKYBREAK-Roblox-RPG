@@ -31,30 +31,30 @@ end
 
 local islandList = {
     -- Sea 1: Golden Sky Archipelago (Lv. 1–700)
-    {Id="SkyHub", Name="Sea 1 • Zone 1: Đảo Khởi Đầu (Sky Hub Nexus)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-317.4, 50.5, 527.8), Level="Lv. 1–75", MinLevel=1, MaxLevel=75, Order=1},
-    {Id="GoldenSky", Name="Sea 1 • Zone 1: Bầu Trời Hoàng Kim (Golden Sky Hub)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-313.9, 50.5, 210.4), Level="Lv. 1–700", MinLevel=1, MaxLevel=700, Order=1},
-    {Id="ZiolesGachaShrine", Name="Sea 1 • Zone 1B: Điện Thờ Zioles Gacha (Zioles Shrine)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-560, 52.5, 996), Level="Lv. 75–150", MinLevel=75, MaxLevel=150, Order=2},
-    {Id="AetherShrines", Name="Sea 1 • Zone 1C: Đài Điện Thờ Aether (Aether Shrine)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(340, 52.5, 996), Level="Lv. 150–250", MinLevel=150, MaxLevel=250, Order=2},
-    {Id="WestGarden", Name="Sea 1 • Zone 2: Pháo Đài Không Tặc Vườn Tây (West Garden Bastion)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-2800, 50.5, -65), Level="Lv. 250–375", MinLevel=250, MaxLevel=375, Order=3},
-    {Id="LumenPlaza", Name="Sea 1 • Zone 3: Quảng Trường Ánh Sáng (Lumen Plaza)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(0, 50.5, 65), Level="Lv. 375–525", MinLevel=375, MaxLevel=525, Order=4},
-    {Id="SunshardSanctuary", Name="Sea 1 • Zone 4: Đảo Đền Mây Nổi (Sunshard Sky Sanctuary)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(2800, 50.5, -55), Level="Lv. 525–650", MinLevel=525, MaxLevel=650, Order=5},
-    {Id="BossForecourt", Name="Sea 1 • Zone 5: Tháp Phán Quyết (Aureon Spire Citadel)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(0, 50.5, -285), Level="Lv. 700 (Boss)", MinLevel=650, MaxLevel=700, Order=6},
+    {Id="SkyHub", Name="Sky 1 • Zone 1: Đảo Khởi Đầu (Sky Hub Nexus)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-317.4, 50.5, 527.8), Level="Lv. 1–75", MinLevel=1, MaxLevel=75, Order=1},
+    {Id="GoldenSky", Name="Sky 1 • Zone 1: Bầu Trời Hoàng Kim (Golden Sky Hub)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-313.9, 50.5, 210.4), Level="Lv. 1–700", MinLevel=1, MaxLevel=700, Order=1},
+    {Id="ZiolesGachaShrine", Name="Sky 1 • Zone 1B: Điện Thờ Zioles Gacha (Zioles Shrine)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-560, 52.5, 996), Level="Lv. 75–150", MinLevel=75, MaxLevel=150, Order=2},
+    {Id="AetherShrines", Name="Sky 1 • Zone 1C: Đài Điện Thờ Aether (Aether Shrine)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(340, 52.5, 996), Level="Lv. 150–250", MinLevel=150, MaxLevel=250, Order=2},
+    {Id="WestGarden", Name="Sky 1 • Zone 2: Pháo Đài Không Tặc Vườn Tây (West Garden Bastion)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-2800, 50.5, -65), Level="Lv. 250–375", MinLevel=250, MaxLevel=375, Order=3},
+    {Id="LumenPlaza", Name="Sky 1 • Zone 3: Quảng Trường Ánh Sáng (Lumen Plaza)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(0, 50.5, 65), Level="Lv. 375–525", MinLevel=375, MaxLevel=525, Order=4},
+    {Id="SunshardSanctuary", Name="Sky 1 • Zone 4: Đảo Đền Mây Nổi (Sunshard Sky Sanctuary)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(2800, 50.5, -55), Level="Lv. 525–650", MinLevel=525, MaxLevel=650, Order=5},
+    {Id="BossForecourt", Name="Sky 1 • Zone 5: Tháp Phán Quyết (Aureon Spire Citadel)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(0, 50.5, -285), Level="Lv. 700 (Boss)", MinLevel=650, MaxLevel=700, Order=6},
 
     -- Sea 2: Frozen Cyber Expanse (Lv. 700–1500)
-    {Id="FrozenCyber", Name="Sea 2 • Zone 6: Cảng Băng Giá (Cyberport Outpost)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(11620.5, 50.9, 534.8), Level="Lv. 700–850", MinLevel=700, MaxLevel=850, Order=7},
-    {Id="CyberportCafe", Name="Sea 2 • Zone 6B: Quán Cà Phê Giao Dịch (Cyberport Café Island)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(9400, 50.9, 1785), Level="Lv. 850–975", MinLevel=850, MaxLevel=975, Order=8},
-    {Id="PermafrostGarrison", Name="Sea 2 • Zone 7: Pháo Đài Tuyết (Permafrost Garrison Fortress)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(9400, 50.9, -2055), Level="Lv. 975–1150", MinLevel=975, MaxLevel=1150, Order=9},
-    {Id="MicrochipRaidLab", Name="Sea 2 • Zone 8: Phòng Thí Nghiệm Đột Kích (Microchip Raid Lab)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(14600, 50.9, 1785), Level="Lv. 1150–1300", MinLevel=1150, MaxLevel=1300, Order=10},
-    {Id="GlacialWreckage", Name="Sea 2 • Zone 9: Xác Tàu Băng Cổ Đại (Glacial Wreckage Sea)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(14600, 50.9, -1812), Level="Lv. 1300–1425", MinLevel=1300, MaxLevel=1425, Order=11},
-    {Id="CryonArena", Name="Sea 2 • Zone 10: Ngai Vàng Băng Đế (Cryon Prime Citadel)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(12000, 50.9, -285), Level="Lv. 1500 (Boss)", MinLevel=1425, MaxLevel=1500, Order=12},
+    {Id="FrozenCyber", Name="Sky 2 • Zone 6: Cảng Băng Giá (Cyberport Outpost)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(11620.5, 50.9, 534.8), Level="Lv. 700–850", MinLevel=700, MaxLevel=850, Order=7},
+    {Id="CyberportCafe", Name="Sky 2 • Zone 6B: Quán Cà Phê Giao Dịch (Cyberport Café Island)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(9400, 50.9, 1785), Level="Lv. 850–975", MinLevel=850, MaxLevel=975, Order=8},
+    {Id="PermafrostGarrison", Name="Sky 2 • Zone 7: Pháo Đài Tuyết (Permafrost Garrison Fortress)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(9400, 50.9, -2055), Level="Lv. 975–1150", MinLevel=975, MaxLevel=1150, Order=9},
+    {Id="MicrochipRaidLab", Name="Sky 2 • Zone 8: Phòng Thí Nghiệm Đột Kích (Microchip Raid Lab)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(14600, 50.9, 1785), Level="Lv. 1150–1300", MinLevel=1150, MaxLevel=1300, Order=10},
+    {Id="GlacialWreckage", Name="Sky 2 • Zone 9: Xác Tàu Băng Cổ Đại (Glacial Wreckage Sea)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(14600, 50.9, -1812), Level="Lv. 1300–1425", MinLevel=1300, MaxLevel=1425, Order=11},
+    {Id="CryonArena", Name="Sky 2 • Zone 10: Ngai Vàng Băng Đế (Cryon Prime Citadel)", Realm="FrozenCyber", Sea=2, Pos=Vector3.new(12000, 50.9, -285), Level="Lv. 1500 (Boss)", MinLevel=1425, MaxLevel=1500, Order=12},
 
     -- Sea 3: Shadow Realm Abyss (Lv. 1500–2200)
-    {Id="ShadowRealm", Name="Sea 3 • Zone 11: Pháo Đài Hư Không (Shadow Realm Outpost)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-12593.4, 50.9, 414), Level="Lv. 1500–1650", MinLevel=1500, MaxLevel=1650, Order=13},
-    {Id="CastleOnTheVoid", Name="Sea 3 • Zone 11B: Dinh Thự Hư Không (Castle on the Void Mansion)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-14600, 50.9, 2173.1), Level="Lv. 1650–1775", MinLevel=1650, MaxLevel=1775, Order=14},
-    {Id="UmbralSanctum", Name="Sea 3 • Zone 12: Rừng Tinh Thể Đen (Umbral Crystal Sanctum)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-9400, 50.9, 1815), Level="Lv. 1775–1900", MinLevel=1775, MaxLevel=1900, Order=15},
-    {Id="TempleOfTheCore", Name="Sea 3 • Zone 13: Đền Thờ Thức Tỉnh Tộc V4 (Temple of the Core)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-14600, 50.9, -1785), Level="Lv. 1900–2025", MinLevel=1900, MaxLevel=2025, Order=16},
-    {Id="LeviathanAbyss", Name="Sea 3 • Zone 14: Đảo Ảo Ảnh & Vực Thẳm Leviathan (Mirage Abyss)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-12000, 50.9, -3364.5), Level="Lv. 2025–2125", MinLevel=2025, MaxLevel=2125, Order=17},
-    {Id="NoxarArena", Name="Sea 3 • Zone 15: Ngai Vàng Hư Không (Noxar's Sovereign Throne)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-11672.2, 50.9, -110), Level="Lv. 2200 (Boss)", MinLevel=2125, MaxLevel=2200, Order=18},
+    {Id="ShadowRealm", Name="Sky 3 • Zone 11: Pháo Đài Hư Không (Shadow Realm Outpost)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-12593.4, 50.9, 414), Level="Lv. 1500–1650", MinLevel=1500, MaxLevel=1650, Order=13},
+    {Id="CastleOnTheVoid", Name="Sky 3 • Zone 11B: Dinh Thự Hư Không (Castle on the Void Mansion)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-14600, 50.9, 2173.1), Level="Lv. 1650–1775", MinLevel=1650, MaxLevel=1775, Order=14},
+    {Id="UmbralSanctum", Name="Sky 3 • Zone 12: Rừng Tinh Thể Đen (Umbral Crystal Sanctum)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-9400, 50.9, 1815), Level="Lv. 1775–1900", MinLevel=1775, MaxLevel=1900, Order=15},
+    {Id="TempleOfTheCore", Name="Sky 3 • Zone 13: Đền Thờ Thức Tỉnh Tộc V4 (Temple of the Core)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-14600, 50.9, -1785), Level="Lv. 1900–2025", MinLevel=1900, MaxLevel=2025, Order=16},
+    {Id="LeviathanAbyss", Name="Sky 3 • Zone 14: Đảo Ảo Ảnh & Vực Thẳm Leviathan (Mirage Abyss)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-12000, 50.9, -3364.5), Level="Lv. 2025–2125", MinLevel=2025, MaxLevel=2125, Order=17},
+    {Id="NoxarArena", Name="Sky 3 • Zone 15: Ngai Vàng Hư Không (Noxar's Sovereign Throne)", Realm="ShadowRealm", Sea=3, Pos=Vector3.new(-11672.2, 50.9, -110), Level="Lv. 2200 (Boss)", MinLevel=2125, MaxLevel=2200, Order=18},
 
     -- Expansion Realms (Celestial World Map Realms 4–8 • Lv. 2200–2550 MAX)
     {Id="VerdantCrown", Name="Realm 4 • Vương Miện Cổ Thụ (The Verdant Crown)", Realm="VerdantCrown", Sea=4, Pos=Vector3.new(0, 170.9, -8985), Level="Lv. 2200–2270", MinLevel=2200, MaxLevel=2270, Order=19},
@@ -770,7 +770,7 @@ C.Items = {
     CoreShardArtifact = {Id="CoreShardArtifact", Name="Astral Core Reliquary", Slot="Artifact", Rarity="Legendary", HP=140, ATK=32, DEF=20, Desc="Cổ vật mảnh lõi bầu trời."},
     SkyCrystal = {Id="SkyCrystal", Name="Sky Crystal", Slot="Material", Rarity="Rare", Desc="Pha lê Aether tinh khiết."},
     VoidShard = {Id="VoidShard", Name="Void Shard", Slot="Material", Rarity="Epic", Desc="Mảnh tinh thể Hư Không."},
-    VoidEssence = {Id="VoidEssence", Name="Void Essence • Tinh Chất Hư Không", Slot="Material", Rarity="Epic", Desc="Tinh chất năng lượng Hư Không thu thập từ quái và Boss Sea 3."},
+    VoidEssence = {Id="VoidEssence", Name="Void Essence • Tinh Chất Hư Không", Slot="Material", Rarity="Epic", Desc="Tinh chất năng lượng Hư Không thu thập từ quái và Boss Sky 3."},
     EnchantScroll = {Id="EnchantScroll", Name="Cuộn Phù Phép Cổ Ngữ", Slot="Material", Rarity="Legendary", Desc="Cuộn phù phép cổ đại dùng tại Arcane Enchanter để khắc dòng chỉ số vũ khí."},
     AwakeningMicrochip = {Id="AwakeningMicrochip", Name="Chip Thức Tỉnh V2", Slot="Material", Rarity="Mythic", Desc="Vi mạch cổ đại từ Mythic Awakening Raid giúp thức tỉnh toàn diện Trái Ác Quỷ V2."},
     LeviathanHeart = {Id="LeviathanHeart", Name="Trái Tim Thủy Tổ Leviathan", Slot="Material", Rarity="Mythic", Desc="Chiến lợi phẩm tối thượng từ Thủy Tổ Leviathan dùng rèn Khiên Thần và mở khóa Thần Quyền."},
@@ -1035,7 +1035,7 @@ C.SkyShips = {
         HP = 1200,
         Speed = 45,
         Price = 0,
-        Desc = "Thuyền buồm lướt mây cơ bản dành cho tân thủ khám phá Sea 1.",
+        Desc = "Thuyền buồm lướt mây cơ bản dành cho tân thủ khám phá Sky 1.",
     },
     CelestialBrigantine = {
         Id = "CelestialBrigantine",
@@ -1051,7 +1051,7 @@ C.SkyShips = {
         HP = 6000,
         Speed = 78,
         Price = 75000,
-        Desc = "Chiến hạm bọc thép từ trường của Sea 2, lướt nhanh qua bão băng.",
+        Desc = "Chiến hạm bọc thép từ trường của Sky 2, lướt nhanh qua bão băng.",
     },
     LeviathanHunterShip = {
         Id = "LeviathanHunterShip",
@@ -1101,42 +1101,42 @@ C.ForgeRecipes = setmetatable(recipeList, {
 -- Reward XP + TargetLevel milestone covers every Sea & Realm bracket smoothly without mandatory grinding.
 C.Quests = {
     -- CHƯƠNG 1: SEA 1 • GOLDEN SKY (Lv. 1 - 700)
-    {Id="Q01", Name="Lời Gọi Skyborn (Sea 1 • Lv. 1–120)", Realm="GoldenSky", Level=1, TargetLevel=120, XP=95000, Gold=8000, CoreShards=100,
+    {Id="Q01", Name="Lời Gọi Skyborn (Sky 1 • Lv. 1–120)", Realm="GoldenSky", Level=1, TargetLevel=120, XP=95000, Gold=8000, CoreShards=100,
         Text="Các quần đảo bầu trời đang mất dần năng lượng. Hãy tiêu diệt 3 Training Drone tại sân tập Sky Hub để làm quen với vũ khí và đột phá Lv. 120.",
         Objectives={{Kind="Kill", Target="TrainingDrone", Count=3, Label="Hạ gục Training Drone"}}},
-    {Id="Q02", Name="Khôi Phục Cầu Năng Lượng (Sea 1 • Lv. 120–260)", Realm="GoldenSky", Level=120, TargetLevel=260, XP=320000, Gold=16000, CoreShards=150,
+    {Id="Q02", Name="Khôi Phục Cầu Năng Lượng (Sky 1 • Lv. 120–260)", Realm="GoldenSky", Level=120, TargetLevel=260, XP=320000, Gold=16000, CoreShards=150,
         Text="Năng lượng cầu sang Quảng Trường Lumen đã cạn. Hãy đánh bại 3 Corrupted Guard và bật 3 Trạm Năng Lượng.",
         Objectives={{Kind="Kill", Target="CorruptedGuard", Count=3, Label="Hạ gục Corrupted Guard"},
         {Kind="Interact", Target="Station1", Count=1, Label="Bật Trạm 1"}, {Kind="Interact", Target="Station2", Count=1, Label="Bật Trạm 2"}, {Kind="Interact", Target="Station3", Count=1, Label="Bật Trạm 3"}}},
-    {Id="Q03", Name="Giải Cứu Quảng Trường Lumen (Sea 1 • Lv. 260–420)", Realm="GoldenSky", Level=260, TargetLevel=420, XP=720000, Gold=28000, CoreShards=220,
+    {Id="Q03", Name="Giải Cứu Quảng Trường Lumen (Sky 1 • Lv. 260–420)", Realm="GoldenSky", Level=260, TargetLevel=420, XP=720000, Gold=28000, CoreShards=220,
         Text="Cầu ánh sáng đã mở. Hãy giải cứu 3 người dân bị mắc kẹt và đánh bại Tinh Anh Golden Knight tại quảng trường.",
         Objectives={{Kind="Interact", Target="Citizen1", Count=1, Label="Cứu người dân 1"}, {Kind="Interact", Target="Citizen2", Count=1, Label="Cứu người dân 2"}, {Kind="Interact", Target="Citizen3", Count=1, Label="Cứu người dân 3"}, {Kind="Kill", Target="GoldenKnight", Count=1, Label="Hạ gục Golden Knight"}}},
-    {Id="Q04", Name="Chìa Khóa Tháp Ánh Sáng (Sea 1 • Lv. 420–560)", Realm="GoldenSky", Level=420, TargetLevel=560, XP=1100000, Gold=42000, CoreShards=300,
+    {Id="Q04", Name="Chìa Khóa Tháp Ánh Sáng (Sky 1 • Lv. 420–560)", Realm="GoldenSky", Level=420, TargetLevel=560, XP=1100000, Gold=42000, CoreShards=300,
         Text="Tiến tới Tiền Điện Aureon, kích hoạt 2 Công Tắc Cổ Ngữ và hạ 3 Light Archer để nhận Chìa Khóa Đấu Trường.",
         Objectives={{Kind="Interact", Target="Switch1", Count=1, Label="Bật Công tắc 1"}, {Kind="Interact", Target="Switch2", Count=1, Label="Bật Công tắc 2"}, {Kind="Kill", Target="LightArcher", Count=3, Label="Hạ gục Light Archer"}}},
-    {Id="Q05", Name="Trái Tim Ánh Sáng (Boss Sea 1 • Đột Phá Lv. 700)", Realm="GoldenSky", Level=560, TargetLevel=700, XP=1800000, Gold=75000, CoreShards=500,
-        Text="Tiến vào Đấu Trường Tháp Ánh Sáng và đánh bại AUREON SENTINEL [Lv.700]. Phá hủy 2 trụ năng lượng khi Boss bật khiên để mở khóa Sea 2 (Lv. 700)!",
+    {Id="Q05", Name="Trái Tim Ánh Sáng (Boss Sky 1 • Đột Phá Lv. 700)", Realm="GoldenSky", Level=560, TargetLevel=700, XP=1800000, Gold=75000, CoreShards=500,
+        Text="Tiến vào Đấu Trường Tháp Ánh Sáng và đánh bại AUREON SENTINEL [Lv.700]. Phá hủy 2 trụ năng lượng khi Boss bật khiên để mở khóa Sky 2 (Lv. 700)!",
         Objectives={{Kind="Kill", Target="AureonSentinel", Count=1, Label="Đánh bại Boss Aureon Sentinel [Lv.700]"}}},
 
     -- CHƯƠNG 2: SEA 2 • FROZEN CYBER (Lv. 700 - 1500)
-    {Id="Q06", Name="Đột Nhập Thành Trì Băng Giá (Sea 2 • Lv. 700–960)", Realm="FrozenCyber", Level=700, TargetLevel=960, XP=3200000, Gold=95000, CoreShards=600,
-        Text="Cổng dịch chuyển Sea 2 • Frozen Cyber đã mở! Hãy tiêu diệt 3 Frost Automaton và 2 Cryo Vanguard để mở đường vào trung tâm.",
+    {Id="Q06", Name="Đột Nhập Thành Trì Băng Giá (Sky 2 • Lv. 700–960)", Realm="FrozenCyber", Level=700, TargetLevel=960, XP=3200000, Gold=95000, CoreShards=600,
+        Text="Cổng dịch chuyển Sky 2 • Frozen Cyber đã mở! Hãy tiêu diệt 3 Frost Automaton và 2 Cryo Vanguard để mở đường vào trung tâm.",
         Objectives={{Kind="Kill", Target="FrostDrone", Count=3, Label="Hạ gục Frost Automaton"}, {Kind="Kill", Target="CryoGuard", Count=2, Label="Hạ gục Cryo Vanguard"}}},
-    {Id="Q07", Name="Lõi Lượng Tử Nổi Loạn (Sea 2 • Lv. 960–1240)", Realm="FrozenCyber", Level=960, TargetLevel=1240, XP=4800000, Gold=135000, CoreShards=750,
-        Text="Tại Phòng Thí Nghiệm Đột Kích (hoặc vùng biển mây Sea 2), hãy đánh bại ORDER • Lõi Lượng Tử hoặc Thủy Quái Sky Sea Beast.",
+    {Id="Q07", Name="Lõi Lượng Tử Nổi Loạn (Sky 2 • Lv. 960–1240)", Realm="FrozenCyber", Level=960, TargetLevel=1240, XP=4800000, Gold=135000, CoreShards=750,
+        Text="Tại Phòng Thí Nghiệm Đột Kích (hoặc vùng biển mây Sky 2), hãy đánh bại ORDER • Lõi Lượng Tử hoặc Thủy Quái Sky Sea Beast.",
         Objectives={{Kind="Kill", Target="OrderCyborg", Count=1, Label="Đánh bại Order Cyborg / Sky Sea Beast"}}},
-    {Id="Q08", Name="Thực Thể Băng Giá Vĩnh Cửu (Boss Sea 2 • Đột Phá Lv. 1500)", Realm="FrozenCyber", Level=1240, TargetLevel=1500, XP=6800000, Gold=200000, CoreShards=1000,
-        Text="Tiến vào Đấu Trường Băng Giá và tiêu diệt CRYON PRIME [Lv.1500]. Phá 3 Cột Băng Vĩnh Cửu để tiến vào Sea 3 (Lv. 1500)!",
+    {Id="Q08", Name="Thực Thể Băng Giá Vĩnh Cửu (Boss Sky 2 • Đột Phá Lv. 1500)", Realm="FrozenCyber", Level=1240, TargetLevel=1500, XP=6800000, Gold=200000, CoreShards=1000,
+        Text="Tiến vào Đấu Trường Băng Giá và tiêu diệt CRYON PRIME [Lv.1500]. Phá 3 Cột Băng Vĩnh Cửu để tiến vào Sky 3 (Lv. 1500)!",
         Objectives={{Kind="Kill", Target="CryonPrime", Count=1, Label="Đánh bại Boss Cryon Prime [Lv.1500]"}}},
 
     -- CHƯƠNG 3: SEA 3 • SHADOW REALM (Lv. 1500 - 2200)
-    {Id="Q09", Name="Quân Đoàn Bóng Đêm (Sea 3 • Lv. 1500–1750)", Realm="ShadowRealm", Level=1500, TargetLevel=1750, XP=8500000, Gold=250000, CoreShards=1200,
-        Text="Bước qua cổng Hư Không vào Sea 3 • Shadow Realm. Hãy thanh trừng 3 Void Marauder và 2 Kỵ Sĩ Hắc Ám Abyssal Dreadknight.",
+    {Id="Q09", Name="Quân Đoàn Bóng Đêm (Sky 3 • Lv. 1500–1750)", Realm="ShadowRealm", Level=1500, TargetLevel=1750, XP=8500000, Gold=250000, CoreShards=1200,
+        Text="Bước qua cổng Hư Không vào Sky 3 • Shadow Realm. Hãy thanh trừng 3 Void Marauder và 2 Kỵ Sĩ Hắc Ám Abyssal Dreadknight.",
         Objectives={{Kind="Kill", Target="VoidPirate", Count=3, Label="Hạ gục Void Marauder"}, {Kind="Kill", Target="AbyssalKnight", Count=2, Label="Hạ gục Abyssal Dreadknight"}}},
-    {Id="Q10", Name="Săn Lùng Thủy Tổ Hư Không (Sea 3 • Lv. 1750–1980)", Realm="ShadowRealm", Level=1750, TargetLevel=1980, XP=11000000, Gold=320000, CoreShards=1500,
+    {Id="Q10", Name="Săn Lùng Thủy Tổ Hư Không (Sky 3 • Lv. 1750–1980)", Realm="ShadowRealm", Level=1750, TargetLevel=1980, XP=11000000, Gold=320000, CoreShards=1500,
         Text="Tiến vào Vực Thẳm Leviathan (hoặc Điện Thờ Lõi) tại Shadow Realm và đánh bại Thủy Tổ ABYSSAL LEVIATHAN hoặc SOUL REAPER.",
         Objectives={{Kind="Kill", Target="AbyssalLeviathan", Count=1, Label="Đánh bại Abyssal Leviathan / Soul Reaper"}}},
-    {Id="Q11", Name="Chúa Tể Hư Không (Boss Sea 3 • Đột Phá Lv. 2200)", Realm="ShadowRealm", Level=1980, TargetLevel=2200, XP=14000000, Gold=480000, CoreShards=2000,
+    {Id="Q11", Name="Chúa Tể Hư Không (Boss Sky 3 • Đột Phá Lv. 2200)", Realm="ShadowRealm", Level=1980, TargetLevel=2200, XP=14000000, Gold=480000, CoreShards=2000,
         Text="Đối mặt với NOXAR • THE VOID SOVEREIGN [Lv.2200] tại Đấu Trường Hắc Tinh. Phá hủy Void Singularity để đoạt lấy Song Kiếm Huyền Thoại!",
         Objectives={{Kind="Kill", Target="Noxar", Count=1, Label="Đánh bại Boss Noxar • Void Sovereign [Lv.2200]"}}},
 
@@ -1373,7 +1373,7 @@ do
             HP = 6000,
             Speed = 78,
             Price = 45000,
-            Desc = "Chiến hạm bọc thép từ trường của Sea 2, lướt nhanh qua bão băng.",
+            Desc = "Chiến hạm bọc thép từ trường của Sky 2, lướt nhanh qua bão băng.",
         }
     end
     if not C.SkyShips.CelestialAetherGalleon then
@@ -1396,8 +1396,8 @@ do
                     Name = cItem.Name or itemId,
                     Category = (cItem.Slot == "Weapon" or cItem.Slot == "Gun") and "Weapons"
                         or ((cItem.Slot == "Material" or cItem.Slot == "Quest") and "Materials" or "Armor"),
-                    Slot = (cItem.Slot == "Material" or cItem.Slot == "Quest") and nil
-                        or (cItem.Slot == "Gun" and "Offhand" or cItem.Slot),
+                    Slot = if (cItem.Slot == "Material" or cItem.Slot == "Quest") then nil
+                        else (cItem.Slot == "Gun" and "Offhand" or cItem.Slot),
                     WeaponType = (cItem.Slot == "Gun") and "Gun" or nil,
                     Rarity = cItem.Rarity or "Common",
                     LevelReq = cItem.LevelReq or 1,
@@ -1503,48 +1503,10 @@ end
 
 if game:GetService("RunService"):IsServer() then
 task.spawn(function()
-    local function isDisabledInst(inst)
-        if not inst then return false end
-        local n = inst.Name
-        return n == "SkyRailPad" or string.sub(n, 1, 10) == "RailTrack_" or string.sub(n, 1, 14) == "AetherSkyRail_" or inst:GetAttribute("CompanionId") ~= nil
-    end
-    local function purgeWorld()
-        for _, fn in ipairs({ "JumpPads", "AetherSkyRails", "ActiveCompanions" }) do
-            local f = workspace:FindFirstChild(fn)
-            if f then f:ClearAllChildren() end
-        end
-        for _, fn in ipairs({ "ActiveEnemies", "SkybreakWorldObjects", "SkybreakExpansionWorld" }) do
-            local ef = workspace:FindFirstChild(fn)
-            if ef then
-                for _, d in ipairs(ef:GetDescendants()) do
-                    if d.Name == "DummyFloorRing" and d:IsA("BasePart") then
-                        d.Transparency = 1; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
-                    elseif isDisabledInst(d) then
-                        pcall(function() d:Destroy() end)
-                    end
-                end
-            end
-        end
-    end
-    workspace.ChildAdded:Connect(function(ch)
-        if ch.Name == "JumpPads" or ch.Name == "AetherSkyRails" or ch.Name == "ActiveCompanions" then
-            task.defer(function() if ch.Parent then ch:ClearAllChildren() end end)
-            ch.ChildAdded:Connect(function(sub) task.defer(function() if sub and sub.Parent then pcall(function() sub:Destroy() end) end end) end)
-        end
-    end)
-    workspace.DescendantAdded:Connect(function(desc)
-        if isDisabledInst(desc) then
-            task.defer(function() if desc and desc.Parent then pcall(function() desc:Destroy() end) end end)
-        elseif desc.Name == "DummyFloorRing" and desc:IsA("BasePart") then
-            task.defer(function() desc.Transparency = 1; desc.CanCollide = false; desc.CanQuery = false; desc.CanTouch = false end)
-        end
-    end)
-
     local tickIdx = 0
     while true do
         tickIdx += 1
         task.wait(tickIdx <= 40 and 0.25 or 0.5)
-        purgeWorld()
         local sss = game:GetService("ServerScriptService")
         local services = sss and sss:FindFirstChild("Services")
         local gsMod = services and services:FindFirstChild("GameService")
@@ -1580,50 +1542,10 @@ task.spawn(function()
                         end
                     end
                 end
-                if type(G.JumpPads) == "table" then table.clear(G.JumpPads) end
-                G.SyncCompanions = function(p)
-                    if G.Runtime and G.Runtime[p] and type(G.Runtime[p].Companions) == "table" then
-                        for k, comp in pairs(G.Runtime[p].Companions) do
-                            if comp and comp.Model then pcall(function() comp.Model:Destroy() end) end
-                            G.Runtime[p].Companions[k] = nil
-                        end
-                    end
-                    local ac = workspace:FindFirstChild("ActiveCompanions")
-                    if ac then ac:ClearAllChildren() end
-                end
-                G.TickCompanions = function() end
-
-                if not G._CompanionNotifyFiltered and type(G.Notify) == "function" then
-                    G._CompanionNotifyFiltered = true
-                    local prevNotify = G.Notify
-                    G.Notify = function(p, msg, ...)
-                        if type(msg) == "string" and string.find(msg, "Đồng Hành", 1, true) then
-                            msg = string.gsub(msg, "%s*•%s*Mở khóa Đồng Hành.*", "")
-                        end
-                        return prevNotify(p, msg, ...)
-                    end
-                end
-
-                if not G._CompanionSyncFiltered and G.SocialEconomy ~= nil then
-                    G._CompanionSyncFiltered = true
-                    local prevBeforeSync = G.OnBeforeSync
-                    G.OnBeforeSync = function(p, profile, rt, stats, statePayload)
-                        if prevBeforeSync then prevBeforeSync(p, profile, rt, stats, statePayload) end
-                        if type(profile) == "table" then profile.PartySize = "Solo" end
-                        if type(statePayload) == "table" then statePayload.PartySize = "Solo"; statePayload.Companions = {} end
-                    end
-                end
-
                 if type(G.Runtime) == "table" then
                     for plr, rt in pairs(G.Runtime) do
                         if type(rt) == "table" then
                             rt.FuryMeter = 100
-                            if type(rt.Companions) == "table" then
-                                for k, comp in pairs(rt.Companions) do
-                                    if comp and comp.Model then pcall(function() comp.Model:Destroy() end) end
-                                    rt.Companions[k] = nil
-                                end
-                            end
                         end
                         if plr and plr.Parent then
                             if (plr:GetAttribute("FuryMeter") or 0) < 100 then plr:SetAttribute("FuryMeter", 100) end

@@ -1584,8 +1584,8 @@ ArsenalExpansionConfig.VendorCatalogs = {
             PriceShards = 0,
             Model3DKind = "Ship_SkySloop",
             AccentHex = "#93C5FD",
-            DescVi = "Thuyền buồm lướt mây cơ bản miễn phí khám phá quần đảo Sea 1.",
-            DescEn = "Nimble starter cloud sloop for exploring Sea 1 sky archipelagos.",
+            DescVi = "Thuyền buồm lướt mây cơ bản miễn phí khám phá quần đảo Sky 1.",
+            DescEn = "Nimble starter cloud sloop for exploring Sky 1 sky archipelagos.",
         },
         {
             Id = "CyberEnforcerShip",
@@ -1602,7 +1602,7 @@ ArsenalExpansionConfig.VendorCatalogs = {
             Model3DKind = "Ship_CyberEnforcerShip",
             AccentHex = "#38BDF8",
             DescVi = "Tuần dương hạm bọc thép từ trường vượt bão băng Frozen Cyber.",
-            DescEn = "Armored cryo-magnetic cruiser built for Sea 2 storm currents.",
+            DescEn = "Armored cryo-magnetic cruiser built for Sky 2 storm currents.",
         },
         {
             Id = "CelestialAetherGalleon",

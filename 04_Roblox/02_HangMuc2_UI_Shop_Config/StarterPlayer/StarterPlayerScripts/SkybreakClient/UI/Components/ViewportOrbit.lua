@@ -44,18 +44,30 @@ local EXPLICIT_WEAPON_MAP: { [string]: string } = {
 	Stormfang = "Wep_CursedDualSkyblades",
 	stormfang_daggers = "Wep_CursedDualSkyblades",
 	cursed_dual_skyblades = "Wep_CursedDualSkyblades",
-	starter_staff = "Wep_CryonFrostblade",
-	EternalFrost = "Wep_CryonFrostblade",
-	astral_staff = "Wep_CryonFrostblade",
+	starter_staff = "ExpSword_eternal_frost_staff",
+	EternalFrost = "ExpSword_eternal_frost_staff",
+	astral_staff = "ExpSword_eternal_frost_staff",
+	eternal_frost_staff = "ExpSword_eternal_frost_staff",
 	cryon_frostblade = "Wep_CryonFrostblade",
 	noxar_abyssal_greatsword = "Wep_NoxarGreatsword",
-	ArchitectsSeverance = "Wep_NoxarGreatsword",
+	ArchitectsSeverance = "ExpSword_architect_severance",
+	architect_severance = "ExpSword_architect_severance",
+	sunshard_halberd = "ExpSword_sunshard_halberd",
+	cyber_katana_mk2 = "ExpSword_cyber_katana_mk2",
+	sylvaris_thornblade = "ExpSword_sylvaris_thornblade",
+	ignivar_magma_breaker = "ExpSword_ignivar_magma_breaker",
+	nerith_abyssal_trident = "ExpSword_nerith_abyssal_trident",
+	aion_chrono_scythe = "ExpSword_aion_chrono_scythe",
 	soul_guitar_void = "Wep_SoulGuitarVoid",
 	cryo_railgun = "Wep_CryoRailgun",
-	solar_kabucha = "Wep_CryoRailgun",
-	kabucha_wind = "Wep_CryoRailgun",
-	bizarre_rifle_cyber = "Wep_CryoRailgun",
-	aether_flintlock = "Wep_CryoRailgun",
+	solar_kabucha = "ExpGun_kabucha_wind",
+	kabucha_wind = "ExpGun_kabucha_wind",
+	bizarre_rifle_cyber = "ExpGun_bizarre_rifle_cyber",
+	aether_flintlock = "ExpGun_aether_flintlock",
+	sylvaris_thornbow = "ExpGun_sylvaris_thornbow",
+	ignivar_hellcannon = "ExpGun_ignivar_hellcannon",
+	aion_chrono_pistols = "ExpGun_aion_chrono_pistols",
+	veyr_singularity_cannon = "ExpGun_veyr_singularity_cannon",
 }
 
 local KNOWN_DEVIL_FRUITS: { [string]: boolean } = {
@@ -140,35 +152,38 @@ function ViewportOrbit.ResolveAssetName(idOrAsset: string): string?
 	if key == "" or key == "MythicalWeaponsSet" then
 		return nil
 	end
-	if string.sub(key, 1, 4) == "Wep_" or string.sub(key, 1, 6) == "Fruit_" then
+	if string.sub(key, 1, 4) == "Wep_" or string.sub(key, 1, 6) == "Fruit_" or string.sub(key, 1, 9) == "ExpSword_" or string.sub(key, 1, 7) == "ExpGun_" or string.sub(key, 1, 6) == "Armor_" or string.sub(key, 1, 9) == "ArmorSet_" or string.sub(key, 1, 4) == "Acc_" or string.sub(key, 1, 6) == "Relic_" or string.sub(key, 1, 4) == "Mat_" then
 		return key
 	end
 	if EXPLICIT_WEAPON_MAP[key] then
 		return EXPLICIT_WEAPON_MAP[key]
 	end
-	if DIRECT_BESPOKE_KINDS[key] or string.sub(key, 1, 5) == "Ship_" or string.sub(key, 1, 8) == "Martial_" or SHIP_IDS[key] or MARTIAL_IDS[key] then
-		return nil
-	end
-	local itemDef = RarityConfig.Items and RarityConfig.Items[key]
-	if itemDef and (itemDef.Model3DKind ~= nil or itemDef.Category == "Armor" or itemDef.Category == "Materials" or itemDef.Category == "Quest") then
-		return nil
-	end
 	local renderer = ViewportOrbit.GetRenderer()
 	if renderer then
+		if type(renderer.VirtualSplitSpecs) == "table" and renderer.VirtualSplitSpecs[key] then
+			return key
+		end
+		if type(renderer.Alias) == "table" and renderer.Alias[key] and renderer.Alias[key] ~= "MythicalWeaponsSet" then
+			return renderer.Alias[key]
+		end
 		if type(renderer.Models) == "table" and renderer.Models[key] then
 			return key
 		end
 		if type(renderer.FruitAssetMap) == "table" and renderer.FruitAssetMap[key] then
 			return renderer.FruitAssetMap[key]
 		end
-		if type(renderer.Alias) == "table" and renderer.Alias[key] and renderer.Alias[key] ~= "MythicalWeaponsSet" then
-			return renderer.Alias[key]
-		end
-		if type(renderer.GetWeaponAsset) == "function" and not itemDef then
-			local wep = renderer.GetWeaponAsset(key)
-			if type(wep) == "string" and wep ~= "" and wep ~= "MythicalWeaponsSet" then
-				return wep
-			end
+	end
+	if DIRECT_BESPOKE_KINDS[key] or string.sub(key, 1, 8) == "Martial_" or MARTIAL_IDS[key] then
+		return nil
+	end
+	local itemDef = RarityConfig.Items and RarityConfig.Items[key]
+	if itemDef and (itemDef.Model3DKind ~= nil or itemDef.Category == "Armor" or itemDef.Category == "Materials" or itemDef.Category == "Quest") then
+		return nil
+	end
+	if renderer and type(renderer.GetWeaponAsset) == "function" and not itemDef then
+		local wep = renderer.GetWeaponAsset(key)
+		if type(wep) == "string" and wep ~= "" and wep ~= "MythicalWeaponsSet" then
+			return wep
 		end
 	end
 	if KNOWN_DEVIL_FRUITS[key] or (not itemDef and string.sub(key, -4) == "Core") then

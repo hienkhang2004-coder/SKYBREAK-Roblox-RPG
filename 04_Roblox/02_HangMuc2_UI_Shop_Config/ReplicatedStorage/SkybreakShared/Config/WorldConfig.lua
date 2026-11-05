@@ -662,7 +662,7 @@ WorldConfig.Quests = {
         RealmId = "FrozenCyber",
         LevelReq = 13,
         Rewards = { EXP = 4200, Gold = 1800, CoreShards = 380, Items = { { Id = "aether_ring", Count = 1 } } },
-        Description = "Tại Phòng Thí Nghiệm Lượng Tử (hoặc vùng biển mây Sea 2), hãy đánh bại ORDER • Lõi Lượng Tử hoặc Thủy Quái Sky Sea Beast.",
+        Description = "Tại Phòng Thí Nghiệm Lượng Tử (hoặc vùng biển mây Sky 2), hãy đánh bại ORDER • Lõi Lượng Tử hoặc Thủy Quái Sky Sea Beast.",
         Objectives = {
             { Id = "1", Label = "Đánh bại Order Cyborg / Sky Sea Beast", Target = 1 },
         },

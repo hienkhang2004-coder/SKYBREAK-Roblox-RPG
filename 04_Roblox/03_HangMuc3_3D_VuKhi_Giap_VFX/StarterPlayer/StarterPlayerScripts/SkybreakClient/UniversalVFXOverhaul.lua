@@ -184,8 +184,8 @@ function UniversalVFXOverhaul.SpawnStage3Aftermath(impactPos, prof, radius, scal
 
 	-- Native VFX Studio Prefab Elemental Burst + FADE Atmospheric Wind-Smoke & 1.75s Lingering Ground Aftermath
 	Lib.EmitElement(prof.Element, CFrame.new(impactPos), math.clamp(r / 12, 0.8, 1.85), prof.Primary, prof.Secondary)
-	Lib.SpawnFadeAtmosphericWindSmoke(impactPos, r * 0.65, prof.Primary, folder)
-	Lib.SpawnLingeringGroundAftermath(impactPos, r * 0.68, prof.Primary, prof.Secondary, 1.75, folder)
+	Lib.SpawnFadeAtmosphericWindSmoke(impactPos, impactPos + CFrame.Angles(0, math.random() * math.pi * 2, 0).LookVector * r * 0.65, r * 0.65, prof.Primary, 0.65, folder)
+	Lib.SpawnLingeringGroundAftermath(impactPos, r * 0.68, prof.Element, prof.Primary, prof.Secondary, folder)
 
 	if isAwakened then
 		Lib.SpawnShockRing(CFrame.new(impactPos).Position, CFrame.new(impactPos) * CFrame.Angles(0.42, 0.6, 0), PAL.Gold, r * 0.35, r * 1.65, 0.22, 0.50, Enum.Material.ForceField, folder)
@@ -410,12 +410,12 @@ local function spawnBespokeFruitSignature(fruitKey, moveKey, startPos, endPos, l
 	-- Dynamic Cast Pose on Character + FADE Showcase Core Layering per Move Key (Z vs X vs C vs V vs F)
 	if actorChar then
 		Lib.PlaySkillCastPose(actorChar, k, (k == "V") and 0.50 or ((k == "C") and 0.42 or 0.32))
-		Lib.SpawnHandChargeIgnition(actorChar, k, prof.Primary, prof.Secondary, (k == "V") and 0.42 or 0.28, folder)
+		Lib.SpawnHandChargeIgnition(actorChar, startPos, lookDir, k, prof.Primary, prof.Secondary, sc, folder)
 		if k == "X" or k == "C" or k == "V" or k == "F" then
-			Lib.SpawnCharacterAfterimageBurst(actorChar, (k == "V" or k == "F") and 3 or 2, prof.Primary, 0.28, folder)
+			Lib.SpawnCharacterAfterimageBurst(actorChar, lookDir, k, prof.Primary, prof.Secondary, folder)
 		end
 	end
-	Lib.SpawnFadeAtmosphericWindSmoke(startPos, 4.2 * sc, prof.Primary, folder)
+	Lib.SpawnFadeAtmosphericWindSmoke(startPos, endPos, 4.2 * sc, prof.Primary, 0.65, folder)
 	Lib.PlayLayeredSkillAudio(startPos, endPos, k, prof.Element)
 
 	-- Distinct Per-Key FADE Showcase Backbone so Z, X, C, V, F NEVER look identical:

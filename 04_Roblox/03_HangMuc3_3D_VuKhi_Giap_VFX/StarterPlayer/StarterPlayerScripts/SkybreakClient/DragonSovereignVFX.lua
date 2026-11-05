@@ -27,15 +27,16 @@ local TEX_IMPLOSION = "rbxasset://textures/particles/explosion01_implosion_main.
 local TEX_SPARK_FLARE = "rbxasset://textures/particles/sparkles_main.dds"
 
 local PALETTE = {
-	Crimson = Color3.fromRGB(255, 46, 150),
-	BloodFlame = Color3.fromRGB(255, 36, 68),
-	SolarGold = Color3.fromRGB(255, 196, 56),
-	Violet = Color3.fromRGB(168, 38, 255),
-	Magma = Color3.fromRGB(255, 116, 42),
-	Obsidian = Color3.fromRGB(20, 12, 36),
-	SlateArmor = Color3.fromRGB(48, 38, 76),
-	HotCore = Color3.fromRGB(255, 232, 248),
-	AwakenedGold = Color3.fromRGB(255, 212, 88),
+	-- Bang mau khop model rong v2: giap den, nut lava do, ngoc hong tim. Khong con vang.
+	Crimson = Color3.fromRGB(255, 28, 70),
+	BloodFlame = Color3.fromRGB(196, 12, 48),
+	SolarGold = Color3.fromRGB(255, 72, 150),
+	Violet = Color3.fromRGB(122, 44, 255),
+	Magma = Color3.fromRGB(255, 58, 44),
+	Obsidian = Color3.fromRGB(14, 9, 20),
+	SlateArmor = Color3.fromRGB(40, 32, 56),
+	HotCore = Color3.fromRGB(255, 226, 236),
+	AwakenedGold = Color3.fromRGB(255, 31, 160),
 }
 
 local lastTransformBurstAt = setmetatable({}, { __mode = "k" })
@@ -2484,6 +2485,118 @@ local DRAGON_CALLOUT_NAMES = {
 	},
 }
 
+local function createMoveFolder(name, life)
+	local folder = Instance.new("Folder")
+	folder.Name = name
+	folder.Parent = getTempFolder()
+	Debris:AddItem(folder, (tonumber(life) or 1) + 0.2)
+	return folder, true
+end
+
+local function isFolderAlive(folder)
+	return folder ~= nil and folder.Parent ~= nil
+end
+
+-- Hieu ung nen chung cua 2 dang rong. Moi ham deu goi qua pcall trong DispatchMove,
+-- nen loi o day khong the chan skill chinh.
+local function spawnLavaFissures(center, radius, count, folder, ignoreChar)
+	local g = findGroundPos(center, ignoreChar) + Vector3.new(0, 0.06, 0)
+	local cracks = isLowFX() and math.max(3, math.floor(count * 0.5)) or count
+	for i = 1, cracks do
+		local ang = (i / cracks) * math.pi * 2 + math.random() * 0.5
+		local p = g
+		local reach = radius * (0.65 + math.random() * 0.35)
+		for seg = 1, 3 do
+			local len = reach / 3
+			ang += (math.random() - 0.5) * 0.9
+			local nextP = p + Vector3.new(math.cos(ang), 0, math.sin(ang)) * len
+			local width = (0.62 - seg * 0.13) * math.clamp(radius / 9, 0.7, 1.7)
+			local cf = CFrame.lookAt((p + nextP) * 0.5, nextP)
+			local crack = makePart("LavaFissure", Enum.PartType.Block, Vector3.new(width, 0.08, 0.1), cf, PALETTE.HotCore, 0, Enum.Material.Neon, folder)
+			local growDelay = (seg - 1) * 0.05
+			TweenService:Create(crack, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, growDelay), {
+				Size = Vector3.new(width, 0.08, len * 1.08),
+				Color = PALETTE.Crimson,
+			}):Play()
+			TweenService:Create(crack, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.8 + growDelay), {
+				Color = PALETTE.BloodFlame,
+				Transparency = 1,
+			}):Play()
+			Debris:AddItem(crack, 1.65)
+			p = nextP
+		end
+	end
+end
+
+local function spawnObsidianSmokeBurst(pos, scale, folder)
+	local host = makePart("DragonSmokeHost", Enum.PartType.Ball, Vector3.new(0.2, 0.2, 0.2), CFrame.new(pos), PALETTE.Obsidian, 1, Enum.Material.SmoothPlastic, folder)
+	local smoke = Instance.new("ParticleEmitter")
+	smoke.Name = "ObsidianSmoke"
+	smoke.Texture = TEX_SMOKE_CLOUD
+	smoke.Color = ColorSequence.new(PALETTE.BloodFlame, PALETTE.Obsidian)
+	smoke.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2.2 * scale),
+		NumberSequenceKeypoint.new(1, 8.5 * scale),
+	})
+	smoke.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	smoke.Lifetime = NumberRange.new(0.7, 1.25)
+	smoke.Speed = NumberRange.new(5 * scale, 14 * scale)
+	smoke.SpreadAngle = Vector2.new(180, 180)
+	smoke.Rate = 0
+	smoke.Parent = host
+	local embers = Instance.new("ParticleEmitter")
+	embers.Name = "CrimsonEmbers"
+	embers.Texture = TEX_SPARK_FLARE
+	embers.Color = ColorSequence.new(PALETTE.HotCore, PALETTE.Crimson)
+	embers.LightEmission = 0.75
+	embers.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5 * scale),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	embers.Lifetime = NumberRange.new(0.5, 1.1)
+	embers.Speed = NumberRange.new(10 * scale, 26 * scale)
+	embers.SpreadAngle = Vector2.new(70, 70)
+	embers.Acceleration = Vector3.new(0, 16, 0)
+	embers.Rate = 0
+	embers.Parent = host
+	host.CFrame = CFrame.lookAt(pos, pos + Vector3.new(0, 1, 0))
+	smoke:Emit(isLowFX() and 8 or 18)
+	embers:Emit(isLowFX() and 14 or 34)
+	Debris:AddItem(host, 1.6)
+end
+
+-- Cac mang Neon tren model bung sang khi vao chieu, roi tro ve mau goc.
+local IGNITE_MATERIALS = { "_Lava", "_Hot", "_Crimson", "_Magenta", "_VioletGem" }
+local function igniteDragonBody(formModel, dur)
+	if not formModel then return end
+	for _, part in ipairs(formModel:GetChildren()) do
+		if part:IsA("BasePart") and part.Material == Enum.Material.Neon then
+			local matName = tostring(part:GetAttribute("BlenderMaterial") or "")
+			for _, suffix in ipairs(IGNITE_MATERIALS) do
+				if matName:sub(-#suffix) == suffix then
+					local base = part:GetAttribute("DragonBaseColor")
+					if typeof(base) ~= "Color3" then
+						base = part.Color
+						part:SetAttribute("DragonBaseColor", base)
+					end
+					part.Color = PALETTE.HotCore
+					TweenService:Create(part, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Color = base }):Play()
+					break
+				end
+			end
+		end
+	end
+end
+
+local function spawnWingBeat(anchors, c1, c2, sc, folder)
+	for _, wingCF in ipairs({ anchors.WingL_CF, anchors.WingR_CF }) do
+		Lib.SpawnFadeCrescentArc(wingCF * CFrame.Angles(math.pi * 0.5, 0, 0), 1.2 * sc, 9.5 * sc, 1.3 * sc, c1, c2, 0.34, folder)
+	end
+end
+
 local function spawnDragonSkillCallout(pos, tier, key)
 	if typeof(pos) ~= "Vector3" then return end
 	local t = (tier and tier >= 2) and 2 or 1
@@ -2561,27 +2674,34 @@ function DragonSovereignVFX.DispatchMove(moveKey, actorChar, startPos, endPos, l
 	local safeDir = (typeof(lookDir) == "Vector3" and lookDir.Magnitude > 0.05) and lookDir.Unit or Vector3.new(0, 0, -1)
 	local dst = (typeof(endPos) == "Vector3" and (endPos - startPos).Magnitude > 4) and endPos or (startPos + safeDir * 28 * sc)
 	local folder = getTempFolder()
-	local cMain = ((tier or 0) >= 2) and PALETTE.Violet or PALETTE.Crimson
-	local cSub = PALETTE.AwakenedGold
+	local cMain = PALETTE.Crimson
+	local cSub = ((tier or 0) >= 2) and PALETTE.Violet or PALETTE.AwakenedGold
+	local isDragonForm = (tier or 0) >= 1
+	local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, safeDir)
+	local groundFX = anchors.GroundPos + Vector3.new(0, 0.4, 0)
 
-	if actorChar and (tier or 0) < 2 then
+	-- Nhip chung: mang lava bung sang, khoi den duoi chan, vo canh, roi moi den chieu rieng.
+	pcall(igniteDragonBody, anchors.Model, (k == "V") and 1.2 or 0.75)
+	if isDragonForm then
+		pcall(spawnObsidianSmokeBurst, groundFX, sc * ((tier >= 2) and 1.5 or 1.0), folder)
+		pcall(spawnLavaFissures, anchors.CenterPos, ((tier >= 2) and 11 or 7) * sc, 6, folder, actorChar)
+		if k == "X" or k == "C" or k == "F" then
+			pcall(spawnWingBeat, anchors, cMain, cSub, sc, folder)
+		end
+	elseif actorChar then
 		Lib.PlaySkillCastPose(actorChar, k, 0.36)
-		Lib.SpawnHandChargeIgnition(actorChar, k, cMain, cSub, 0.34, folder)
+		Lib.SpawnHandChargeIgnition(actorChar, startPos, safeDir, k, cMain, cSub, sc, folder)
 		if k == "X" or k == "C" or k == "V" or k == "F" then
-			Lib.SpawnCharacterAfterimageBurst(actorChar, 3, cMain, 0.30, folder)
+			Lib.SpawnCharacterAfterimageBurst(actorChar, safeDir, k, cMain, cSub, folder)
 		end
 	end
-	Lib.SpawnFadeAtmosphericWindSmoke(startPos, 5.2 * sc, cMain, folder)
 	Lib.PlayLayeredSkillAudio(startPos, dst, k, "Dragon")
-	Lib.SpawnLingeringGroundAftermath(dst, 12.5 * sc, cMain, cSub, "Dragon", folder)
 
 	if k == "V" then
 		local vTier = tier
 		if not vTier or vTier < 0 then
-			local anchors = DragonSovereignVFX.ResolveDragonStateAndAnchors(actorChar, startPos, lookDir)
 			vTier = (anchors.Tier > 0) and anchors.Tier or 1
 		end
-		Lib.SpawnFadeJaggedImpactSpikes(startPos, 20.0 * sc, isLowFX() and 6 or 12, cMain, cSub, 0.75, folder)
 		if isLocal then
 			Lib.TriggerAnimeImpactFrame(cMain, 0.050, 6.4, 0.68)
 		end
@@ -2589,21 +2709,15 @@ function DragonSovereignVFX.DispatchMove(moveKey, actorChar, startPos, endPos, l
 		return
 	end
 
-	-- FADE / Haymaker Showcase Layering for Dragon Moves (Z / X / C / F)
-	if k == "Z" then
-		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.8 * sc, 0), dst + Vector3.new(0, 1.4 * sc, 0), 3.4 * sc, 6, cMain, cSub, 0.46, folder)
-		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 2.4 * sc, cMain, cSub, 0.48, folder)
-	elseif k == "X" then
-		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.6 * sc, 0), dst + Vector3.new(0, 1.2 * sc, 0), 3.8 * sc, 7, cMain, cSub, 0.50, folder)
-		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 2.8 * sc, cMain, cSub, 0.52, folder)
-		if isLocal then Lib.TriggerAnimeImpactFrame(cMain, 0.036, 4.2, 0.46) end
-	elseif k == "C" then
-		Lib.SpawnFadeJaggedImpactSpikes(dst, 18.0 * sc, isLowFX() and 6 or 12, cMain, cSub, 0.68, folder)
-		if isLocal then Lib.TriggerAnimeImpactFrame(cMain, 0.044, 5.2, 0.58) end
-	elseif k == "F" then
-		Lib.SpawnFadeGroundSlashRibbon(startPos, dst, 2.6 * sc, cMain, cSub, 0.46, folder)
-		Lib.SpawnFadeCorkscrewTunnel(startPos + Vector3.new(0, 1.2 * sc, 0), dst + Vector3.new(0, 1.2 * sc, 0), 2.8 * sc, 5, cMain, cSub, 0.38, folder)
-	end
+	-- Ve sau tai diem va cham: nut lava va khoi den, thay cho dia den phang.
+	local impactDelay = (k == "C") and 0.6 or ((k == "F") and 0.34 or 0.26)
+	task.delay(impactDelay, function()
+		pcall(spawnLavaFissures, dst, ((k == "C") and 15 or 10) * sc, (k == "C") and 9 or 6, folder, actorChar)
+		pcall(spawnObsidianSmokeBurst, findGroundPos(dst, actorChar) + Vector3.new(0, 0.6, 0), sc * ((k == "C") and 1.4 or 1.0), folder)
+		if isLocal and (k == "X" or k == "C") then
+			Lib.TriggerAnimeImpactFrame(cMain, 0.036, 4.2, (k == "C") and 0.58 or 0.46)
+		end
+	end)
 
 	if (tier or 0) >= 2 then
 		-- === FORM 2: CHÂN THÂN THÁI CỔ LONG HOÀNG (Sovereign Dragon Skill Set) ===

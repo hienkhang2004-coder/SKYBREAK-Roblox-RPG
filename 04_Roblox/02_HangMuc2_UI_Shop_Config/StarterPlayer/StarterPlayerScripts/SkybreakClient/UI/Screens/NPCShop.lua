@@ -509,7 +509,7 @@ local function buildArsenalVendorTab(body, snap, mode)
 		local owned, eq = getOwnedQty(snap, itemId) > 0, isItemEquipped(snap, itemId)
 		local dispName = isEn and (cfg.Name or itemId) or (cfg.VietnameseName or cfg.Name or itemId)
 		local lvReq = tonumber(entry.LevelReq or cfg.LevelReq) or 1
-		local seaStr = tostring(entry.Sea or cfg.Sea or "Sea1"):gsub("Sea", "Sea ")
+		local seaStr = tostring(entry.Sea or cfg.Sea or "Sea1"):gsub("Sea", "Sky ")
 		local stats = cfg.Stats or {}
 		local mainStat = (tonumber(stats.ATK) and ("+" .. stats.ATK .. " ATK")) or (tonumber(stats.HP) and ("+" .. stats.HP .. " HP")) or "+45 ATK"
 		local secStat = (tonumber(stats.CRIT) and ("+" .. stats.CRIT .. "% CRIT")) or (tonumber(stats.DEF) and ("+" .. stats.DEF .. " DEF")) or ("Lv." .. lvReq)
@@ -563,12 +563,12 @@ local function buildArsenalVendorTab(body, snap, mode)
 		SelectedItem = selectedItem or items[#items] or items[1], Items = items,
 		FilterPills = isSword and {
 			fPill(st, "swordSeaFilter", "ALL", pick("TẤT CẢ KIẾM", "ALL SWORDS"), 156, "gold"),
-			fPill(st, "swordSeaFilter", "Sea1", "SEA 1 • SƠ CẤP", 156, "gold"),
-			fPill(st, "swordSeaFilter", "Sea2", "SEA 2 • CYBER", 156, "gold"),
-			fPill(st, "swordSeaFilter", "Sea3", "SEA 3 • TUYỆT ĐỈNH", 172, "gold"),
+			fPill(st, "swordSeaFilter", "Sea1", "SKY 1 • SƠ CẤP", 156, "gold"),
+			fPill(st, "swordSeaFilter", "Sea2", "SKY 2 • CYBER", 156, "gold"),
+			fPill(st, "swordSeaFilter", "Sea3", "SKY 3 • TUYỆT ĐỈNH", 172, "gold"),
 		} or {
 			fPill(st, "gunFilter", "ALL_GUNS", pick("TẤT CẢ SÚNG (10)", "ALL GUNS (10)"), 154, "primary"),
-			fPill(st, "gunFilter", "GUN_SEA12", "SÚNG SEA 1-2", 136, "primary"),
+			fPill(st, "gunFilter", "GUN_SEA12", "SÚNG SKY 1-2", 136, "primary"),
 			fPill(st, "gunFilter", "GUN_SEA3", "PHÁP KHÍ CUỐI GAME", 166, "primary"),
 			fPill(st, "gunFilter", "ARMOR_SETS", pick("THẦN GIÁP 3D (8 BỘ)", "3D ARMOR (8 SETS)"), 172, "gold"),
 			fPill(st, "gunFilter", "RELICS", pick("THÁNH VẬT & NHẪN", "RELICS & RINGS"), 158, "gold"),
@@ -616,9 +616,9 @@ local function buildMartialDojoTab(body, snap)
 		BustTitle = "ĐẠI SƯ CỔ TỰ", BustLocation = "7 Võ Đường Truyền Thụ", SelectedItem = selectedItem or items[1], Items = items,
 		FilterPills = {
 			fPill(st, "martialSea", "ALL", "TẤT CẢ 7 VÕ ĐƯỜNG", 172, "gold"),
-			fPill(st, "martialSea", "Sea1", "SEA 1 • NHẬP MÔN", 156, "primary"),
-			fPill(st, "martialSea", "Sea2", "SEA 2 • ĐỘT PHÁ", 156, "primary"),
-			fPill(st, "martialSea", "Sea3", "SEA 3 • GODHUMAN & VOID", 198, "gold"),
+			fPill(st, "martialSea", "Sea1", "SKY 1 • NHẬP MÔN", 156, "primary"),
+			fPill(st, "martialSea", "Sea2", "SKY 2 • ĐỘT PHÁ", 156, "primary"),
+			fPill(st, "martialSea", "Sea3", "SKY 3 • GODHUMAN & VOID", 198, "gold"),
 		},
 	})
 end

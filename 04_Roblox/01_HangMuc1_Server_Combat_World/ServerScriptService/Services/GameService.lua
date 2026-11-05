@@ -153,22 +153,7 @@ local function maxPartySizeForLevel(level)
 	else return "Solo" end
 end
 
-local function getCompanionIds(partySize, level)
-	local lv=tonumber(level) or 1
-	local raw={}
-	if partySize=="Solo" then raw={}
-	elseif partySize=="Duo" then raw={"Kairo"}
-	elseif partySize=="Trio" or partySize=="Raid 4" then raw={"Kairo","Lumen"}
-	else raw={"Kairo","Lumen","Nyx"} end
-	local out={}
-	for _,id in ipairs(raw) do
-		local spec=COMPANION_SPECS[id]
-		if spec and lv>=(spec.UnlockLevel or 1) then
-			table.insert(out,id)
-		end
-	end
-	return out
-end
+local function getCompanionIds() return {} end -- Tính năng 3 AI đã bị gỡ
 
 local function root(player)
 	local ch=player.Character local h=ch and ch:FindFirstChildOfClass("Humanoid")
@@ -260,7 +245,7 @@ function G.FindSafeRescuePos(p, rPos, rt, profile)
 		end
 	end
 	if curRealm ~= "GoldenSky" then
-		local okRC, rc = pcall(require, ReplicatedStorage.Shared.RealmConfig)
+		local okRC, rc = pcall(require, game:GetService("ReplicatedStorage").Shared.RealmConfig)
 		if okRC and rc and rc[curRealm] and rc[curRealm].Spawn then
 			table.insert(candidates, {pos=rc[curRealm].Spawn, realm=curRealm})
 		end
@@ -415,214 +400,7 @@ function G.Stats(p)
 	return s
 end
 
-function G.SyncCompanions(p)
-	local profile=D.Get(p)
-	local rt=G.Runtime[p]
-	if not profile or not rt then return end
-	local folder=workspace:FindFirstChild("ActiveCompanions")
-	if not folder then
-		folder=_IN("Folder")
-		folder.Name="ActiveCompanions"
-		folder.Parent=workspace
-	end
-	ensureProfileFields(profile)
-	rt.Companions=rt.Companions or {}
-	local wantedIds=getCompanionIds(profile.PartySize or "Solo", profile.Level)
-	local wantedSet={}
-	for _,id in ipairs(wantedIds) do wantedSet[id]=true end
-	for id,comp in pairs(rt.Companions) do
-		if not wantedSet[id] then
-			if comp.Model and comp.Model.Parent then comp.Model:Destroy() end
-			rt.Companions[id]=nil
-		end
-	end
-	local pr=root(p)
-	local basePos=pr and pr.Position or C.Spawn
-	for _,id in ipairs(wantedIds) do
-		local spec=COMPANION_SPECS[id]
-		local existing=rt.Companions[id]
-		if spec and (not existing or not existing.Model or not existing.Model.Parent) then
-			local m=_IN("Model")
-			m.Name=p.Name.."_"..spec.Id
-			local cpos=basePos+spec.Offset
-			local fy=safeGroundY(cpos)
-			local rp=_IN("Part")
-			rp.Name="Root"
-			rp.Size=_V3(2,4,2)
-			rp.Position=_V3(cpos.X,fy+2.5,cpos.Z)
-			rp.Anchored=true
-			rp.CanCollide=false
-			rp.CanQuery=false
-			rp.CanTouch=false
-			rp.Transparency=1
-			rp.Parent=m
-			m.PrimaryPart=rp
-
-			local body=rp:Clone()
-			body.Name="Body"
-			body.Anchored=false
-			body.Massless=true
-			body.Parent=m
-			local weld=_IN("WeldConstraint")
-			weld.Part0=rp
-			weld.Part1=body
-			weld.Parent=body
-
-			local bill=_IN("BillboardGui")
-			bill.Name="CompanionTag"
-			bill.Size=UDim2.fromOffset(180,42)
-			bill.StudsOffset=_V3(0,3.8,0)
-			bill.AlwaysOnTop=false bill.MaxDistance=65
-			bill.Parent=rp
-			local lbl=_IN("TextLabel")
-			lbl.Name="Label"
-			lbl.Size=_UD2S(1,1)
-			lbl.BackgroundTransparency=1
-			lbl.Font=Enum.Font.GothamBold
-			lbl.TextSize=14
-			lbl.TextStrokeTransparency=0.25
-			lbl.TextColor3=id=="Kairo" and _RGB(255,214,102) or (id=="Lumen" and _RGB(110,225,255) or _RGB(214,130,255))
-			lbl.Text=spec.Name.." • Lv."..tostring(profile.Level or 1)
-			lbl.Parent=bill
-
-			m:SetAttribute("OwnerUserId",p.UserId)
-			m:SetAttribute("CompanionId",spec.Id)
-			m:SetAttribute("VisualAsset",spec.VisualAsset)
-			m:SetAttribute("EnemyId",spec.VisualAsset)
-			m:SetAttribute("CompanionState","Idle")
-			m:SetAttribute("CompanionClip","")
-			m:SetAttribute("CompanionAttackNonce",0)
-			m:SetAttribute("EnemyFloorY",fy)
-			m.Parent=folder
-			rt.Companions[id]={
-				Id=spec.Id,
-				Spec=spec,
-				Model=m,
-				Root=rp,
-				Body=body,
-				Label=lbl,
-				NextAttack=0,
-				NextHeal=0,
-				Nonce=0,
-			}
-		elseif existing and existing.Label then
-			existing.Label.Text=spec.Name.." • Lv."..tostring(profile.Level or 1)
-		end
-	end
-end
-
-function G.TickCompanions(dt)
-	local now=os.clock()
-	for p,rt in pairs(G.Runtime) do
-		local pr,ph=root(p)
-		local profile=D.Get(p)
-		if pr and ph and profile then
-			G.SyncCompanions(p)
-			local nearest,nearestDist=nil,42
-			for _,e in ipairs(G.Enemies) do
-				if e.Alive and e.Model and e.Model.Parent and e.Body then
-					local d=distance(pr.Position,e.Body.Position)
-					if d<=nearestDist then
-						nearestDist=d
-						nearest=e
-					end
-				end
-			end
-			for id,comp in pairs(rt.Companions or {}) do
-				if comp.Model and comp.Model.Parent and comp.Root then
-					local refFloorY=pr.Position.Y-2.5
-					if distance(comp.Root.Position,pr.Position)>85 then
-						local cpos=pr.Position+comp.Spec.Offset
-						local fy=safeGroundY(cpos,refFloorY)
-						comp.CachedFY=fy
-						comp.LastFYPos=cpos
-						comp.Root.CFrame=_CF(cpos.X,fy+2.5,cpos.Z)
-						comp.Model:SetAttribute("EnemyFloorY",fy)
-					end
-					if nearest and nearest.Alive and nearest.Body then
-						local stopRange=(id=="Lumen") and 16 or 6
-						local delta=_V3(nearest.Body.Position.X-comp.Root.Position.X,0,nearest.Body.Position.Z-comp.Root.Position.Z)
-						local dist=delta.Magnitude
-						local dir=dist>0.1 and delta.Unit or pr.CFrame.LookVector
-						local threshold=comp.IsMoving and (stopRange+0.35) or (stopRange+1.2)
-						if dist>threshold then
-							comp.IsMoving=true
-							local step=dir*math.min(dist-stopRange,20*dt)
-							local np=comp.Root.Position+step
-							local fy=comp.CachedFY
-							if not fy or not comp.LastFYPos or (_V3(np.X,0,np.Z)-_V3(comp.LastFYPos.X,0,comp.LastFYPos.Z)).Magnitude>0.75 then
-								fy=safeGroundY(np,refFloorY)
-								comp.CachedFY=fy
-								comp.LastFYPos=np
-							end
-							comp.Root.CFrame=CFrame.lookAt(_V3(np.X,fy+2.5,np.Z),_V3(nearest.Body.Position.X,fy+2.5,nearest.Body.Position.Z))
-							comp.Model:SetAttribute("EnemyFloorY",fy)
-							if comp.LastState~="Run" then comp.LastState="Run" comp.Model:SetAttribute("CompanionState","Run") end
-						else
-							comp.IsMoving=false
-							local fy=comp.CachedFY or safeGroundY(comp.Root.Position,refFloorY)
-							comp.CachedFY=fy
-							local cOrigin=_V3(comp.Root.Position.X,fy+2.5,comp.Root.Position.Z)
-							comp.Root.CFrame=dist>0.05 and CFrame.lookAt(cOrigin,_V3(nearest.Body.Position.X,fy+2.5,nearest.Body.Position.Z)) or (_CF(cOrigin)*(comp.Root.CFrame-comp.Root.Position))
-							comp.Model:SetAttribute("EnemyFloorY",fy)
-							if comp.LastState~="Idle" then comp.LastState="Idle" comp.Model:SetAttribute("CompanionState","Idle") end
-							if now>=(comp.NextAttack or 0) then
-								comp.NextAttack=now+1.8
-								comp.Nonce=(comp.Nonce or 0)+1
-								local clip=id=="Kairo" and "SkySlash" or (id=="Lumen" and "FrostBolt" or "TS_DaggerCombo")
-								comp.Model:SetAttribute("CompanionClip",clip)
-								comp.Model:SetAttribute("CompanionAttackNonce",comp.Nonce)
-								comp.Model:SetAttribute("EnemyAttackClip",clip=="TS_DaggerCombo" and "DaggerCombo" or clip)
-								comp.Model:SetAttribute("EnemyAttackDuration",0.9)
-								comp.Model:SetAttribute("EnemyAttackAt",workspace:GetServerTimeNow())
-								local rawDmg=comp.Spec.ATK*(1+(profile.Level or 1)*0.04)
-								local brk=(id=="Nyx") and 12 or 5
-								G.Hit(p,nearest,rawDmg,brk,"Companion")
-							end
-						end
-					else
-						local goal=pr.Position+comp.Spec.Offset
-						local delta=_V3(goal.X-comp.Root.Position.X,0,goal.Z-comp.Root.Position.Z)
-						local dist=delta.Magnitude
-						local threshold=comp.IsMoving and 0.65 or 1.75
-						if dist>threshold then
-							comp.IsMoving=true
-							local followSpd=math.clamp(dist*6.5,7.0,20.0)
-							local step=delta.Unit*math.min(dist,followSpd*dt)
-							local np=comp.Root.Position+step
-							local fy=comp.CachedFY
-							if not fy or not comp.LastFYPos or (_V3(np.X,0,np.Z)-_V3(comp.LastFYPos.X,0,comp.LastFYPos.Z)).Magnitude>0.75 then
-								fy=safeGroundY(np,refFloorY)
-								comp.CachedFY=fy
-								comp.LastFYPos=np
-							end
-							comp.Root.CFrame=CFrame.lookAt(_V3(np.X,fy+2.5,np.Z),_V3(np.X+delta.Unit.X,fy+2.5,np.Z+delta.Unit.Z))
-							comp.Model:SetAttribute("EnemyFloorY",fy)
-							if comp.LastState~="Run" then comp.LastState="Run" comp.Model:SetAttribute("CompanionState","Run") end
-						else
-							comp.IsMoving=false
-							if comp.LastState~="Idle" then comp.LastState="Idle" comp.Model:SetAttribute("CompanionState","Idle") end
-						end
-					end
-					if id=="Lumen" and now>=(comp.NextHeal or 0) and ph.Health>0 and ph.Health<ph.MaxHealth*0.85 then
-						comp.NextHeal=now+9
-						local healAmt=math.max(40,math.floor(ph.MaxHealth*0.20))
-						ph.Health=math.min(ph.MaxHealth,ph.Health+healAmt)
-						G.FireCombatEvent({
-							kind="DamageNumber",
-							pos=pr.Position+_V3(0,2,0),
-							amount=healAmt,
-							crit=false,
-							breakDmg=0,
-							element="Heal",
-							Text="+"..tostring(healAmt).." HP",
-						})
-					end
-				end
-			end
-		end
-	end
-end
+function G.SyncCompanions() end -- Giữ tên hàm cho các nơi gọi cũ; tính năng 3 AI đã bị gỡ
 
 local function findActiveBossForPlayer(p)
 	local r=root(p)
@@ -1227,7 +1005,7 @@ function G.Interact(p,id)
 				G.Teleport(p,require(game.ReplicatedStorage.Shared.RealmConfig).FrozenCyber.Spawn)
 			end
 		else
-			G.Notify(p,"Cổng Sea 2 (Frozen Cyber) yêu cầu đạt Level 700 hoặc hoàn thành Q05!")
+			G.Notify(p,"Cổng Sky 2 (Frozen Cyber) yêu cầu đạt Level 700 hoặc hoàn thành Q05!")
 		end
 	elseif id=='FrozenReturnHub' then if not inLockedEncounter(p) then p:SetAttribute('CurrentRealm','GoldenSky');G.Teleport(p,C.Spawn) end
 	elseif id=='ShadowPortal'then
@@ -1239,7 +1017,7 @@ function G.Interact(p,id)
 			p:SetAttribute('CurrentRealm','ShadowRealm')
 			G.Teleport(p,require(game.ReplicatedStorage.Shared.RealmConfig).ShadowRealm.Spawn)
 		else
-			G.Notify(p,"Cổng Sea 3 (Shadow Realm) yêu cầu đạt Level 1500!")
+			G.Notify(p,"Cổng Sky 3 (Shadow Realm) yêu cầu đạt Level 1500!")
 		end
 	elseif id=='ShadowReturnHub' or id=='VerdantReturnHub' or id=='EmberReturnHub' or id=='AbyssalReturnHub' or id=='ChronosReturnHub' or id=='VeilsReturnHub' then if not inLockedEncounter(p) then p:SetAttribute('CurrentRealm','GoldenSky');G.Teleport(p,C.Spawn) end
 	elseif id=="ReturnHub" or id=="LeaveArena" then
@@ -3253,12 +3031,6 @@ function G.EnsureWorld()
 		worldObjects.Parent=workspace
 	end
 
-	local jpFolder=workspace:FindFirstChild("JumpPads")
-	if jpFolder then jpFolder:Destroy() end
-	jpFolder=_IN("Folder")
-	jpFolder.Name="JumpPads"
-	jpFolder.Parent=workspace
-
 	-- 12 Skyborn Treasure Chests (Invisible trigger parts; zero blocky yellow/neon bricks)
 	local chestCoords={
 		-- Golden Sky (4)
@@ -3333,57 +3105,13 @@ function G.EnsureWorld()
 	end
 
 	-- 6 Aether Jump Pads
-	local padSpecs={
-		{Name="Pad_SkyHub_WestGarden", Start=_V3(-317.4,46.7,472), Target=_V3(-313.9,50.5,252), Arc=75, Duration=1.8},
-		{Name="Pad_WestGarden_LumenPlaza", Start=_V3(-278,46.7,185), Target=_V3(-58,50.5,52), Arc=75, Duration=1.8},
-		{Name="Pad_LumenPlaza_TraversalRest", Start=_V3(88,46.7,-24), Target=_V3(520,50.5,-35), Arc=95, Duration=2.1},
-		{Name="Pad_FrozenSpawn_FrozenOutpost", Start=_V3(11636,47.1,488), Target=_V3(11668,50.9,264), Arc=75, Duration=1.8},
-		{Name="Pad_FrozenOutpost_CrystalPlaza", Start=_V3(11712,47.1,196), Target=_V3(11955,50.9,72), Arc=80, Duration=1.9},
-		{Name="Pad_ShadowSpawn_ShadowOutpost", Start=_V3(-12548,47.1,418), Target=_V3(-12285,50.9,431.2), Arc=75, Duration=1.8},
-	}
-	G.JumpPads={}
-	for _,ps in ipairs(padSpecs) do
-		local pfy=W.GroundY(ps.Start,ps.Start.Y-0.2)
-		local ring=_IN("Part")
-		ring.Name=ps.Name
-		ring.Shape=Enum.PartType.Cylinder
-		ring.Size=_V3(0.32,6.5,6.5)
-		ring.CFrame=_CF(ps.Start.X,pfy+0.48,ps.Start.Z)*_CFA(0,0,math.pi/2)
-		ring.Color=_RGB(70,195,235)
-		ring.Material=Enum.Material.SmoothPlastic
-		ring.Transparency=0.45
-		ring.Anchored=true
-		ring.CanCollide=false
-		ring.CanQuery=false
-		ring.CanTouch=false
-		ring:SetAttribute("TargetPos",ps.Target)
-		ring.Parent=jpFolder
-
-		local bill=_IN("BillboardGui")
-		bill.Size=_UD2S(3.1,0.58)
-		bill.StudsOffset=_V3(0,2.8,0)
-		bill.AlwaysOnTop=false bill.MaxDistance=38
-		bill.Parent=ring
-		local tl=_IN("TextLabel")
-		tl.Size=_UD2S(1,1)
-		tl.BackgroundTransparency=1
-		tl.Font=Enum.Font.GothamBlack
-		tl.TextScaled=true
-		tl.TextColor3=_RGB(105,240,255)
-		tl.TextStrokeTransparency=0.25
-		tl.Text="AETHER JUMP PAD"
-		tl.Parent=bill
-
-		table.insert(G.JumpPads,ps)
-	end
-
 	-- Interactive Shrine & Raid Console Triggers at the 12 Grand Sky Islands + 5 Expansion Realms (invisible Part triggers so 100% of Models in SkybreakWorldObjects are rigged 3D characters)
 	local islandSpecs={
 		{Id="ZiolesGachaShrine", Title=" ZIOLES GACHA SHRINE • ĐIỆN THỜ TRIỆU HỒI TRÁI ÁC QUỶ", Realm="GoldenSky", Pos=_V3(-560,48.5,988), GlowCol=_RGB(110,235,255)},
 		{Id="AetherShrines", Title=" AETHER HOME SHRINE • ĐÀI ĐIỆN THỜ LƯU ĐIỂM HỒI SINH", Realm="GoldenSky", Pos=_V3(340,48.5,988), GlowCol=_RGB(88,238,255)},
 		{Id="WestGardenPirateBastion", Title=" WEST GARDEN PIRATE BASTION • PHÁO ĐÀI VƯỜN TÂY", Realm="GoldenSky", Pos=_V3(-2800,46.5,-50), GlowCol=_RGB(255,205,82)},
 		{Id="SunshardSanctuary", Title=" SUNSHARD SANCTUARY • THÁNH ĐỊA THÁI DƯƠNG", Realm="GoldenSky", Pos=_V3(2800,46.5,-42), GlowCol=_RGB(255,218,95)},
-		{Id="CyberportCafe", Title=" CYBERPORT CAFÉ • QUÁN CÀ PHÊ GIAO DỊCH SEA 2", Realm="FrozenCyber", Pos=_V3(9400,46.9,1798), GlowCol=_RGB(88,238,255)},
+		{Id="CyberportCafe", Title=" CYBERPORT CAFÉ • QUÁN CÀ PHÊ GIAO DỊCH SKY 2", Realm="FrozenCyber", Pos=_V3(9400,46.9,1798), GlowCol=_RGB(88,238,255)},
 		{Id="PermafrostGarrison", Title=" PERMAFROST GARRISON • PHÁO ĐÀI TUYẾT BĂNG", Realm="FrozenCyber", Pos=_V3(9400,46.9,-2040), GlowCol=_RGB(115,242,255)},
 		{Id="MicrochipRaidLab", Title=" MICROCHIP RAID LAB • PHÒNG THÍ NGHIỆM THỨC TỈNH", Realm="FrozenCyber", Pos=_V3(14600,46.9,1765), GlowCol=_RGB(95,240,255), IsRaidLab=true},
 		{Id="GlacialWreckage", Title=" GLACIAL WRECKAGE • XÁC TÀU BĂNG CỔ ĐẠI", Realm="FrozenCyber", Pos=_V3(14600,46.9,-1796), GlowCol=_RGB(145,242,255)},
@@ -3456,13 +3184,13 @@ function G.EnsureWorld()
 		{Id="WorldGate_02", Order=2, NextOrder=3, StageLabel="WORLD 2  WORLD 3", Title="Cổng Cuối World 2 (Zioles Shrine Exit)", TargetTitle="World 3 • Aether Home Shrine", TargetRealm="GoldenSky", TargetWorldKey="AetherShrines", Element="Sky", Pos=_V3(-560,48.5,956), TargetPos=_V3(340,52.5,996), Col=_RGB(95,238,255)},
 		{Id="WorldGate_03", Order=3, NextOrder=4, StageLabel="WORLD 3  WORLD 4", Title="Cổng Cuối World 3 (Aether Shrine Exit)", TargetTitle="World 4 • West Garden Pirate Bastion", TargetRealm="GoldenSky", TargetWorldKey="WestGarden", Element="Sky", Pos=_V3(340,48.5,956), TargetPos=_V3(-2800,50.5,-65), Col=_RGB(255,205,82)},
 		{Id="WorldGate_04", Order=4, NextOrder=5, StageLabel="WORLD 4  WORLD 5", Title="Cổng Cuối World 4 (West Garden Exit)", TargetTitle="World 5 • Sunshard Sky Sanctuary", TargetRealm="GoldenSky", TargetWorldKey="SunshardSanctuary", Element="Sky", Pos=_V3(-2828,46.5,-40), TargetPos=_V3(2800,50.5,-55), Col=_RGB(255,222,95)},
-		{Id="WorldGate_05", Order=5, NextOrder=6, StageLabel="WORLD 5  WORLD 6 (SEA 2)", Title="Cổng Cuối World 5 (Sunshard Apex Exit)", TargetTitle="World 6 • Frozen Cyber Continent (Sea 2)", TargetRealm="FrozenCyber", TargetWorldKey="FrozenCyber", Element="Frost", Pos=_V3(2800,46.5,-445), TargetPos=_V3(11620.5,50.9,534.8), Col=_RGB(88,238,255)},
+		{Id="WorldGate_05", Order=5, NextOrder=6, StageLabel="WORLD 5  WORLD 6 (SKY 2)", Title="Cổng Cuối World 5 (Sunshard Apex Exit)", TargetTitle="World 6 • Frozen Cyber Continent (Sky 2)", TargetRealm="FrozenCyber", TargetWorldKey="FrozenCyber", Element="Frost", Pos=_V3(2800,46.5,-445), TargetPos=_V3(11620.5,50.9,534.8), Col=_RGB(88,238,255)},
 		-- Sea 2: Frozen Cyber Odyssey (Worlds 6 -> 7 -> 8 -> 9 -> 10 -> Sea 3)
 		{Id="WorldGate_06", Order=6, NextOrder=7, StageLabel="WORLD 6  WORLD 7", Title="Cổng Cuối World 6 (Cryon Citadel Exit)", TargetTitle="World 7 • Cyberport Café Trading Hub", TargetRealm="FrozenCyber", TargetWorldKey="CyberportCafe", Element="Frost", Pos=_V3(12000,46.9,-430), TargetPos=_V3(9400,50.9,1785), Col=_RGB(88,238,255)},
 		{Id="WorldGate_07", Order=7, NextOrder=8, StageLabel="WORLD 7  WORLD 8", Title="Cổng Cuối World 7 (Cyberport Exit)", TargetTitle="World 8 • Permafrost Garrison Fortress", TargetRealm="FrozenCyber", TargetWorldKey="PermafrostGarrison", Element="Frost", Pos=_V3(9400,46.9,1825), TargetPos=_V3(9400,50.9,-2055), Col=_RGB(115,242,255)},
 		{Id="WorldGate_08", Order=8, NextOrder=9, StageLabel="WORLD 8  WORLD 9", Title="Cổng Cuối World 8 (Permafrost Exit)", TargetTitle="World 9 • Microchip Awakening Raid Lab", TargetRealm="FrozenCyber", TargetWorldKey="MicrochipRaidLab", Element="Frost", Pos=_V3(9400,46.9,-2025), TargetPos=_V3(14600,50.9,1785), Col=_RGB(95,245,255)},
 		{Id="WorldGate_09", Order=9, NextOrder=10, StageLabel="WORLD 9  WORLD 10", Title="Cổng Cuối World 9 (Raid Lab Exit)", TargetTitle="World 10 • Glacial Wreckage Danger Sea", TargetRealm="FrozenCyber", TargetWorldKey="GlacialWreckage", Element="Frost", Pos=_V3(14600,46.9,1855), TargetPos=_V3(14600,50.9,-1812), Col=_RGB(135,242,255)},
-		{Id="WorldGate_10", Order=10, NextOrder=11, StageLabel="WORLD 10  WORLD 11 (SEA 3)", Title="Cổng Cuối World 10 (Glacial Abyss Exit)", TargetTitle="World 11 • Shadow Realm Continent (Sea 3)", TargetRealm="ShadowRealm", TargetWorldKey="ShadowRealm", Element="Void", Pos=_V3(14600,46.9,-1361.3), TargetPos=_V3(-12593.4,50.9,414), Col=_RGB(215,95,255)},
+		{Id="WorldGate_10", Order=10, NextOrder=11, StageLabel="WORLD 10  WORLD 11 (SKY 3)", Title="Cổng Cuối World 10 (Glacial Abyss Exit)", TargetTitle="World 11 • Shadow Realm Continent (Sky 3)", TargetRealm="ShadowRealm", TargetWorldKey="ShadowRealm", Element="Void", Pos=_V3(14600,46.9,-1361.3), TargetPos=_V3(-12593.4,50.9,414), Col=_RGB(215,95,255)},
 		-- Sea 3: Shadow Realm Odyssey (Worlds 11 -> 12 -> 13 -> 14 -> 15 -> Realm 4)
 		{Id="WorldGate_11", Order=11, NextOrder=12, StageLabel="WORLD 11  WORLD 12", Title="Cổng Cuối World 11 (Noxar Throne Exit)", TargetTitle="World 12 • Castle on the Void Mansion", TargetRealm="ShadowRealm", TargetWorldKey="CastleOnTheVoid", Element="Void", Pos=_V3(-11672.2,46.9,-270), TargetPos=_V3(-14600,50.9,2173.1), Col=_RGB(225,110,255)},
 		{Id="WorldGate_12", Order=12, NextOrder=13, StageLabel="WORLD 12  WORLD 13", Title="Cổng Cuối World 12 (Castle Void Exit)", TargetTitle="World 13 • Umbral Crystal Sanctum", TargetRealm="ShadowRealm", TargetWorldKey="UmbralSanctum", Element="Void", Pos=_V3(-14600,46.9,1565), TargetPos=_V3(-9400,50.9,1815), Col=_RGB(245,95,255)},
@@ -3477,10 +3205,10 @@ function G.EnsureWorld()
 		{Id="WorldGate_20", Order=20, NextOrder=1, StageLabel="WORLD 20  WORLD 1 (ASCENSION)", Title="Cổng Tận Cùng Bức Màn (Veil's End Apex)", TargetTitle="World 1 • Golden Sky Hub (Luân Hồi Thiên Giới)", TargetRealm="GoldenSky", TargetWorldKey="GoldenSky", Element="Sky", Pos=_V3(0,306.9,-18230), TargetPos=_V3(-317.4,50.5,527.8), Col=_RGB(255,232,125)},
 		-- Direct Main Continent Sea Gates & Spawn Plaza Portals
 		{Id="WorldGate_SkyHub_Plaza", Order=1, NextOrder=2, StageLabel="SKY HUB  WORLD 2", Title="Cổng Dịch Chuyển Sky Hub", TargetTitle="World 2 • Zioles Gacha Shrine", TargetRealm="GoldenSky", TargetWorldKey="ZiolesGachaShrine", Element="Sky", Pos=_V3(-290,46.5,558), TargetPos=_V3(-560,52.5,996), Col=_RGB(255,215,85)},
-		{Id="WorldGate_Sea2_Plaza", Order=6, NextOrder=7, StageLabel="SEA 2 HUB  WORLD 7", Title="Cổng Dịch Chuyển Frozen Cyber", TargetTitle="World 7 • Cyberport Café Trading Hub", TargetRealm="FrozenCyber", TargetWorldKey="CyberportCafe", Element="Frost", Pos=_V3(11648,46.9,512), TargetPos=_V3(9400,50.9,1785), Col=_RGB(88,238,255)},
-		{Id="WorldGate_Sea3_Plaza", Order=11, NextOrder=12, StageLabel="SEA 3 HUB  WORLD 12", Title="Cổng Dịch Chuyển Shadow Realm", TargetTitle="World 12 • Castle on the Void Mansion", TargetRealm="ShadowRealm", TargetWorldKey="CastleOnTheVoid", Element="Void", Pos=_V3(-12622,46.9,395), TargetPos=_V3(-14600,50.9,2173.1), Col=_RGB(215,95,255)},
-		{Id="WorldGate_Sea1_to_Sea2", Order=1, NextOrder=6, StageLabel="SEA 1  SEA 2 GATE", Title="Cổng Bắc Aureon Citadel", TargetTitle="Sea 2 • Frozen Cyber Continent", TargetRealm="FrozenCyber", TargetWorldKey="FrozenCyber", Element="Frost", Pos=_V3(42,46.5,-412), TargetPos=_V3(11620.5,50.9,534.8), Col=_RGB(88,238,255)},
-		{Id="WorldGate_Sea2_to_Sea3", Order=6, NextOrder=11, StageLabel="SEA 2  SEA 3 GATE", Title="Cổng Bắc Cryon Citadel", TargetTitle="Sea 3 • Shadow Realm Continent", TargetRealm="ShadowRealm", TargetWorldKey="ShadowRealm", Element="Void", Pos=_V3(12610,46.9,-448), TargetPos=_V3(-12593.4,50.9,414), Col=_RGB(215,95,255)},
+		{Id="WorldGate_Sea2_Plaza", Order=6, NextOrder=7, StageLabel="SKY 2 HUB  WORLD 7", Title="Cổng Dịch Chuyển Frozen Cyber", TargetTitle="World 7 • Cyberport Café Trading Hub", TargetRealm="FrozenCyber", TargetWorldKey="CyberportCafe", Element="Frost", Pos=_V3(11648,46.9,512), TargetPos=_V3(9400,50.9,1785), Col=_RGB(88,238,255)},
+		{Id="WorldGate_Sea3_Plaza", Order=11, NextOrder=12, StageLabel="SKY 3 HUB  WORLD 12", Title="Cổng Dịch Chuyển Shadow Realm", TargetTitle="World 12 • Castle on the Void Mansion", TargetRealm="ShadowRealm", TargetWorldKey="CastleOnTheVoid", Element="Void", Pos=_V3(-12622,46.9,395), TargetPos=_V3(-14600,50.9,2173.1), Col=_RGB(215,95,255)},
+		{Id="WorldGate_Sea1_to_Sea2", Order=1, NextOrder=6, StageLabel="SKY 1  SKY 2 GATE", Title="Cổng Bắc Aureon Citadel", TargetTitle="Sky 2 • Frozen Cyber Continent", TargetRealm="FrozenCyber", TargetWorldKey="FrozenCyber", Element="Frost", Pos=_V3(42,46.5,-412), TargetPos=_V3(11620.5,50.9,534.8), Col=_RGB(88,238,255)},
+		{Id="WorldGate_Sea2_to_Sea3", Order=6, NextOrder=11, StageLabel="SKY 2  SKY 3 GATE", Title="Cổng Bắc Cryon Citadel", TargetTitle="Sky 3 • Shadow Realm Continent", TargetRealm="ShadowRealm", TargetWorldKey="ShadowRealm", Element="Void", Pos=_V3(12610,46.9,-448), TargetPos=_V3(-12593.4,50.9,414), Col=_RGB(215,95,255)},
 	}
 	G.WorldPortals={}
 	for _,wp in ipairs(worldPortalSpecs) do
@@ -4075,6 +3803,15 @@ function G.Start()
 	for _,p in ipairs(Players:GetPlayers()) do task.spawn(G.Join,p) end
 
 	task.spawn(function()
+		-- Một lỗi trong quái hoặc người chơi chỉ được bỏ qua đúng phần đó, không được giết vòng lặp của cả server.
+		local tickErrAt={}
+		local function safeTick(tag,fn,...)
+			local ok,err=xpcall(fn,debug.traceback,...)
+			if not ok and os.clock()>=(tickErrAt[tag] or 0) then
+				tickErrAt[tag]=os.clock()+10
+				warn("[SKYBREAK][MainLoop] "..tag..": "..tostring(err))
+			end
+		end
 		local sync=0 local previous=os.clock()
 		while true do
 			task.wait(.04) local now=os.clock() local dt=math.min(now-previous,.25) previous=now sync+=dt
@@ -4099,17 +3836,17 @@ function G.Start()
 					if isNear or e==G.Boss or e.Returning or e.State=="Chase" or e.State=="Attack" then
 						local eDt=now-(e.LastTickAt or (now-dt))
 						e.LastTickAt=now
-						G.TickEnemy(e,math.min(eDt,.25))
+						safeTick("Enemy:"..tostring(e.Id),G.TickEnemy,e,math.min(eDt,.25))
 					elseif now>=(e.NextFarTick or 0) then
 						local eDt=now-(e.LastTickAt or (now-.4))
 						e.LastTickAt=now
 						e.NextFarTick=now+.4
-						G.TickEnemy(e,math.min(eDt,.5))
+						safeTick("Enemy:"..tostring(e.Id),G.TickEnemy,e,math.min(eDt,.5))
 					end
 				end
 			end
-			G.TickCompanions(dt)
 			for p,rt in pairs(G.Runtime) do
+				safeTick("Player:"..p.Name,function()
 				local r,h=root(p) local profile=D.Get(p)
 				if r and profile then
 					ensureProfileFields(profile)
@@ -4168,15 +3905,6 @@ function G.Start()
 					else
 						rt.Safe=r.Position rt.MoveAt=now
 					end
-					if now>=(rt.JumpPadCooldown or 0) then
-						for _,pad in ipairs(G.JumpPads) do
-							if distance(r.Position,pad.Start)<=5.5 then
-								rt.JumpPadCooldown=now+2.5
-								G.LaunchPlayer(p,r.Position,pad.Target,pad.Arc,pad.Duration)
-								break
-							end
-						end
-					end
 					if now>=(rt.ShrineTouchCooldown or 0) then
 						for _,sh in pairs(G.Shrines) do
 							if distance(r.Position,sh.Pos)<=8 then
@@ -4198,6 +3926,7 @@ function G.Start()
 					if now-rt.LastHurt>7 then h.Health=math.min(h.MaxHealth,h.Health+3*dt) end
 				end
 				if sync>=.3 then G.Sync(p) end
+				end)
 			end
 			if sync>=.3 then sync=0 end
 		end

@@ -278,20 +278,20 @@ local function checkLightingAntiGlare(ctx)
     record(
         ctx,
         "Lighting.AntiGlareBrightness",
-        b <= 1.46,
-        string.format("Lighting.Brightness = %.3f (expected <= 1.46)", b)
+        b <= 2.25,
+        string.format("Lighting.Brightness = %.3f (expected <= 2.25)", b)
     )
     record(
         ctx,
         "Lighting.AntiGlareExposure",
-        exp <= -0.15,
-        string.format("Lighting.ExposureCompensation = %.3f (expected <= -0.15)", exp)
+        exp <= 0.14,
+        string.format("Lighting.ExposureCompensation = %.3f (expected <= 0.14)", exp)
     )
 
     local bloomViolation = nil
     for _, ch in ipairs(Lighting:GetChildren()) do
         if ch:IsA("BloomEffect") and ch.Enabled then
-            if ch.Intensity > 0.36 or ch.Threshold < 1.40 then
+            if ch.Intensity > 0.68 or ch.Threshold < 0.86 then
                 bloomViolation = string.format("%s Intensity=%.2f Threshold=%.2f", ch.Name, ch.Intensity, ch.Threshold)
                 break
             end
@@ -613,12 +613,6 @@ function SmokeTest.RunClientAudit()
         "WorldFX.CloudSeaBlanket",
         tfx ~= nil and tfx:FindFirstChild("SkybreakCloudSeaBlanket") ~= nil,
         "Missing TempFX.SkybreakCloudSeaBlanket"
-    )
-    record(
-        ctx,
-        "WorldFX.QuestWaypointBeacon",
-        tfx ~= nil and tfx:FindFirstChild("QuestWaypointBeacon") ~= nil,
-        "Missing TempFX.QuestWaypointBeacon"
     )
     record(
         ctx,

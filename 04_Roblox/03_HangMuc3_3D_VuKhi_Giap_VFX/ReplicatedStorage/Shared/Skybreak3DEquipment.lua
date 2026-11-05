@@ -603,6 +603,33 @@ local function pivotWeaponEntry(entry, targetCF, now)
     end
 end
 
+-- Chieu dai khi cam tren avatar R15 cao khoang 5.3 stud.
+-- Grip: vi tri tay tinh tu dau can vu khi. GunGrip: lech diem cam khoi tam sung.
+local WEAPON_HOLD_SPECS = {
+    Wep_Dawnbringer = { Span = 3.6 },
+    Wep_CryonFrostblade = { Span = 3.6 },
+    ExpSword_cyber_katana_mk2 = { Span = 3.9 },
+    ExpSword_sylvaris_thornblade = { Span = 4.2 },
+    ExpSword_architect_severance = { Span = 4.2 },
+    Wep_NoxarGreatsword = { Span = 4.7 },
+    ExpSword_ignivar_magma_breaker = { Span = 4.4, Grip = 0.25 },
+    Wep_CursedBladeLeft = { Span = 2.7 },
+    Wep_CursedBladeRight = { Span = 2.7 },
+    ExpSword_eternal_frost_staff = { Span = 4.9, Grip = 0.38 },
+    ExpSword_sunshard_halberd = { Span = 5.4, Grip = 0.36 },
+    ExpSword_nerith_abyssal_trident = { Span = 5.2, Grip = 0.36 },
+    ExpSword_aion_chrono_scythe = { Span = 5.2, Grip = 0.34 },
+    ExpGun_aether_flintlock = { Span = 1.5, GunGrip = 0.22 },
+    ExpGun_aion_chrono_pistols = { Span = 1.4, GunGrip = 0.22 },
+    ExpGun_kabucha_wind = { Span = 2.0 },
+    ExpGun_bizarre_rifle_cyber = { Span = 3.1, GunGrip = 0.12 },
+    Wep_CryoRailgun = { Span = 3.3 },
+    ExpGun_sylvaris_thornbow = { Span = 3.4 },
+    ExpGun_ignivar_hellcannon = { Span = 3.6, GunGrip = 0.1 },
+    ExpGun_veyr_singularity_cannon = { Span = 3.6, GunGrip = 0.1 },
+    Wep_SoulGuitarVoid = { Span = 3.3 },
+}
+
 local function ensureCachedWeapon(Renderer, s, cacheKey, assetName, isGun)
     if not s or not s.Visual or not s.Visual.Parent then
         return nil
@@ -624,23 +651,23 @@ local function ensureCachedWeapon(Renderer, s, cacheKey, assetName, isGun)
         folder.Parent = s.Visual
     end
 
-    -- 0ms synchronous build for Pass 13 Expansion Melee Weapons & Ranged Guns/Bows
+    local placeholder
     if assetName:sub(1, 9) == 'ExpSword_' or assetName:sub(1, 7) == 'ExpGun_' then
         local isLeft = (cacheKey:find('L_') ~= nil)
         local lowFX = isLowFX(s.Owner)
-        local entry = Expansion3D.BuildExpansionWeaponModel(assetName, assetName, isLeft, lowFX)
-        entry.CacheKey = cacheKey
-        entry.Model.Name = cacheKey
-        entry.Model.Parent = folder
-        s.WeaponCache[cacheKey] = entry
+        placeholder = Expansion3D.BuildExpansionWeaponModel(assetName, assetName, isLeft, lowFX)
+        placeholder.CacheKey = cacheKey
+        placeholder.UpgradingToV5 = true
+        placeholder.Model.Name = cacheKey .. '_Placeholder'
+        placeholder.Model.Parent = folder
+        s.WeaponCache[cacheKey] = placeholder
         if not isGun then
-            configureWeaponTrail(entry, entry.ItemId, s.EnhanceLevel or 0, lowFX)
+            configureWeaponTrail(placeholder, placeholder.ItemId, s.EnhanceLevel or 0, lowFX)
         end
-        return entry
+    else
+        placeholder = { Building = true, AssetName = assetName, IsGun = isGun }
+        s.WeaponCache[cacheKey] = placeholder
     end
-
-    local placeholder = { Building = true, AssetName = assetName, IsGun = isGun }
-    s.WeaponCache[cacheKey] = placeholder
 
     ensureTemplateAsync(Renderer, assetName, function()
         if not s.Visual or not s.Visual.Parent or s.WeaponCache[cacheKey] ~= placeholder then
@@ -654,25 +681,23 @@ local function ensureCachedWeapon(Renderer, s, cacheKey, assetName, isGun)
             return tpl and tpl:Clone() or nil
         end)
         if not okC or not clone or not clone.PrimaryPart then
-            s.WeaponCache[cacheKey] = nil
+            if not placeholder.Model then
+                s.WeaponCache[cacheKey] = nil
+            end
             return
+        end
+
+        if placeholder.Model and placeholder.Model.Parent then
+            placeholder.Model:Destroy()
         end
 
         clone.Name = cacheKey
         local _, rawSize = clone:GetBoundingBox()
         local rawMax = math.max(rawSize.X, rawSize.Y, rawSize.Z, 0.5)
-        local targetSpan = 4.65
-        if assetName == 'Wep_NoxarGreatsword' then
-            targetSpan = 5.55
-        elseif assetName == 'Wep_CursedBladeLeft' or assetName == 'Wep_CursedBladeRight' then
-            targetSpan = 4.35
-        elseif assetName == 'Wep_CryoRailgun' then
-            targetSpan = 4.25
-        elseif assetName == 'Wep_SoulGuitarVoid' then
-            targetSpan = 4.30
-        end
-        if s.IsNativeAvatar then
-            targetSpan = targetSpan * 0.76
+        local spec = WEAPON_HOLD_SPECS[assetName]
+        local targetSpan = (spec and spec.Span) or (isGun and 3.1 or 3.6)
+        if not s.IsNativeAvatar then
+            targetSpan = targetSpan / 0.76
         end
         local scaleFactor = math.clamp(targetSpan / rawMax, 0.38, 3.6)
         pcall(function()
@@ -700,10 +725,12 @@ local function ensureCachedWeapon(Renderer, s, cacheKey, assetName, isGun)
         end
 
         local boxCF, boxSize = clone:GetBoundingBox()
-        if assetName == 'Wep_CryoRailgun' then
-            clone.PrimaryPart.CFrame = CFrame.new(boxCF.Position)
+        if assetName == 'Wep_CryoRailgun' or assetName:sub(1, 7) == 'ExpGun_' then
+            -- Nong sung huong ve -X: dat diem cam lui ve phia bang sung.
+            clone.PrimaryPart.CFrame = CFrame.new(boxCF.Position + Vector3.new(boxSize.X * (spec and spec.GunGrip or 0), 0, 0))
         else
-            clone.PrimaryPart.CFrame = CFrame.new(boxCF.Position.X, boxCF.Position.Y - boxSize.Y * 0.28, boxCF.Position.Z)
+            local gripFromEnd = (spec and spec.Grip) or 0.22
+            clone.PrimaryPart.CFrame = CFrame.new(boxCF.Position.X, boxCF.Position.Y - boxSize.Y * (0.5 - gripFromEnd), boxCF.Position.Z)
         end
 
         local horizontalBarrel = (assetName == 'Wep_CryoRailgun') and (boxSize.X >= boxSize.Y)
@@ -725,7 +752,7 @@ local function ensureCachedWeapon(Renderer, s, cacheKey, assetName, isGun)
         end
     end)
 
-    return nil
+    return placeholder.Model and placeholder or nil
 end
 
 local function hideLegacyBakedWeaponParts(s)
@@ -850,7 +877,15 @@ function M.StepCharacterWeapons(Renderer, s, now)
             setWeaponEntryVisible(gunEntry, true, false, lowFX)
             local gunRot = s._RightGunRot or CFrame.identity
             local extraAlign
-            if gunEntry.HorizontalBarrel then
+            if not gunEntry.IsExpansionCustom and gunAsset:sub(1, 7) == 'ExpGun_' then
+                if gunAsset == 'ExpGun_sylvaris_thornbow' then
+                    extraAlign = CFrame.fromMatrix(Vector3.zero, Vector3.new(0, 1, 0), Vector3.new(0, 0, 1), Vector3.new(1, 0, 0))
+                elseif gunAsset == 'ExpGun_kabucha_wind' then
+                    extraAlign = CFrame.Angles(math.pi * 0.5, 0, 0)
+                else
+                    extraAlign = CFrame.fromMatrix(Vector3.new(0, 0.35 * scaleRatio, 0), Vector3.new(0, -1, 0), Vector3.new(0, 0, 1), Vector3.new(-1, 0, 0))
+                end
+            elseif gunEntry.HorizontalBarrel then
                 extraAlign = CFrame.Angles(0, 0, math.pi * 0.5) * CFrame.new(0.45 * scaleRatio, 0, 0)
             elseif resolvedGunId:find('guitar') or gunAsset == 'Wep_SoulGuitarVoid' then
                 extraAlign = CFrame.Angles(math.rad(18), 0, -math.rad(22)) * CFrame.new(0, -0.15 * scaleRatio, 0)
@@ -1343,7 +1378,7 @@ function M.EnsureStarterCharacterForm(ch)
     if not ch or not ch.Parent then
         return
     end
-    for _, oldVisName in ipairs({ 'SkybreakStarterForm', 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual', 'CharacterAccessories3D' }) do
+    for _, oldVisName in ipairs({ 'SkybreakStarterForm', 'SkyGuardianVisual', 'ArcaneMageVisual', 'ThunderStrikerVisual', 'LegacySkyGuardianVisual' }) do
         local oldVis = ch:FindFirstChild(oldVisName)
         if oldVis then
             oldVis:Destroy()
@@ -1359,7 +1394,7 @@ function M.EnsureStarterCharacterForm(ch)
 
     -- In unpublished local .rbxlx Studio (PlaceId == 0), Roblox assetdelivery returns HTTP 401 (customErrorCode 11)
     -- for FileMesh DynamicHeads (e.g. 11163789916 -> 109475967782707) and classic Shirt/Pants textures,
-    -- which makes FileMesh Head invisible and triggers the purple Roblox-logo Modesty Layer on skin-colored torsos.
+    -- which makes FileMesh/MeshPart Head invisible and triggers the purple Roblox-logo Modesty Layer on skin-colored torsos.
     if game.PlaceId == 0 then
         local plr = Players:GetPlayerFromCharacter(ch)
         local head = ch:FindFirstChild('Head')
@@ -1371,13 +1406,43 @@ function M.EnsureStarterCharacterForm(ch)
                 sm.TextureId = ''
                 sm.Scale = Vector3.new(1.25, 1.25, 1.25)
             end
-            local face = head:FindFirstChild('face') or head:FindFirstChildOfClass('Decal')
+            local faceTarget = head
+            if head:IsA('MeshPart') then
+                local proxy = head:FindFirstChild('SkybreakStudioHeadProxy')
+                if not proxy then
+                    proxy = Instance.new('Part')
+                    proxy.Name = 'SkybreakStudioHeadProxy'
+                    proxy.Size = Vector3.new(2, 1, 1)
+                    proxy.Color = head.Color
+                    proxy.Material = Enum.Material.SmoothPlastic
+                    proxy.CanCollide = false
+                    proxy.CanQuery = false
+                    proxy.CanTouch = false
+                    proxy.Massless = true
+                    proxy.Anchored = false
+                    proxy.CastShadow = false
+                    proxy.CFrame = head.CFrame
+                    local pMesh = Instance.new('SpecialMesh')
+                    pMesh.MeshType = Enum.MeshType.Head
+                    pMesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+                    pMesh.Parent = proxy
+                    local w = Instance.new('WeldConstraint')
+                    w.Part0 = head
+                    w.Part1 = proxy
+                    w.Parent = proxy
+                    proxy.Parent = head
+                else
+                    proxy.Color = head.Color
+                end
+                faceTarget = proxy
+            end
+            local face = faceTarget:FindFirstChild('face') or faceTarget:FindFirstChildOfClass('Decal')
             if not face then
                 face = Instance.new('Decal')
                 face.Name = 'face'
                 face.Face = Enum.NormalId.Front
                 face.Texture = 'rbxasset://textures/face.png'
-                face.Parent = head
+                face.Parent = faceTarget
             elseif face.Texture == '' or face.Texture:find('rbxassetid://') or face.Texture:find('roblox.com/asset') then
                 face.Texture = 'rbxasset://textures/face.png'
             end
@@ -1420,6 +1485,9 @@ function M.EnsureStarterCharacterForm(ch)
 
     -- Preserve 100% of the player's real outside Roblox Avatar (Body, Head, Face, Hair, Hats, Accessories, 2D/3D Clothes)
     -- while overriding CosmeticService.Guardian's server-side Transparency = 1 hiding.
+    -- Khi người chơi đang zoom sát, LocalTransparencyModifier do camera của Roblox quản lý.
+    local ownerPlayer = Players.LocalPlayer
+    local keepCameraFade = ownerPlayer ~= nil and ownerPlayer.Character == ch and ownerPlayer:GetAttribute('SkybreakFirstPerson') == true
     for _, desc in ipairs(ch:GetDescendants()) do
         if not isInsideStarterManagedFX(desc, ch) then
             if desc:IsA('BasePart') then
@@ -1431,7 +1499,7 @@ function M.EnsureStarterCharacterForm(ch)
                     if desc.Transparency ~= 0 then
                         desc.Transparency = 0
                     end
-                    if desc.LocalTransparencyModifier ~= 0 then
+                    if desc.LocalTransparencyModifier ~= 0 and not keepCameraFade then
                         desc.LocalTransparencyModifier = 0
                     end
                     if not desc:GetAttribute('SkybreakVisGuard') then
@@ -2104,9 +2172,6 @@ function M.BuildCharacterAccessories(s, rawKey)
         old:Destroy()
     end
     s.AccessoryFX = nil
-    if s.IsNativeAvatar then
-        return
-    end
     s.AccessoryKey = rawKey or ''
     if s.AccessoryKey == '' or s.AccessoryKey:gsub('|', '') == '' then
         return
@@ -2134,25 +2199,25 @@ function M.BuildCharacterAccessories(s, rawKey)
     local greaveToken = readAttrLower({ 'EquippedGreaves', 'EquippedBoots' })
     local relicToken = readAttrLower({ 'EquippedArtifact', 'EquippedRing', 'EquippedNecklace' })
 
-    local wantHelm = helmToken ~= '' or hasToken(keyLower, {
+    local wantHelm = (not s.IsNativeAvatar) and (helmToken ~= '' or hasToken(keyLower, {
         'solar_crown', 'skyward_helm', 'skyhelm', 'core_artifact', 'coreshardartifact', 'vuong_mien', 'crown',
         'aureon_halo_helm', 'cryon_cyber_helm', 'noxar_horns', 'sylvaris_antler_crown', 'nerith_tidal_diadem',
         'veyr_architect_crown', 'mirage_phantom_hood', 'helm', 'diadem', 'hood',
-    })
-    local wantChest = chestToken ~= '' or hasToken(keyLower, {
+    }))
+    local wantChest = (not s.IsNativeAvatar) and (chestToken ~= '' or hasToken(keyLower, {
         'sovereign_cloak', 'admiral_cape', 'skyward_chest', 'skyarmor', 'celestialplate', 'ao_choang', 'cloak', 'cape',
         'aureon_sunplate', 'cryon_reactor_plate', 'ignivar_drake_cuirass', 'aion_chrono_vestment',
         'veyr_singularity_armor', 'aion_chrono_cloak', 'cuirass', 'vestment', 'sunplate',
-    })
-    local wantGauntlets = gauntToken ~= '' or hasToken(keyLower, {
+    }))
+    local wantGauntlets = (not s.IsNativeAvatar) and (gauntToken ~= '' or hasToken(keyLower, {
         'gauntlets', 'skyward_gloves', 'starlightgauntlets',
-    })
-    local wantGreaves = greaveToken ~= '' or hasToken(keyLower, {
+    }))
+    local wantGreaves = (not s.IsNativeAvatar) and (greaveToken ~= '' or hasToken(keyLower, {
         'greaves', 'skyward_boots', 'windstridergreaves',
-    })
-    local wantScarf = hasToken(keyLower, { 'aether_scarf', 'celestial_necklace', 'khan_choang', 'scarf' })
-    local wantVisor = hasToken(keyLower, { 'cyborg_visor', 'kinh_cyborg', 'visor', 'cryon_cyber_helm' })
-    local wantHorns = hasToken(keyLower, { 'noxar_horns', 'sung_noxar', 'horns' })
+    }))
+    local wantScarf = (not s.IsNativeAvatar) and hasToken(keyLower, { 'aether_scarf', 'celestial_necklace', 'khan_choang', 'scarf' })
+    local wantVisor = (not s.IsNativeAvatar) and hasToken(keyLower, { 'cyborg_visor', 'kinh_cyborg', 'visor', 'cryon_cyber_helm' })
+    local wantHorns = (not s.IsNativeAvatar) and hasToken(keyLower, { 'noxar_horns', 'sung_noxar', 'horns' })
     local wantShield = hasToken(keyLower, { 'leviathan_shield', 'aureoncrestshield', 'shield' })
     local wantRelic = relicToken ~= '' or hasToken(keyLower, {
         'aureon_sun_ring', 'cryon_frost_reactor', 'noxar_eclipse_ring', 'sylvaris_life_amulet',
@@ -2428,26 +2493,104 @@ function M.BuildCharacterAccessories(s, rawKey)
     end
 
     -- 8. Khiên Leviathan / Crest Shield (Mounted on Left Forearm)
-    if wantShield then
+    if wantShield and not s.IsNativeAvatar then
         local rim = makePart(folder, 'LeviathanShieldRim', Vector3.new(0.18, 2.05, 1.65), gold, Enum.PartType.Block, 0, 'Part', Enum.Material.Metal, 0.10)
         local core = makePart(folder, 'LeviathanShieldCore', Vector3.new(0.22, 1.72, 1.34), Color3.fromRGB(34, 118, 212), Enum.PartType.Block, 0, 'Part', Enum.Material.SmoothPlastic, 0.06)
         table.insert(data.ShieldParts, { Rim = rim, Core = core })
     end
 
     -- 9. Pass 13 7-Slot Modular 3D Armor Upgrades & 3D Boss Relics (Sheet 27 & Sheet 28)
-    Expansion3D.BuildModularArmorSet3D(folder, data, helmTheme, chestTheme, gauntTheme, greaveTheme, {
-        WantHelm = wantHelm,
-        WantChest = wantChest,
-        WantGauntlets = wantGauntlets,
-        WantGreaves = wantGreaves,
-        RelicToken = wantRelic and (relicToken ~= '' and relicToken or keyLower) or '',
-    }, lowFX)
+    if not s.IsNativeAvatar then
+        Expansion3D.BuildModularArmorSet3D(folder, data, helmTheme, chestTheme, gauntTheme, greaveTheme, {
+            WantHelm = wantHelm,
+            WantChest = wantChest,
+            WantGauntlets = wantGauntlets,
+            WantGreaves = wantGreaves,
+            RelicToken = wantRelic and (relicToken ~= '' and relicToken or keyLower) or '',
+        }, lowFX)
+    end
+
+    -- 10. Pass 15 Chiseled 3D Blender EditableMesh Armor, Shield, Hood & Boss Relics (Sheet 27)
+    data.BlenderArmorModels = {}
+    local RendererMod = nil
+    pcall(function()
+        RendererMod = require(ReplicatedStorage:FindFirstChild('DelegatedV5Renderer') or ReplicatedStorage.Shared:FindFirstChild('DelegatedV5Renderer'))
+    end)
+    if RendererMod then
+        local SET_FROM_KIND = {
+            aureon = 'Aureon',
+            skyborn = 'Aureon',
+            azure = 'Aureon',
+            cryon = 'Cryon',
+            noxar = 'Noxar',
+            sylvaris = 'Sylvaris',
+            nerith = 'Nerith',
+            aion = 'Nerith',
+            veyr = 'Veyr',
+            ignivar = 'Veyr',
+        }
+        local function spawnBlenderPiece(assetKey, slotRole, targetScale)
+            ensureTemplateAsync(RendererMod, assetKey, function(tpl)
+                if not folder or not folder.Parent then
+                    return
+                end
+                local clone = tpl:Clone()
+                clone.Name = 'Blender3D_' .. assetKey
+                if targetScale and targetScale ~= 1 then
+                    pcall(function()
+                        clone:ScaleTo(targetScale)
+                    end)
+                end
+                for _, d in ipairs(clone:GetDescendants()) do
+                    if d:IsA('BasePart') then
+                        d.Anchored = true
+                        d.CanCollide = false
+                        d.CanQuery = false
+                        d.CanTouch = false
+                        d.Massless = true
+                    end
+                end
+                clone.Parent = folder
+                table.insert(data.BlenderArmorModels, {
+                    Model = clone,
+                    Primary = clone.PrimaryPart or clone:FindFirstChildWhichIsA('BasePart'),
+                    Role = slotRole,
+                })
+            end)
+        end
+        local baseScale = s.IsNativeAvatar and 0.58 or 0.92
+        if wantHelm then
+            local hAsset = (helmTheme.Kind == 'mirage' or helmToken:find('hood'))
+                and 'Acc_MiragePhantomHood'
+                or ('Armor_' .. (SET_FROM_KIND[helmTheme.Kind] or 'Aureon') .. '_Helm')
+            spawnBlenderPiece(hAsset, 'Helm', baseScale)
+        end
+        if wantChest then
+            local cAsset = 'Armor_' .. (SET_FROM_KIND[chestTheme.Kind] or 'Aureon') .. '_Chest'
+            spawnBlenderPiece(cAsset, 'Chest', baseScale)
+        end
+        if wantShield then
+            spawnBlenderPiece('Acc_LeviathanShield', 'Shield', baseScale)
+        end
+        if wantRelic then
+            local rt = relicToken ~= '' and relicToken or keyLower
+            local rAsset = 'Relic_AureonSunRing'
+            if rt:find('cryon') or rt:find('frost') or rt:find('nerith') then
+                rAsset = 'Relic_CryonFrostReactor'
+            elseif rt:find('noxar') or rt:find('eclipse') or rt:find('void') then
+                rAsset = 'Relic_NoxarEclipseRing'
+            elseif rt:find('veyr') or rt:find('genesis') or rt:find('light') or rt:find('ignivar') then
+                rAsset = 'Relic_CoreOfLight'
+            end
+            spawnBlenderPiece(rAsset, 'Relic', baseScale * 0.95)
+        end
+    end
 
     s.AccessoryFX = data
 end
 
 function M.StepCharacterAccessories(s, now, capeWind)
-    if not s or s.IsNativeAvatar or not s.Visual or not s.Visual.Parent or not s.Root or not s.Root.Parent then
+    if not s or not s.Visual or not s.Visual.Parent or not s.Root or not s.Root.Parent then
         return
     end
     local key = readAccessoryKey(s.Character, s.Owner)
@@ -2485,7 +2628,7 @@ function M.StepCharacterAccessories(s, now, capeWind)
     end
 
     computeBindBasis(s)
-    local scaleRatio = (s.CurrentScale or 2.6) / 2.6
+    local scaleRatio = s.IsNativeAvatar and 0.62 or ((s.CurrentScale or 2.6) / 2.6)
     local wind = math.clamp(tonumber(capeWind) or 0, 0, 1.4)
     local torsoCF = getBoneWorldCF(s, s._EquipTorso, CFrame.new(0, 0.85, 0)) * (s._TorsoModelBasis or CFrame.identity)
     local headCF = getBoneWorldCF(s, s._EquipHead, CFrame.new(0, 2.25, 0)) * (s._HeadModelBasis or CFrame.identity)
@@ -2567,7 +2710,27 @@ function M.StepCharacterAccessories(s, now, capeWind)
         sh.Core.CFrame = shCF * CFrame.new(-0.04 * scaleRatio, 0, 0)
     end
 
-    Expansion3D.StepModularArmorSet3D(fx, torsoCF, scaleRatio, now)
+    if fx.BlenderArmorModels then
+        for _, entry in ipairs(fx.BlenderArmorModels) do
+            local p = entry.Primary
+            if p and p.Parent then
+                if entry.Role == 'Helm' then
+                    p.CFrame = headCF * CFrame.new(0, 0.35 * scaleRatio, 0)
+                elseif entry.Role == 'Chest' then
+                    p.CFrame = torsoCF * CFrame.new(0, -0.15 * scaleRatio, 0.12 * scaleRatio)
+                elseif entry.Role == 'Shield' then
+                    p.CFrame = lArmRaw * CFrame.new(-0.36 * scaleRatio, 0.12 * scaleRatio, 0) * CFrame.Angles(0, math.pi * 0.5, 0)
+                elseif entry.Role == 'Relic' then
+                    local bob = math.sin(now * 2.4) * 0.12
+                    p.CFrame = torsoCF * CFrame.new(0, (0.95 + bob) * scaleRatio, 1.05 * scaleRatio) * CFrame.Angles(0, 0, now * 0.65)
+                end
+            end
+        end
+    end
+
+    if not s.IsNativeAvatar then
+        Expansion3D.StepModularArmorSet3D(fx, torsoCF, scaleRatio, now)
+    end
 end
 
 -- ============================================================================

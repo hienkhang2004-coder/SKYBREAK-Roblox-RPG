@@ -1061,8 +1061,8 @@ task.spawn(function()
             "Đến Zioles Gacha Shrine thử vận may xem, biết đâu quay trúng Trái Thần Thoại!",
         },
         Guard = {
-            "[CẢNH VỆ] Khu vực Sky Hub an toàn. Hãy cẩn thận khi vượt cổng sang Sea 2!",
-            "[CẢNH VỆ] Thủy quái Abyssal Leviathan chỉ trồi lên ở vùng biển sâu Sea 3.",
+            "[CẢNH VỆ] Khu vực Sky Hub an toàn. Hãy cẩn thận khi vượt cổng sang Sky 2!",
+            "[CẢNH VỆ] Thủy quái Abyssal Leviathan chỉ trồi lên ở vùng biển sâu Sky 3.",
             "[CẢNH VỆ] Đạt 10 Triệu Bounty sẽ triệu hồi được SkySeaBeast hộ vệ!",
             "[CẢNH VỆ] Chiến hạm Aether Galleon đã sẵn sàng tại bến cảng cho Sky Crew.",
         },
@@ -1074,7 +1074,7 @@ task.spawn(function()
         Merchant = {
             "Kael có thể nâng cấp Thần Khí lên 5 Sao và khắc phù phép tại lò rèn Aether.",
             "Mirage Fruit Stock làm mới mỗi giờ, hoặc ghé Cyberport Café giao dịch 4 ghế!",
-            "Thu thập Microchip tại Raid Lab Sea 2 để Thức Tỉnh V2 toàn bộ chiêu Trái Ác Quỷ!",
+            "Thu thập Microchip tại Raid Lab Sky 2 để Thức Tỉnh V2 toàn bộ chiêu Trái Ác Quỷ!",
         },
         Greet = {
             "Chào chiến binh Skyborn! Chúc hành trình thuận buồm xuôi gió.",
