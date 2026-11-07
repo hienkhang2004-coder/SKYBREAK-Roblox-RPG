@@ -1,3 +1,8 @@
+> [!WARNING]
+> **TÀI LIỆU LỊCH SỬ (HISTORICAL ARCHIVE — KHÔNG DÙNG CHO BẢN HIỆN HÀNH)**  
+> Báo cáo này được lập ngày `27/10/2026` (trước khi chia 3 thư mục Hạng Mục và còn nhắc tới các script cũ như `rework_skybreak_from_scratch.py` và `06_Antigravity_Work/luau_v8/`). **Tuyệt đối không chạy các script cũ nêu trong tài liệu này.**  
+> Để làm việc với dự án hiện tại, bắt buộc đọc **[`CLAUDE.md`](CLAUDE.md)**, **[`AGENTS.md`](AGENTS.md)** và **[`PUBLISH_PLAN.md`](PUBLISH_PLAN.md)** (chỉ sửa code trong 3 thư mục `04_Roblox/0x_HangMuc*`; bản đồ hiện hành là `Gameplay3x Clean3D`).
+
 # BÁO CÁO BÀN GIAO DỰ ÁN SKYBREAK (ANTIGRAVITY → CODEX)
 
 - **Dự án**: `SKYBREAK: Fragments of the Core` (Roblox Action RPG)

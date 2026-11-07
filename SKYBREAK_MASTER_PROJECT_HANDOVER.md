@@ -1,9 +1,14 @@
 # TÀI LIỆU BÀN GIAO TỔNG THỂ DỰ ÁN (MASTER TECHNICAL & PRODUCTION HANDOVER)
 ## Dự án: **SKYBREAK: Fragments of the Core** (Roblox Action-RPG 3D)
 
-- **Phiên bản bàn giao**: `v12 PremiumUI • Macro-World 27× / 9× Edition` (`WorldArtVersion = 8`)
-- **Ngày lập hồ sơ bàn giao**: `30/10/2026`
-- **Trạng thái bản dựng**: Playable End-to-End trong Roblox Studio (`PASS 100%` toàn bộ kiểm định hình học 3D, va chạm vật lý, giao thức mạng và giới hạn dung lượng script)
+> [!IMPORTANT]
+> **CẬP NHẬT KIẾN TRÚC HIỆN HÀNH (07/11/2026 — Đọc [`CLAUDE.md`](CLAUDE.md) & [`PUBLISH_PLAN.md`](PUBLISH_PLAN.md) trước tiên):**
+> 1. **Nơi sửa code Luau chuẩn:** Luôn sửa trong **3 thư mục Hạng Mục** (`04_Roblox/01_HangMuc1_Server_Combat_World`, `04_Roblox/02_HangMuc2_UI_Shop_Config`, `04_Roblox/03_HangMuc3_3D_VuKhi_Giap_VFX` — tổng 129 file `.lua`). **Tuyệt đối không sửa trực tiếp `04_Roblox/src/`** vì `04_Roblox/src/` là thư mục build nằm trong `.gitignore` và bị ghi đè mỗi khi chạy sync.
+> 2. **Bản đồ thế giới hiện hành:** Bản đồ đang dùng trong game là **`Gameplay3x Clean3D`** (`../SKYBREAK_Argon_Refinement/Worlds_Gameplay3x_Clean3D`), **không phải** bản đồ `27× / 9×` (`Worlds_27x_9x_Final_Preview`) đã ngừng sử dụng từ ngày 31/10/2026. Các phần nhắc tới `27× / 9×` hoặc `04_Roblox/src` bên dưới phản ánh lịch sử tại thời điểm lập hồ sơ ngày 30/10/2026.
+
+- **Phiên bản bàn giao**: `v12 PremiumUI • Gameplay3x Clean3D Edition` (`WorldArtVersion = 8`)
+- **Ngày lập hồ sơ bàn giao**: `30/10/2026` *(Cập nhật chú giải kiến trúc: `07/11/2026`)*
+- **Trạng thái bản dựng**: Playable End-to-End trong Roblox Studio
 - **Đối tượng nhận bàn giao**: Đội ngũ Kỹ thuật (Lead Luau/Roblox Engineers), Đội ngũ Mỹ thuật 3D/Technical Art (Blender Pipeline), Game Design & QA/Live-Ops của đơn vị phát triển tiếp theo.
 
 ---
@@ -90,9 +95,9 @@ outputs/
 ```
 
 > [!CAUTION]
-> **Quy tắc vàng về Nguồn Chân Lý (Single Source of Truth)**:
-> 1. Mọi chỉnh sửa code Luau **PHẢI** thực hiện tại [04_Roblox/src](file:///C:/Users/khang/Documents/Codex/2026-10-22/new-chat/outputs/SKYBREAK_Antigravity_Handoff/04_Roblox/src), sau đó chạy script đóng gói để đẩy đồng loạt vào `.rbxlx` và các thư mục mirror. **Không** sửa lẻ tẻ trực tiếp trong Roblox Studio rồi quên xuất ngược ra `04_Roblox/src`, vì lần đóng gói tiếp theo sẽ ghi đè.
-> 2. **Tuyệt đối không chạy lại** các script lắp ráp thế hệ cũ từ tháng 10/2026 như `rework_skybreak_from_scratch.py` hay `export_all_15_worlds_v8.py` (bản `1×`/`3×` cũ), vì chúng sẽ ghi đè cấu trúc thế giới `27× / 9×` và các hệ thống gameplay Waves 1–3.
+> **Quy tắc vàng về Nguồn Chân Lý (Single Source of Truth — Cập nhật 07/11/2026)**:
+> 1. Mọi chỉnh sửa code Luau **PHẢI** thực hiện trong **3 thư mục Hạng Mục** (`04_Roblox/01_HangMuc1_Server_Combat_World`, `04_Roblox/02_HangMuc2_UI_Shop_Config`, `04_Roblox/03_HangMuc3_3D_VuKhi_Giap_VFX`), sau đó chạy script đóng gói `sync_solid3d_and_scripts_to_rbxlx.py` để đẩy vào `04_Roblox/src/` (bản build, `.gitignore`), `.rbxlx` và các thư mục mirror. **Không** sửa trực tiếp trong `04_Roblox/src/` hay trong Roblox Studio vì lần đóng gói tiếp theo sẽ ghi đè.
+> 2. Bản đồ thế giới hiện hành là **`Gameplay3x Clean3D`** (`../SKYBREAK_Argon_Refinement/Worlds_Gameplay3x_Clean3D`), không phải bản đồ `27× / 9×` (`Worlds_27x_9x_Final_Preview`) đã bỏ. **Tuyệt đối không xuất lại thế giới từ `Worlds_27x_9x_Final_Preview`** và không chạy các script thế hệ cũ như `rework_skybreak_from_scratch.py` hay `export_all_15_worlds_v8.py`.
 
 ---
 

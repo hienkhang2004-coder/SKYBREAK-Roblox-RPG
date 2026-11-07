@@ -1,3 +1,8 @@
+> [!WARNING]
+> **TÀI LIỆU LỊCH SỬ (HISTORICAL ARCHIVE — KHÔNG DÙNG CHO BẢN HIỆN HÀNH)**  
+> Văn bản này được lập ngày `23/10/2026` cho giai đoạn thử nghiệm `v7/v8` ban đầu và **chỉ còn giá trị lưu trữ lịch sử**.  
+> Để làm việc với dự án hiện tại, bắt buộc đọc **[`CLAUDE.md`](CLAUDE.md)**, **[`AGENTS.md`](AGENTS.md)** và **[`PUBLISH_PLAN.md`](PUBLISH_PLAN.md)** (chỉ sửa code trong 3 thư mục `04_Roblox/0x_HangMuc*`; bản đồ hiện hành là `Gameplay3x Clean3D`).
+
 # SKYBREAK — chuẩn bị và phân công bàn giao cho Antigravity
 
 Ngày lập: 23/10/2026. Đây là **bộ chuẩn bị để người dùng giao việc**, chưa tự mở Antigravity, chọn model hoặc gửi lệnh.

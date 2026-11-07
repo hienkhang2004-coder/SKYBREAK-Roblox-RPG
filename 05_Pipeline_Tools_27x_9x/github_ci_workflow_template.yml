@@ -1,0 +1,77 @@
+name: SKYBREAK Luau CI & Contract Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  luau-qa:
+    name: Byte-Ceiling, Global Lint & Contract Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Luau CLI (luau & luau-analyze)
+        run: |
+          curl -sSL -o /tmp/luau-ubuntu.zip https://github.com/luau-lang/luau/releases/latest/download/luau-ubuntu.zip
+          unzip -q -o /tmp/luau-ubuntu.zip -d /tmp/luau-bin
+          chmod +x /tmp/luau-bin/luau /tmp/luau-bin/luau-analyze
+          sudo cp /tmp/luau-bin/luau /tmp/luau-bin/luau-analyze /usr/local/bin/
+          mkdir -p 05_Pipeline_Tools_27x_9x/bin
+          cp /tmp/luau-bin/luau 05_Pipeline_Tools_27x_9x/bin/luau
+          cp /tmp/luau-bin/luau-analyze 05_Pipeline_Tools_27x_9x/bin/luau-analyze
+
+      - name: Check < 199,000 UTF-8 byte ceiling across all 3 Hạng Mục folders
+        run: |
+          python - << 'EOF'
+          from pathlib import Path
+          import sys
+
+          root = Path("04_Roblox")
+          cats = (
+              "01_HangMuc1_Server_Combat_World",
+              "02_HangMuc2_UI_Shop_Config",
+              "03_HangMuc3_3D_VuKhi_Giap_VFX",
+          )
+          limit = 199_000
+          files = [p for cat in cats for p in sorted((root / cat).rglob("*.lua"))]
+          assert files, "No .lua files found under 04_Roblox/0x_HangMuc*!"
+
+          violations = []
+          max_size = 0
+          max_file = None
+          for f in files:
+              size = len(f.read_text(encoding="utf-8").encode("utf-8"))
+              if size > max_size:
+                  max_size = size
+                  max_file = f
+              if size >= limit:
+                  violations.append((f.as_posix(), size))
+
+          print(f"Checked {len(files)} Luau files (largest: {max_file.as_posix()} at {max_size:,} / {limit:,} UTF-8 bytes)")
+          if violations:
+              print("[FAIL] Files exceeding the 199,000 UTF-8 byte ceiling:")
+              for path_str, sz in violations:
+                  print(f"  - {path_str}: {sz:,} bytes")
+              sys.exit(1)
+          print("[PASS] All Luau files are strictly < 199,000 UTF-8 bytes.")
+          EOF
+
+      - name: Run Luau Global & Syntax Lint
+        run: python 05_Pipeline_Tools_27x_9x/lint_luau_globals.py
+
+      - name: Run Logic & Data Contract Tests
+        run: |
+          python 04_Roblox/tests/test_logic.py
+          python 04_Roblox/tests/test_data.py

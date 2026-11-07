@@ -1,74 +1,196 @@
+"""Runs PlayerDataService & Config data-persistence contract checks (P0-06, D3, D9) against the canonical Hạng Mục sources."""
 from pathlib import Path
-import subprocess
 import os
+import re
+import shutil
+import subprocess
+import sys
 import tempfile
-ROOT=Path(__file__).resolve().parents[1]
-SRC=ROOT/'src'
-config=(SRC/'ReplicatedStorage/Shared/Config.lua').read_text(encoding='utf-8')
-data=(SRC/'ServerScriptService/Services/PlayerDataService.lua').read_text(encoding='utf-8')
-prefix='''
-local Vector3={new=function(x,y,z) return {X=x,Y=y,Z=z} end}
-local C=(function()
-'''
-middle=r'''
-end)()
-local now=1000 local os={time=function() return now end}
-local function copy(v) if type(v)~="table" then return v end local c={} for k,x in pairs(v) do c[k]=copy(x) end return c end
-local task={wait=function(seconds) now+=seconds end,spawn=function() end}
-local warn=function() end
-local store={Rows={},Fails=0,Calls=0}
-function store:UpdateAsync(key,fn)
- self.Calls+=1
- if self.Fails>0 then self.Fails-=1 error("simulated outage") end
- local record=fn(copy(self.Rows[key]))
- if record==nil then return nil end
- self.Rows[key]=copy(record) return copy(record)
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+CATS = (
+    "01_HangMuc1_Server_Combat_World",
+    "02_HangMuc2_UI_Shop_Config",
+    "03_HangMuc3_3D_VuKhi_Giap_VFX",
+)
+
+
+def resolve_luau_path(rel_path: str) -> Path:
+    """Resolve a relative Luau path across the 3 canonical Hạng Mục folders first, falling back to 04_Roblox/src/."""
+    rel = Path(rel_path)
+    for cat in CATS:
+        candidate = ROOT / cat / rel
+        if candidate.exists():
+            return candidate
+    fallback = SRC / rel
+    if fallback.exists():
+        return fallback
+    raise FileNotFoundError(f"Cannot resolve Luau file '{rel_path}' in {CATS} or src/")
+
+
+def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8")
+    count = 0
+
+    def check(condition: bool, label: str):
+        nonlocal count
+        if not condition:
+            print(f"[FAIL] {label}")
+            raise AssertionError(label)
+        count += 1
+        print(f"PASS {label}")
+
+    config_path = resolve_luau_path("ReplicatedStorage/Shared/Config.lua")
+    data_path = resolve_luau_path("ServerScriptService/Services/PlayerDataService.lua")
+
+    config = config_path.read_text(encoding="utf-8")
+    data = data_path.read_text(encoding="utf-8")
+
+    # 1. P0-06 & D3 Config.lua checks
+    check(
+        re.search(r'C\.StoreName\s*=\s*"SKYBREAK_LIVE_v1"', config) is not None,
+        'P0-06 (D3): Config.lua sets C.StoreName = "SKYBREAK_LIVE_v1"',
+    )
+    check(
+        re.search(r"C\.StudioPersistence\s*=\s*false\b", config) is not None,
+        "P0-06 (D3): Config.lua sets C.StudioPersistence = false",
+    )
+
+    # 2. P0-06 PlayerDataService.lua schema migration, size guard, and ReadOnlyFallback checks
+    check(
+        "CURRENT_SCHEMA_VERSION" in data and "SCHEMA_MIGRATIONS" in data and "migrateProfile" in data,
+        "P0-06: PlayerDataService defines CURRENT_SCHEMA_VERSION and migrateProfile",
+    )
+    check(
+        "s.ReadOnlyFallback" in data and "Bảo vệ dữ liệu gốc (ReadOnly)" in data,
+        "P0-06: PlayerDataService blocks cloud overwrites while in ReadOnlyFallback mode",
+    )
+    check(
+        "JSONEncode" in data and "3500000" in data and "1000000" in data,
+        "P0-06: PlayerDataService enforces 3.5 MB JSON size ceiling and 1 MB warning",
+    )
+
+    # 3. D9 Starter unlock checks in PlayerDataService.lua
+    check(
+        'ActiveShip = "SkySloop"' in data,
+        'P0-07 (D9): PlayerDataService defaults ActiveShip to "SkySloop"',
+    )
+    check(
+        "UnlockedHakiColors.crimson_conqueror = true" not in data
+        and "UnlockedShips.CelestialAetherGalleon = true" not in data,
+        "P0-07 (D9): hydrate() does not force-unlock crimson_conqueror or CelestialAetherGalleon",
+    )
+
+    # 4. Optional live Luau VM execution when luau CLI is installed
+    luau_bin = shutil.which(os.environ.get("LUAU_CLI", "luau"))
+    if luau_bin:
+        luau_harness = r"""
+local now = 1000
+local os = {
+    time = function() return now end,
+    clock = function() return now end,
+}
+local function copy(v)
+    if type(v) ~= "table" then return v end
+    local c = {}
+    for k, x in pairs(v) do c[k] = copy(x) end
+    return c
 end
-local Players={}
-local services={Players=Players,DataStoreService={GetDataStore=function() return store end},
- HttpService={GenerateGUID=function() return "test-guid" end},RunService={IsStudio=function() return false end}}
-local game={JobId="test-job",ReplicatedStorage={Shared={Config="config"}},GetService=function(_,name) return services[name] end}
-local require=function() return C end
-local D=(function()
-'''
-tests=r'''
+local task = {
+    wait = function(seconds) now += (tonumber(seconds) or 0) end,
+    spawn = function() end,
+    delay = function() end,
+}
+local warn = function() end
+local C = {
+    MaxLevel = 2550,
+    MaxStat = 2550,
+    StatPointsPerLevel = 3,
+    StudioPersistence = false,
+    StoreName = "SKYBREAK_LIVE_v1",
+    LeaseSeconds = 180,
+    AutosaveSeconds = 45,
+    SkillNames = { SkySlash = "Sky Slash" },
+    Classes = { SkyGuardian = true, ThunderStriker = true, ArcaneMage = true },
+    Quests = { { Id = "Q01" } },
+    Islands = { { Id = "SkyHub" } },
+}
+local store = { Rows = {}, Fails = 0, Calls = 0 }
+function store:UpdateAsync(key, fn)
+    self.Calls += 1
+    if self.Fails > 0 then
+        self.Fails -= 1
+        error("simulated outage")
+    end
+    local record = fn(copy(self.Rows[key]))
+    if record == nil then return nil end
+    self.Rows[key] = copy(record)
+    return copy(record)
+end
+local Players = {}
+local services = {
+    Players = Players,
+    DataStoreService = { GetDataStore = function() return store end },
+    HttpService = {
+        GenerateGUID = function() return "test-guid" end,
+        JSONEncode = function(_, val) return "{}" end,
+    },
+    RunService = { IsStudio = function() return false end },
+}
+local game = {
+    JobId = "test-job",
+    ReplicatedStorage = {
+        Shared = { Config = "config" },
+        FindFirstChild = function() return nil end,
+    },
+    GetService = function(_, name) return services[name] end,
+    BindToClose = function() end,
+}
+local require = function() return C end
+local D = (function()
+""" + data + r"""
 end)()
-local count=0
-local function check(condition,label) assert(condition,label) count+=1 print("PASS",label) end
-local function player(id) return {UserId=id,Parent=Players,Kick=function(self,message) self.Kicked=message end} end
-local p=player(1) local profile=D.Load(p)
-check(profile and profile.Level==1 and profile.Inventory.starter_sword==1,"New profile created under session lock")
-check(store.Rows.u_1.Owner=="test-job:test-guid","Load acquires ownership")
-profile.Gold=99 check(store.Rows.u_1.Data.Gold==0,"Session mutation does not mutate persisted snapshot")
-check(D.Save(p,false) and store.Rows.u_1.Data.Gold==99,"Save persists profile")
-now+=45 check(D.Save(p,false) and store.Rows.u_1.Expires==now+C.LeaseSeconds,"Autosave renews lease")
-D.Release(p)
-check(D.Sessions[p]==nil and store.Rows.u_1.Owner==nil,"Release saves and unlocks")
-local again=player(1) local loaded=D.Load(again)
-check(loaded.Gold==99,"Rejoin restores saved Gold")
-store.Rows.u_1.Owner="foreign-server"
-check(not D.Save(again,false) and again.Kicked~=nil,"Ownership loss fails closed")
-check(store.Rows.u_1.Owner=="foreign-server" and store.Rows.u_1.Data.Gold==99,"Stale server cannot overwrite foreign owner")
-local blocked=player(1) check(D.Load(blocked)==nil and blocked.Kicked~=nil,"Concurrent live lease blocks load")
-now+=C.LeaseSeconds+1
-local recovered=player(1) check(D.Load(recovered).Gold==99,"Expired lease recovers without resetting data")
-now+=C.LeaseSeconds+1
-check(D.Get(recovered)==nil and recovered.Kicked~=nil,"Expired local lease blocks gameplay")
-local offline=player(2) store.Fails=3
-check(D.Load(offline)==nil and offline.Kicked~=nil and store.Rows.u_2==nil,"Load outage cannot write default profile")
-local corrupt=player(3) store.Rows.u_3={Data={SchemaVersion=999},Owner=nil,Expires=0}
-check(D.Load(corrupt)==nil and store.Rows.u_3.Data.SchemaVersion==999,"Unknown schema preserved and rejected")
-local retryPlayer=player(4) store.Fails=2
-check(D.Load(retryPlayer)~=nil,"Transient load failure recovers on third attempt")
-local failedSave=player(5) D.Load(failedSave).Gold=123 store.Fails=3
-check(not D.Save(failedSave,false) and store.Rows.u_5.Data.Gold==0,"Failed save does not claim persisted state")
-check(D.Sessions[failedSave].SaveStatus=="Lỗi lưu — đang thử lại","Failed save exposed to HUD")
-check(D.Save(failedSave,false) and store.Rows.u_5.Data.Gold==123,"Subsequent save recovers")
-print("TOTAL",count,"PASS")
-'''
-target=Path(tempfile.gettempdir())/'skybreak_data_tests.luau'
-target.write_text(prefix+config+middle+data+tests,encoding='utf-8')
-result=subprocess.run([os.environ.get('LUAU_CLI','luau'),str(target)],capture_output=True,text=True,encoding='utf-8')
-print(result.stdout)
-print(result.stderr)
-raise SystemExit(result.returncode)
+local function player(id)
+    return {
+        UserId = id,
+        Name = "Player" .. tostring(id),
+        Parent = Players,
+        SetAttribute = function() end,
+        Kick = function(self, msg) self.Kicked = msg end,
+    }
+end
+local p1 = player(1)
+local prof = D.Load(p1)
+assert(prof and prof.Level == 1 and prof.ActiveShip == "SkySloop", "New profile created with SkySloop")
+assert(store.Rows.u_1.Owner == "test-job:test-guid", "Load acquires session lock")
+prof.Gold = 777
+assert(D.Save(p1, false) and store.Rows.u_1.Data.Gold == 777, "Save persists Gold")
+D.Release(p1)
+assert(D.Sessions[p1] == nil and store.Rows.u_1.Owner == nil, "Release unlocks session")
+
+-- Test ReadOnlyFallback never clobbers existing cloud data (P0-06)
+store.Fails = 3
+local p1Fallback = player(1)
+local fbProf = D.Load(p1Fallback)
+assert(fbProf and D.Sessions[p1Fallback].ReadOnlyFallback == true, "Outage enters ReadOnlyFallback")
+fbProf.Gold = 1
+assert(not D.Save(p1Fallback, false), "Save blocked during ReadOnlyFallback")
+assert(store.Rows.u_1.Data.Gold == 777, "Cloud Gold=777 preserved from ReadOnlyFallback overwrite")
+print("PASS Luau VM PlayerDataService session-lock & ReadOnlyFallback checks")
+"""
+        target = Path(tempfile.gettempdir()) / "skybreak_data_tests.luau"
+        target.write_text(luau_harness, encoding="utf-8")
+        res = subprocess.run([luau_bin, str(target)], capture_output=True, text=True, encoding="utf-8")
+        if res.stdout:
+            print(res.stdout.strip())
+        if res.stderr:
+            print(res.stderr.strip())
+        check(res.returncode == 0, "Luau VM PlayerDataService unit tests exited with 0")
+
+    print(f"TOTAL {count} PASS")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

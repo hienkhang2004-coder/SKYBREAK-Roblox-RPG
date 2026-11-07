@@ -1,20 +1,21 @@
 ---
 name: skybreak-rbxlx-build-and-qa
 description: >-
-  Use this skill whenever editing Luau scripts in 04_Roblox/src, syncing runtime_v8 3D packages into SKYBREAK_Playable_v12_PremiumUI.rbxlx, checking the 199,000-byte XML script limit, or running automated SKYBREAK QA verification suites.
+  Use this skill whenever editing Luau scripts in the three canonical 04_Roblox/0x_HangMuc* folders, syncing runtime_v8 3D packages into SKYBREAK_Playable_v12_PremiumUI.rbxlx, checking the 199,000-byte XML script limit, or running automated SKYBREAK QA verification suites.
 ---
 
 # SKYBREAK `.rbxlx` Packaging & Automated QA Workflow
 
 Follow this exact procedure whenever modifying gameplay, UI, VFX, or collider Luau code in SKYBREAK:
 
-## 1. Edit Only the Canonical Source Tree
-- All Luau edits must be made in the three `04_Roblox/0x_HangMuc*` folders. `04_Roblox/src/` is a generated build that sync overwrites.
-- Keep every `.lua` file strictly below **`199,000` UTF-8 bytes** (`GameService.lua` is near `186.5 KB`; split new features into helper `ModuleScript`s in `ServerScriptService/Services/`).
-- Canonical mirror pairs inside `04_Roblox/src` (automatically copied by the packager from left to right):
-  - `ReplicatedStorage/DelegatedV5Renderer.lua` -> `ReplicatedStorage/Shared/DelegatedV5Renderer.lua`
-  - `ReplicatedStorage/SkybreakShared/Config/WorldConfig.lua` -> `ReplicatedStorage/SkybreakShared/WorldConfig.lua`
-  - `ReplicatedStorage/SkybreakShared/Types/UIState.lua` -> `ReplicatedStorage/SkybreakShared/UIState.lua`
+## 1. Edit Only the 3 Canonical `04_Roblox/0x_HangMuc*` Source Folders
+- **Always edit in the 3 canonical `04_Roblox/0x_HangMuc*` folders** (`01_HangMuc1_Server_Combat_World`, `02_HangMuc2_UI_Shop_Config`, `03_HangMuc3_3D_VuKhi_Giap_VFX`). **Never edit `04_Roblox/src/` directly** — `04_Roblox/src/` is a gitignored build folder that is overwritten every time sync runs.
+- **Active World Map**: The active world map in the game is **`Gameplay3x Clean3D`** (`../SKYBREAK_Argon_Refinement/Worlds_Gameplay3x_Clean3D`), **not** the retired `27x/9x` map (`Worlds_27x_9x_Final_Preview`). Never re-export worlds from `Worlds_27x_9x_Final_Preview`.
+- Keep every `.lua` file strictly below **`199,000` UTF-8 bytes** (`Config.lua`, `GameService.lua`, `ClientBootstrap.client.lua`, `Skybreak3DEquipment.lua`, and `DelegatedV5.client.lua` are near the ceiling; split new features into helper `ModuleScript`s).
+- Canonical mirror pairs inside the `04_Roblox/0x_HangMuc*` folders (always edit the left file; sync overwrites the right file from the left):
+  - `ReplicatedStorage/DelegatedV5Renderer.lua` -> `ReplicatedStorage/Shared/DelegatedV5Renderer.lua` (Hạng Mục 3)
+  - `ReplicatedStorage/SkybreakShared/Config/WorldConfig.lua` -> `ReplicatedStorage/SkybreakShared/WorldConfig.lua` (Hạng Mục 2)
+  - `ReplicatedStorage/SkybreakShared/Types/UIState.lua` -> `ReplicatedStorage/SkybreakShared/UIState.lua` (Hạng Mục 2)
 - If modifying atmosphere or fog/DOF, update BOTH `ReplicatedStorage/Shared/RealmEnvironment.lua` AND `updateRealmAtmosphere()` in `StarterPlayer/StarterPlayerScripts/ClientBootstrap.client.lua`.
 
 ## 2. Package Into `.rbxlx` and Mirrors
