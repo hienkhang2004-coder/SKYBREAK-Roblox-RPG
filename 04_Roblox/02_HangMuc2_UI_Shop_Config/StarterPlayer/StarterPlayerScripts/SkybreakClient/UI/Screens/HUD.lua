@@ -57,7 +57,7 @@ local HUD = {
 
 local function resolveClassBadgeMeta(level, classId, v4Active)
     local lv = tonumber(level) or 1
-    local suffix = v4Active and " • V4" or ""
+    local suffix = v4Active and I18n.Pick(" • THĂNG HOA", " • ASCENSION") or ""
     if lv < 15 then
         return "* SKYBORN" .. suffix, Color3.fromRGB(214, 196, 148)
     elseif classId == "ThunderStriker" then
@@ -588,7 +588,7 @@ function HUD.Build(parent, responsiveState)
         "Haki",
         colors.HP_RED,
         colors.HP_RED,
-        "[J] Haki • Ken",
+        "[J] Giáp Ý • Thấu Ý",
         3,
         true,
         function()
@@ -1221,7 +1221,7 @@ function HUD.Build(parent, responsiveState)
     -- 6. Bottom-Left Obsidian-Gold Quick Dock (9 Tactile Vertical Icon-Over-Caption Tiles with Hotkey Badges)
     local quickNavDefs = {
         { key = "ESC", labelVi = "Menu",    labelEn = "Menu",   icon = "Settings", route = UIState.Screens.MainMenu,      style = "obsidian", mobileKeep = true },
-        { key = "G",   labelVi = "Trái",    labelEn = "Fruit",  icon = "Fruit",    route = UIState.Screens.Fruits,        style = "gold",     mobileKeep = true },
+        { key = "G",   labelVi = "Lõi",     labelEn = "Core",   icon = "Fruit",    route = UIState.Screens.Fruits,        style = "gold",     mobileKeep = true },
         { key = "N",   labelVi = "Shop",    labelEn = "Shop",   icon = "Gold",     route = UIState.Screens.NPCShop,       style = "sapphire", mobileKeep = false },
         { key = "I",   labelVi = "Túi",     labelEn = "Bag",    icon = "Bag",      route = UIState.Screens.Inventory,     style = "obsidian", mobileKeep = true },
         { key = "K",   labelVi = "Kỹ Năng", labelEn = "Skills", icon = "Skill",    route = UIState.Screens.Skills,        style = "obsidian", mobileKeep = true },
@@ -1404,7 +1404,7 @@ function HUD.Build(parent, responsiveState)
         local eqStyle = (player and player:GetAttribute("EquippedStyle")) or I18n.Pick("Võ Thuật", "Martial")
         local eqGun = (player and player:GetAttribute("EquippedGun")) or I18n.Pick("Súng Aether", "Aether Gun")
 
-        local fruitDisplay = I18n.Pick("Trái Aether", "Aether Fruit")
+        local fruitDisplay = I18n.Pick("Lõi Aether", "Aether Core")
         if type(eqFruit) == "string" and eqFruit ~= "" and eqFruit ~= "None" then
             fruitDisplay = eqFruit
         end
@@ -1617,6 +1617,7 @@ function HUD.Build(parent, responsiveState)
                 palette = "cyan",
                 icon = "Wing",
                 levelReq = 1,
+                masteryReq = 1,
                 maxCooldown = 2.0,
                 energyCost = 10,
                 onPress = function()
@@ -1631,6 +1632,7 @@ function HUD.Build(parent, responsiveState)
                 palette = "sapphire",
                 icon = "Sword",
                 levelReq = sk1.LevelReq or 1,
+                masteryReq = sk1.MasteryReq or 1,
                 maxCooldown = sk1.Cooldown or 5,
                 energyCost = sk1.EnergyCost or 15,
                 onPress = function()
@@ -1650,6 +1652,7 @@ function HUD.Build(parent, responsiveState)
                 palette = "sapphire",
                 icon = "Shield",
                 levelReq = sk2.LevelReq or 1,
+                masteryReq = sk2.MasteryReq or 50,
                 maxCooldown = sk2.Cooldown or 10,
                 energyCost = sk2.EnergyCost or 20,
                 onPress = function()
@@ -1669,6 +1672,7 @@ function HUD.Build(parent, responsiveState)
                 palette = "gold",
                 icon = "Bolt",
                 levelReq = sk3.LevelReq or 10,
+                masteryReq = sk3.MasteryReq or 100,
                 maxCooldown = sk3.Cooldown or 12,
                 energyCost = sk3.EnergyCost or 25,
                 onPress = function()
@@ -1687,13 +1691,15 @@ function HUD.Build(parent, responsiveState)
                 name = "SkillCard_" .. cd.keybind,
                 skillId = cd.skillId,
                 nameText = cd.nameText,
+                label = cd.nameText,
                 keybind = cd.keybind,
                 palette = cd.palette,
                 icon = cd.icon,
                 size = UDim2.fromOffset(60, 66),
                 layoutOrder = idx,
                 locked = (snap.player.level or 1) < cd.levelReq,
-                lockLabel = "Lv." .. tostring(cd.levelReq),
+                lockLabel = "Mas. " .. tostring(cd.masteryReq or cd.levelReq),
+                masteryReq = cd.masteryReq,
                 maxCooldown = cd.maxCooldown,
                 zIndex = 8,
                 onActivated = cd.onPress,
@@ -1701,7 +1707,9 @@ function HUD.Build(parent, responsiveState)
             skillSlotApis[cd.slotKey] = {
                 Api = sApi,
                 SkillId = cd.skillId,
+                BaseName = cd.nameText,
                 LevelReq = cd.levelReq,
+                MasteryReq = cd.masteryReq,
                 MaxCooldown = cd.maxCooldown,
                 EnergyCost = cd.energyCost,
             }
@@ -1710,7 +1718,7 @@ function HUD.Build(parent, responsiveState)
         -- Centerpiece 45-Degree Rotated Diamond Ultimate [R] + J & T Shoulder Mini-Orbs
         local _, ultCenterApi = buildDiamondUltimateCenterpiece(abilityDock, {
             locked = (snap.player.level or 1) < (skUlt.LevelReq or 20),
-            lockLabel = "Lv." .. tostring(skUlt.LevelReq or 20),
+            lockLabel = "Mas. " .. tostring(skUlt.MasteryReq or 200),
             maxCooldown = skUlt.Cooldown or 45,
             zIndex = 8,
             onActivated = function()
@@ -1727,7 +1735,9 @@ function HUD.Build(parent, responsiveState)
         skillSlotApis["Ultimate"] = {
             Api = ultCenterApi,
             SkillId = skUlt.Id,
+            BaseName = skUlt.Name,
             LevelReq = skUlt.LevelReq or 20,
+            MasteryReq = skUlt.MasteryReq or 200,
             MaxCooldown = skUlt.Cooldown or 45,
             EnergyCost = skUlt.EnergyCost or 50,
         }
@@ -1738,10 +1748,11 @@ function HUD.Build(parent, responsiveState)
                 skillId = "FruitAwakenV",
                 nameText = I18n.Pick("Thức Tỉnh", "Awaken"),
                 keybind = "V",
-                keyTag = "[V] TRÁI",
+                keyTag = "[V] LÕI",
                 palette = "mythic",
                 icon = "Flame",
                 levelReq = 1,
+                masteryReq = 200,
                 maxCooldown = 18,
                 energyCost = 35,
                 onPress = function()
@@ -1756,6 +1767,7 @@ function HUD.Build(parent, responsiveState)
                 palette = "gold",
                 icon = "Flame",
                 levelReq = 1,
+                masteryReq = 1,
                 maxCooldown = 8,
                 energyCost = 15,
                 onPress = function()
@@ -1775,6 +1787,7 @@ function HUD.Build(parent, responsiveState)
                 palette = "cyan",
                 icon = "Wing",
                 levelReq = 1,
+                masteryReq = 1,
                 maxCooldown = 6,
                 energyCost = 12,
                 onPress = function()
@@ -1784,12 +1797,13 @@ function HUD.Build(parent, responsiveState)
             {
                 slotKey = "FlaskH",
                 skillId = "AetherFlaskH",
-                nameText = I18n.Pick("Bình EN", "Instinct"),
+                nameText = I18n.Pick("Thấu Ý", "Will Sense"),
                 keybind = "H",
                 keyTag = "[H]",
                 palette = "slate",
                 icon = "Flask",
                 levelReq = 1,
+                masteryReq = 1,
                 maxCooldown = 12,
                 energyCost = 0,
                 onPress = function()
@@ -1803,6 +1817,7 @@ function HUD.Build(parent, responsiveState)
                 name = "SkillCard_" .. cd.keybind,
                 skillId = cd.skillId,
                 nameText = cd.nameText,
+                label = cd.nameText,
                 keybind = cd.keybind,
                 keyTag = cd.keyTag,
                 palette = cd.palette,
@@ -1810,6 +1825,8 @@ function HUD.Build(parent, responsiveState)
                 size = UDim2.fromOffset(60, 66),
                 layoutOrder = idx,
                 locked = false,
+                lockLabel = "Mas. " .. tostring(cd.masteryReq or 1),
+                masteryReq = cd.masteryReq,
                 maxCooldown = cd.maxCooldown,
                 zIndex = 8,
                 onActivated = cd.onPress,
@@ -1817,7 +1834,9 @@ function HUD.Build(parent, responsiveState)
             skillSlotApis[cd.slotKey] = {
                 Api = sApi,
                 SkillId = cd.skillId,
+                BaseName = cd.nameText,
                 LevelReq = cd.levelReq,
+                MasteryReq = cd.masteryReq,
                 MaxCooldown = cd.maxCooldown,
                 EnergyCost = cd.energyCost,
             }
@@ -1864,11 +1883,11 @@ function HUD.Build(parent, responsiveState)
         end)
 
         local arcNodes = {
-            { key = "Skill1", id = sk1.Id, name = sk1.Name, kb = "Z", pal = "sapphire", icon = "Sword", pos = UDim2.new(1, -98, 1, -10), req = sk1.LevelReq or 1, cd = sk1.Cooldown or 5, cost = sk1.EnergyCost or 15, act = "Skill1" },
-            { key = "Skill2", id = sk2.Id, name = sk2.Name, kb = "X", pal = "sapphire", icon = "Shield", pos = UDim2.new(1, -88, 1, -80), req = sk2.LevelReq or 1, cd = sk2.Cooldown or 10, cost = sk2.EnergyCost or 20, act = "Skill2" },
-            { key = "Skill3", id = sk3.Id, name = sk3.Name, kb = "C", pal = "gold", icon = "Bolt", pos = UDim2.new(1, -20, 1, -102), req = sk3.LevelReq or 10, cd = sk3.Cooldown or 12, cost = sk3.EnergyCost or 25, act = "Skill3" },
-            { key = "Ultimate", id = skUlt.Id, name = skUlt.Name, kb = "R", pal = "mythic", icon = "Crown", pos = UDim2.new(1, -82, 1, -148), req = skUlt.LevelReq or 20, cd = skUlt.Cooldown or 45, cost = skUlt.EnergyCost or 50, act = "Ultimate" },
-            { key = "Dodge", id = "Dodge", name = I18n.Pick("Lướt", "Dash"), kb = "Q", pal = "cyan", icon = "Wing", pos = UDim2.new(1, -162, 1, -14), req = 1, cd = 2.0, cost = 10, act = "Dodge" },
+            { key = "Skill1", id = sk1.Id, name = sk1.Name, kb = "Z", pal = "sapphire", icon = "Sword", pos = UDim2.new(1, -98, 1, -10), req = sk1.LevelReq or 1, masReq = sk1.MasteryReq or 1, cd = sk1.Cooldown or 5, cost = sk1.EnergyCost or 15, act = "Skill1" },
+            { key = "Skill2", id = sk2.Id, name = sk2.Name, kb = "X", pal = "sapphire", icon = "Shield", pos = UDim2.new(1, -88, 1, -80), req = sk2.LevelReq or 1, masReq = sk2.MasteryReq or 50, cd = sk2.Cooldown or 10, cost = sk2.EnergyCost or 20, act = "Skill2" },
+            { key = "Skill3", id = sk3.Id, name = sk3.Name, kb = "C", pal = "gold", icon = "Bolt", pos = UDim2.new(1, -20, 1, -102), req = sk3.LevelReq or 10, masReq = sk3.MasteryReq or 100, cd = sk3.Cooldown or 12, cost = sk3.EnergyCost or 25, act = "Skill3" },
+            { key = "Ultimate", id = skUlt.Id, name = skUlt.Name, kb = "R", pal = "mythic", icon = "Crown", pos = UDim2.new(1, -82, 1, -148), req = skUlt.LevelReq or 20, masReq = skUlt.MasteryReq or 200, cd = skUlt.Cooldown or 45, cost = skUlt.EnergyCost or 50, act = "Ultimate" },
+            { key = "Dodge", id = "Dodge", name = I18n.Pick("Lướt", "Dash"), kb = "Q", pal = "cyan", icon = "Wing", pos = UDim2.new(1, -162, 1, -14), req = 1, masReq = 1, cd = 2.0, cost = 10, act = "Dodge" },
         }
 
         for _, an in ipairs(arcNodes) do
@@ -1876,6 +1895,7 @@ function HUD.Build(parent, responsiveState)
                 name = "Arc_" .. an.key,
                 skillId = an.id,
                 nameText = an.name,
+                label = an.name,
                 keybind = an.kb,
                 palette = an.pal,
                 icon = an.icon,
@@ -1883,7 +1903,8 @@ function HUD.Build(parent, responsiveState)
                 position = an.pos,
                 size = UDim2.fromOffset(54, 56),
                 locked = (snap.player.level or 1) < an.req,
-                lockLabel = "Lv." .. tostring(an.req),
+                lockLabel = "Mas. " .. tostring(an.masReq or an.req),
+                masteryReq = an.masReq,
                 maxCooldown = an.cd,
                 zIndex = 9,
                 onActivated = function()
@@ -1893,7 +1914,9 @@ function HUD.Build(parent, responsiveState)
             skillSlotApis[an.key] = {
                 Api = sApi,
                 SkillId = an.id,
+                BaseName = an.name,
                 LevelReq = an.req,
+                MasteryReq = an.masReq,
                 MaxCooldown = an.cd,
                 EnergyCost = an.cost,
             }
@@ -2024,19 +2047,19 @@ function HUD.Update(snapshot, viewState)
     local kenOn = (player and player:GetAttribute("InstinctActive") == true)
     if refs.HudHakiLabel and refs.HudHakiStroke then
         if auraOn and kenOn then
-            refs.HudHakiLabel.Text = "[J] Haki • Vũ Trang + Ken"
+            refs.HudHakiLabel.Text = I18n.Pick("[J] Ý Chí • Giáp Ý + Thấu Ý", "[J] Aether Will • Will Armor + Will Sense")
             refs.HudHakiLabel.TextColor3 = Color3.fromRGB(255, 198, 210)
             refs.HudHakiStroke.Color = colors.ACCENT_GOLD_BRIGHT
         elseif auraOn then
-            refs.HudHakiLabel.Text = "[J] Haki • Vũ Trang"
+            refs.HudHakiLabel.Text = I18n.Pick("[J] Ý Chí • Giáp Ý", "[J] Aether Will • Will Armor")
             refs.HudHakiLabel.TextColor3 = Color3.fromRGB(255, 186, 198)
             refs.HudHakiStroke.Color = colors.HP_RED
         elseif kenOn then
-            refs.HudHakiLabel.Text = "[H] Haki • Quan Sát"
+            refs.HudHakiLabel.Text = I18n.Pick("[H] Ý Chí • Thấu Ý", "[H] Aether Will • Will Sense")
             refs.HudHakiLabel.TextColor3 = Color3.fromRGB(154, 232, 255)
             refs.HudHakiStroke.Color = colors.ACCENT_SAPPHIRE
         else
-            refs.HudHakiLabel.Text = "[J] Haki • Ken"
+            refs.HudHakiLabel.Text = I18n.Pick("[J] Giáp Ý • Thấu Ý", "[J] Will Armor • Will Sense")
             refs.HudHakiLabel.TextColor3 = Color3.fromRGB(244, 248, 255)
             refs.HudHakiStroke.Color = colors.HP_RED
         end
@@ -2059,7 +2082,7 @@ function HUD.Update(snapshot, viewState)
         if bV4 then
             bV4.Frame.Visible = v4Rem > 0.5
             if bV4.Frame.Visible then
-                bV4.Label.Text = "V4 • " .. formatTimer(v4Rem)
+                bV4.Label.Text = I18n.Pick("Thăng Hoa • ", "Ascension • ") .. formatTimer(v4Rem)
             end
         end
 
@@ -2103,7 +2126,7 @@ function HUD.Update(snapshot, viewState)
 
     if refs.FruitRadarLabel then
         local fruitPos = workspace:GetAttribute("NaturalFruitPos")
-        local fruitName = tostring(workspace:GetAttribute("NaturalFruitName") or I18n.Pick("Trái Bão Tố", "Tempest Fruit"))
+        local fruitName = tostring(workspace:GetAttribute("NaturalFruitName") or I18n.Pick("Lõi Bão Tố", "Tempest Core"))
         if typeof(fruitPos) == "Vector3" and playerPos then
             local distMeters = math.max(1, math.floor((fruitPos - playerPos).Magnitude * 0.35))
             refs.FruitRadarLabel.Text = string.format("%s • %dm", fruitName, distMeters)
@@ -2285,9 +2308,28 @@ function HUD.Update(snapshot, viewState)
         end
     end
 
-    -- 8. Skill Cards & Diamond Ultimate Cooldowns / Level Locks / Energy Sufficiency
+    -- 8. Skill Cards & Diamond Ultimate Cooldowns / Mastery & Level Locks / Energy Sufficiency
     if refs.SkillSlotApis then
         local pLv = tonumber(snap.player.level) or 1
+        local curActiveSlot = tonumber((player and player:GetAttribute("ActiveSlot")) or view.activeHotbarSlot or (snap.fruits and snap.fruits.activeSlot)) or 1
+        local masMap = (snap.fruits and type(snap.fruits.mastery) == "table") and snap.fruits.mastery or {}
+        local activeItemId = nil
+        if curActiveSlot == 2 then
+            activeItemId = (snap.fruits and (snap.fruits.equippedFruit or snap.fruits.equipped)) or (player and player:GetAttribute("EquippedFruit"))
+        elseif curActiveSlot == 1 then
+            activeItemId = (snap.fruits and snap.fruits.fightingStyle) or (player and player:GetAttribute("EquippedStyle"))
+        elseif curActiveSlot == 3 then
+            activeItemId = (snap.equipped and snap.equipped.Weapon) or (snap.equipment and snap.equipment.Weapon)
+        elseif curActiveSlot == 4 then
+            activeItemId = (snap.fruits and snap.fruits.equippedGun) or (player and player:GetAttribute("EquippedGun"))
+        end
+        local curMastery = tonumber(
+            (activeItemId and masMap[activeItemId])
+            or (player and player:GetAttribute("CurrentMastery"))
+            or (player and player:GetAttribute("WeaponMastery"))
+            or (snap.player and snap.player.mastery)
+            or pLv
+        ) or 1
         local curEnergy = tonumber(snap.vitals.stamina) or 100
         local cds = snap.cooldowns or {}
         local elapsedSync = math.max(0, os.clock() - (Store.LastServerSyncClock or os.clock()))
@@ -2295,9 +2337,18 @@ function HUD.Update(snapshot, viewState)
         for _, entry in pairs(refs.SkillSlotApis) do
             local rawCd = tonumber(cds[entry.SkillId]) or 0
             local remCd = math.max(0, rawCd - elapsedSync)
+            local lvReq = entry.LevelReq or 1
+            local masReq = entry.MasteryReq or lvReq
+            local isMasLocked = curMastery < masReq
+            local isLvLocked = pLv < lvReq
+            local isLocked = isMasLocked or isLvLocked
+            local lockText = isMasLocked and ("Mas. " .. tostring(masReq)) or ("Lv." .. tostring(lvReq))
+            local captionText = isMasLocked and I18n.Pick("Mở ở Mastery " .. tostring(masReq), "Mas. " .. tostring(masReq)) or entry.BaseName
             entry.Api:Update({
-                locked = pLv < (entry.LevelReq or 1),
-                lockLabel = "Lv." .. tostring(entry.LevelReq or 1),
+                locked = isLocked,
+                lockLabel = lockText,
+                masteryReq = masReq,
+                label = captionText,
                 cooldown = remCd,
                 maxCooldown = entry.MaxCooldown,
                 outOfEnergy = (entry.EnergyCost or 0) > curEnergy,

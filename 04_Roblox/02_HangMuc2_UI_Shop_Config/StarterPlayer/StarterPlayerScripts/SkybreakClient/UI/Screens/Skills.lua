@@ -71,10 +71,10 @@ local STAT_CATEGORIES = {
     {
         key = "Fruit",
         icon = "Fruit",
-        titleVi = "TRÁI AETHER (FRUIT)",
-        titleEn = "AETHER FRUIT",
-        subVi = "Tăng Sát thương toàn bộ 5 chiêu Trái Aether",
-        subEn = "Boosts all 5 [Z][X][C][V][F] 3D Fruit Skills",
+        titleVi = "LÕI AETHER (CORE)",
+        titleEn = "AETHER CORE",
+        subVi = "Tăng Sát thương toàn bộ 5 chiêu Lõi Aether",
+        subEn = "Boosts all 5 [Z][X][C][V][F] 3D Aether Core Skills",
         gradTop = Color3.fromRGB(244, 63, 94),
         gradBottom = Color3.fromRGB(147, 51, 234),
         accent = Color3.fromRGB(232, 121, 249),
@@ -93,8 +93,8 @@ local PRESET_DEFS = {
         Weights = { Melee = 0.20, Defense = 0.35, Sword = 0.45, Gun = 0, Fruit = 0 },
     },
     [3] = {
-        NameVi = "Cấu Hình 3: Trái Aether",
-        NameEn = "Preset 3: Fruit Sovereign",
+        NameVi = "Cấu Hình 3: Lõi Aether",
+        NameEn = "Preset 3: Core Sovereign",
         Weights = { Melee = 0.18, Defense = 0.34, Sword = 0, Gun = 0, Fruit = 0.48 },
     },
 }
@@ -138,12 +138,11 @@ local function applyHakiAuraColor(hc)
     local remotes = ReplicatedStorage:FindFirstChild("Remotes")
     if remotes and remotes:FindFirstChild("UIRequest") then
         remotes.UIRequest:FireServer("SetHakiColor", { colorId = hc.Id })
-    end
-    if remotes and remotes:FindFirstChild("AppearanceRequest") then
+    elseif remotes and remotes:FindFirstChild("AppearanceRequest") then
         remotes.AppearanceRequest:FireServer({ action = "SetHakiColor", colorId = hc.Id })
     end
     Store.ShowToast(
-        I18n.Pick("Đã kích hoạt Sắc Màu Haki Bá Vương: ", "Activated Conqueror Haki Aura: ") .. hc.Id .. " (" .. hc.Label .. ")",
+        I18n.Pick("Đã kích hoạt Sắc Màu Bá Ý: ", "Activated Sovereign Will Aura: ") .. hc.Id .. " (" .. hc.Label .. ")",
         "success",
         2.0
     )
@@ -648,7 +647,7 @@ function Skills.Build(parent)
             BackgroundColor3 = hc.Color,
             BackgroundTransparency = 0.14,
             BorderSizePixel = 0,
-            Text = "HAKI: " .. hc.Label,
+            Text = "Ý CHÍ: " .. hc.Label,
             Font = Theme.Fonts.Bold,
             TextSize = 9,
             TextColor3 = Color3.fromRGB(10, 14, 24),
@@ -683,7 +682,7 @@ function Skills.Build(parent)
         end
     end
 
-    -- Bottom Row: Crimson TẨY TOÀN BỘ ĐIỂM CHỈ SỐ + Gold ĐỔI MÀU HAKI BÁ VƯƠNG (RAINBOW SAVIOUR)
+    -- Bottom Row: Crimson TẨY TOÀN BỘ ĐIỂM CHỈ SỐ + Gold ĐỔI MÀU BÁ Ý (RAINBOW SAVIOUR)
     local bottomBar = UIFactory.Create("Frame", statsPanel, {
         Name = "BottomActionRow",
         AnchorPoint = Vector2.new(0, 1),
@@ -709,7 +708,7 @@ function Skills.Build(parent)
     PremiumButton.Create(bottomBar, {
         name = "CycleRainbowHakiBtn",
         icon = "Crown",
-        label = I18n.Pick("ĐỔI MÀU HAKI BÁ VƯƠNG (RAINBOW SAVIOUR)", "CYCLE CONQUEROR HAKI (RAINBOW SAVIOUR)"),
+        label = I18n.Pick("ĐỔI MÀU BÁ Ý (RAINBOW SAVIOUR)", "CYCLE SOVEREIGN WILL (RAINBOW SAVIOUR)"),
         variant = "gold",
         position = UDim2.new(0.45, 5, 0, 0),
         size = UDim2.new(0.55, -5, 1, 0),
@@ -889,8 +888,15 @@ function Skills.Build(parent)
     })
     UIFactory.ListLayout(scroll, Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top)
 
+    local masByKey = { Z = 1, X = 50, C = 100, V = 200, F = 1, Q = 1, E = 50, R = 100 }
+    local masTable = type(fState.mastery) == "table" and fState.mastery or {}
+    local eqFruit = tostring(fState.equippedFruit or "SolarTitanCore")
+    local eqStyle = tostring(fState.fightingStyle or "skyborn_combat")
+    local curMastery = tonumber(masTable[selectedClassId] or masTable[eqStyle] or masTable[eqFruit]) or curLevel
+
     for idx, sk in ipairs(classCfg.Skills) do
-        local unlocked = curLevel >= (sk.LevelReq or 1)
+        local masReq = tonumber(sk.MasteryReq) or masByKey[tostring(sk.Keybind or "")] or (sk.LevelReq or 1)
+        local unlocked = (curLevel >= (sk.LevelReq or 1)) and (curMastery >= masReq)
         local row = UIFactory.Create("Frame", scroll, {
             Name = "SkillNode_" .. sk.Id,
             Size = UDim2.new(1, -6, 0, 82),
@@ -931,9 +937,9 @@ function Skills.Build(parent)
 
         UIFactory.Label(row, {
             Name = "SkillMetrics",
-            Text = string.format("Lv.%d • CD %.1fs", sk.LevelReq or 1, sk.Cooldown or 0),
-            Position = UDim2.new(1, -112, 0, 9),
-            Size = UDim2.fromOffset(102, 18),
+            Text = string.format("Mas. %d • Lv.%d • CD %.1fs", masReq, sk.LevelReq or 1, sk.Cooldown or 0),
+            Position = UDim2.new(1, -124, 0, 9),
+            Size = UDim2.fromOffset(114, 18),
             TextSize = 10,
             TextColor = unlocked and colors.ACCENT_GOLD or colors.TEXT_SECONDARY,
             Bold = true,
@@ -942,7 +948,7 @@ function Skills.Build(parent)
 
         UIFactory.Label(row, {
             Name = "SkillDesc",
-            Text = sk.Description,
+            Text = unlocked and sk.Description or (I18n.Pick("Mở ở Mastery " .. tostring(masReq) .. " — ", "Unlocks at Mas. " .. tostring(masReq) .. " — ") .. tostring(sk.Description)),
             Position = UDim2.fromOffset(58, 32),
             Size = UDim2.new(1, -154, 0, 42),
             TextSize = 10,
@@ -953,7 +959,7 @@ function Skills.Build(parent)
 
         UIFactory.Badge(
             row,
-            unlocked and I18n.Pick("ĐÃ MỞ", "UNLOCKED") or ("LV." .. tostring(sk.LevelReq)),
+            unlocked and I18n.Pick("ĐÃ MỞ", "UNLOCKED") or ("Mas. " .. tostring(masReq)),
             UDim2.new(1, -90, 0, 44),
             UDim2.fromOffset(80, 22),
             unlocked and colors.SUCCESS or colors.STROKE_STEEL,

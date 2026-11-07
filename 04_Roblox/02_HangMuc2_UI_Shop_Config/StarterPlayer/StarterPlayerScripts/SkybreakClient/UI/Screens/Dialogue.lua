@@ -49,7 +49,7 @@ end
 -- Resolve speaker keyword, short tag, 3D rig fallback, accent color, sculpted bust archetype & contextual choices
 local SPEAKER_PRESETS = {
     zioles = {
-        Short = "ZIOLES",
+        Short = "HIỀN GIẢ",
         V5 = "ZiolesGachaNPC",
         Accent = Color3.fromRGB(204, 108, 255),
         Archetype = "mage_hood",
@@ -59,34 +59,34 @@ local SPEAKER_PRESETS = {
         C1En = "[1] OPEN GACHA SHRINE",
         C1Cmd = "OpenScreen:Fruits",
         C1Icon = "Star",
-        C2Vi = "[2] XEM KHO TRÁI & THỨC TỈNH [G]",
-        C2En = "[2] FRUIT VAULT & AWAKEN [G]",
+        C2Vi = "[2] XEM KHO LÕI & THỨC TỈNH [G]",
+        C2En = "[2] CORE VAULT & AWAKEN [G]",
         C2Cmd = "OpenScreen:NPCShop:MirageDealer",
         C2Icon = "Fruit",
         C3Vi = "[3] TỶ LỆ RƠI & BẢO HIỂM PITY",
         C3En = "[3] DROP RATES & PITY INFO",
-        LoreVi = "\"Tỷ lệ minh bạch 6 phẩm cấp: Common 42% • Uncommon 25% • Rare 18% • Epic 9% • Legendary 4.5% • Mythic 1.5%! Đủ 50 lượt kích hoạt Bảo Hiểm Pity chắc chắn nhận Trái Huyền Thoại hoặc Thần Thoại 3D!\"",
-        LoreEn = "\"Transparent 6-tier odds: Common 42% • Uncommon 25% • Rare 18% • Epic 9% • Legendary 4.5% • Mythic 1.5%! At 50 rolls, Mythic Pity guarantees a Legendary or Mythic 3D Fruit!\"",
+        LoreVi = "\"Tỷ lệ minh bạch 6 phẩm cấp: Common 42% • Uncommon 25% • Rare 18% • Epic 9% • Legendary 4.5% • Mythic 1.5%! Đủ 50 lượt kích hoạt Bảo Hiểm Pity chắc chắn nhận Lõi Huyền Thoại hoặc Thần Thoại 3D!\"",
+        LoreEn = "\"Transparent 6-tier odds: Common 42% • Uncommon 25% • Rare 18% • Epic 9% • Legendary 4.5% • Mythic 1.5%! At 50 rolls, Mythic Pity guarantees a Legendary or Mythic 3D Core!\"",
     },
     mirage = {
-        Short = "MIRAGE",
+        Short = "HƯ QUANG",
         V5 = "ZiolesGachaNPC",
         Accent = Color3.fromRGB(252, 211, 77),
         Archetype = "mage_hood",
-        RoleVi = "KHO TRÁI 2 GIỜ • ĐẢO ẢO ẢNH",
-        RoleEn = "2H ROTATING STOCK • MIRAGE",
-        C1Vi = "[1] MỞ KỆ TRÁI MIRAGE 2 GIỜ",
-        C1En = "[1] OPEN 2H MIRAGE STOCK",
+        RoleVi = "KHO LÕI 2 GIỜ • ĐẢO HƯ QUANG",
+        RoleEn = "2H ROTATING STOCK • PHANTOM ISLE",
+        C1Vi = "[1] MỞ KỆ LÕI HƯ QUANG 2 GIỜ",
+        C1En = "[1] OPEN 2H PHANTOM STOCK",
         C1Cmd = "OpenScreen:NPCShop:MirageDealer",
         C1Icon = "Gold",
-        C2Vi = "[2] ĐÀI GACHA ZIOLES [G]",
-        C2En = "[2] ZIOLES GACHA [G]",
+        C2Vi = "[2] ĐÀI GACHA HIỀN GIẢ AETHER [G]",
+        C2En = "[2] AETHER ORACLE GACHA [G]",
         C2Cmd = "OpenScreen:Fruits",
         C2Icon = "Fruit",
-        C3Vi = "[3] CƠ CHẾ ĐẢO BÍ ẨN MIRAGE",
-        C3En = "[3] MIRAGE ISLAND LORE",
-        LoreVi = "\"Kệ hàng của ta làm mới mỗi 2 giờ trên toàn máy chủ! Nếu bắt gặp ta trên Đảo Bí Ẩn Mirage (tồn tại 15 phút), tỷ lệ xuất hiện Trái Thần Thoại Kim Thân & Hắc Long tăng gấp 3 lần!\"",
-        LoreEn = "\"My fruit shelves refresh every 2 hours! Find me on Mirage Island during its 15-minute window for 3x Mythic stock odds!\"",
+        C3Vi = "[3] CƠ CHẾ ĐẢO HƯ QUANG",
+        C3En = "[3] PHANTOM ISLE LORE",
+        LoreVi = "\"Kệ hàng của ta làm mới mỗi 2 giờ trên toàn máy chủ! Nếu bắt gặp ta trên Đảo Hư Quang (tồn tại 15 phút), tỷ lệ xuất hiện Lõi Thần Thoại Kim Thân & Hắc Long tăng gấp 3 lần!\"",
+        LoreEn = "\"My core shelves refresh every 2 hours! Find me on Phantom Isle during its 15-minute window for 3x Mythic stock odds!\"",
     },
     sword = {
         Short = "KIẾM SƯ",
@@ -103,10 +103,10 @@ local SPEAKER_PRESETS = {
         C2En = "[2] CELESTIAL FORGE",
         C2Cmd = "OpenScreen:Forge",
         C2Icon = "Forge",
-        C3Vi = "[3] BÍ KÍP SONG KIẾM CDK",
-        C3En = "[3] DUAL BLADES LORE",
-        LoreVi = "\"Mỗi thanh Danh Kiếm 3D sở hữu 2 tuyệt kỹ [Z] và [X] riêng biệt! Đạt Thông Thạo Lv.350 trên Song Đao Stormfang và Yêu Đao Yamo để rèn mở khóa Song Kiếm Huyền Thoại CDK!\"",
-        LoreEn = "\"Every 3D Blade carries bespoke [Z] and [X] weapon skills! Master Stormfang and Yamo to unlock Cursed Dual Skyblades!\"",
+        C3Vi = "[3] BÍ KÍP SONG KIẾM NGUYỆT THỰC",
+        C3En = "[3] ECLIPSE TWINBLADES LORE",
+        LoreVi = "\"Mỗi thanh Danh Kiếm 3D sở hữu 2 tuyệt kỹ [Z] và [X] riêng biệt! Đạt Thông Thạo Lv.350 trên Song Đao Stormfang và Yêu Đao Yamo để rèn mở khóa Song Kiếm Nguyệt Thực!\"",
+        LoreEn = "\"Every 3D Blade carries bespoke [Z] and [X] weapon skills! Master Stormfang and Yamo to unlock Eclipse Twinblades!\"",
     },
     gun = {
         Short = "XẠ THỦ",
@@ -199,14 +199,14 @@ local SPEAKER_PRESETS = {
         C1En = "[1] 3D WARSHIP DOCKYARD",
         C1Cmd = "OpenScreen:NPCShop:Shipwright",
         C1Icon = "Ship",
-        C2Vi = "[2] TỔ ĐỘI SĂN THỦY QUÁI [B]",
-        C2En = "[2] CREW & SEABEAST [B]",
+        C2Vi = "[2] TỔ ĐỘI SĂN THÚ TRỜI [B]",
+        C2En = "[2] CREW & SKY BEAST [B]",
         C2Cmd = "OpenScreen:SocialRewards",
         C2Icon = "Users",
-        C3Vi = "[3] KỲ HẠM SĂN LEVIATHAN",
-        C3En = "[3] LEVIATHAN HARPOON LORE",
-        LoreVi = "\"Kỳ Hạm Leviathan Hunter trang bị 8 Đại Pháo Aether và Móc Cáp Harpoon chuyên dụng để kéo Trái Tim Thủy Tổ Leviathan từ Vùng Biển Nguy Hiểm 6 về cảng!\"",
-        LoreEn = "\"The Leviathan Hunter Dreadnought mounts an Abyssal Harpoon to haul the Leviathan Heart back to port!\"",
+        C3Vi = "[3] KỲ HẠM SĂN THỦY XÀ VỰC THẲM",
+        C3En = "[3] ABYSS SERPENT HARPOON LORE",
+        LoreVi = "\"Kỳ Hạm Abyss Serpent Hunter trang bị 8 Đại Pháo Aether và Móc Cáp Harpoon chuyên dụng để kéo Trái Tim Thủy Xà Vực Thẳm từ Vùng Trời Nguy Hiểm 6 về cảng!\"",
+        LoreEn = "\"The Abyss Serpent Hunter Dreadnought mounts an Abyssal Harpoon to haul the Abyss Serpent Heart back to port!\"",
     },
     vega = {
         Short = "DR. VEGA",
@@ -215,57 +215,57 @@ local SPEAKER_PRESETS = {
         Archetype = "scientist_visor",
         RoleVi = "PHÒNG THÍ NGHIỆM TỘC & RAID V2",
         RoleEn = "RACE LAB & RAID V2",
-        C1Vi = "[1] ĐỔI 6 TỘC & ĐỀN TỘC V4",
-        C1En = "[1] 6-RACE LAB & V4 ALTAR",
+        C1Vi = "[1] ĐỔI 6 TỘC & ĐỀN THĂNG HOA",
+        C1En = "[1] 6-RACE LAB & ASCENSION ALTAR",
         C1Cmd = "OpenScreen:NPCShop:DrVegaAndTempleV4",
         C1Icon = "Wing",
-        C2Vi = "[2] ĐỘT KÍCH RAID TRÁI V2 [P]",
-        C2En = "[2] AWAKENING RAID V2 [P]",
+        C2Vi = "[2] ĐỘT KÍCH RAID LÕI V2 [P]",
+        C2En = "[2] AWAKENED CORE RAID V2 [P]",
         C2Cmd = "OpenScreen:Raid",
         C2Icon = "Raid",
         C3Vi = "[3] TỶ LỆ 6 HUYẾT THỐNG",
         C3En = "[3] 6 LINEAGE REROLL ODDS",
-        LoreVi = "\"Tỷ lệ tái cấu trúc 6 Huyết Thống: Skyborn 25% • Mink 25% • Leviathan 20% • Cyborg 12% • Ghoul 12% • Cổ Long Draco 6%! Vượt 5 đảo Raid V2 nhận +1,000 Core Shards!\"",
-        LoreEn = "\"Lineage odds: Skyborn 25% • Mink 25% • Leviathan 20% • Cyborg 12% • Ghoul 12% • Ancient Draco 6%!\"",
+        LoreVi = "\"Tỷ lệ tái cấu trúc 6 Huyết Thống: Skyborn 25% • Mink 25% • Thủy Xà Vực Thẳm 20% • Cyborg 12% • Ghoul 12% • Cổ Long Draco 6%! Vượt 5 đảo Raid V2 nhận +1,000 Core Shards!\"",
+        LoreEn = "\"Lineage odds: Skyborn 25% • Mink 25% • Abyss Serpent 20% • Cyborg 12% • Ghoul 12% • Ancient Draco 6%!\"",
     },
     temple = {
-        Short = "TẾ ĐÀN V4",
+        Short = "THĂNG HOA",
         V5 = "AncientMonkNPC",
         Accent = Color3.fromRGB(251, 191, 36),
         Archetype = "temple_crown",
-        RoleVi = "ĐỀN THỜ LÕI • TEMPLE OF CORE",
-        RoleEn = "TEMPLE OF THE CORE • V4",
-        C1Vi = "[1] MỞ TẾ ĐÀN CÁNH TỘC V4",
-        C1En = "[1] OPEN RACE V4 ALTAR",
+        RoleVi = "ĐỀN THĂNG HOA • ASCENSION SHRINE",
+        RoleEn = "ASCENSION SHRINE • ASCENSION",
+        C1Vi = "[1] MỞ ĐỀN THĂNG HOA",
+        C1En = "[1] OPEN ASCENSION ALTAR",
         C1Cmd = "OpenScreen:NPCShop:DrVegaAndTempleV4",
         C1Icon = "Wing",
-        C2Vi = "[2] KÍCH HOẠT TỘC V4 [G]",
-        C2En = "[2] ACTIVATE RACE V4 [G]",
+        C2Vi = "[2] KÍCH HOẠT THĂNG HOA [G]",
+        C2En = "[2] ACTIVATE ASCENSION [G]",
         C2Cmd = "OpenScreen:Fruits",
         C2Icon = "Bolt",
         C3Vi = "[3] 4 BƯỚC CẦN GẠT CỔ ĐẠI",
         C3En = "[3] 4 ANCIENT LEVER STEPS",
-        LoreVi = "\"Thu thập Mảnh Gương & Bánh Răng Xanh trên Đảo Mirage, kéo Cần Gạt Cổ Đại vượt ải 60 giây dưới Trăng Tròn để khảm Bánh Răng V4 mở khóa Đôi Cánh 3D tối thượng!\"",
-        LoreEn = "\"Gather the Mirror Fractal & Blue Gear, pull the Ancient Lever, and clear the 60s Trial to awaken 3D V4 Wings!\"",
+        LoreVi = "\"Thu thập Mảnh Gương & Bánh Răng Xanh trên Đảo Hư Quang, kéo Cần Gạt Cổ Đại vượt ải 60 giây dưới Trăng Tròn để khảm Bánh Răng Thăng Hoa mở khóa Đôi Cánh 3D tối thượng!\"",
+        LoreEn = "\"Gather the Mirror Fractal & Blue Gear, pull the Ancient Lever, and clear the 60s Trial to awaken 3D Ascension Wings!\"",
     },
     collector = {
         Short = "SƯU TẬP",
         V5 = "LightArcher",
         Accent = Color3.fromRGB(245, 158, 11),
         Archetype = "collector_tophat",
-        RoleVi = "BÀN GIAO DỊCH TRÁI 4X4",
-        RoleEn = "4X4 FRUIT TRADING TABLE",
-        C1Vi = "[1] BÀN GIAO DỊCH TRÁI 4X4",
-        C1En = "[1] OPEN 4X4 FRUIT TRADE",
+        RoleVi = "BÀN GIAO DỊCH LÕI 4X4",
+        RoleEn = "4X4 CORE TRADING TABLE",
+        C1Vi = "[1] BÀN GIAO DỊCH LÕI 4X4",
+        C1En = "[1] OPEN 4X4 CORE TRADE",
         C1Cmd = "OpenScreen:NPCShop:TradingTable",
         C1Icon = "Trade",
-        C2Vi = "[2] KHO TRÁI VĨNH VIỄN [G]",
-        C2En = "[2] STORED FRUITS [G]",
+        C2Vi = "[2] KHO LÕI VĨNH VIỄN [G]",
+        C2En = "[2] STORED CORES [G]",
         C2Cmd = "OpenScreen:Fruits",
         C2Icon = "Fruit",
         C3Vi = "[3] LUẬT CHỐNG LỪA ĐẢO 40%",
         C3En = "[3] 40% ANTI-SCAM RULE",
-        LoreVi = "\"Bàn Giao Dịch 4 ô tự động khóa nếu chênh lệch giá trị vượt quá 40%! Đặc biệt khi chơi đơn (Solo), ta sẵn sàng trao đổi trực tiếp 4 Khế Ước Trái Thần Thoại công bằng!\"",
+        LoreVi = "\"Bàn Giao Dịch 4 ô tự động khóa nếu chênh lệch giá trị vượt quá 40%! Đặc biệt khi chơi đơn (Solo), ta sẵn sàng trao đổi trực tiếp 4 Khế Ước Lõi Thần Thoại công bằng!\"",
         LoreEn = "\"Our 4x4 Anti-Scam Scale locks trades above 40% value gap, and offers fair Solo Mythic Collector Pacts!\"",
     },
     warden = {
@@ -325,22 +325,22 @@ local SPEAKER_PRESETS = {
         C2Icon = "Compass",
         C3Vi = "[3] HƯỚNG DẪN TÂN THỦ SKY 1-3",
         C3En = "[3] SKY 1-3 PROGRESSION GUIDE",
-        LoreVi = "\"Hạt nhân Veil's End đang rạn nứt! Hãy bật [Tự Lặp Nhiệm Vụ] trong bảng Nhiệm Vụ [L] để cày cấp mượt tới Lv.2550, sưu tập 12 Trái Aether 3D và thức tỉnh Đôi Cánh Tộc V4!\"",
-        LoreEn = "\"Enable Quick-Repeat Quests in [L] to level smoothly to Lv.2550, collect all 12 3D Fruits, and awaken V4 Wings!\"",
+        LoreVi = "\"Hạt nhân Veil's End đang rạn nứt! Hãy bật [Tự Lặp Nhiệm Vụ] trong bảng Nhiệm Vụ [L] để cày cấp mượt tới Lv.2550, sưu tập 12 Lõi Aether 3D và mở khóa Đôi Cánh Thăng Hoa!\"",
+        LoreEn = "\"Enable Quick-Repeat Quests in [L] to level smoothly to Lv.2550, collect all 12 3D Aether Cores, and awaken Ascension Wings!\"",
     },
 }
 
 local function classifySpeaker(speakerText)
     local low = string.lower(tostring(speakerText or "Lyra"))
-    if low:find("mirage") or low:find("ảo ảnh") then
+    if low:find("mirage") or low:find("ảo ảnh") or low:find("hư quang") or low:find("phantom") then
         return "mirage", SPEAKER_PRESETS.mirage
-    elseif low:find("zioles") or low:find("gacha") then
+    elseif low:find("zioles") or low:find("hiền giả") or low:find("oracle") or low:find("gacha") then
         return "zioles", SPEAKER_PRESETS.zioles
     elseif low:find("sword") or low:find("kiếm") or low:find("blade") or low:find("ryu") then
         return "sword", SPEAKER_PRESETS.sword
     elseif low:find("gun") or low:find("súng") or low:find("xạ thủ") or low:find("marksman") then
         return "gun", SPEAKER_PRESETS.gun
-    elseif low:find("temple") or low:find("cần gạt") or low:find("tế đàn") or low:find("v4") then
+    elseif low:find("temple") or low:find("cần gạt") or low:find("tế đàn") or low:find("v4") or low:find("thăng hoa") or low:find("ascension") then
         return "temple", SPEAKER_PRESETS.temple
     elseif low:find("monk") or low:find("sư") or low:find("võ") or low:find("dojo") then
         return "monk", SPEAKER_PRESETS.monk
@@ -651,7 +651,7 @@ function Dialogue.CreateOverlay(parent)
 
     local liveTag = UIFactory.Label(livePill, {
         Name = "Live3DTag",
-        Text = "• 3D LIVE - ZIOLES",
+        Text = "• 3D LIVE - HIỀN GIẢ",
         Position = UDim2.fromOffset(4, 0),
         Size = UDim2.new(1, -8, 1, 0),
         TextSize = 10,
@@ -675,7 +675,7 @@ function Dialogue.CreateOverlay(parent)
 
     local speakerLabel = UIFactory.Create("TextLabel", headerRow, {
         Name = "NPCName",
-        Text = "ZIOLES • ĐẠI THƯƠNG NHÂN TRÁI AETHER",
+        Text = "HIỀN GIẢ AETHER • ĐẠI THƯƠNG NHÂN LÕI AETHER",
         Size = UDim2.fromOffset(0, 26),
         AutomaticSize = Enum.AutomaticSize.X,
         BackgroundTransparency = 1,
@@ -991,7 +991,7 @@ function Dialogue.CreateOverlay(parent)
         end
 
         local isEn = (I18n.GetLanguage() == "en")
-        local spk = tostring(dialogueState.speaker or "ZIOLES • ĐẠI THƯƠNG NHÂN TRÁI AETHER")
+        local spk = tostring(dialogueState.speaker or "HIỀN GIẢ AETHER • ĐẠI THƯƠNG NHÂN LÕI AETHER")
         local keyword, preset = classifySpeaker(spk)
 
         speakerLabel.Text = string.upper(spk)

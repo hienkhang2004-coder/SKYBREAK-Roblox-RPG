@@ -38,10 +38,11 @@ local GIFTCODE_CATALOG = {
         RewardEn = "+150 Aether Core Shards",
         LootCategory = "Shards",
     },
-    MYTHICFRUIT = {
-        RewardVi = "+1 Trái Thần Thoại Lưu Kho & +1 Vé Quay 3D Zioles Miễn Phí",
-        RewardEn = "+1 Stored Mythic Fruit & +1 Free Zioles 3D Fruit Voucher",
+    SKYBREAKLAUNCH = {
+        RewardVi = "+10,000 Gold & Buff X2 EXP (30 Phút)",
+        RewardEn = "+10,000 Gold & 2x EXP Boost (30m)",
         LootCategory = "Gift",
+        GrantDoubleExpSec = 1800,
     },
     FREESTAT = {
         RewardVi = "+1 Lượt Tẩy Toàn Bộ Điểm Chỉ Số Miễn Phí",
@@ -146,9 +147,6 @@ local function redeemGiftcode(rawInput, codeBox)
         end
         if remotes:FindFirstChild("UIRequest") then
             remotes.UIRequest:FireServer("RedeemCode", { code = cleaned })
-            return
-        elseif remotes:FindFirstChild("EquipmentRequest") then
-            remotes.EquipmentRequest:FireServer({ action = "RedeemCode", code = cleaned })
             return
         end
     end
@@ -427,11 +425,11 @@ function Settings.Build(parent, responsiveState)
         })
     end
 
-    -- 4. Show Celestial Minimap & Fruit Notifier Toggle (#92, #50)
+    -- 4. Show Celestial Minimap & Core Notifier Toggle (#92, #50)
     createToggleRow(
         4,
-        I18n.Pick("Hiển Thị Minimap La Bàn & Radar Trái Tự Nhiên", "Show Celestial Minimap & Fruit Radar"),
-        I18n.Pick("Bật la bàn radar 148x148 góc phải trên HUD kèm định vị Boss, NPC và Trái Ác Quỷ.", "Displays the 148x148 circular compass radar and Natural Fruit Notifier on HUD."),
+        I18n.Pick("Hiển Thị Minimap La Bàn & Radar Lõi Tự Nhiên", "Show Celestial Minimap & Core Radar"),
+        I18n.Pick("Bật la bàn radar 148x148 góc phải trên HUD kèm định vị Boss, NPC và Lõi Aether.", "Displays the 148x148 circular compass radar and Natural Core Notifier on HUD."),
         s.showMinimap ~= false,
         function(nextVal)
             local nextSettings = cloneCurrentSettings()
@@ -569,7 +567,7 @@ function Settings.Build(parent, responsiveState)
         Position = UDim2.fromOffset(12, 32),
         Size = UDim2.new(1, -152, 0, 36),
         Text = "",
-        PlaceholderText = I18n.Pick("Nhập mã (VD: SKYBREAK2026, AETHERV2)...", "Enter code (e.g. SKYBREAK2026, AETHERV2)..."),
+        PlaceholderText = I18n.Pick("Nhập mã (VD: SKYBREAK2026, AETHERV2, SKYBREAKLAUNCH)...", "Enter code (e.g. SKYBREAK2026, AETHERV2, SKYBREAKLAUNCH)..."),
         Font = Theme.Fonts.Bold,
         TextSize = 13,
         TextColor3 = colors.TEXT_PRIMARY,
@@ -606,7 +604,7 @@ function Settings.Build(parent, responsiveState)
     UIFactory.GridLayout(chipRow, UDim2.new(0.25, -5, 0, 24), UDim2.fromOffset(6, 4))
 
     local chipApis = {}
-    for cIdx, sampleCode in ipairs({ "SKYBREAK2026", "AETHERV2", "MYTHICFRUIT", "FREESTAT" }) do
+    for cIdx, sampleCode in ipairs({ "SKYBREAK2026", "AETHERV2", "SKYBREAKLAUNCH", "FREESTAT" }) do
         local used = (snap and snap.redeemedCodes and snap.redeemedCodes[sampleCode] == true)
             or (Store.Session.redeemedCodes and Store.Session.redeemedCodes[sampleCode] == true)
         local _, cApi = PremiumButton.Create(chipRow, {
@@ -768,18 +766,18 @@ function Settings.Build(parent, responsiveState)
     })
 
     local keyLinesVi = {
-        "• [Chuột Trái] Combo 4 đòn  |  [1]-[4] Đổi Võ / Trái / Kiếm / Súng",
-        "• [Z] [X] [C] [V] [F] Bộ 5 chiêu thức  |  [LeftShift / Q] Lướt  |  [Space x2] Geppo",
+        "• [Chuột Trái] Combo 4 đòn  |  [1]-[4] Đổi Võ / Lõi Aether / Kiếm / Súng",
+        "• [Z] [X] [C] [V] [F] Bộ 5 chiêu thức  |  [LeftShift / Q] Thuấn Bộ  |  [Space x2] Bộ Không",
         "• [LeftCtrl] TẮT Khóa Góc Nhìn & Mở Khóa Chuột  |  [LeftAlt] Action Cam  |  [Tab] Khóa Mục Tiêu",
-        "• [J] Haki Vũ Trang  |  [U] Haki Quan Sát  |  [H] Bá Vương  |  [Y] Tộc V4",
-        "• [G] Trái 3D  |  [I] Túi  |  [K] Chỉ Số  |  [L] Nhật Ký  |  [M] Bản Đồ  |  [P] Raid  |  [O] Cài Đặt",
+        "• [J] Giáp Ý Chí  |  [U] Thấu Ý  |  [H] Bá Ý  |  [Y] Thăng Hoa",
+        "• [G] Lõi Aether 3D  |  [I] Túi  |  [K] Chỉ Số  |  [L] Nhật Ký  |  [M] Bản Đồ  |  [P] Raid  |  [O] Cài Đặt",
     }
     local keyLinesEn = {
-        "• [LMB] 4-Hit Combo  |  [1]-[4] Switch Melee / Fruit / Sword / Gun",
-        "• [Z] [X] [C] [V] [F] Active Skills  |  [LeftShift / Q] Dash  |  [Space x2] Geppo",
+        "• [LMB] 4-Hit Combo  |  [1]-[4] Switch Melee / Aether Core / Sword / Gun",
+        "• [Z] [X] [C] [V] [F] Active Skills  |  [LeftShift / Q] Blink Dash  |  [Space x2] Sky Step",
         "• [LeftCtrl] UNLOCK View & Mouse Cursor  |  [LeftAlt] Action Cam  |  [Tab] Target Lock",
-        "• [J] Armament Haki  |  [U] Instinct Haki  |  [H] Conqueror  |  [Y] Race V4",
-        "• [G] 3D Fruits  |  [I] Bag  |  [K] Stats  |  [L] Quests  |  [M] Map  |  [P] Raid  |  [O] Settings",
+        "• [J] Will Armor  |  [U] Will Sense  |  [H] Sovereign Will  |  [Y] Ascension",
+        "• [G] 3D Aether Cores  |  [I] Bag  |  [K] Stats  |  [L] Quests  |  [M] Map  |  [P] Raid  |  [O] Settings",
     }
 
     UIFactory.Label(keyCard, {

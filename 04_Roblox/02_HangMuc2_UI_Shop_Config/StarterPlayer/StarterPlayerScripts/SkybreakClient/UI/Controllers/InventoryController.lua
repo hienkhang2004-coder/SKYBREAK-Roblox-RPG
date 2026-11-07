@@ -165,13 +165,6 @@ function InventoryController.RequestEquipToggle(itemId, currentlyEquipped, silen
         local uiCmd = remotes and remotes:FindFirstChild("UICommand")
         local isGun = (cfg.Slot == "Gun" or cfg.WeaponType == "Gun" or cfg.Icon == "Gun")
 
-        if reqUIAction and not currentlyEquipped then
-            reqUIAction:FireServer("EquipItem", {
-                itemId = itemId,
-                slot = cfg.Slot,
-            })
-        end
-
         if equipRemote then
             if isGun then
                 equipRemote:FireServer({
@@ -194,6 +187,11 @@ function InventoryController.RequestEquipToggle(itemId, currentlyEquipped, silen
                     slot = serverSlotMap[cfg.Slot] or cfg.Slot,
                 })
             end
+        elseif reqUIAction and not currentlyEquipped then
+            reqUIAction:FireServer("EquipItem", {
+                itemId = itemId,
+                slot = cfg.Slot,
+            })
         elseif uiCmd then
             uiCmd:FireServer({
                 command = "EquipItem",

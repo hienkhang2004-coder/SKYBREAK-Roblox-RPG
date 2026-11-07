@@ -432,7 +432,7 @@ RarityConfig.Items = {
         Description = "Đại đao băng tinh của Cryon Prime (+135 ATK, +18% Crit, +36% Crit DMG).",
     },
     cursed_dual_skyblades = {
-        Id = "cursed_dual_skyblades", Name = "Cursed Dual Skyblades (CDK)", Category = "Weapons", Slot = "Weapon",
+        Id = "cursed_dual_skyblades", Name = "Eclipse Twinblades • Song Kiếm Nguyệt Thực", VietnameseName = "Song Kiếm Nguyệt Thực", Category = "Weapons", Slot = "Weapon",
         Rarity = "Mythic", LevelReq = 1, Icon = "Sword",
         Stats = { ATK = 185, CRIT = 25 }, Passive = "Eclipse Cleave: Combines Solar Light & Abyssal Void energy.",
         Description = "Song kiếm thần thoại kết hợp Ánh Sáng & Hư Không (+185 ATK, +25% Crit, +48% Crit DMG).",
@@ -467,7 +467,7 @@ RarityConfig.Items = {
         Stats = { ATK = 35, CRIT = 5 }, Description = "Súng lục Aether cơ bản của thợ săn bầu trời.",
     },
     solar_kabucha = {
-        Id = "solar_kabucha", Name = "Solar Kabucha • Ná Thần Mặt Trời", Category = "Weapons", Slot = "Offhand",
+        Id = "solar_kabucha", Name = "Sunwind Sling • Ná Gió Mặt Trời", VietnameseName = "Ná Gió Mặt Trời", Category = "Weapons", Slot = "Offhand",
         Rarity = "Rare", LevelReq = 1, Icon = "Sword",
         Stats = { ATK = 78, CRIT = 12 }, Description = "Ná thần bắn đạn mặt trời phá giáp (+78 ATK, +12% Crit).",
     },
@@ -477,9 +477,9 @@ RarityConfig.Items = {
         Stats = { ATK = 125, CRIT = 18 }, Description = "Pháo từ trường bắn tia laser băng giá (+125 ATK, +18% Crit).",
     },
     soul_guitar_void = {
-        Id = "soul_guitar_void", Name = "Soul Guitar of the Void • Đàn Linh Hồn", Category = "Weapons", Slot = "Offhand",
+        Id = "soul_guitar_void", Name = "Void Lyre • Đàn Hồn Hư Không", VietnameseName = "Đàn Hồn Hư Không", Category = "Weapons", Slot = "Offhand",
         Rarity = "Mythic", LevelReq = 1, Icon = "Sword",
-        Stats = { ATK = 165, CRIT = 22 }, Description = "Đàn linh hồn thần thoại triệu hồi sóng âm hư không (+165 ATK, +22% Crit).",
+        Stats = { ATK = 165, CRIT = 22 }, Description = "Đàn hồn thần thoại triệu hồi sóng âm hư không (+165 ATK, +22% Crit).",
     },
     skyward_helm = {
         Id = "skyward_helm", Name = "Mũ Giáp Azure Vanguard", Category = "Armor", Slot = "Helm",
@@ -517,9 +517,9 @@ RarityConfig.Items = {
         Stats = { ATK = 35, HP = 250, DEF = 20, CRIT = 5 }, Description = "Thánh vật cộng hưởng từ Core of Light (+35 ATK, +250 HP, +20 DEF).",
     },
     leviathan_shield = {
-        Id = "leviathan_shield", Name = "Khiên Thần Leviathan", Category = "Armor", Slot = "Artifact",
+        Id = "leviathan_shield", Name = "Khiên Thủy Xà Vực Thẳm", Category = "Armor", Slot = "Artifact",
         Rarity = "Mythic", LevelReq = 1, Icon = "Shield",
-        Stats = { HP = 850, DEF = 85, ATK = 60, CRIT = 10 }, Description = "Khiên thần rèn từ vảy Thủy Tổ Leviathan (+850 HP, +85 DEF, +60 ATK).",
+        Stats = { HP = 850, DEF = 85, ATK = 60, CRIT = 10 }, Description = "Khiên thần rèn từ vảy Thủy Xà Vực Thẳm (+850 HP, +85 DEF, +60 ATK).",
     },
     sovereign_cloak = {
         Id = "sovereign_cloak", Name = "Áo Choàng Hư Không Đế Vương", Category = "Armor", Slot = "Chest",
@@ -544,27 +544,27 @@ RarityConfig.Items = {
     },
     VoidEssence = {
         Id = "VoidEssence", Name = "Void Essence", VietnameseName = "Tinh Chất Hư Không", Category = "Materials", Rarity = "Epic",
-        LevelReq = 1, Icon = "Gem", Stats = {}, Description = "Tinh chất năng lượng Hư Không thu thập từ quái và Boss Sky 3.",
+        LevelReq = 1, Icon = "Gem", Stats = {}, Description = "Tinh chất năng lượng Hư Không thu thập từ quái và Boss Tầng Trời 3.",
     },
     EnchantScroll = {
         Id = "EnchantScroll", Name = "Arcane Enchant Scroll", VietnameseName = "Cuộn Phù Phép Cổ Ngữ", Category = "Materials", Rarity = "Legendary",
         LevelReq = 1, Icon = "Gem", Stats = {}, Description = "Cuộn phù phép cổ đại dùng tại Arcane Enchanter để khắc dòng chỉ số vũ khí.",
     },
     AwakeningMicrochip = {
-        Id = "AwakeningMicrochip", Name = "Awakening Microchip V2", VietnameseName = "Chip Thức Tỉnh V2", Category = "Materials", Rarity = "Mythic",
-        LevelReq = 1, Icon = "Core", Stats = {}, Description = "Vi mạch cổ đại từ Mythic Awakening Raid giúp thức tỉnh toàn diện Trái Ác Quỷ V2.",
+        Id = "AwakeningMicrochip", Name = "Awakened Core Microchip", VietnameseName = "Chip Lõi Thức Tỉnh", Category = "Materials", Rarity = "Mythic",
+        LevelReq = 1, Icon = "Core", Stats = {}, Description = "Vi mạch cổ đại từ Mythic Awakening Raid giúp thức tỉnh toàn diện Lõi Thức Tỉnh.",
     },
     LeviathanHeart = {
-        Id = "LeviathanHeart", Name = "Leviathan Heart", VietnameseName = "Trái Tim Thủy Tổ Leviathan", Category = "Materials", Rarity = "Mythic",
-        LevelReq = 1, Icon = "Core", Stats = {}, Description = "Chiến lợi phẩm tối thượng từ Thủy Tổ Leviathan dùng rèn Khiên Thần và mở khóa Thần Quyền.",
+        Id = "LeviathanHeart", Name = "Abyss Serpent Heart", VietnameseName = "Trái Tim Thủy Xà Vực Thẳm", Category = "Materials", Rarity = "Mythic",
+        LevelReq = 1, Icon = "Core", Stats = {}, Description = "Chiến lợi phẩm tối thượng từ Thủy Xà Vực Thẳm dùng rèn Khiên Thần và mở khóa Thần Quyền.",
     },
     BlueResonanceGear = {
         Id = "BlueResonanceGear", Name = "Blue Resonance Gear", VietnameseName = "Bánh Răng Cộng Hưởng Xanh", Category = "Materials", Rarity = "Mythic",
-        LevelReq = 1, Icon = "Core", Stats = {}, Description = "Cổ vật cộng hưởng trên Đảo Bí Ẩn Mirage mở khóa sức mạnh Tộc V4.",
+        LevelReq = 1, Icon = "Core", Stats = {}, Description = "Cổ vật cộng hưởng trên Đảo Hư Quang mở khóa sức mạnh Thăng Hoa.",
     },
     CoreGear = {
-        Id = "CoreGear", Name = "Awakened Core Gear V4", VietnameseName = "Bánh Răng Thức Tỉnh V4", Category = "Materials", Rarity = "Mythic",
-        LevelReq = 1, Icon = "Core", Stats = {}, Description = "Bánh răng lõi cổ đại nâng cấp thiên phú Tộc V4 tại Đền Thờ Lõi.",
+        Id = "CoreGear", Name = "Ascension Core Gear", VietnameseName = "Bánh Răng Thăng Hoa", Category = "Materials", Rarity = "Mythic",
+        LevelReq = 1, Icon = "Core", Stats = {}, Description = "Bánh răng lõi cổ đại nâng cấp thiên phú Thăng Hoa tại Đền Thăng Hoa.",
     },
 }
 

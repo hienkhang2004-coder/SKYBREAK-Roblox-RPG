@@ -480,7 +480,7 @@ function CelestialMinimap.Create(parent: GuiObject, onOpenMap: (() -> ())?)
 		UIFactory.Corner(btn, Theme.Radius.Small)
 		UIFactory.Stroke(btn, Theme.Colors.ACCENT_GOLD, 1, 0.25)
 		btn.Activated:Connect(function()
-			zoomIdx = math.clamp(zoomIdx + delta, 1, #ZOOM_RANGES)
+			zoomIdx = math.clamp(zoomIdx + delta, 1, math.max(1, #ZOOM_RANGES))
 			rangeLabel.Text = tostring(ZOOM_RANGES[zoomIdx]) .. "m"
 		end)
 	end

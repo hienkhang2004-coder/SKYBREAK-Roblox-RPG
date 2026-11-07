@@ -63,7 +63,7 @@ I18n.Dict = {
 	vi = {
 		-- Shared Navigation Tabs (#10, #91)
 		["nav.hud"] = "CHIẾN ĐẤU [ESC]",
-		["nav.fruits"] = "TRÁI ÁC QUỶ [G]",
+		["nav.fruits"] = "LÕI AETHER [G]",
 		["nav.inventory"] = "TÚI ĐỒ [I]",
 		["nav.skills"] = "KỸ NĂNG [K]",
 		["nav.forge"] = "LÒ RÈN [F]",
@@ -83,15 +83,15 @@ I18n.Dict = {
 		["hud.exp"] = "KINH NGHIỆM",
 		["hud.squad"] = "ĐỘI HÌNH SKYBORN",
 		["hud.minimap_title"] = "LA BÀN THIÊN GIỚI [M]",
-		["hud.fruit_radar"] = "Trái Tự Nhiên: %s (%dm)",
-		["hud.buff.haki_arm"] = "Haki Vũ Trang [J]",
-		["hud.buff.haki_ken"] = "Quan Sát (%d Né)",
-		["hud.buff.race_v4"] = "Thức Tỉnh V4 [Y]",
+		["hud.fruit_radar"] = "Lõi Tự Nhiên: %s (%dm)",
+		["hud.buff.haki_arm"] = "Giáp Ý Chí [J]",
+		["hud.buff.haki_ken"] = "Thấu Ý (%d Né)",
+		["hud.buff.race_v4"] = "Thăng Hoa [Y]",
 		["hud.buff.x2_exp"] = "X2 EXP (%s)",
 		["hud.buff.shield"] = "Khiên Hộ Thể",
 		["hud.buff.transform"] = "Hóa Hình Thần Thú",
 		["hud.slot.1"] = "VÕ THUẬT",
-		["hud.slot.2"] = "TRÁI ÁC QUỶ",
+		["hud.slot.2"] = "LÕI AETHER",
 		["hud.slot.3"] = "THẦN KIẾM",
 		["hud.slot.4"] = "PHÁP KHÍ",
 
@@ -112,14 +112,14 @@ I18n.Dict = {
 		["forge.pity_label"] = "Chúc Phúc Tinh Tú (Pity): %d%%",
 
 		-- Fruits & Gacha (#7, #11)
-		["fruits.title"] = "KHO TRÁI ÁC QUỶ AETHER [G]",
-		["fruits.eat"] = "Ăn Trái Này",
+		["fruits.title"] = "KHO LÕI AETHER [G]",
+		["fruits.eat"] = "Hấp Thụ Lõi Này",
 		["fruits.hold"] = "Cầm 3D Trên Tay",
 		["fruits.store"] = "Cất Vào Kho",
-		["fruits.awaken_on"] = "Tắt V2 -> V1",
-		["fruits.awaken_off"] = "Thức Tỉnh V2",
-		["fruits.spin_btn"] = "Quay Gacha Zioles",
-		["fruits.spin_rolling"] = "ZIOLES ĐANG TRIỆU HỒI TRÁI AETHER...",
+		["fruits.awaken_on"] = "Tắt Lõi Thức Tỉnh",
+		["fruits.awaken_off"] = "Lõi Thức Tỉnh",
+		["fruits.spin_btn"] = "Quay Gacha Hiền Giả Aether",
+		["fruits.spin_rolling"] = "HIỀN GIẢ AETHER ĐANG TRIỆU HỒI LÕI AETHER...",
 		["fruits.spin_won"] = "CHÚC MỪNG NHẬN ĐƯỢC!",
 		["fruits.cd_fmt"] = "Hồi: %ss",
 
@@ -133,13 +133,13 @@ I18n.Dict = {
 		["skills.title"] = "KỸ NĂNG & CHỈ SỐ [K]",
 		["skills.preset_1"] = "Cấu Hình 1: Võ Sĩ",
 		["skills.preset_2"] = "Cấu Hình 2: Kiếm Thánh",
-		["skills.preset_3"] = "Cấu Hình 3: Trái Ác Quỷ",
+		["skills.preset_3"] = "Cấu Hình 3: Lõi Aether",
 		["skills.save"] = "LƯU",
 		["skills.load"] = "NẠP",
 		["skills.refund"] = "TẨY ĐIỂM (STAT REFUND)",
 
 		-- World Map & Bestiary (#61, #99)
-		["map.title"] = "BẢN ĐỒ TAM HẢI & ĐẢO TRỜI [M]",
+		["map.title"] = "BẢN ĐỒ TAM TẦNG TRỜI & ĐẢO TRỜI [M]",
 		["map.here"] = "BẠN ĐANG Ở ĐÂY",
 		["map.teleport"] = "Dịch Chuyển Nhanh",
 		["map.codex_tab"] = "CODEX / TỈ LỆ RỚT ĐỒ",
@@ -165,7 +165,7 @@ I18n.Dict = {
 	en = {
 		-- Shared Navigation Tabs (#10, #91)
 		["nav.hud"] = "COMBAT HUD [ESC]",
-		["nav.fruits"] = "FRUITS [G]",
+		["nav.fruits"] = "AETHER CORES [G]",
 		["nav.inventory"] = "INVENTORY [I]",
 		["nav.skills"] = "SKILLS [K]",
 		["nav.forge"] = "FORGE [F]",
@@ -185,15 +185,15 @@ I18n.Dict = {
 		["hud.exp"] = "EXPERIENCE",
 		["hud.squad"] = "SKYBORN SQUAD",
 		["hud.minimap_title"] = "CELESTIAL RADAR [M]",
-		["hud.fruit_radar"] = "Natural Fruit: %s (%dm)",
-		["hud.buff.haki_arm"] = "Armament Haki [J]",
-		["hud.buff.haki_ken"] = "Instinct (%d Dodges)",
-		["hud.buff.race_v4"] = "Race V4 Awakened [Y]",
+		["hud.fruit_radar"] = "Natural Core: %s (%dm)",
+		["hud.buff.haki_arm"] = "Will Armor [J]",
+		["hud.buff.haki_ken"] = "Will Sense (%d Dodges)",
+		["hud.buff.race_v4"] = "Ascension Awakened [Y]",
 		["hud.buff.x2_exp"] = "2X EXP (%s)",
 		["hud.buff.shield"] = "Aegis Barrier",
 		["hud.buff.transform"] = "Beast Transformation",
 		["hud.slot.1"] = "MELEE",
-		["hud.slot.2"] = "DEVIL FRUIT",
+		["hud.slot.2"] = "AETHER CORE",
 		["hud.slot.3"] = "SWORD",
 		["hud.slot.4"] = "ARCANE GUN",
 
@@ -214,14 +214,14 @@ I18n.Dict = {
 		["forge.pity_label"] = "Astral Pity Blessing: %d%%",
 
 		-- Fruits & Gacha (#7, #11)
-		["fruits.title"] = "AETHER DEVIL FRUITS [G]",
-		["fruits.eat"] = "Consume Fruit",
-		["fruits.hold"] = "Hold 3D Fruit",
+		["fruits.title"] = "AETHER CORES [G]",
+		["fruits.eat"] = "Absorb Core",
+		["fruits.hold"] = "Hold 3D Core",
 		["fruits.store"] = "Store in Vault",
-		["fruits.awaken_on"] = "Disable V2 -> V1",
-		["fruits.awaken_off"] = "Awaken V2",
-		["fruits.spin_btn"] = "Spin Zioles Gacha",
-		["fruits.spin_rolling"] = "ZIOLES IS CHANNELLING AETHER CORES...",
+		["fruits.awaken_on"] = "Disable Awakened Core",
+		["fruits.awaken_off"] = "Awakened Core",
+		["fruits.spin_btn"] = "Spin Aether Oracle Gacha",
+		["fruits.spin_rolling"] = "AETHER ORACLE IS CHANNELLING AETHER CORES...",
 		["fruits.spin_won"] = "CONGRATULATIONS! YOU OBTAINED:",
 		["fruits.cd_fmt"] = "CD: %ss",
 
@@ -235,13 +235,13 @@ I18n.Dict = {
 		["skills.title"] = "SKILLS & STAT MASTERY [K]",
 		["skills.preset_1"] = "Preset 1: Brawler",
 		["skills.preset_2"] = "Preset 2: Swordmaster",
-		["skills.preset_3"] = "Preset 3: Fruit Sovereign",
+		["skills.preset_3"] = "Preset 3: Core Sovereign",
 		["skills.save"] = "SAVE",
 		["skills.load"] = "LOAD",
 		["skills.refund"] = "STAT REFUND (RESET)",
 
 		-- World Map & Bestiary (#61, #99)
-		["map.title"] = "GRAND SKY SEAS WORLD MAP [M]",
+		["map.title"] = "GRAND SKY TIERS WORLD MAP [M]",
 		["map.here"] = "YOU ARE HERE",
 		["map.teleport"] = "Fast Travel",
 		["map.codex_tab"] = "CODEX / DROP RATES",
@@ -270,7 +270,7 @@ local ITEM_NAME_VI: { [string]: string } = {
 	-- Fighting Styles (Slot 1 — canonical snake_case + legacy PascalCase aliases)
 	skyborn_combat = "Võ Thuật Skyborn",
 	SkybornCombat = "Võ Thuật Skyborn",
-	SkyStep = "Thiên Cước",
+	SkyStep = "Bộ Không",
 	jade_dragon = "Long Quyền Ngọc Bích",
 	JadeDragon = "Long Quyền Ngọc Bích",
 	GlacialFist = "Long Quyền Ngọc Bích",
@@ -284,18 +284,18 @@ local ITEM_NAME_VI: { [string]: string } = {
 	CelestialGodhuman = "Thần Quyền Lục Giới",
 
 	-- Aether Fruits (Slot 2)
-	GaleCore = "Trái Gió",
-	SandstoneCore = "Trái Cát Vàng",
-	SolarFlameCore = "Trái Lửa Mặt Trời",
-	GlacierIceCore = "Trái Băng Vĩnh Cửu",
-	CelestialLightCore = "Trái Ánh Sáng",
-	StarforgedMagmaCore = "Trái Dung Nham",
-	ThunderRumbleCore = "Trái Lôi Đình",
-	AstralGravityCore = "Trái Trọng Lực",
-	DimensionalPortalCore = "Trái Không Gian",
-	SolarTitanCore = "Trái Kim Thân",
-	AetherflowCore = "Trái Tinh Thể",
-	AbyssalSovereignCore = "Trái Long Vương Hư Không",
+	GaleCore = "Lõi Gió",
+	SandstoneCore = "Lõi Cát Vàng",
+	SolarFlameCore = "Lõi Lửa Mặt Trời",
+	GlacierIceCore = "Lõi Băng Vĩnh Cửu",
+	CelestialLightCore = "Lõi Ánh Sáng",
+	StarforgedMagmaCore = "Lõi Dung Nham",
+	ThunderRumbleCore = "Lõi Lôi Đình",
+	AstralGravityCore = "Lõi Trọng Lực",
+	DimensionalPortalCore = "Lõi Khe Nứt",
+	SolarTitanCore = "Lõi Kim Thân",
+	AetherflowCore = "Lõi Tinh Thể",
+	AbyssalSovereignCore = "Lõi Long Vương Hư Không",
 
 	-- Swords & Weapons (Slot 3)
 	starter_sword = "Kiếm Skyborn",
@@ -310,6 +310,7 @@ local ITEM_NAME_VI: { [string]: string } = {
 	saber_of_aureon = "Đại Kiếm Thánh Quang",
 	cryon_frostblade = "Tuyệt Độ Hàn Đao",
 	cursed_dual_skyblades = "Song Kiếm Nguyệt Thực",
+	CursedDualSkyblades = "Song Kiếm Nguyệt Thực",
 	noxar_abyssal_greatsword = "Hắc Kiếm Hư Không",
 	noxar_greatsword = "Đại Kiếm Hắc Tinh Noxar",
 	abyssal_greatsword = "Đại Kiếm Vực Thẳm",
@@ -318,9 +319,12 @@ local ITEM_NAME_VI: { [string]: string } = {
 
 	-- Guns (Slot 4)
 	aether_flintlock = "Súng Lục Aether",
-	solar_kabucha = "Ná Thần Mặt Trời",
+	solar_kabucha = "Ná Gió Mặt Trời",
+	kabucha_wind = "Ná Gió Mặt Trời",
+	KabuchaSling = "Ná Gió Mặt Trời",
 	cryo_railgun = "Pháo Từ Trường Băng",
-	soul_guitar_void = "Đàn Linh Hồn Hư Không",
+	soul_guitar_void = "Đàn Hồn Hư Không",
+	SoulGuitar = "Đàn Hồn Hư Không",
 
 	-- Armor, Shields, Rings & Artifacts (8-Slot Equipment)
 	SkyHelm = "Mũ Giáp Skyborn",
@@ -337,7 +341,8 @@ local ITEM_NAME_VI: { [string]: string } = {
 	aether_ring = "Nhẫn Tinh Cầu Aether",
 	celestial_necklace = "Dây Chuyền Ánh Sao",
 	core_artifact = "Thánh Vật Ánh Sáng",
-	leviathan_shield = "Khiên Thần Leviathan",
+	leviathan_shield = "Khiên Thủy Xà Vực Thẳm",
+	nerith_leviathan_ring = "Nhẫn Thủy Xà Vực Thẳm Nerith",
 	sovereign_cloak = "Áo Choàng Đế Vương Hư Không",
 
 	-- Crafting Materials, Quest Items & Currencies
@@ -354,9 +359,9 @@ local ITEM_NAME_VI: { [string]: string } = {
 	BossKey = "Chìa Khóa Tháp Ánh Sáng",
 	EnchantScroll = "Cuộn Phù Phép Cổ Ngữ",
 	BlueResonanceGear = "Bánh Răng Cộng Hưởng Xanh",
-	CoreGear = "Bánh Răng Thức Tỉnh V4",
-	LeviathanHeart = "Trái Tim Thủy Tổ Leviathan",
-	AwakeningMicrochip = "Chip Thức Tỉnh V2",
+	CoreGear = "Bánh Răng Thăng Hoa",
+	LeviathanHeart = "Trái Tim Thủy Xà Vực Thẳm",
+	AwakeningMicrochip = "Chip Lõi Thức Tỉnh",
 	CoreShards = "Tinh Thạch Lõi (Core Shards)",
 	Gold = "Vàng (Gold)",
 }
@@ -387,9 +392,9 @@ local ITEM_NAME_EN: { [string]: string } = {
 	StarforgedMagmaCore = "Starforged Magma",
 	ThunderRumbleCore = "Thunder Rumble",
 	AstralGravityCore = "Astral Gravity",
-	DimensionalPortalCore = "Dimensional Portal",
-	SolarTitanCore = "Solar Titan (Buddha)",
-	AetherflowCore = "Aetherflow (Dough)",
+	DimensionalPortalCore = "Rift Core",
+	SolarTitanCore = "Colossus Core",
+	AetherflowCore = "Aetherflow Core",
 	AbyssalSovereignCore = "Abyssal Sovereign",
 
 	-- Swords & Weapons (Slot 3)
@@ -404,7 +409,8 @@ local ITEM_NAME_EN: { [string]: string } = {
 	EternalFrost = "Eternal Frost",
 	saber_of_aureon = "Saber of Aureon",
 	cryon_frostblade = "Cryon Frostblade",
-	cursed_dual_skyblades = "Cursed Dual Skyblades",
+	cursed_dual_skyblades = "Eclipse Twinblades",
+	CursedDualSkyblades = "Eclipse Twinblades",
 	noxar_abyssal_greatsword = "Noxar Abyssal Greatsword",
 	noxar_greatsword = "Noxar Greatsword",
 	abyssal_greatsword = "Abyssal Greatsword",
@@ -413,9 +419,12 @@ local ITEM_NAME_EN: { [string]: string } = {
 
 	-- Guns (Slot 4)
 	aether_flintlock = "Aether Flintlock",
-	solar_kabucha = "Solar Kabucha",
+	solar_kabucha = "Sunwind Sling",
+	kabucha_wind = "Sunwind Sling",
+	KabuchaSling = "Sunwind Sling",
 	cryo_railgun = "Cryo Railgun",
-	soul_guitar_void = "Soul Guitar of Void",
+	soul_guitar_void = "Void Lyre",
+	SoulGuitar = "Void Lyre",
 
 	-- Armor, Shields, Rings & Artifacts (8-Slot Equipment)
 	SkyHelm = "Skyborn Vanguard Helm",
@@ -432,7 +441,8 @@ local ITEM_NAME_EN: { [string]: string } = {
 	aether_ring = "Aether Orb Ring",
 	celestial_necklace = "Starlight Pendant",
 	core_artifact = "Core of Light Reliquary",
-	leviathan_shield = "Leviathan Aegis Shield",
+	leviathan_shield = "Abyss Serpent Shield",
+	nerith_leviathan_ring = "Nerith Abyss Serpent Ring",
 	sovereign_cloak = "Void Sovereign Mantle",
 
 	-- Crafting Materials, Quest Items & Currencies
@@ -449,9 +459,9 @@ local ITEM_NAME_EN: { [string]: string } = {
 	BossKey = "Sun Citadel Key",
 	EnchantScroll = "Arcane Enchant Scroll",
 	BlueResonanceGear = "Blue Resonance Gear",
-	CoreGear = "Awakened Core Gear V4",
-	LeviathanHeart = "Leviathan Heart",
-	AwakeningMicrochip = "Awakening Microchip V2",
+	CoreGear = "Ascension Core Gear",
+	LeviathanHeart = "Abyss Serpent Heart",
+	AwakeningMicrochip = "Awakened Core Microchip",
 	CoreShards = "Core Shards",
 	Gold = "Gold",
 }
@@ -649,7 +659,7 @@ function I18n.GetHotbarSlotSummary(slotIndex: number, snapshot: any): (string, s
 	elseif slotIndex == 2 then
 		local fruitId = tostring((p and p:GetAttribute("EquippedFruit")) or (snapshot and snapshot.equippedFruit) or "")
 		if fruitId == "" then
-			return I18n.T("hud.slot.2"), (isEn and "No Fruit" or "Chưa Ăn Trái"), "Void"
+			return I18n.T("hud.slot.2"), (isEn and "No Core" or "Chưa Có Lõi"), "Void"
 		end
 		local elem = "Void"
 		if SharedConfig and SharedConfig.AetherFruits and SharedConfig.AetherFruits[fruitId] then

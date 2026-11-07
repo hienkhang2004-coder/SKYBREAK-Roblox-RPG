@@ -37,14 +37,14 @@ local TEXT1, TEXT2, STEEL = TC.TEXT_PRIMARY, TC.TEXT_SECONDARY, TC.STROKE_STEEL
 local NPCShop = { Refs = {}, Orbits = {}, BustConns = {}, TickerAlive = false }
 
 local VENDOR_TABS = {
-	{ "MirageDealer", "Fruit", "TRÁI 2H • MIRAGE", "2H MIRAGE STOCK" },
+	{ "MirageDealer", "Fruit", "LÕI 2H • HƯ QUANG", "2H PHANTOM STOCK" },
 	{ "SwordDealer", "Sword", "KIẾM SƯ 3D", "3D SWORD DEALER" },
 	{ "GunDealer", "Gun", "SÚNG & THẦN GIÁP", "GUNS & 3D ARMOR" },
 	{ "MartialDojo", "Fist", "7 VÕ ĐƯỜNG", "7 MARTIAL DOJOS" },
 	{ "EnchanterAndChronos", "CoreShards", "PHÙ PHÉP & CHỢ ĐEN", "ENCHANT & VOID" },
 	{ "Shipwright", "Ship", "XƯỞNG TÀU 3D", "3D SHIPWRIGHT" },
-	{ "DrVegaAndTempleV4", "Wing", "TỘC & ĐỀN V4", "RACE & V4 ALTAR" },
-	{ "TradingTable", "Trade", "GIAO DỊCH 4X4", "4X4 FRUIT TRADE" },
+	{ "DrVegaAndTempleV4", "Wing", "TỘC & ĐỀN THĂNG HOA", "RACE & ASCENSION" },
+	{ "TradingTable", "Trade", "GIAO DỊCH 4X4", "4X4 CORE TRADE" },
 	{ "ColosseumAndSpire", "Trophy", "ĐẤU TRƯỜNG & 50F", "ARENA & 50F SPIRE" },
 }
 
@@ -190,12 +190,12 @@ end
 
 local function fireUIAction(cmd, payload)
 	payload = type(payload) == "table" and payload or {}
-	local sr = SkyShared:FindFirstChild("Remotes")
-	local ra = sr and sr:FindFirstChild("RequestUIAction")
-	if ra and ra:IsA("RemoteEvent") then ra:FireServer(cmd, payload); return end
 	local rem = ReplicatedStorage:FindFirstChild("Remotes")
 	local ur = rem and rem:FindFirstChild("UIRequest")
-	if ur and ur:IsA("RemoteEvent") then ur:FireServer(cmd, payload) end
+	if ur and ur:IsA("RemoteEvent") then ur:FireServer(cmd, payload); return end
+	local sr = SkyShared:FindFirstChild("Remotes")
+	local ra = sr and sr:FindFirstChild("RequestUIAction")
+	if ra and ra:IsA("RemoteEvent") then ra:FireServer(cmd, payload) end
 end
 
 local function fireLegacyUIRequest(cmd, payload)
@@ -411,14 +411,14 @@ local function shopSt()
 end
 
 local MIRAGE_FRUITS = {
-	{ "GaleCore", "Trái Phong Vũ (Gale)", "Gale Core Fruit", "Common", 35000, "Logia Gió • Miễn ST thường", "[Z] Phong Đao Trảm (1.9x ATK)", "[V] Cuồng Phong Lốc Xoáy" },
-	{ "SolarFlameCore", "Trái Thái Dương Hỏa", "Solar Flame Core", "Rare", 450000, "Logia Lửa • Đại Viêm Đế", "[Z] Hỏa Quyền Hiken (2.2x ATK)", "[V] Đại Viêm Đế Mặt Trời" },
-	{ "CelestialLightCore", "Trái Thánh Quang (Light)", "Celestial Light Core", "Epic", 1150000, "Logia Ánh Sáng • Farm số 1", "[Z] Mưa Giáo Ánh Sáng (2.4x ATK)", "[F] Phi Hành Tốc Độ Ánh Sáng" },
-	{ "ThunderRumbleCore", "Trái Lôi Vũ (Rumble)", "Thunder Rumble Core", "Legendary", 2100000, "Logia Sấm Sét • Lôi Cầu Raigo", "[Z] Lôi Long Chấn Động (2.5x ATK)", "[V] Quả Cầu Sấm Sét Raigo" },
-	{ "DimensionalPortalCore", "Trái Không Gian (Portal)", "Dimensional Portal Core", "Legendary", 2450000, "Paramecia • Cổng Dịch Chuyển 40m", "[C] Cổng Thế Giới Dịch Chuyển", "[V] Lãnh Địa Chiều Không Gian" },
-	{ "SolarTitanCore", "Trái Kim Thân Thái Dương", "Solar Titan Buddha", "Mythic", 4200000, "Hóa Phật Khổng Lồ 3D (+58% Giáp)", "[Z] Hóa Kim Thân 3D (Tầm đánh x2.2)", "[V] Thiên Thủ Phán Quyết Hoàng Kim" },
-	{ "AetherflowCore", "Trái Linh Thể Aether", "Aetherflow Core", "Mythic", 4600000, "Paramecia • Tơ Linh Mạch Sắc Bén", "[Z] Lồng Tơ Thánh Vương", "[V] Thập Lục Thánh Thương Aether" },
-	{ "AbyssalSovereignCore", "Trái Hắc Long Đế Vương", "Abyssal Void Dragon", "Mythic", 8500000, "Hóa Rồng 3D Bay Cửu Thiên", "[Z] Long Tức Hư Không (2.7x ATK)", "[V] Hóa Thái Cổ Long Hoàng 3D" },
+	{ "GaleCore", "Lõi Phong Vũ (Gale)", "Gale Core", "Common", 35000, "Nguyên Tố Gió • Miễn ST thường", "[Z] Phong Đao Trảm (1.9x ATK)", "[V] Cuồng Phong Lốc Xoáy" },
+	{ "SolarFlameCore", "Lõi Thái Dương Hỏa", "Solar Flame Core", "Rare", 450000, "Nguyên Tố Lửa • Đại Viêm Đế", "[Z] Hỏa Quyền Liệt Dương (2.2x ATK)", "[V] Đại Viêm Đế Mặt Trời" },
+	{ "CelestialLightCore", "Lõi Thánh Quang (Light)", "Celestial Light Core", "Epic", 1150000, "Nguyên Tố Ánh Sáng • Farm số 1", "[Z] Mưa Giáo Ánh Sáng (2.4x ATK)", "[F] Phi Hành Tốc Độ Ánh Sáng" },
+	{ "ThunderRumbleCore", "Lõi Lôi Vũ (Rumble)", "Thunder Rumble Core", "Legendary", 2100000, "Nguyên Tố Sấm Sét • Lôi Cầu Cửu Thiên", "[Z] Lôi Long Chấn Động (2.5x ATK)", "[V] Quả Cầu Sấm Sét Cửu Thiên" },
+	{ "DimensionalPortalCore", "Lõi Khe Nứt", "Rift Core", "Legendary", 2450000, "Không Gian • Cổng Dịch Chuyển 40m", "[C] Cổng Thế Giới Dịch Chuyển", "[V] Lãnh Địa Chiều Không Gian" },
+	{ "SolarTitanCore", "Lõi Kim Thân", "Colossus Core", "Mythic", 4200000, "Hóa Kim Thân Khổng Lồ 3D (+58% Giáp)", "[Z] Hóa Kim Thân 3D (Tầm đánh x2.2)", "[V] Thiên Thủ Phán Quyết Hoàng Kim" },
+	{ "AetherflowCore", "Lõi Linh Thể Aether", "Aetherflow Core", "Mythic", 4600000, "Linh Thể • Tơ Linh Mạch Sắc Bén", "[Z] Lồng Tơ Thánh Vương", "[V] Thập Lục Thánh Thương Aether" },
+	{ "AbyssalSovereignCore", "Lõi Hắc Long Đế Vương", "Abyssal Void Dragon", "Mythic", 8500000, "Hóa Rồng 3D Bay Cửu Thiên", "[Z] Long Tức Hư Không (2.7x ATK)", "[V] Hóa Thái Cổ Long Hoàng 3D" },
 }
 
 local function buildMirageTab(body, snap)
@@ -436,18 +436,18 @@ local function buildMirageTab(body, snap)
 		local isEq = (snap.fruits and snap.fruits.equippedFruit == fid)
 		local pTxt = fmt(price) .. " GOLD"
 		local entry = {
-			id = fid, t = isEn and nEn or nVi, st = fid, r = rar, top = "TRÁI 3D", bot = string.upper(rar) .. " V2", ic = "Fruit", a3d = "Fruit_" .. fid,
+			id = fid, t = isEn and nEn or nVi, st = fid, r = rar, top = "LÕI 3D", bot = string.upper(rar) .. " V2", ic = "Fruit", a3d = "Fruit_" .. fid,
 			hsub = string.upper(rar) .. " • 5 CHIÊU [Z][X][C][V][F] • " .. pTxt,
 			csub = inStock and ((isEq and "• ĐANG TRANG BỊ TRÊN SLOT [2]") or ("• ĐANG CÒN HÀNG • " .. subVi)) or "• TẠM HẾT HÀNG (ĐỢI LÀM MỚI 2H)",
 			scol = inStock and SUCC or DANG,
-			sb = { { skZ, subVi .. " • Sẵn sàng thức tỉnh V2 tại Raid [P]." }, { skX, "Mua trực tiếp bằng Gold tại Thương Nhân Mirage không cần may rủi Gacha." } },
+			sb = { { skZ, subVi .. " • Sẵn sàng Lõi Thức Tỉnh tại Raid [P]." }, { skX, "Mua trực tiếp bằng Gold tại Thương Nhân Hư Quang không cần may rủi Gacha." } },
 			cbtn = isEq and pick("ĐANG TRANG BỊ", "EQUIPPED") or (inStock and ("MUA & TRANG BỊ • " .. pTxt) or ("TẠM HẾT HÀNG (" .. pTxt .. ")")),
 			cvar = isEq and "primary" or (inStock and "gold" or "secondary"),
-			hbtn = "MUA & TRANG BỊ TRÁI 3D • " .. pTxt, hvar = inStock and "gold" or "secondary", dis = not inStock,
+			hbtn = "MUA & TRANG BỊ LÕI 3D • " .. pTxt, hvar = inStock and "gold" or "secondary", dis = not inStock,
 			sel = selFn(st, "selectedMirageFruit", fid),
 			act = function()
 				fireLegacyUIRequest("BuyMirageFruit", { fruitId = fid })
-				Store.ShowToast(pick("Đang mua Trái 3D từ Thương Nhân Mirage: ", "Buying Mirage 3D Fruit: ") .. nVi, "success")
+				Store.ShowToast(pick("Đang mua Lõi 3D từ Thương Nhân Hư Quang: ", "Buying Phantom 3D Core: ") .. nVi, "success")
 			end,
 		}
 		table.insert(items, entry)
@@ -455,14 +455,14 @@ local function buildMirageTab(body, snap)
 	end
 
 	renderHeroAndTwoColCatalog(body, {
-		BustArchetype = "mage_hood", BustAccent = GOLDB, BustTag = "• 3D LIVE - MIRAGE",
-		BustTitle = "THƯƠNG NHÂN MIRAGE", BustLocation = "Sky Hub • Đảo Bí Ẩn",
+		BustArchetype = "mage_hood", BustAccent = GOLDB, BustTag = "• 3D LIVE - HƯ QUANG",
+		BustTitle = "THƯƠNG NHÂN HƯ QUANG", BustLocation = "Sky Hub • Đảo Hư Quang",
 		SelectedItem = selectedItem or items[1], Items = items,
 		FilterPills = {
 			fPill(st, "mirageSub", "Regular", pick("KỆ HÀNG 2 GIỜ", "2H REGULAR STOCK"), 152, "gold"),
-			fPill(st, "mirageSub", "MirageVIP", pick("KỆ ĐẢO BÍ ẨN MIRAGE (VIP x3)", "MIRAGE ISLAND VIP (x3)"), 214, "primary"),
+			fPill(st, "mirageSub", "MirageVIP", pick("KỆ ĐẢO HƯ QUANG (VIP x3)", "PHANTOM ISLE VIP (x3)"), 214, "primary"),
 			{ timerRef = "MirageTimerLabel", lbl = "LÀM MỚI: " .. formatClockCountdown(7200 - (os.time() % 7200)) },
-			{ ic = "Fruit", lbl = pick("ĐÀI GACHA ZIOLES [G]", "ZIOLES GACHA [G]"), var = "primary", w = 186, fn = function() ScreenRouter.Navigate(UIState.Screens.Fruits) end },
+			{ ic = "Fruit", lbl = pick("HIỀN GIẢ AETHER [G]", "AETHER ORACLE [G]"), var = "primary", w = 186, fn = function() ScreenRouter.Navigate(UIState.Screens.Fruits) end },
 		},
 	})
 end
@@ -593,7 +593,7 @@ local function buildMartialDojoTab(body, snap)
 				id = s.Id, t = title, st = s.NameEn or title, r = s.Rarity or "Legendary",
 				ac = hexToColor(s.AccentHex, GOLD), top = "VÕ HỌC", ic = "Fist",
 				rtag = ((s.LevelReq or 1) >= 2400) and "MỚI" or nil, a3d = s.Model3DKind or "Martial_Godhuman",
-				hsub = string.format("%s • SƯ PHỤ: %s • LV.%d (%s)", string.upper(s.Rarity or "MYTHIC"), string.upper(tostring(s.MasterVi or "ĐẠI SƯ")), s.LevelReq or 1, tostring(s.Sea or "Sea1")),
+				hsub = string.format("%s • SƯ PHỤ: %s • LV.%d (%s)", string.upper(s.Rarity or "MYTHIC"), string.upper(tostring(s.MasterVi or "ĐẠI SƯ")), s.LevelReq or 1, tostring(s.Sea or "Sea1"):gsub("Sea", "Sky ")),
 				csub = tostring(s.MasterVi or "Sư Phụ Võ Đường") .. " • " .. priceTxt .. " • [Z][X][C]",
 				sb = {
 					{ "[Z] Đột Kích Khí Công • [X] Phá Toái Chấn Động", "Mở khóa Hộ Uyển Hào Quang 3D trên hai tay cùng chuỗi đòn đánh cận chiến tốc độ cao." },
@@ -679,7 +679,7 @@ local function buildEnchanterAndChronosTab(body, snap)
 
 	mountVendorBustCard(rightPanel, {
 		Position = u2o(14, 52), Size = u2o(104, 176), CardHeight = 136, ShowSubtitles = true,
-		Archetype = "void_horns", Accent = VOIDP, Tag = "• 3D LIVE - CHRONOS", Title = "ĐẢO HIỆN TẠI:", Location = "CYBERPORT CAFE",
+		Archetype = "void_horns", Accent = VOIDP, Tag = "• 3D LIVE - CHRONOS", Title = "ĐẢO HIỆN TẠI:", Location = "TRẠM GIAO THƯƠNG",
 	})
 
 	local voidWrap = mkBox(rightPanel, "VoidOffers", u2o(126, 52), u2(1, -140, 0, 184))
@@ -687,7 +687,7 @@ local function buildEnchanterAndChronosTab(body, snap)
 	for idx, off in ipairs({
 		{ "EnchantScroll", "Legendary", "CÒN 3/3", "Cuộn Phù Phép", "95 Shards (-20%)", "Scroll", "gold", "Shards" },
 		{ "AwakeningMicrochip", "Mythic", "CÒN 1/1", "Chip Raid V2", "250 Shards", "Raid", "primary", "Shards" },
-		{ "BlueResonanceGear", "Rare", "CÒN 2/2", "Bánh Răng V4", "500 Shards", "Settings", "gold", "Shards" },
+		{ "BlueResonanceGear", "Rare", "CÒN 2/2", "Bánh Răng Thăng Hoa", "500 Shards", "Settings", "gold", "Shards" },
 		{ "aion_chrono_cloak", "Mythic", "CÒN 1/1", "Áo Choàng Aion", "1.25M + 1.5K S", "Crown", "primary", "" },
 	}) do
 		local col = mkBox(voidWrap, "VC_" .. idx, nil, u2(0.25, -5, 1, 0), nil, nil, nil, nil, nil, nil, idx)
@@ -695,8 +695,7 @@ local function buildEnchanterAndChronosTab(body, snap)
 			Position = u2o(0, 0), RightTag = "CÓ SẴN", IconSize = 32, DiscSize = 46, SubCaption = off[5],
 		})
 		mkBtn(col, "BV_" .. idx, pick("ĐỔI NGAY", "REDEEM"), off[7], u2o(0, 148), u2(1, 0, 0, 34), function()
-			fireUIAction("BuyVendorItem", { itemId = off[1], currency = off[8], autoEquip = (off[1] == "aion_chrono_cloak") })
-			fireLegacyUIRequest("BuyVoidMerchantItem", { offerIndex = idx, itemId = off[1] })
+			fireLegacyUIRequest("BuyVoidMerchantItem", { offerIndex = idx, itemId = off[1], currency = off[8], autoEquip = (off[1] == "aion_chrono_cloak") })
 		end, { ts = 10, minTs = 8 })
 	end
 
@@ -724,7 +723,7 @@ local function buildShipwrightTab(body, _snap)
 				csub = string.format("%s HP • Tốc độ %d • %d Đại Bác Aether%s", fmt(sh.HP or 2500), sh.Speed or 85, sh.Cannons or 2, sh.HasHarpoon and " + Móc Cáp Harpoon" or ""),
 				sb = {
 					{ string.format("Vũ Trang Hạm Đội: %d Đại Bác Aether 2 mạn%s", sh.Cannons or 4, sh.HasHarpoon and " + 1 Móc Cáp Thủy Tổ Harpoon" or ""), isEn and sh.DescEn or sh.DescVi },
-					{ "Sức Chứa Tổ Đội & Hạm Đội Crew: 1 Thuyền Trưởng + 5 Pháo Thủ", "Chuyên dụng vượt vùng biển mây mù Danger Zone 6 và kéo Trái Tim Leviathan về cảng!" },
+					{ "Sức Chứa Tổ Đội & Hạm Đội Crew: 1 Thuyền Trưởng + 5 Pháo Thủ", "Chuyên dụng vượt vùng biển mây mù Danger Zone 6 và kéo Trái Tim Thủy Xà Vực Thẳm về cảng!" },
 				},
 				cbtn = priceStr, cvar = (sh.Rarity == "Mythic" or sh.Rarity == "Legendary") and "gold" or "primary",
 				hbtn = "TRIỆU HỒI CHIẾN HẠM TẠI CẢNG NGAY (" .. ((pGold == 0) and "MIỄN PHÍ" or (fmt(pGold) .. " GOLD")) .. ")",
@@ -743,7 +742,7 @@ local function buildShipwrightTab(body, _snap)
 		FilterPills = {
 			fPill(st, "shipFilter", "ALL", "TẤT CẢ 4 CHIẾN HẠM 3D", 182, "gold"),
 			fPill(st, "shipFilter", "LIGHT", "THUYỀN TÂN THỦ & TUẦN TIỄU", 204, "primary"),
-			fPill(st, "shipFilter", "HEAVY", "ĐẠI CHIẾN HẠM & LEVIATHAN", 204, "gold"),
+			fPill(st, "shipFilter", "HEAVY", "ĐẠI CHIẾN HẠM & THỦY XÀ", 204, "gold"),
 			{ ic = "Forge", lbl = "SỬA CHỮA 100% CHIẾN HẠM (500G)", var = "primary", w = 228, fn = function()
 				fireLegacyUIRequest("RepairShip", {})
 				Store.ShowToast(pick("Đã gửi lệnh sửa chữa 100% Chiến Hạm!", "Requested 100% Warship Hull Repair!"), "success")
@@ -758,7 +757,7 @@ local function buildDrVegaAndTempleV4Tab(body, snap)
 
 	local leftPanel, rightPanel = mkSplitPanels(
 		body, "DrVegaP", pick("NPC 8A: TIẾN SĨ DR. VEGA • ĐỔI 6 TỘC & RAID V2", "NPC 8A: DR. VEGA • 6-RACE LAB & RAID V2"),
-		"TempleV4P", pick("NPC 8B: TẾ ĐÀN ĐỀN THỜ LÕI • THỨC TỈNH CÁNH TỘC V4", "NPC 8B: TEMPLE OF THE CORE • RACE V4 WINGS")
+		"TempleV4P", pick("NPC 8B: TẾ ĐÀN ĐỀN THĂNG HOA • THỨC TỈNH CÁNH THĂNG HOA", "NPC 8B: ASCENSION SHRINE • ASCENSION WINGS")
 	)
 
 	mountVendorBustCard(leftPanel, {
@@ -773,7 +772,7 @@ local function buildDrVegaAndTempleV4Tab(body, snap)
 		local isCur = (string.lower(curRace):find(string.lower(r.Id), 1, true) ~= nil)
 		local rBox = mkBox(raceGrid, "R_" .. r.Id, nil, nil, isCur and rgb(30, 24, 14) or rgb(11, 18, 32), 8, isCur and GOLDB or accent, isCur and 1.8 or 1.0, isCur and 0.05 or 0.35, nil, idx)
 		UIFactory.Icon(rBox, "Wing", u2o(6, 8), 20, accent)
-		mkText(rBox, "RN", r.Id, u2o(30, 6), u2(1, -34, 0, 16), 11, TEXT1, true)
+		mkText(rBox, "RN", r.NameVi or r.Id, u2o(30, 6), u2(1, -34, 0, 16), 11, TEXT1, true)
 		mkText(rBox, "RO", isCur and ("ĐANG SỞ HỮU • " .. tostring(r.ChancePercent) .. "%") or ("Tỷ lệ: " .. tostring(r.ChancePercent) .. "%"), u2o(8, 34), u2(1, -14, 0, 16), 9, isCur and GOLDB or GOLD, true)
 	end
 
@@ -781,9 +780,9 @@ local function buildDrVegaAndTempleV4Tab(body, snap)
 		function() fireLegacyUIRequest("RerollRace", {}) end, { icon = "CoreShards" })
 
 	local raidBox = mkBox(leftPanel, "RaidBox", u2o(14, 230), u2(1, -28, 1, -244), rgb(10, 18, 34), 10, SAPPH, 1.3, 0.25)
-	makeGlossyRarityTile(raidBox, "Mythic", "VI MẠCH", "Chip Raid V2", "Settings", u2o(92, 114), { Position = u2o(10, 10), RightTag = "CÓ SẴN", SubCaption = "100K Gold / 1 Trái" })
-	mkText(raidBox, "RT", "BẢNG ĐIỀU KHIỂN ĐỘT KÍCH THỨC TỈNH TRÁI V2 (1-4 NGƯỜI)", u2o(112, 10), u2(1, -122, 0, 18), 11, TEXT1, true)
-	mkText(raidBox, "RD", "Chọn Raid Hệ: [Hỏa Dương] [Vĩnh Băng] [Thánh Quang] [Dung Nham] [Lôi Vũ] [Kim Thân]\nPhần thưởng vượt 5 Đảo Raid: +1,000 Core Shards & Mở Thức Tỉnh Chiêu V2!", u2o(112, 30), u2(1, -122, 0, 48), 10, SUCC, false, nil, true)
+	makeGlossyRarityTile(raidBox, "Mythic", "VI MẠCH", "Chip Raid V2", "Settings", u2o(92, 114), { Position = u2o(10, 10), RightTag = "CÓ SẴN", SubCaption = "100K Gold / 1 Lõi" })
+	mkText(raidBox, "RT", "BẢNG ĐIỀU KHIỂN ĐỘT KÍCH LÕI THỨC TỈNH (1-4 NGƯỜI)", u2o(112, 10), u2(1, -122, 0, 18), 11, TEXT1, true)
+	mkText(raidBox, "RD", "Chọn Raid Hệ: [Hỏa Dương] [Vĩnh Băng] [Thánh Quang] [Dung Nham] [Lôi Vũ] [Kim Thân]\nPhần thưởng vượt 5 Đảo Raid: +1,000 Core Shards & Mở Lõi Thức Tỉnh!", u2o(112, 30), u2(1, -122, 0, 48), 10, SUCC, false, nil, true)
 	mkBtn(raidBox, "BuyChip", pick("MUA CHIP RAID (100K GOLD)", "BUY CHIP (100K G)"), "gold", u2o(112, 86), u2(0.48, -62, 0, 36),
 		function() fireUIAction("BuyVendorItem", { itemId = "AwakeningMicrochip", autoEquip = false }) end, { ts = 10, minTs = 8 })
 	mkBtn(raidBox, "OpenRaid", pick("BẮT ĐẦU RAID V2 [P]", "START RAID V2 [P]"), "primary", u2(0.48, 56, 0, 86), u2(0.52, -66, 0, 36),
@@ -792,10 +791,10 @@ local function buildDrVegaAndTempleV4Tab(body, snap)
 	local stepsRow = mkBox(rightPanel, "V4Steps", u2o(14, 48), u2(1, -28, 0, 146))
 	UIFactory.ListLayout(stepsRow, Enum.FillDirection.Horizontal, 8)
 	for sIdx, sd in ipairs({
-		{ "Mythic", "BƯỚC 1", "BÁNH RĂNG XANH", "Tìm trên Đảo Mirage", "Settings" },
+		{ "Mythic", "BƯỚC 1", "BÁNH RĂNG XANH", "Tìm trên Đảo Hư Quang", "Settings" },
 		{ "Epic", "BƯỚC 2", "CẦN GẠT CỔ ĐẠI", "Vượt ải 60s Trăng Tròn", "CoreShards" },
 		{ "Legendary", "BƯỚC 3", "KHẢM BÁNH RĂNG", "Chọn Nhánh Đỏ / Xanh", "Star" },
-		{ "Mythic", "BƯỚC 4", "CÁNH TỘC V4 3D", "Phím [Y] biến hình V4", "Wing" },
+		{ "Mythic", "BƯỚC 4", "CÁNH THĂNG HOA 3D", "Phím [Y] biến hình Thăng Hoa", "Wing" },
 	}) do
 		makeGlossyRarityTile(stepsRow, sd[1], sd[2], sd[3], sd[5], u2(0.25, -6, 1, 0), { LayoutOrder = sIdx, RightTag = "CÓ SẴN", IconSize = 34, DiscSize = 50, SubCaption = sd[4] })
 	end
@@ -807,11 +806,11 @@ local function buildDrVegaAndTempleV4Tab(body, snap)
 		if string.lower(curRace):find(string.lower(wk), 1, true) then wingKey = "Wing_" .. wk; break end
 	end
 	ViewportOrbit.MountAssetAsync(attachTrackedOrbit(vp), wingKey, GOLDB, { FitMultiplier = 1.08, ResetAngles = true })
-	mkText(wingBox, "WI", string.format("NÂNG CẤP THIÊN PHÚ CÁNH TỘC V4 [%s]:\n• Mở khóa Đôi Cánh 3D phát sáng độc quyền theo Huyết Thống.\n• Hào quang Tộc V4 phản sát thương & +30%% toàn bộ chỉ số khi bật [Y]!", string.upper(wingKey)), u2o(170, 10), u2(1, -182, 1, -20), 11, TEXT1, false, nil, true)
+	mkText(wingBox, "WI", string.format("NÂNG CẤP THIÊN PHÚ CÁNH THĂNG HOA [%s]:\n• Mở khóa Đôi Cánh 3D phát sáng độc quyền theo Huyết Thống.\n• Hào quang Thăng Hoa phản sát thương & +30%% toàn bộ chỉ số khi bật [Y]!", string.upper(wingKey)), u2o(170, 10), u2(1, -182, 1, -20), 11, TEXT1, false, nil, true)
 
-	mkBtn(rightPanel, "StartV4", v4Unlocked and pick("ĐÃ THỨC TỈNH V4 • VÀO ẢI CORE GEAR", "V4 AWAKENED • ENTER GEAR TRIAL") or pick("KÉO CẦN GẠT BẮT ĐẦU ẢI CỔ ĐẠI (60S)", "PULL ANCIENT LEVER • START 60S TRIAL"),
+	mkBtn(rightPanel, "StartV4", v4Unlocked and pick("ĐÃ THĂNG HOA • VÀO ẢI CORE GEAR", "ASCENSION AWAKENED • ENTER GEAR TRIAL") or pick("KÉO CẦN GẠT BẮT ĐẦU ẢI CỔ ĐẠI (60S)", "PULL ANCIENT LEVER • START 60S TRIAL"),
 		"gold", u2(0, 14, 1, -52), u2(0.52, -18, 0, 40), function() fireUIAction("StartTempleV4Trial", {}) end, { icon = "Flame" })
-	mkBtn(rightPanel, "SocketV4", pick("KHẢM BÁNH RĂNG TỘC V4 [G]", "SOCKET V4 GEAR [G]"), "primary", u2(0.52, 4, 1, -52), u2(0.48, -18, 0, 40),
+	mkBtn(rightPanel, "SocketV4", pick("KHẢM BÁNH RĂNG THĂNG HOA [G]", "SOCKET ASCENSION GEAR [G]"), "primary", u2(0.52, 4, 1, -52), u2(0.48, -18, 0, 40),
 		function() ScreenRouter.Navigate(UIState.Screens.Fruits) end, { icon = "Wing" })
 end
 
@@ -864,7 +863,7 @@ local function buildTradingTableTab(body, snap)
 				for sFid, qty in pairs((snap.fruits and snap.fruits.storedFruits) or {}) do
 					if (tonumber(qty) or 0) > 0 and #st.tradeOffer < 4 then table.insert(st.tradeOffer, sFid); NPCShop.RebuildWorkspace(); return end
 				end
-				Store.ShowToast(pick("Chọn Khế Ước Mẫu bên phải hoặc cất thêm Trái vào Kho [G]!", "Pick a Collector Pact on the right or store Fruits in [G]!"), "info")
+				Store.ShowToast(pick("Chọn Khế Ước Mẫu bên phải hoặc cất thêm Lõi Aether vào Kho [G]!", "Pick a Collector Pact on the right or store Aether Cores in [G]!"), "info")
 			end)
 		end
 	end
@@ -904,7 +903,7 @@ local function buildTradingTableTab(body, snap)
 		isFair and "gold" or "secondary", u2(0.56, 4, 1, -48), u2(0.28, -8, 0, 44), function()
 			if #st.tradeOffer > 0 then fireUIAction("TradeWithCollector", { giveFruits = st.tradeOffer, receiveFruits = recvList })
 			elseif selPact then fireUIAction("TradeWithCollector", { offerId = selPact.Id }) end
-			Store.ShowToast(pick("Đã gửi xác nhận Bàn Giao Dịch 4x4!", "Submitted 4x4 Fruit Trade Pact!"), "success")
+			Store.ShowToast(pick("Đã gửi xác nhận Bàn Giao Dịch 4x4!", "Submitted 4x4 Core Trade Pact!"), "success")
 		end, { disabled = not isFair, ts = 12 })
 	mkBtn(body, "ResetTrade", pick("HỦY BỎ", "CANCEL"), "danger", u2(0.84, 4, 1, -48), u2(0.16, -4, 0, 44),
 		function() st.tradeOffer = {}; NPCShop.RebuildWorkspace() end, { ts = 12 })
@@ -929,7 +928,7 @@ local function buildColosseumAndSpireTab(body, snap)
 
 	local arenaCard = mkBox(mainShell, "Arena1v1", u2o(158, 54), u2(0.42, -90, 1, -138), rgb(16, 14, 28), 12, DANG, 1.5, 0.16)
 	mkText(arenaCard, "AT", "ĐẤU TRƯỜNG LUẬN VÕ 1V1 CÔNG BẰNG", u2o(16, 12), u2(1, -32, 0, 22), 14, rgb(253, 164, 175), true)
-	mkText(arenaCard, "AR", "• 0 Mất điểm Bounty • Tự hồi 100% HP & Hồi chiêu\n• Đấu với Người chơi khác hoặc Kiện Tướng AI\n• Thắng thưởng: +25,000 Bounty & Huy Hiệu Đấu Sĩ\n• Đạt 10,000,000 Bounty mở khóa Triệu Hồi Thủy Quái!", u2o(16, 40), u2(1, -32, 0, 94), 12, TEXT1, false, nil, true)
+	mkText(arenaCard, "AR", "• 0 Mất điểm Bounty • Tự hồi 100% HP & Hồi chiêu\n• Đấu với Người chơi khác hoặc Kiện Tướng AI\n• Thắng thưởng: +25,000 Bounty & Huy Hiệu Đấu Sĩ\n• Đạt 10,000,000 Bounty mở khóa Triệu Hồi Thú Trời!", u2o(16, 40), u2(1, -32, 0, 94), 12, TEXT1, false, nil, true)
 	mkBtn(arenaCard, "TogglePvP", pvpOn and "PVP: ĐANG BẬT (BẤM BẬT KHIÊN)" or "KHIÊN HÒA BÌNH: BẬT (BẤM MỞ PVP)", "secondary", u2(0, 16, 1, -96), u2(1, -32, 0, 36),
 		function() fireLegacyUIRequest("TogglePvP", {}) end, { icon = "Shield" })
 	mkBtn(arenaCard, "Join1v1", pick("GHI DANH LUẬN VÕ 1V1 NGAY", "JOIN 1V1 COLOSSEUM NOW"), "danger", u2(0, 16, 1, -52), u2(1, -32, 0, 40),
@@ -947,7 +946,7 @@ local function buildColosseumAndSpireTab(body, snap)
 	for mIdx, ms in ipairs({
 		{ "Rare", "TẦNG 10", "Cuộn Cổ Ngữ", "Scroll" },
 		{ "Epic", "TẦNG 25", "Nhẫn Aureon", "CoreShards" },
-		{ "Legendary", "TẦNG 40", "Mũ Mirage", "Shield" },
+		{ "Legendary", "TẦNG 40", "Mũ Hư Quang", "Shield" },
 		{ "Mythic", "TẦNG 50", "Lõi Veyr 3D", "Crown" },
 	}) do
 		makeGlossyRarityTile(msStrip, ms[1], ms[2], ms[3], ms[4], u2(0.25, -5, 1, 0), { LayoutOrder = mIdx, IconSize = 22, DiscSize = 32 })
@@ -962,7 +961,7 @@ local function buildColosseumAndSpireTab(body, snap)
 	local wb = mkBox(mainShell, "WorldBanner", u2(0, 16, 1, -68), u2(1, -32, 0, 52), rgb(48, 20, 88), 10, GOLDB, 1.5, 0.14)
 	UIFactory.Gradient(wb, rgb(68, 28, 120), rgb(34, 14, 66), 90)
 	UIFactory.Icon(wb, "Bolt", u2o(14, 14), 24, GOLDB)
-	mkText(wb, "WT", "[THÔNG BÁO THẾ GIỚI] ĐẢO BÍ ẨN MIRAGE & THỦY TỔ LEVIATHAN XUẤT HIỆN TẠI VÙNG BIỂN HƯ KHÔNG!", u2o(46, 0), u2(1, -58, 1, 0), 12, GOLDB, true)
+	mkText(wb, "WT", "[THÔNG BÁO THẾ GIỚI] ĐẢO HƯ QUANG & THỦY XÀ VỰC THẲM XUẤT HIỆN TẠI VÙNG BIỂN HƯ KHÔNG!", u2o(46, 0), u2(1, -58, 1, 0), 12, GOLDB, true)
 end
 
 local function clearOrbitsAndBusts()

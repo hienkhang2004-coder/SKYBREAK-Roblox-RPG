@@ -148,7 +148,7 @@ WorldConfig.Realms = {
         MaxLevel = 2410,
         BossId = "Nerith",
         BossName = "Nerith",
-        BossTitle = "Leviathan of the Inverted Sea",
+        BossTitle = "Abyss Serpent of the Inverted Sea",
         MapPosition = Vector2.new(0.50, 0.86),
         AccentColor = Color3.fromRGB(56, 196, 224),
         Chapter = "Chapter VI — The Inverted Ocean",
@@ -214,30 +214,30 @@ WorldConfig.RealmById.SkyHub = WorldConfig.Hub
 
 -- Grand Sky Seas Islands & Landmarks (Storyline Zones across all 8 Realms, Lv. 1–2550 MAX)
 WorldConfig.Islands = {
-    -- Sea 1: Golden Sky Archipelago (Lv. 1–700)
+    -- Sky 1: Golden Sky Archipelago (Lv. 1–700)
     { Id = "SkyHub", Name = "Zone 1: Sky Hub Nexus", VietnameseName = "Đảo Khởi Đầu Sky Hub", RealmId = "GoldenSky", LevelRange = "Lv. 1–75", Pos = Vector3.new(-317.4, 50.5, 527.8) },
     { Id = "GoldenSky", Name = "Zone 1A: Golden Sky Terrace", VietnameseName = "Đảo Thiên Khởi Golden Sky", RealmId = "GoldenSky", LevelRange = "Lv. 1–150", Pos = Vector3.new(-313.9, 50.5, 210.4) },
-    { Id = "ZiolesGachaShrine", Name = "Zone 1B: Zioles Gacha Shrine", VietnameseName = "Điện Thờ Zioles Gacha", RealmId = "GoldenSky", LevelRange = "Lv. 75–150", Pos = Vector3.new(-560, 52.5, 996) },
+    { Id = "ZiolesGachaShrine", Name = "Zone 1B: Aether Oracle Shrine", VietnameseName = "Điện Thờ Hiền Giả Aether", RealmId = "GoldenSky", LevelRange = "Lv. 75–150", Pos = Vector3.new(-560, 52.5, 996) },
     { Id = "AetherShrines", Name = "Zone 1C: Aether Home Shrine", VietnameseName = "Đài Điện Thờ Aether", RealmId = "GoldenSky", LevelRange = "Lv. 150–250", Pos = Vector3.new(340, 52.5, 996) },
     { Id = "WestGarden", Name = "Zone 2: West Garden Pirate Bastion", VietnameseName = "Pháo Đài Không Tặc Vườn Tây", RealmId = "GoldenSky", LevelRange = "Lv. 250–375", Pos = Vector3.new(-2800, 50.5, -65) },
     { Id = "LumenPlaza", Name = "Zone 3: Lumen Plaza", VietnameseName = "Quảng Trường Ánh Sáng", RealmId = "GoldenSky", LevelRange = "Lv. 375–525", Pos = Vector3.new(0, 50.5, 65) },
     { Id = "SunshardSanctuary", Name = "Zone 4: Sunshard Sky Sanctuary", VietnameseName = "Thánh Địa Thái Dương (Đảo Mây Nổi)", RealmId = "GoldenSky", LevelRange = "Lv. 525–650", Pos = Vector3.new(2800, 50.5, -55) },
     { Id = "BossForecourt", Name = "Zone 5: Aureon Spire Citadel", VietnameseName = "Tháp Phán Quyết Aureon", RealmId = "GoldenSky", LevelRange = "Lv. 650–700", Pos = Vector3.new(0, 50.5, -285) },
 
-    -- Sea 2: Frozen Cyber Expanse (Lv. 700–1500)
+    -- Sky 2: Frozen Cyber Expanse (Lv. 700–1500)
     { Id = "FrozenCyber", Name = "Zone 6A: Frozen Cyber Outpost", VietnameseName = "Cảng Băng Giá Frozen Cyber", RealmId = "FrozenCyber", LevelRange = "Lv. 700–850", Pos = Vector3.new(11620.5, 50.9, 534.8) },
-    { Id = "CyberportCafe", Name = "Zone 6: Cyberport Café Trading Hub", VietnameseName = "Quán Cà Phê Giao Dịch Cyberport", RealmId = "FrozenCyber", LevelRange = "Lv. 850–975", Pos = Vector3.new(9400, 50.9, 1785) },
+    { Id = "CyberportCafe", Name = "Zone 6: Trade Station Hub", VietnameseName = "Trạm Giao Thương", RealmId = "FrozenCyber", LevelRange = "Lv. 850–975", Pos = Vector3.new(9400, 50.9, 1785) },
     { Id = "PermafrostGarrison", Name = "Zone 7: Permafrost Garrison Fortress", VietnameseName = "Pháo Đài Tuyết Permafrost", RealmId = "FrozenCyber", LevelRange = "Lv. 975–1150", Pos = Vector3.new(9400, 50.9, -2055) },
     { Id = "MicrochipRaidLab", Name = "Zone 8: Microchip Awakening Raid Lab", VietnameseName = "Phòng Thí Nghiệm Đột Kích Thức Tỉnh", RealmId = "FrozenCyber", LevelRange = "Lv. 1150–1300", Pos = Vector3.new(14600, 50.9, 1785) },
-    { Id = "GlacialWreckage", Name = "Zone 9: Glacial Wreckage Danger Sea", VietnameseName = "Xác Tàu Băng Cổ Đại (Biển Nguy Hiểm)", RealmId = "FrozenCyber", LevelRange = "Lv. 1300–1425", Pos = Vector3.new(14600, 50.9, -1812) },
+    { Id = "GlacialWreckage", Name = "Zone 9: Glacial Wreckage Danger Sky", VietnameseName = "Xác Tàu Băng Cổ Đại (Vùng Trời Nguy Hiểm)", RealmId = "FrozenCyber", LevelRange = "Lv. 1300–1425", Pos = Vector3.new(14600, 50.9, -1812) },
     { Id = "CryonArena", Name = "Zone 10: Cryon Prime Citadel", VietnameseName = "Ngai Vàng Băng Đế Cryon", RealmId = "FrozenCyber", LevelRange = "Lv. 1425–1500", Pos = Vector3.new(12000, 50.9, -285) },
 
-    -- Sea 3: Shadow Realm Abyss (Lv. 1500–2200)
+    -- Sky 3: Shadow Realm Abyss (Lv. 1500–2200)
     { Id = "ShadowRealm", Name = "Zone 11A: Shadow Realm Outpost", VietnameseName = "Pháo Đài Hư Không Shadow Realm", RealmId = "ShadowRealm", LevelRange = "Lv. 1500–1650", Pos = Vector3.new(-12593.4, 50.9, 414) },
-    { Id = "CastleOnTheVoid", Name = "Zone 11: Castle on the Void Mansion", VietnameseName = "Dinh Thự Pháo Đài Hư Không", RealmId = "ShadowRealm", LevelRange = "Lv. 1650–1775", Pos = Vector3.new(-14600, 50.9, 2173.1) },
-    { Id = "UmbralSanctum", Name = "Zone 12: Umbral Crystal Sanctum Forest", VietnameseName = "Rừng Tinh Thể Đen (Đài Rèn CDK)", RealmId = "ShadowRealm", LevelRange = "Lv. 1775–1900", Pos = Vector3.new(-9400, 50.9, 1815) },
-    { Id = "TempleOfTheCore", Name = "Zone 13: Temple of the Core (Race V4)", VietnameseName = "Đền Thờ Thức Tỉnh Tộc V4", RealmId = "ShadowRealm", LevelRange = "Lv. 1900–2025", Pos = Vector3.new(-14600, 50.9, -1785) },
-    { Id = "LeviathanAbyss", Name = "Zone 14: Mirage Island & Leviathan Abyss", VietnameseName = "Đảo Ảo Ảnh & Vực Thẳm Leviathan", RealmId = "ShadowRealm", LevelRange = "Lv. 2025–2125", Pos = Vector3.new(-12000, 50.9, -3364.5) },
+    { Id = "CastleOnTheVoid", Name = "Zone 11: Void Bastion Mansion", VietnameseName = "Pháo Đài Hư Không", RealmId = "ShadowRealm", LevelRange = "Lv. 1650–1775", Pos = Vector3.new(-14600, 50.9, 2173.1) },
+    { Id = "UmbralSanctum", Name = "Zone 12: Umbral Crystal Sanctum Forest", VietnameseName = "Rừng Tinh Thể Đen (Đài Rèn Song Kiếm Nguyệt Thực)", RealmId = "ShadowRealm", LevelRange = "Lv. 1775–1900", Pos = Vector3.new(-9400, 50.9, 1815) },
+    { Id = "TempleOfTheCore", Name = "Zone 13: Ascension Shrine", VietnameseName = "Đền Thăng Hoa", RealmId = "ShadowRealm", LevelRange = "Lv. 1900–2025", Pos = Vector3.new(-14600, 50.9, -1785) },
+    { Id = "LeviathanAbyss", Name = "Zone 14: Phantom Isle & Abyss Serpent Trench", VietnameseName = "Đảo Hư Quang & Vực Thủy Xà Vực Thẳm", RealmId = "ShadowRealm", LevelRange = "Lv. 2025–2125", Pos = Vector3.new(-12000, 50.9, -3364.5) },
     { Id = "NoxarArena", Name = "Zone 15: Noxar's Sovereign Throne", VietnameseName = "Ngai Vàng Hư Không Noxar", RealmId = "ShadowRealm", LevelRange = "Lv. 2125–2200", Pos = Vector3.new(-11672.2, 50.9, -110) },
 
     -- Realm 4: Verdant Crown Mega-Archipelago (Lv. 2200–2270)
@@ -662,9 +662,9 @@ WorldConfig.Quests = {
         RealmId = "FrozenCyber",
         LevelReq = 13,
         Rewards = { EXP = 4200, Gold = 1800, CoreShards = 380, Items = { { Id = "aether_ring", Count = 1 } } },
-        Description = "Tại Phòng Thí Nghiệm Lượng Tử (hoặc vùng biển mây Sky 2), hãy đánh bại ORDER • Lõi Lượng Tử hoặc Thủy Quái Sky Sea Beast.",
+        Description = "Tại Phòng Thí Nghiệm Lượng Tử (hoặc vùng biển mây Tầng Trời 2), hãy đánh bại ORDER • Lõi Lượng Tử hoặc Thú Trời Sky Beast.",
         Objectives = {
-            { Id = "1", Label = "Đánh bại Order Cyborg / Sky Sea Beast", Target = 1 },
+            { Id = "1", Label = "Đánh bại Order Cyborg / Sky Beast", Target = 1 },
         },
     },
     {
@@ -697,14 +697,14 @@ WorldConfig.Quests = {
     {
         Id = "Q10",
         Category = "Main",
-        Name = "Săn Lùng Thủy Tổ Hư Không",
-        VietnameseName = "Săn Lùng Thủy Tổ Hư Không",
+        Name = "Săn Lùng Thủy Xà Vực Thẳm",
+        VietnameseName = "Săn Lùng Thủy Xà Vực Thẳm",
         RealmId = "ShadowRealm",
         LevelReq = 23,
         Rewards = { EXP = 9500, Gold = 5000, CoreShards = 750, Items = { { Id = "leviathan_shield", Count = 1 } } },
-        Description = "Tiến vào Vực Thẳm Leviathan (hoặc Điện Thờ Lõi) tại Shadow Realm và đánh bại Thủy Tổ ABYSSAL LEVIATHAN hoặc SOUL REAPER.",
+        Description = "Tiến vào Vực Thủy Xà Vực Thẳm (hoặc Đền Thăng Hoa) tại Shadow Realm và đánh bại Thủy Xà Vực Thẳm ABYSS SERPENT hoặc SOUL REAPER.",
         Objectives = {
-            { Id = "1", Label = "Đánh bại Abyssal Leviathan / Soul Reaper", Target = 1 },
+            { Id = "1", Label = "Đánh bại Thủy Xà Vực Thẳm / Soul Reaper", Target = 1 },
         },
     },
     {

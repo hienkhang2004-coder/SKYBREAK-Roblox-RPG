@@ -222,7 +222,7 @@ function SkillButton.Create(parent, props)
 
     local captionLabel = UIFactory.Label(captionPill, {
         Name = "Caption",
-        Text = props.label or props.skillId or "Skill",
+        Text = props.label or props.nameText or props.skillId or "Skill",
         Position = UDim2.fromOffset(3, 0),
         Size = UDim2.new(1, -6, 1, 0),
         TextSize = isCompact and 9 or 10,
@@ -326,11 +326,11 @@ function SkillButton.Create(parent, props)
         if newState.locked ~= nil then
             state.locked = newState.locked == true
         end
-        if newState.cooldown ~= nil then
-            state.cooldown = math.max(0, tonumber(newState.cooldown) or 0)
+        if newState.cooldown ~= nil or newState.cooldownRemaining ~= nil then
+            state.cooldown = math.max(0, tonumber(newState.cooldown or newState.cooldownRemaining) or 0)
         end
-        if newState.maxCooldown ~= nil then
-            state.maxCooldown = math.max(0.1, tonumber(newState.maxCooldown) or 6)
+        if newState.maxCooldown ~= nil or newState.cooldownDuration ~= nil then
+            state.maxCooldown = math.max(0.1, tonumber(newState.maxCooldown or newState.cooldownDuration) or 6)
         end
         if newState.outOfEnergy ~= nil then
             state.outOfEnergy = newState.outOfEnergy == true
@@ -351,7 +351,7 @@ function SkillButton.Create(parent, props)
         if state.locked then
             cdOverlay.Size = UDim2.fromScale(1, 1)
             centerIcon.Visible = false
-            local lbl = tostring(newState.lockLabel or "")
+            local lbl = tostring(newState.lockLabel or (newState.masteryReq and ("Mas. " .. tostring(newState.masteryReq))) or (newState.levelReq and ("LV." .. tostring(newState.levelReq))) or "")
             if lbl ~= "" and lbl ~= "LOCK" then
                 lockIcon.Visible = false
                 cdText.Text = lbl

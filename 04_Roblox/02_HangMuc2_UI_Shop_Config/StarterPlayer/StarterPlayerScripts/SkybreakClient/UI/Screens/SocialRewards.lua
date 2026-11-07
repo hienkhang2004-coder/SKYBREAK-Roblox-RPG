@@ -105,15 +105,14 @@ local DAILY_7_REWARDS = {
     { Day = 4, Rarity = "Epic", TitleVi = "x2 EXP (30p)", TitleEn = "2x EXP (30m)", Icon = "Bolt" },
     { Day = 5, Rarity = "Legendary", TitleVi = "Cuộn Cổ Ngữ", TitleEn = "Rune Scroll", Icon = "Scroll" },
     { Day = 6, Rarity = "Legendary", TitleVi = "+500 Shards", TitleEn = "+500 Shards", Icon = "CoreShards" },
-    { Day = 7, Rarity = "Mythic", TitleVi = "Hộp Trái VIP", TitleEn = "VIP Fruit Box", Icon = "Crown" },
+    { Day = 7, Rarity = "Mythic", TitleVi = "Hộp Lõi VIP", TitleEn = "VIP Core Box", Icon = "Crown" },
 }
 
 local QUICK_GIFTCODES = {
     "SKYBREAK2026",
-    "AETHERCORE",
-    "FREERESET",
-    "2XEXP30MIN",
-    "MYTHICFRUIT",
+    "AETHERV2",
+    "SKYBREAKLAUNCH",
+    "FREESTAT",
 }
 
 local function fireServerUI(cmd, payload)
@@ -122,10 +121,11 @@ local function fireServerUI(cmd, payload)
     local uiReq = remotes and remotes:FindFirstChild("UIRequest")
     if uiReq and uiReq:IsA("RemoteEvent") then
         uiReq:FireServer(cmd, payload)
+        return
     end
     local skyRems = SkyShared:FindFirstChild("Remotes")
     local reqAct = skyRems and skyRems:FindFirstChild("RequestUIAction")
-    if reqAct and reqAct:IsA("RemoteEvent") and not uiReq then
+    if reqAct and reqAct:IsA("RemoteEvent") then
         reqAct:FireServer(cmd, payload)
     end
 end
@@ -160,7 +160,7 @@ local function inspectTargetPlayer(plr, rootForModal)
     local bounty = tonumber(plr:GetAttribute("Bounty")) or (isSelf and snap.fruits and tonumber(snap.fruits.bounty)) or 2500000
 
     local msg = string.format(
-        "[SOI TRANG BỊ 3D] %s • Lv.%s • %s (%s) • Vũ khí: %s • Trái: %s",
+        "[SOI TRANG BỊ 3D] %s • Lv.%s • %s (%s) • Vũ khí: %s • Lõi Aether: %s",
         tostring(plr.DisplayName or plr.Name),
         tostring(lv),
         tostring(cls),
@@ -296,7 +296,7 @@ local function inspectTargetPlayer(plr, rootForModal)
         { k = I18n.Pick("CẤP ĐỘ & PHE PHÁI", "LEVEL & FACTION"), v = string.format("Lv.%s  •  %s", tostring(lv), tostring(fac)), col = colors.ACCENT_GOLD_BRIGHT },
         { k = I18n.Pick("HỆ PHÁI CHIẾN ĐẤU", "3D HERO CLASS"), v = tostring(cls), col = colors.ACCENT_SAPPHIRE },
         { k = I18n.Pick("TIỀN THƯỞNG BOUNTY", "BOUNTY"), v = UIFactory.FormatNumber(bounty) .. " BTY", col = colors.SUCCESS },
-        { k = I18n.Pick("TRÁI AETHER 3D", "3D AETHER FRUIT"), v = tostring(fruit), col = Color3.fromRGB(232, 121, 249) },
+        { k = I18n.Pick("LÕI AETHER 3D", "3D AETHER CORE"), v = tostring(fruit), col = Color3.fromRGB(232, 121, 249) },
         { k = I18n.Pick("DANH KIẾM / PHÁP KHÍ", "EQUIPPED WEAPON"), v = tostring(wep ~= "" and wep or "Dawnbringer"), col = colors.TEXT_PRIMARY },
         { k = I18n.Pick("BỘ THẦN GIÁP 3D", "3D ARMOR SET"), v = tostring(chest) .. " + " .. tostring(helm), col = colors.ACCENT_ICE or colors.TEXT_SECONDARY },
     }
@@ -970,7 +970,7 @@ function SocialRewards.Build(parent, _responsiveState)
     PremiumButton.Create(leftBottomBar, {
         name = "SummonSeaBeastBtn",
         icon = "Raid",
-        label = I18n.Pick("TRIỆU HỒI THỦY QUÁI (10M)", "SUMMON SEABEAST (10M)"),
+        label = I18n.Pick("TRIỆU HỒI THÚ TRỜI (10M)", "SUMMON SKY BEAST (10M)"),
         variant = "secondary",
         position = UDim2.new(0.68, 3, 0, 0),
         size = UDim2.new(0.32, -3, 1, 0),
@@ -978,7 +978,7 @@ function SocialRewards.Build(parent, _responsiveState)
         minTextSize = 8,
         onActivated = function()
             fireServerUI("SummonSeaBeast", {})
-            Store.ShowToast(I18n.Pick("Đã phát hiệu lệnh Triệu Hồi Hải Vương SeaBeast (10M Bounty)!", "Requested Crew SeaBeast Summon!"), "info")
+            Store.ShowToast(I18n.Pick("Đã phát hiệu lệnh Triệu Hồi Thú Trời (10M Bounty)!", "Requested Crew Sky Beast Summon!"), "info")
         end,
     })
 
@@ -1109,7 +1109,7 @@ function SocialRewards.Build(parent, _responsiveState)
             name = "Chip_" .. qCode,
             label = qCode,
             variant = "secondary",
-            size = UDim2.new(0.20, -4, 1, 0),
+            size = UDim2.new(0.25, -4, 1, 0),
             textSize = 9,
             minTextSize = 7,
             layoutOrder = idx,
@@ -1177,8 +1177,8 @@ function SocialRewards.Build(parent, _responsiveState)
     end
 
     for _, npcLegend in ipairs({
-        { Name = "Aureon Sovereign", Level = 2550, Bounty = 30000000, Title = "Thần Hộ Vệ Thái Dương", Loadout = "Void Dragon 3D • Song Kiếm CDK" },
-        { Name = "Commander Lyra", Level = 2450, Bounty = 24800000, Title = "Tổng Chỉ Huy Thánh Vệ", Loadout = "Solar Buddha 3D • Thiên Kiếm" },
+        { Name = "Aureon Sovereign", Level = 2550, Bounty = 30000000, Title = "Thần Hộ Vệ Thái Dương", Loadout = "Abyssal Sovereign 3D • Song Kiếm Nguyệt Thực" },
+        { Name = "Commander Lyra", Level = 2450, Bounty = 24800000, Title = "Tổng Chỉ Huy Thánh Vệ", Loadout = "Lõi Kim Thân 3D • Thiên Kiếm" },
         { Name = "Master Kael", Level = 2300, Bounty = 18500000, Title = "Đại Sư Rèn Thần Khí", Loadout = "Star Magma 3D • Thần Chùy" },
         { Name = "Admiral Cryon", Level = 1950, Bounty = 12400000, Title = "Đô Đốc Tuần Dương Băng", Loadout = "Glacier Ice 3D • Pháo Hạm" },
     }) do

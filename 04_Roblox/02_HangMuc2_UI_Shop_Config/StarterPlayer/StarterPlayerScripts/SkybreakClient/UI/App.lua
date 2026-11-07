@@ -423,8 +423,8 @@ function App.Init(onAction, onAttack)
                 QuestController.OpenDialogue(
                     I18n.Pick("LYRA • CHỈ HUY SKYBORN", "LYRA • SKYBORN COMMANDER"),
                     I18n.Pick(
-                        "Chào mừng Chiến Binh Bầu Trời! Hãy trang bị Thần Khí, thức tỉnh Trái Ác Quỷ Aether và tiến công Tháp Phán Quyết.",
-                        "Welcome, Skyborn! Equip your Celestial Blade, awaken your Aether Core Fruit, and ascend the Aureon Spire."
+                        "Chào mừng Chiến Binh Bầu Trời! Hãy trang bị Thần Khí, thức tỉnh Lõi Aether và tiến công Tháp Phán Quyết.",
+                        "Welcome, Skyborn! Equip your Celestial Blade, awaken your Aether Core, and ascend the Aureon Spire."
                     ),
                     I18n.Pick("Người Giữ Cổ Ngữ • Sky Hub", "Lorekeeper of the Core • Sky Hub")
                 )
@@ -581,9 +581,9 @@ function App.Message(message)
         local isKael = string.sub(message, 1, 5) == "Kael:"
         local isZioles = string.sub(message, 1, 7) == "Zioles:"
         local speaker = isKael and "KAEL • CELESTIAL FORGE"
-            or (isZioles and "ZIOLES • AETHER GACHA" or "LYRA • SKY HUB")
+            or (isZioles and "HIỀN GIẢ AETHER • GACHA" or "LYRA • SKY HUB")
         local role = isKael and "Master Blacksmith"
-            or (isZioles and "Aether Fruit Dealer" or "Lorekeeper of the Core")
+            or (isZioles and "Aether Core Oracle" or "Lorekeeper of the Core")
         QuestController.OpenDialogue(speaker, message, role)
     else
         Store.ShowToast(message, "info", 3.5)

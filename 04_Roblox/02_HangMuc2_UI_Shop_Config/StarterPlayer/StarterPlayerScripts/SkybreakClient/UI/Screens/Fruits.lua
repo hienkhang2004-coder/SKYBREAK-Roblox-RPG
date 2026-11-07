@@ -113,15 +113,15 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_GaleCore",
         ShortVi = "Cuồng Phong",
         ShortEn = "Gale Core",
-        NameVi = "Trái Cuồng Phong (Gale Core)",
-        NameEn = "Gale Core Fruit",
+        NameVi = "Lõi Cuồng Phong (Gale Core)",
+        NameEn = "Gale Core",
         Rarity = "Common",
-        Type = "Elemental (Logia)",
+        Type = "Elemental",
         Element = "Sky",
         Icon = "Wing",
         Color = Color3.fromRGB(165, 245, 215),
         DescVi = "Hóa thân thành gió lốc nguyên tố, miễn nhiễm đòn đánh thường và tạo lốc xoáy tốc độ cao.",
-        DescEn = "Transform into elemental gale wind with Logia immunity and high-velocity cyclone slashes.",
+        DescEn = "Transform into elemental gale wind with elemental immunity and high-velocity cyclone slashes.",
         Moves = {
             { Key = "Z", Name = "Wind Cutter Slash", Mult = "1.9x ATK", Range = "24m", Cd = "3.0s" },
             { Key = "X", Name = "Cyclone Vortex Burst", Mult = "2.4x ATK", Range = "26m", Cd = "4.5s" },
@@ -135,10 +135,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_SandstoneCore",
         ShortVi = "Sa Mạc Kim",
         ShortEn = "Sandstone",
-        NameVi = "Trái Sa Mạc Hoàng Kim (Sandstone)",
+        NameVi = "Lõi Sa Mạc Hoàng Kim (Sandstone)",
         NameEn = "Golden Sandstone Core",
         Rarity = "Uncommon",
-        Type = "Elemental (Logia)",
+        Type = "Elemental",
         Element = "Sky",
         Icon = "Fruit",
         Color = Color3.fromRGB(235, 195, 110),
@@ -157,10 +157,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_SolarFlameCore",
         ShortVi = "Hỏa Dương",
         ShortEn = "Solar Flame",
-        NameVi = "Trái Hỏa Dương (Solar Flame)",
+        NameVi = "Lõi Hỏa Dương (Solar Flame)",
         NameEn = "Solar Flame Core",
         Rarity = "Rare",
-        Type = "Elemental (Logia)",
+        Type = "Elemental",
         Element = "Sky",
         Icon = "Flame",
         Color = Color3.fromRGB(255, 125, 45),
@@ -179,10 +179,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_GlacierIceCore",
         ShortVi = "Băng Hà",
         ShortEn = "Glacier Ice",
-        NameVi = "Trái Băng Hà Vĩnh Cửu (Glacier Ice)",
+        NameVi = "Lõi Băng Hà Vĩnh Cửu (Glacier Ice)",
         NameEn = "Glacier Ice Core",
         Rarity = "Rare",
-        Type = "Elemental (Logia)",
+        Type = "Elemental",
         Element = "Frost",
         Icon = "Frost",
         Color = Color3.fromRGB(115, 235, 255),
@@ -201,10 +201,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_CelestialLightCore",
         ShortVi = "Ánh Sáng",
         ShortEn = "Celestial Light",
-        NameVi = "Trái Ánh Sáng Thiên Giới (Light)",
+        NameVi = "Lõi Ánh Sáng Thiên Giới (Light)",
         NameEn = "Celestial Light Core",
         Rarity = "Epic",
-        Type = "Elemental (Logia)",
+        Type = "Elemental",
         Element = "Sky",
         Icon = "Star",
         Color = Color3.fromRGB(255, 242, 135),
@@ -223,10 +223,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_StarforgedMagmaCore",
         ShortVi = "Dung Nham",
         ShortEn = "Star Magma",
-        NameVi = "Trái Dung Nham Tinh Cầu (Magma)",
+        NameVi = "Lõi Dung Nham Tinh Cầu (Magma)",
         NameEn = "Starforged Magma Core",
         Rarity = "Epic",
-        Type = "Elemental (Logia)",
+        Type = "Elemental",
         Element = "Sky",
         Icon = "Flame",
         Color = Color3.fromRGB(255, 82, 48),
@@ -245,10 +245,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_ThunderRumbleCore",
         ShortVi = "Lôi Thần",
         ShortEn = "Thunder Rumble",
-        NameVi = "Trái Lôi Thần (Thunder Rumble)",
+        NameVi = "Lõi Lôi Thần (Thunder Rumble)",
         NameEn = "Thunder Rumble Core",
         Rarity = "Legendary",
-        Type = "Elemental (Logia)",
+        Type = "Elemental",
         Element = "Lightning",
         Icon = "Lightning",
         Color = Color3.fromRGB(88, 210, 255),
@@ -267,10 +267,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_AstralGravityCore",
         ShortVi = "Trọng Lực",
         ShortEn = "Astral Gravity",
-        NameVi = "Trái Trọng Lực Tinh Vân (Gravity)",
+        NameVi = "Lõi Trọng Lực Tinh Vân (Gravity)",
         NameEn = "Astral Gravity Core",
         Rarity = "Legendary",
-        Type = "Natural (Paramecia)",
+        Type = "Natural",
         Element = "Void",
         Icon = "Void",
         Color = Color3.fromRGB(185, 110, 255),
@@ -287,12 +287,12 @@ local FRUIT_CATALOG = {
     {
         Id = "DimensionalPortalCore",
         Asset = "Fruit_DimensionalPortalCore",
-        ShortVi = "Không Gian",
-        ShortEn = "World Portal",
-        NameVi = "Trái Không Gian (Dimensional Portal)",
-        NameEn = "Dimensional Portal Core",
+        ShortVi = "Khe Nứt",
+        ShortEn = "Rift Core",
+        NameVi = "Lõi Khe Nứt (Rift Core)",
+        NameEn = "Rift Core",
         Rarity = "Legendary",
-        Type = "Natural (Paramecia)",
+        Type = "Natural",
         Element = "Void",
         Icon = "Compass",
         Color = Color3.fromRGB(120, 165, 255),
@@ -309,12 +309,12 @@ local FRUIT_CATALOG = {
     {
         Id = "SolarTitanCore",
         Asset = "Fruit_SolarTitanCore",
-        ShortVi = "Kim Thân Phật",
-        ShortEn = "Solar Buddha",
-        NameVi = "Trái Kim Thân Phật Tổ (Solar Buddha)",
-        NameEn = "Solar Titan Buddha Core",
+        ShortVi = "Kim Thân",
+        ShortEn = "Colossus Core",
+        NameVi = "Lõi Kim Thân (Colossus Core)",
+        NameEn = "Colossus Core",
         Rarity = "Mythical",
-        Type = "Beast (Mythical Zoan)",
+        Type = "Beast",
         Element = "Sky",
         Icon = "Crown",
         Color = Color3.fromRGB(255, 208, 68),
@@ -333,10 +333,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_AetherflowCore",
         ShortVi = "Linh Mạch",
         ShortEn = "Aetherflow",
-        NameVi = "Trái Linh Mạch Aether (Aetherflow)",
+        NameVi = "Lõi Linh Mạch Aether (Aetherflow)",
         NameEn = "Aetherflow Sovereign Core",
         Rarity = "Mythical",
-        Type = "Natural (Paramecia)",
+        Type = "Natural",
         Element = "Sky",
         Icon = "Core",
         Color = Color3.fromRGB(95, 245, 235),
@@ -355,10 +355,10 @@ local FRUIT_CATALOG = {
         Asset = "Fruit_AbyssalSovereignCore",
         ShortVi = "Hắc Long 3D",
         ShortEn = "Void Dragon",
-        NameVi = "Trái Long Vương Hư Không (Void Dragon)",
+        NameVi = "Lõi Long Vương Hư Không (Void Dragon)",
         NameEn = "Abyssal Sovereign Dragon Core",
         Rarity = "Mythical",
-        Type = "Beast (Mythical Zoan)",
+        Type = "Beast",
         Element = "Void",
         Icon = "Fruit",
         Color = Color3.fromRGB(178, 88, 255),
@@ -672,7 +672,7 @@ local function mountZiolesBustCard(parent, position, size)
     UIFactory.Stroke(livePill, accent, 1.2, 0.15)
     UIFactory.Label(livePill, {
         Name = "LiveText",
-        Text = "• 3D LIVE - ZIOLES",
+        Text = I18n.Pick("• 3D LIVE - HIỀN GIẢ AETHER", "• 3D LIVE - AETHER ORACLE"),
         Size = UDim2.fromScale(1, 1),
         TextSize = 9,
         TextColor = Color3.fromRGB(216, 174, 255),
@@ -683,7 +683,7 @@ local function mountZiolesBustCard(parent, position, size)
 
     UIFactory.Label(card, {
         Name = "VendorTitle",
-        Text = "ZIOLES • GACHA 3D",
+        Text = I18n.Pick("HIỀN GIẢ AETHER • GACHA 3D", "AETHER ORACLE • 3D GACHA"),
         Position = UDim2.fromOffset(4, 126),
         Size = UDim2.new(1, -8, 0, 18),
         TextSize = 10,
@@ -815,13 +815,17 @@ local function mount3DFruitPreview(viewport, fruitInfo)
 end
 
 -- Wide Cooldown pill & dark-sapphire move card layout with zero clipping
-local function populateMovesList(movesList, selectedFruit, equippedId, colors)
+local MOVE_MASTERY_REQ = { Z = 1, X = 50, C = 100, V = 200, F = 1 }
+local function populateMovesList(movesList, selectedFruit, equippedId, colors, masteryLv)
+    local curMas = tonumber(masteryLv) or 1
     for _, ch in ipairs(movesList:GetChildren()) do
         if ch:IsA("GuiObject") then
             ch:Destroy()
         end
     end
     for idx, mv in ipairs(selectedFruit.Moves) do
+        local masReq = MOVE_MASTERY_REQ[mv.Key] or 1
+        local isMasLocked = curMas < masReq
         local mvCard = UIFactory.Create("Frame", movesList, {
             Name = "Move_" .. mv.Key,
             Size = UDim2.new(1, 0, 0, 62),
@@ -864,14 +868,16 @@ local function populateMovesList(movesList, selectedFruit, equippedId, colors)
 
         UIFactory.Label(mvCard, {
             Name = "MoveStats",
-            Text = I18n.Pick(
-                string.format("ST: %s  •  Tầm: %s", mv.Mult, mv.Range),
-                string.format("DMG: %s  •  Rng: %s", mv.Mult, mv.Range)
-            ),
+            Text = isMasLocked
+                and I18n.Pick("Mở ở Mastery " .. tostring(masReq), "Mas. " .. tostring(masReq))
+                or I18n.Pick(
+                    string.format("ST: %s  •  Tầm: %s", mv.Mult, mv.Range),
+                    string.format("DMG: %s  •  Rng: %s", mv.Mult, mv.Range)
+                ),
             Position = UDim2.fromOffset(58, 32),
             Size = UDim2.fromOffset(132, 20),
             TextSize = 11,
-            TextColor = colors.ACCENT_SAPPHIRE,
+            TextColor = isMasLocked and colors.ACCENT_GOLD_BRIGHT or colors.ACCENT_SAPPHIRE,
             Bold = true,
         })
 
@@ -886,7 +892,7 @@ local function populateMovesList(movesList, selectedFruit, equippedId, colors)
         UIFactory.Stroke(cdPill, colors.ACCENT_GOLD, 1, 0.32)
         local cdLbl = UIFactory.Label(cdPill, {
             Name = "CdText",
-            Text = I18n.Pick("Hồi: " .. mv.Cd, "CD: " .. mv.Cd),
+            Text = isMasLocked and ("Mas. " .. tostring(masReq)) or I18n.Pick("Hồi: " .. mv.Cd, "CD: " .. mv.Cd),
             Position = UDim2.fromOffset(5, 0),
             Size = UDim2.new(1, -10, 1, 0),
             TextSize = 10,
@@ -974,7 +980,7 @@ local function launchZiolesGachaCarousel(root)
 
     local bannerTitle = UIFactory.Label(stage, {
         Name = "GachaTitle",
-        Text = I18n.Pick("ĐÀI GACHA ZIOLES • ĐANG TRIỆU HỒI TRÁI AETHER 3D...", "ZIOLES GACHA SHRINE • SUMMONING 3D AETHER FRUIT..."),
+        Text = I18n.Pick("ĐÀI GACHA HIỀN GIẢ AETHER • ĐANG TRIỆU HỒI LÕI AETHER 3D...", "AETHER ORACLE SHRINE • SUMMONING 3D AETHER CORE..."),
         Position = UDim2.fromOffset(20, 14),
         Size = UDim2.new(1, -40, 0, 26),
         TextSize = 16,
@@ -1113,7 +1119,7 @@ local function launchZiolesGachaCarousel(root)
 
     PremiumButton.Create(btnRow, {
         name = "EatWonFruitBtn",
-        label = I18n.Pick("ĂN / TRANG BỊ NGAY", "EAT / EQUIP NOW"),
+        label = I18n.Pick("HẤP THỤ / TRANG BỊ NGAY", "ABSORB / EQUIP NOW"),
         variant = "danger",
         position = UDim2.fromOffset(0, 0),
         size = UDim2.fromOffset(204, 40),
@@ -1217,7 +1223,7 @@ local function launchZiolesGachaCarousel(root)
             Store.PushLoot({
                 Category = "Item",
                 Title = getFruitName(wonFruitInfo),
-                Subtitle = string.format("[%s] %s", string.upper(wonFruitInfo.Rarity), I18n.Pick("Gacha Zioles", "Zioles Gacha")),
+                Subtitle = string.format("[%s] %s", string.upper(wonFruitInfo.Rarity), I18n.Pick("Gacha Hiền Giả Aether", "Aether Oracle Gacha")),
                 Color = RARITY_COLORS[wonFruitInfo.Rarity] or wonFruitInfo.Color,
             })
         elseif landed and rayContainer.Visible then
@@ -1289,7 +1295,7 @@ function Fruits.Build(parent, _responsiveState)
 
     UIFactory.Label(leftPanel, {
         Name = "ShrineHeader",
-        Text = I18n.Pick("ĐÀI TRIỆU HỒI TRÁI 3D ZIOLES • TỶ LỆ & PITY MINH BẠCH", "ZIOLES 3D GACHA SHRINE • TRANSPARENT ODDS & PITY"),
+        Text = I18n.Pick("ĐÀI TRIỆU HỒI LÕI 3D HIỀN GIẢ AETHER • TỶ LỆ & PITY MINH BẠCH", "AETHER ORACLE 3D GACHA SHRINE • TRANSPARENT ODDS & PITY"),
         Position = UDim2.fromOffset(14, 8),
         Size = UDim2.new(1, -186, 0, 22),
         TextSize = 13,
@@ -1301,7 +1307,7 @@ function Fruits.Build(parent, _responsiveState)
     PremiumButton.Create(leftPanel, {
         name = "OpenMirageShopBtn",
         icon = "Gold",
-        label = I18n.Pick("KỆ MIRAGE 2H [N]", "MIRAGE 2H [N]"),
+        label = I18n.Pick("KỆ HƯ QUANG 2H [N]", "PHANTOM 2H [N]"),
         variant = "secondary",
         position = UDim2.new(1, -162, 0, 6),
         size = UDim2.fromOffset(150, 26),
@@ -1497,7 +1503,7 @@ function Fruits.Build(parent, _responsiveState)
     -- Middle Section: 12 Vivid Glossy 6-Rarity Permanent Vault Fruit Tiles
     UIFactory.Label(leftPanel, {
         Name = "VaultHeader",
-        Text = I18n.Pick("KHO VĨNH VIỄN 12 TRÁI AETHER 3D (CHỌN ĐỂ XEM 3D • ĂN • CẤT KHO):", "12 SEPARATED 3D FRUITS PERMANENT VAULT (SELECT FOR 3D • EAT • STORE):"),
+        Text = I18n.Pick("KHO VĨNH VIỄN 12 LÕI AETHER 3D (CHỌN ĐỂ XEM 3D • HẤP THỤ • CẤT KHO):", "12 SEPARATED 3D CORES PERMANENT VAULT (SELECT FOR 3D • ABSORB • STORE):"),
         Position = UDim2.fromOffset(14, 225),
         Size = UDim2.new(1, -28, 0, 17),
         TextSize = 10,
@@ -1589,7 +1595,7 @@ function Fruits.Build(parent, _responsiveState)
     local _, awakenApi = PremiumButton.Create(actionBox, {
         name = "AwakenFruitBtn",
         icon = "Bolt",
-        label = isAwakened and I18n.Pick("ĐÃ THỨC TỈNH V2", "AWAKENED V2") or I18n.Pick("THỨC TỈNH V2 (500)", "AWAKEN V2 (500)"),
+        label = isAwakened and I18n.Pick("ĐÃ THỨC TỈNH LÕI", "AWAKENED CORE") or I18n.Pick("LÕI THỨC TỈNH (500)", "AWAKEN CORE (500)"),
         variant = isAwakened and "gold" or "secondary",
         position = UDim2.new(1, -168, 0, 5),
         size = UDim2.fromOffset(160, 25),
@@ -1617,7 +1623,7 @@ function Fruits.Build(parent, _responsiveState)
         icon = "Fruit",
         label = (equippedId == selectedFruit.Id)
             and I18n.Pick("ĐANG TRANG BỊ [SLOT 2]", "EQUIPPED [SLOT 2]")
-            or I18n.Pick("ĂN NGAY (THAY TRÁI)", "EAT NOW (EQUIP)"),
+            or I18n.Pick("HẤP THỤ NGAY (THAY LÕI)", "ABSORB NOW (EQUIP)"),
         variant = (equippedId == selectedFruit.Id) and "gold" or "danger",
         position = UDim2.fromOffset(0, 0),
         size = UDim2.new(0.36, -4, 1, 0),
@@ -1665,7 +1671,7 @@ function Fruits.Build(parent, _responsiveState)
         name = "HoldFruitBtn",
         label = (fState.heldFruit == selectedFruit.Id)
             and I18n.Pick("ĐANG CẦM 3D TRÊN TAY", "HOLDING 3D MODEL")
-            or I18n.Pick("CẦM TRÁI 3D TRÊN TAY", "HOLD 3D IN HAND"),
+            or I18n.Pick("CẦM LÕI 3D TRÊN TAY", "HOLD 3D IN HAND"),
         variant = "secondary",
         position = UDim2.new(0.70, 2, 0, 0),
         size = UDim2.new(0.30, -2, 1, 0),
@@ -1735,7 +1741,7 @@ function Fruits.Build(parent, _responsiveState)
 
     UIFactory.Label(rightPanel, {
         Name = "MovesHeader",
-        Text = I18n.Pick("BỘ 5 KỸ NĂNG TRÁI AETHER ([Z] [X] [C] [V] [F])", "5 AETHER FRUIT ABILITIES ([Z] [X] [C] [V] [F])"),
+        Text = I18n.Pick("BỘ 5 KỸ NĂNG LÕI AETHER ([Z] [X] [C] [V] [F])", "5 AETHER CORE ABILITIES ([Z] [X] [C] [V] [F])"),
         Position = UDim2.fromOffset(14, 10),
         Size = UDim2.new(1, -28, 0, 20),
         TextSize = 13,
@@ -1761,7 +1767,7 @@ function Fruits.Build(parent, _responsiveState)
     })
     UIFactory.ListLayout(movesList, Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top)
     refs.MovesList = movesList
-    populateMovesList(movesList, selectedFruit, equippedId, colors)
+    populateMovesList(movesList, selectedFruit, equippedId, colors, masteryLv)
 
     -- Haki Ba Loai & Race V4 Toggle Box
     local hakiBox = UIFactory.Create("Frame", rightPanel, {
@@ -1777,7 +1783,7 @@ function Fruits.Build(parent, _responsiveState)
 
     UIFactory.Label(hakiBox, {
         Name = "HakiHeader",
-        Text = I18n.Pick("HAKI BA LOẠI ([J] [U] [H]) & THỨC TỈNH TỘC V4 [Y]", "THREE HAKI ARTS ([J] [U] [H]) & RACE V4 [Y]"),
+        Text = I18n.Pick("Ý CHÍ AETHER BA LOẠI ([J] [U] [H]) & THĂNG HOA [Y]", "THREE AETHER WILL ARTS ([J] [U] [H]) & ASCENSION [Y]"),
         Position = UDim2.fromOffset(10, 4),
         Size = UDim2.new(1, -20, 0, 16),
         TextSize = 10,
@@ -1798,30 +1804,30 @@ function Fruits.Build(parent, _responsiveState)
             id = "Aura",
             active = fState.haki and fState.haki.Aura == true,
             label = (fState.haki and fState.haki.Aura)
-                and I18n.Pick("HAKI VŨ TRANG: BẬT", "ARMAMENT HAKI: ON")
-                or I18n.Pick("HAKI VŨ TRANG [J]", "ARMAMENT HAKI [J]"),
+                and I18n.Pick("GIÁP Ý CHÍ: BẬT", "WILL ARMOR: ON")
+                or I18n.Pick("GIÁP Ý CHÍ [J]", "WILL ARMOR [J]"),
             act = "ToggleAura",
         },
         {
             id = "Instinct",
             active = fState.haki and fState.haki.Instinct == true,
             label = (fState.haki and fState.haki.Instinct)
-                and I18n.Pick("HAKI QUAN SÁT: BẬT", "INSTINCT HAKI: ON")
-                or I18n.Pick("HAKI QUAN SÁT [U]", "INSTINCT HAKI [U]"),
+                and I18n.Pick("THẤU Ý: BẬT", "WILL SENSE: ON")
+                or I18n.Pick("THẤU Ý [U]", "WILL SENSE [U]"),
             act = "ToggleInstinct",
         },
         {
             id = "Conqueror",
             active = false,
-            label = I18n.Pick("HAKI BÁ VƯƠNG [H]", "CONQUEROR HAKI [H]"),
+            label = I18n.Pick("BÁ Ý [H]", "SOVEREIGN WILL [H]"),
             act = "ConquerorBurst",
         },
         {
             id = "RaceV4",
             active = fState.raceV4Active == true,
             label = fState.raceV4Active
-                and I18n.Pick("TỘC V4 [" .. tostring(fState.race or "Skyborn") .. "]: BẬT", "RACE V4 [" .. tostring(fState.race or "Skyborn") .. "]: ON")
-                or I18n.Pick("THỨC TỈNH TỘC V4 [Y]", "AWAKEN RACE V4 [Y]"),
+                and I18n.Pick("THĂNG HOA [" .. tostring(fState.race or "Skyborn") .. "]: BẬT", "ASCENSION [" .. tostring(fState.race or "Skyborn") .. "]: ON")
+                or I18n.Pick("KÍCH HOẠT THĂNG HOA [Y]", "ACTIVATE ASCENSION [Y]"),
             act = "ActivateRaceV4",
         },
     }
@@ -1909,6 +1915,9 @@ function Fruits.Update(snap)
         refs.HeaderRefs.UpdateCurrencies(snap)
     end
 
+    local isAwakened = fState.awakenedFruits and fState.awakenedFruits[selectedFruit.Id] == true
+    local masteryLv = (fState.mastery and fState.mastery[selectedFruit.Id]) or 1
+
     if refs.RenderedFruitId ~= selectedFruit.Id then
         refs.RenderedFruitId = selectedFruit.Id
         if refs.FruitDesc then
@@ -1936,19 +1945,17 @@ function Fruits.Update(snap)
             mount3DFruitPreview(refs.ViewportBox, selectedFruit)
         end
         if refs.MovesList then
-            populateMovesList(refs.MovesList, selectedFruit, equippedId, colors)
+            populateMovesList(refs.MovesList, selectedFruit, equippedId, colors, masteryLv)
         end
     end
 
-    local isAwakened = fState.awakenedFruits and fState.awakenedFruits[selectedFruit.Id] == true
-    local masteryLv = (fState.mastery and fState.mastery[selectedFruit.Id]) or 1
     if refs.SelectedFruitTitle then
         refs.SelectedFruitTitle.Text = string.format(
             "%s  •  %s  •  Mastery Lv.%d%s",
             getFruitName(selectedFruit),
             selectedFruit.Rarity,
             masteryLv,
-            isAwakened and " [V2]" or ""
+            isAwakened and " [Lõi Thức Tỉnh]" or ""
         )
         refs.SelectedFruitTitle.TextColor3 = selectedFruit.Color
     end
@@ -1977,22 +1984,22 @@ function Fruits.Update(snap)
             variant = isEq and "gold" or "danger",
             label = isEq
                 and I18n.Pick("ĐANG TRANG BỊ [SLOT 2]", "EQUIPPED [SLOT 2]")
-                or I18n.Pick("ĂN NGAY (THAY TRÁI)", "EAT NOW (EQUIP)"),
+                or I18n.Pick("HẤP THỤ NGAY (THAY LÕI)", "ABSORB NOW (EQUIP)"),
         })
     end
     if refs.HoldFruitApi then
         refs.HoldFruitApi:SetLabel(
             (fState.heldFruit == selectedFruit.Id)
                 and I18n.Pick("ĐANG CẦM 3D TRÊN TAY", "HOLDING 3D MODEL")
-                or I18n.Pick("CẦM TRÁI 3D TRÊN TAY", "HOLD 3D IN HAND")
+                or I18n.Pick("CẦM LÕI 3D TRÊN TAY", "HOLD 3D IN HAND")
         )
     end
     if refs.AwakenFruitApi then
         refs.AwakenFruitApi:Update({
             variant = isAwakened and "gold" or "secondary",
             label = isAwakened
-                and I18n.Pick("ĐÃ THỨC TỈNH V2", "AWAKENED V2")
-                or I18n.Pick("THỨC TỈNH V2 (500)", "AWAKEN V2 (500)"),
+                and I18n.Pick("ĐÃ THỨC TỈNH LÕI", "AWAKENED CORE")
+                or I18n.Pick("LÕI THỨC TỈNH (500)", "AWAKEN CORE (500)"),
         })
     end
 
@@ -2001,7 +2008,7 @@ function Fruits.Update(snap)
         refs.HakiApis.Aura:Update({
             variant = on and "gold" or "secondary",
             selected = on,
-            label = on and I18n.Pick("HAKI VŨ TRANG: BẬT", "ARMAMENT HAKI: ON") or I18n.Pick("HAKI VŨ TRANG [J]", "ARMAMENT HAKI [J]"),
+            label = on and I18n.Pick("GIÁP Ý CHÍ: BẬT", "WILL ARMOR: ON") or I18n.Pick("GIÁP Ý CHÍ [J]", "WILL ARMOR [J]"),
         })
     end
     if refs.HakiApis.Instinct then
@@ -2009,7 +2016,7 @@ function Fruits.Update(snap)
         refs.HakiApis.Instinct:Update({
             variant = on and "gold" or "secondary",
             selected = on,
-            label = on and I18n.Pick("HAKI QUAN SÁT: BẬT", "INSTINCT HAKI: ON") or I18n.Pick("HAKI QUAN SÁT [U]", "INSTINCT HAKI [U]"),
+            label = on and I18n.Pick("THẤU Ý: BẬT", "WILL SENSE: ON") or I18n.Pick("THẤU Ý [U]", "WILL SENSE [U]"),
         })
     end
     if refs.HakiApis.RaceV4 then
@@ -2018,8 +2025,8 @@ function Fruits.Update(snap)
             variant = on and "gold" or "secondary",
             selected = on,
             label = on
-                and I18n.Pick("TỘC V4 [" .. tostring(fState.race or "Skyborn") .. "]: BẬT", "RACE V4 [" .. tostring(fState.race or "Skyborn") .. "]: ON")
-                or I18n.Pick("THỨC TỈNH TỘC V4 [Y]", "AWAKEN RACE V4 [Y]"),
+                and I18n.Pick("THĂNG HOA [" .. tostring(fState.race or "Skyborn") .. "]: BẬT", "ASCENSION [" .. tostring(fState.race or "Skyborn") .. "]: ON")
+                or I18n.Pick("KÍCH HOẠT THĂNG HOA [Y]", "ACTIVATE ASCENSION [Y]"),
         })
     end
 

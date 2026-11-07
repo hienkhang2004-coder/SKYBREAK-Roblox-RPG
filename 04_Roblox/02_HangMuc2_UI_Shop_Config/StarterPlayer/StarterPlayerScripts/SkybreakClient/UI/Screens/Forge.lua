@@ -66,8 +66,8 @@ local SIGNATURE_ARSENAL = {
     {
         Id = "Forge_CursedDualSkyblades",
         OutputItemId = "cursed_dual_skyblades",
-        NameVi = "Song Kiếm Thiên Không (Cursed Dual Skyblades)",
-        NameEn = "Cursed Dual Skyblades (CDK)",
+        NameVi = "Song Kiếm Nguyệt Thực (Eclipse Twinblades)",
+        NameEn = "Eclipse Twinblades",
         Type = "Craft",
         GoldCost = 5000,
         SuccessRate = 1.0,
@@ -151,8 +151,8 @@ local SIGNATURE_ARSENAL = {
     {
         Id = "Forge_SoulGuitarVoid",
         OutputItemId = "soul_guitar_void",
-        NameVi = "Đàn Linh Hồn Hư Không (Soul Guitar)",
-        NameEn = "Abyssal Soul Guitar",
+        NameVi = "Đàn Hồn Hư Không (Void Lyre)",
+        NameEn = "Void Lyre",
         Type = "Craft",
         GoldCost = 6000,
         SuccessRate = 1.0,

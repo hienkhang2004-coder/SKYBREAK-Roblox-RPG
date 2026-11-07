@@ -55,7 +55,7 @@ ArsenalExpansionConfig.Items = {
         CritDmg = 38,
         Element = "Frost",
         Passive = "Quantum Edge: Dash slashes pierce 20% DEF and leave ionized frost arcs.",
-        Description = "Thanh katana lưỡi plasma xanh dương của đặc nhiệm Cyberport (+148 ATK, +22% Crit).",
+        Description = "Thanh katana lưỡi plasma xanh dương của đặc nhiệm Trạm Giao Thương (+148 ATK, +22% Crit).",
     },
     sylvaris_thornblade = {
         Id = "sylvaris_thornblade",
@@ -251,8 +251,8 @@ ArsenalExpansionConfig.Items = {
     },
     kabucha_wind = {
         Id = "kabucha_wind",
-        Name = "Tempest Kabucha Slingshot",
-        VietnameseName = "Ná Cuồng Phong Kabucha",
+        Name = "Sunwind Sling",
+        VietnameseName = "Ná Gió Mặt Trời",
         Category = "Weapons",
         Slot = "Offhand",
         WeaponType = "Gun",
@@ -295,7 +295,7 @@ ArsenalExpansionConfig.Items = {
         CritDmg = 30,
         Element = "Frost",
         Passive = "Tracker Pulse: Homing cryo-plasma bolts mark targets for +10% crit vulnerability.",
-        Description = "Trường súng xung điện lượng tử chế tác tại Cyberport (+104 ATK, +16% Crit).",
+        Description = "Trường súng xung điện lượng tử chế tác tại Trạm Giao Thương (+104 ATK, +16% Crit).",
     },
 
     -- ------------------------------------------------------------------------
@@ -484,7 +484,7 @@ ArsenalExpansionConfig.Items = {
         PriceShards = 200,
         Stats = { HP = 340, DEF = 34, SPEED = 12 },
         Passive = "Cryo Jets: Dash leaves a frost trail and recovers 15% faster.",
-        Description = "Chiến hài tích hợp động cơ phản lực băng Cyberport (+340 HP, +34 DEF).",
+        Description = "Chiến hài tích hợp động cơ phản lực băng Trạm Giao Thương (+340 HP, +34 DEF).",
     },
 
     -- Set 5 Completion: Noxar Void Sovereign (Lv. 1450, Sea 2/3, alongside sovereign_cloak)
@@ -539,7 +539,7 @@ ArsenalExpansionConfig.Items = {
         PriceGold = 310000,
         PriceShards = 420,
         Stats = { HP = 460, DEF = 46, SPEED = 14 },
-        Passive = "Shadow Step: Grants brief phase-shift evasion during Geppo jumps.",
+        Passive = "Shadow Step: Grants brief phase-shift evasion during Sky Step jumps.",
         Description = "Chiến hài bước qua khe nứt bóng tối của Noxar (+460 HP, +46 DEF).",
     },
 
@@ -674,7 +674,7 @@ ArsenalExpansionConfig.Items = {
     },
     nerith_abyss_greaves = {
         Id = "nerith_abyss_greaves",
-        Name = "Nerith Leviathan Scale Greaves",
+        Name = "Nerith Abyss Serpent Scale Greaves",
         VietnameseName = "Chiến Hài Vảy Hải Vương Nerith",
         Category = "Armor",
         Slot = "Greaves",
@@ -761,7 +761,7 @@ ArsenalExpansionConfig.Items = {
         PriceGold = 1280000,
         PriceShards = 1650,
         Stats = { HP = 980, DEF = 86, ATK = 65, SPEED = 22 },
-        Passive = "Horizon Step: Dash and Geppo leave crimson-gold reality rifts.",
+        Passive = "Horizon Step: Blink Dash and Sky Step leave crimson-gold reality rifts.",
         Description = "Chiến hài thần tốc bước qua chân trời Veil's End (+980 HP, +86 DEF, +65 ATK).",
     },
 
@@ -770,8 +770,8 @@ ArsenalExpansionConfig.Items = {
     -- ------------------------------------------------------------------------
     mirage_phantom_hood = {
         Id = "mirage_phantom_hood",
-        Name = "Mirage Phantom Hood",
-        VietnameseName = "Mũ Trùm Ảo Ảnh Mirage",
+        Name = "Phantom Isle Hood",
+        VietnameseName = "Mũ Trùm Hư Quang",
         Category = "Armor",
         Slot = "Helm",
         Rarity = "Mythic",
@@ -782,8 +782,8 @@ ArsenalExpansionConfig.Items = {
         PriceGold = 520000,
         PriceShards = 680,
         Stats = { HP = 560, DEF = 52, ATK = 64, CRIT = 18 },
-        Passive = "Mirage Veil: Grants +2 Instinct dodges and +15% movement speed in mist.",
-        Description = "Mũ trùm đầu dệt từ sương mù Đảo Bí Ẩn Mirage (+560 HP, +52 DEF, +64 ATK, +18% Crit).",
+        Passive = "Phantom Veil: Grants +2 Will Sense dodges and +15% movement speed in mist.",
+        Description = "Mũ trùm đầu dệt từ sương mù Đảo Hư Quang (+560 HP, +52 DEF, +64 ATK, +18% Crit).",
     },
     aion_chrono_cloak = {
         Id = "aion_chrono_cloak",
@@ -893,8 +893,8 @@ ArsenalExpansionConfig.Items = {
     },
     nerith_leviathan_ring = {
         Id = "nerith_leviathan_ring",
-        Name = "Nerith Abyssal Sovereign Ring",
-        VietnameseName = "Nhẫn Hải Vương Leviathan Nerith",
+        Name = "Nerith Abyss Serpent Ring",
+        VietnameseName = "Nhẫn Thủy Xà Vực Thẳm Nerith",
         Category = "Armor",
         Slot = "Ring",
         Rarity = "Mythic",
@@ -922,7 +922,7 @@ ArsenalExpansionConfig.Items = {
         PriceGold = 1750000,
         PriceShards = 2400,
         Stats = { ATK = 165, HP = 1400, DEF = 110, CRIT = 25 },
-        Passive = "Architect's Omniscience: Boosts all outgoing damage by 18% and Race V4 charge by 25%.",
+        Passive = "Architect's Omniscience: Boosts all outgoing damage by 18% and Ascension charge by 25%.",
         Description = "Thánh vật tối thượng chứa mảnh Lõi Nguyên Thủy của Veyr (+165 ATK, +1400 HP, +110 DEF, +25% Crit).",
     },
 
@@ -1022,8 +1022,8 @@ ArsenalExpansionConfig.ArmorSets = {
         },
         Bonus2Vi = "(2 Món) +240 HP, +28 DEF",
         Bonus2En = "(2-Piece) +240 HP, +28 DEF",
-        Bonus4Vi = "(4 Món) +45 ATK, +8% Chí mạng & Tăng độ cao Geppo",
-        Bonus4En = "(4-Piece) +45 ATK, +8% Crit Rate & Enhanced Geppo Lift",
+        Bonus4Vi = "(4 Món) +45 ATK, +8% Chí mạng & Tăng độ cao Bộ Không",
+        Bonus4En = "(4-Piece) +45 ATK, +8% Crit Rate & Enhanced Sky Step Lift",
         Stats2 = { HP = 240, DEF = 28 },
         Stats4 = { ATK = 45, CRIT = 8 },
     },
@@ -1487,9 +1487,9 @@ ArsenalExpansionConfig.ExpansionRecipes = {
 -- ============================================================================
 ArsenalExpansionConfig.VendorCatalogs = {
     SwordDealer = {
-        { Id = "starter_sword", ItemId = "starter_sword", Sea = "Sea1", LevelReq = 1, PriceGold = 0, PriceShards = 0, Model3DKind = "greatsaber", AccentHex = "#93C5FD" },
-        { Id = "starter_daggers", ItemId = "starter_daggers", Sea = "Sea1", LevelReq = 1, PriceGold = 0, PriceShards = 0, Model3DKind = "katana", AccentHex = "#38BDF8" },
-        { Id = "starter_staff", ItemId = "starter_staff", Sea = "Sea1", LevelReq = 1, PriceGold = 0, PriceShards = 0, Model3DKind = "trident", AccentHex = "#A78BFA" },
+        { Id = "starter_sword", ItemId = "starter_sword", Sea = "Sea1", LevelReq = 1, PriceGold = 1500, PriceShards = 0, Model3DKind = "greatsaber", AccentHex = "#93C5FD" },
+        { Id = "starter_daggers", ItemId = "starter_daggers", Sea = "Sea1", LevelReq = 1, PriceGold = 1500, PriceShards = 0, Model3DKind = "katana", AccentHex = "#38BDF8" },
+        { Id = "starter_staff", ItemId = "starter_staff", Sea = "Sea1", LevelReq = 1, PriceGold = 1500, PriceShards = 0, Model3DKind = "trident", AccentHex = "#A78BFA" },
         { Id = "Dawnbringer", ItemId = "Dawnbringer", Sea = "Sea1", LevelReq = 150, PriceGold = 35000, PriceShards = 60, Model3DKind = "greatsaber", AccentHex = "#F4C14E" },
         { Id = "saber_of_aureon", ItemId = "saber_of_aureon", Sea = "Sea1", LevelReq = 250, PriceGold = 48000, PriceShards = 90, Model3DKind = "greatsaber", AccentHex = "#FBBF24" },
         { Id = "Stormfang", ItemId = "Stormfang", Sea = "Sea1", LevelReq = 280, PriceGold = 54000, PriceShards = 100, Model3DKind = "katana", AccentHex = "#38BDF8" },
@@ -1567,6 +1567,16 @@ ArsenalExpansionConfig.VendorCatalogs = {
         { Id = "veyr_genesis_greaves", ItemId = "veyr_genesis_greaves", Sea = "Sea3", LevelReq = 2500, PriceGold = 1280000, PriceShards = 1650, AccentHex = "#F43F5E" },
         { Id = "veyr_genesis_core", ItemId = "veyr_genesis_core", Sea = "Sea3", LevelReq = 2550, PriceGold = 1750000, PriceShards = 2400, AccentHex = "#F43F5E" },
         { Id = "BlueResonanceGear", ItemId = "BlueResonanceGear", Sea = "Sea3", LevelReq = 1500, PriceGold = 250000, PriceShards = 500, AccentHex = "#38BDF8" },
+        -- Crafting Materials
+        { Id = "upgrade_material", ItemId = "upgrade_material", Sea = "Sea1", LevelReq = 1, PriceGold = 1200, PriceShards = 10, AccentHex = "#38BDF8" },
+        { Id = "SkyIron", ItemId = "SkyIron", Sea = "Sea1", LevelReq = 1, PriceGold = 1500, PriceShards = 15, AccentHex = "#93C5FD" },
+        { Id = "SkyCrystal", ItemId = "SkyCrystal", Sea = "Sea1", LevelReq = 15, PriceGold = 2500, PriceShards = 25, AccentHex = "#38BDF8" },
+        { Id = "CelestialFeather", ItemId = "CelestialFeather", Sea = "Sea1", LevelReq = 100, PriceGold = 6000, PriceShards = 40, AccentHex = "#F4C14E" },
+        { Id = "SunshardCore", ItemId = "SunshardCore", Sea = "Sea2", LevelReq = 400, PriceGold = 15000, PriceShards = 80, AccentHex = "#FBBF24" },
+        { Id = "CoreEssence", ItemId = "CoreEssence", Sea = "Sea2", LevelReq = 700, PriceGold = 35000, PriceShards = 120, AccentHex = "#A855F7" },
+        { Id = "sylvaris_heartwood", ItemId = "sylvaris_heartwood", Sea = "Sea3", LevelReq = 1550, PriceGold = 95000, PriceShards = 120, AccentHex = "#34D399" },
+        { Id = "nerith_pearl_core", ItemId = "nerith_pearl_core", Sea = "Sea3", LevelReq = 2150, PriceGold = 145000, PriceShards = 180, AccentHex = "#22D3EE" },
+        { Id = "veyr_architect_sigil", ItemId = "veyr_architect_sigil", Sea = "Sea3", LevelReq = 2500, PriceGold = 240000, PriceShards = 300, AccentHex = "#F43F5E" },
     },
 
     ShipwrightFleet = {
@@ -1580,11 +1590,13 @@ ArsenalExpansionConfig.VendorCatalogs = {
             HP = 1200,
             Speed = 45,
             Cannons = 2,
-            PriceGold = 0,
+            PriceGold = 2500,
+            CostGold = 2500,
             PriceShards = 0,
+            CostShards = 0,
             Model3DKind = "Ship_SkySloop",
             AccentHex = "#93C5FD",
-            DescVi = "Thuyền buồm lướt mây cơ bản miễn phí khám phá quần đảo Sky 1.",
+            DescVi = "Thuyền buồm lướt mây cơ bản khám phá quần đảo Tầng Trời 1.",
             DescEn = "Nimble starter cloud sloop for exploring Sky 1 sky archipelagos.",
         },
         {
@@ -1598,7 +1610,9 @@ ArsenalExpansionConfig.VendorCatalogs = {
             Speed = 78,
             Cannons = 4,
             PriceGold = 45000,
+            CostGold = 45000,
             PriceShards = 0,
+            CostShards = 0,
             Model3DKind = "Ship_CyberEnforcerShip",
             AccentHex = "#38BDF8",
             DescVi = "Tuần dương hạm bọc thép từ trường vượt bão băng Frozen Cyber.",
@@ -1615,7 +1629,9 @@ ArsenalExpansionConfig.VendorCatalogs = {
             Speed = 86,
             Cannons = 6,
             PriceGold = 250000,
+            CostGold = 250000,
             PriceShards = 0,
+            CostShards = 0,
             Model3DKind = "Ship_CelestialAetherGalleon",
             AccentHex = "#F4C14E",
             DescVi = "Đại chiến hạm buồm ánh sáng hoàng kim trang bị 6 đại pháo mạn tàu.",
@@ -1624,8 +1640,8 @@ ArsenalExpansionConfig.VendorCatalogs = {
         {
             Id = "LeviathanHunterShip",
             ShipId = "LeviathanHunterShip",
-            NameVi = "Thần Hạm Săn Thủy Tổ Leviathan",
-            NameEn = "Leviathan Hunter Dreadnought",
+            NameVi = "Thần Hạm Săn Thủy Xà Vực Thẳm",
+            NameEn = "Abyss Serpent Hunter Dreadnought",
             Rarity = "Mythic",
             Sea = "Sea3",
             HP = 14000,
@@ -1633,10 +1649,12 @@ ArsenalExpansionConfig.VendorCatalogs = {
             Cannons = 8,
             HasHarpoon = true,
             PriceGold = 500000,
+            CostGold = 500000,
             PriceShards = 0,
+            CostShards = 0,
             Model3DKind = "Ship_LeviathanHunterShip",
             AccentHex = "#A855F7",
-            DescVi = "Thần hạm tối thượng gắn Lao Móc Thần kéo Trái Tim Thủy Tổ Leviathan.",
+            DescVi = "Thần hạm tối thượng gắn Lao Móc Thần kéo Trái Tim Thủy Xà Vực Thẳm.",
             DescEn = "Endgame dreadnought outfitted with the Abyssal Harpoon for Danger Zone 6.",
         },
     },
@@ -1644,7 +1662,7 @@ ArsenalExpansionConfig.VendorCatalogs = {
     RaceRerollOdds = {
         { Id = "Skyborn", RaceId = "Skyborn", NameVi = "Thiên Tộc Skyborn", NameEn = "Skyborn (Angel)", ChancePercent = 25, Weight = 25, Rarity = "Rare", AccentHex = "#F4C14E" },
         { Id = "Mink", RaceId = "Mink", NameVi = "Tộc Thú Cloud Mink", NameEn = "Cloud Mink", ChancePercent = 25, Weight = 25, Rarity = "Rare", AccentHex = "#34D399" },
-        { Id = "Leviathan", RaceId = "Leviathan", NameVi = "Hải Tộc LeviathanKin", NameEn = "Leviathan-Kin", ChancePercent = 20, Weight = 20, Rarity = "Epic", AccentHex = "#38BDF8" },
+        { Id = "Leviathan", RaceId = "Leviathan", NameVi = "Hải Tộc Thủy Xà", NameEn = "Abyss-Kin", ChancePercent = 20, Weight = 20, Rarity = "Epic", AccentHex = "#38BDF8" },
         { Id = "Cyborg", RaceId = "Cyborg", NameVi = "Cơ Giới Frost Cyborg", NameEn = "Frost Cyborg", ChancePercent = 12, Weight = 12, Rarity = "Legendary", AccentHex = "#22D3EE" },
         { Id = "Ghoul", RaceId = "Ghoul", NameVi = "Huyết Tộc Shadow Ghoul", NameEn = "Shadow Ghoul", ChancePercent = 12, Weight = 12, Rarity = "Legendary", AccentHex = "#A855F7" },
         { Id = "Draco", RaceId = "Draco", NameVi = "Thái Cổ Long Tộc Draco", NameEn = "Ancient Draco", ChancePercent = 6, Weight = 6, Rarity = "Mythic", AccentHex = "#F43F5E" },
@@ -1659,7 +1677,7 @@ ArsenalExpansionConfig.VendorCatalogs = {
             Rarity = "Common",
             Sea = "Sea1",
             LevelReq = 1,
-            PriceGold = 0,
+            PriceGold = 5000,
             PriceShards = 0,
             Model3DKind = "Martial_Skyborn",
             AccentHex = "#93C5FD",
@@ -1677,7 +1695,7 @@ ArsenalExpansionConfig.VendorCatalogs = {
             PriceShards = 0,
             Model3DKind = "Martial_SkyStep",
             AccentHex = "#F97316",
-            MasterVi = "Cước Sư Sanji",
+            MasterVi = "Cước Sư Hỏa Vũ",
         },
         {
             Id = "jade_dragon",
@@ -1691,7 +1709,7 @@ ArsenalExpansionConfig.VendorCatalogs = {
             PriceShards = 350,
             Model3DKind = "Martial_JadeDragon",
             AccentHex = "#34D399",
-            MasterVi = "Long Sư Ryuma",
+            MasterVi = "Long Sư Huyền Vũ",
         },
         {
             Id = "thunder_talon",
@@ -1763,31 +1781,31 @@ ArsenalExpansionConfig.VendorCatalogs = {
             ReceiveValue = 1350000,
             DiffPercent = 3.7,
             AccentHex = "#F97316",
-            DescVi = "Đổi Trái Băng Vĩnh Cửu + Trái Lửa Mặt Trời lấy Trái Dung Nham (Chênh lệch 3.7% <= 10%).",
+            DescVi = "Đổi Lõi Băng Vĩnh Cửu + Lõi Lửa Mặt Trời lấy Lõi Dung Nham (Chênh lệch 3.7% <= 10%).",
         },
         {
             Id = "trade_portal_rift",
-            NameVi = "Khế Ước Cổng Không Gian 4D",
-            NameEn = "Dimensional Portal Pact",
+            NameVi = "Khế Ước Lõi Khe Nứt 4D",
+            NameEn = "Rift Core Pact",
             GiveItems = { "CelestialLightCore", "StarforgedMagmaCore" },
             ReceiveItems = { "DimensionalPortalCore" },
             GiveValue = 2450000,
             ReceiveValue = 2500000,
             DiffPercent = 2.0,
             AccentHex = "#38BDF8",
-            DescVi = "Đổi Trái Ánh Sáng + Trái Dung Nham lấy Trái Không Gian 4D (Chênh lệch 2.0% <= 10%).",
+            DescVi = "Đổi Lõi Ánh Sáng + Lõi Dung Nham lấy Lõi Khe Nứt 4D (Chênh lệch 2.0% <= 10%).",
         },
         {
             Id = "trade_buddha_titan",
-            NameVi = "Khế Ước Kim Thân Phật Tổ",
-            NameEn = "Solar Titan Buddha Pact",
+            NameVi = "Khế Ước Lõi Kim Thân",
+            NameEn = "Colossus Core Pact",
             GiveItems = { "ThunderRumbleCore", "GlacierIceCore" },
             ReceiveItems = { "SolarTitanCore" },
             GiveValue = 2850000,
             ReceiveValue = 2800000,
             DiffPercent = 1.8,
             AccentHex = "#F4C14E",
-            DescVi = "Đổi Trái Lôi Đình + Trái Băng lấy Trái Kim Thân Hoàng Kim (Chênh lệch 1.8% <= 10%).",
+            DescVi = "Đổi Lõi Lôi Đình + Lõi Băng lấy Lõi Kim Thân Hoàng Kim (Chênh lệch 1.8% <= 10%).",
         },
         {
             Id = "trade_sovereign_dragon",
@@ -1799,10 +1817,26 @@ ArsenalExpansionConfig.VendorCatalogs = {
             ReceiveValue = 5000000,
             DiffPercent = 5.0,
             AccentHex = "#A855F7",
-            DescVi = "Đổi Trái Tinh Thể Dough + Trái Dung Nham lấy Trái Long Vương Hư Không (Chênh lệch 5.0% <= 10%).",
+            DescVi = "Đổi Lõi Linh Thể Aether + Lõi Dung Nham lấy Lõi Long Vương Hư Không (Chênh lệch 5.0% <= 10%).",
         },
     },
 }
+
+for _, catList in pairs({
+    ArsenalExpansionConfig.VendorCatalogs.SwordDealer,
+    ArsenalExpansionConfig.VendorCatalogs.GunDealer,
+    ArsenalExpansionConfig.VendorCatalogs.ArmorAndRelicVendor,
+    ArsenalExpansionConfig.VendorCatalogs.ShipwrightFleet,
+    ArsenalExpansionConfig.VendorCatalogs.MartialDojoStyles,
+}) do
+    if type(catList) == "table" then
+        for _, entry in ipairs(catList) do
+            entry.ItemId = entry.ItemId or entry.Id
+            entry.CostGold = entry.CostGold or entry.PriceGold or 0
+            entry.CostShards = entry.CostShards or entry.PriceShards or 0
+        end
+    end
+end
 
 function ArsenalExpansionConfig.GetItem(itemId)
     return ArsenalExpansionConfig.Items[tostring(itemId or "")]
