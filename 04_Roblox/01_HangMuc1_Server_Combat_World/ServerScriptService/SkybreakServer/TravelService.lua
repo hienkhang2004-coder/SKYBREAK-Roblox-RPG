@@ -10,6 +10,7 @@ local CoreConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild
 local Services = script.Parent.Parent:WaitForChild("Services")
 local PlayerDataService = require(Services:WaitForChild("PlayerDataService"))
 local GameService = require(Services:WaitForChild("GameService"))
+local DevGate = require(Services:WaitForChild("DevGate"))
 
 local TravelService = {}
 
@@ -65,7 +66,7 @@ function TravelService.HandleFastTravel(player, payload)
     ) or 1
     local alreadyUnlocked = (profile.UnlockedWorlds[realmId] == true)
         or (profile.UnlockedWorlds[parentRealmId] == true)
-        or (workspace:GetAttribute("EnableDevSandbox") == true)
+        or DevGate.IsAllowed(player)
     if not alreadyUnlocked and (tonumber(profile.Level) or 1) < minLv then
         return false, string.format("Requires Level %d to unlock %s.", minLv, tostring(realmMeta.Name or realmId))
     end

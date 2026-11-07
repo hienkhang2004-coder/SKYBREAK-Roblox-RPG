@@ -14,95 +14,95 @@ S.BLENDER_ENEMIES = {
 }
 
 S.FALLBACK_FRUITS = {
-	GaleCore={Id="GaleCore", Name="Trái Cuồng Phong (Gale Core)", Rarity="Common", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(165,245,215), Moves={
+	GaleCore={Id="GaleCore", Name="Lõi Cuồng Phong (Gale Core)", Rarity="Common", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(165,245,215), Moves={
 		Z={Name="Wind Cutter Slash", Mult=1.9, Range=24, Cooldown=3.0},
 		X={Name="Cyclone Vortex Burst", Mult=2.4, Range=26, Cooldown=4.5},
 		C={Name="Tempest Tornado Pillar", Mult=3.1, Range=30, Cooldown=6.5},
 		V={Name="Sky Hurricane Cataclysm", Mult=4.0, Range=34, Cooldown=9.0},
 		F={Name="Zephyr Jet Flight", Mult=1.6, Range=28, Cooldown=3.5},
 	}},
-	SandstoneCore={Id="SandstoneCore", Name="Trái Sa Mạc Hoàng Kim (Sandstone Core)", Rarity="Uncommon", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(235,195,110), Moves={
+	SandstoneCore={Id="SandstoneCore", Name="Lõi Sa Mạc Hoàng Kim (Sandstone Core)", Rarity="Uncommon", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(235,195,110), Moves={
 		Z={Name="Desert Blade Spada", Mult=2.0, Range=25, Cooldown=3.2},
 		X={Name="Quicksand Tomb Trap", Mult=2.6, Range=26, Cooldown=4.8},
 		C={Name="Sandstorm Sables", Mult=3.3, Range=30, Cooldown=6.5},
 		V={Name="Imperial Desert Burial", Mult=4.3, Range=36, Cooldown=9.5},
 		F={Name="Dune Whirlwind Flight", Mult=1.6, Range=28, Cooldown=3.8},
 	}},
-	SolarFlameCore={Id="SolarFlameCore", Name="Trái Hỏa Dương (Solar Flame Core)", Rarity="Rare", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,125,45), Moves={
+	SolarFlameCore={Id="SolarFlameCore", Name="Lõi Hỏa Dương (Solar Flame Core)", Rarity="Rare", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,125,45), Moves={
 		Z={Name="Fire Fist Hiken", Mult=2.2, Range=28, Cooldown=3.2},
 		X={Name="Solar Flame Pillar", Mult=2.9, Range=30, Cooldown=4.8},
 		C={Name="Cross Fire Barrage", Mult=3.5, Range=32, Cooldown=6.5},
 		V={Name="Dai Enkai: Flame Emperor", Mult=4.8, Range=40, Cooldown=9.5},
 		F={Name="Rocket Flame Jet", Mult=1.7, Range=28, Cooldown=3.5},
 	}},
-	GlacierIceCore={Id="GlacierIceCore", Name="Trái Băng Hà Vĩnh Cửu (Glacier Ice Core)", Rarity="Rare", Type="Elemental", Element="Frost", Logia=true, Color=Color3.fromRGB(115,235,255), Moves={
+	GlacierIceCore={Id="GlacierIceCore", Name="Lõi Băng Hà Vĩnh Cửu (Glacier Ice Core)", Rarity="Rare", Type="Elemental", Element="Frost", Logia=true, Color=Color3.fromRGB(115,235,255), Moves={
 		Z={Name="Ice Bird Surge", Mult=2.3, Range=28, Cooldown=3.5},
 		X={Name="Glacial Surge Spears", Mult=3.0, Range=30, Cooldown=5.0},
 		C={Name="Permafrost Tornado", Mult=3.7, Range=34, Cooldown=7.0},
 		V={Name="Absolute Zero Epoch", Mult=4.8, Range=38, Cooldown=10.0},
 		F={Name="Glacial Sky Skate", Mult=1.7, Range=28, Cooldown=4.0},
 	}},
-	CelestialLightCore={Id="CelestialLightCore", Name="Trái Ánh Sáng Thiên Giới (Celestial Light Core)", Rarity="Epic", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,242,135), Moves={
+	CelestialLightCore={Id="CelestialLightCore", Name="Lõi Ánh Sáng Thiên Giới (Celestial Light Core)", Rarity="Epic", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,242,135), Moves={
 		Z={Name="Photon Spear Beam", Mult=2.4, Range=32, Cooldown=3.2},
 		X={Name="Mirror Kick Barrage", Mult=3.1, Range=30, Cooldown=4.8},
 		C={Name="Yasakani Sacred Jewels", Mult=3.9, Range=36, Cooldown=6.8},
 		V={Name="Heavenly Judgement Ray", Mult=5.0, Range=42, Cooldown=9.5},
 		F={Name="Lightspeed Starlight Flight", Mult=1.9, Range=32, Cooldown=3.2},
 	}},
-	StarforgedMagmaCore={Id="StarforgedMagmaCore", Name="Trái Dung Nham Tinh Cầu (Starforged Magma Core)", Rarity="Epic", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,82,48), Moves={
+	StarforgedMagmaCore={Id="StarforgedMagmaCore", Name="Lõi Dung Nham Tinh Cầu (Starforged Magma Core)", Rarity="Epic", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,82,48), Moves={
 		Z={Name="Magma Clap Eruption", Mult=2.5, Range=26, Cooldown=3.5},
 		X={Name="Volcanic Meigo Hound", Mult=3.2, Range=30, Cooldown=5.0},
 		C={Name="Meteor Volcano Shower", Mult=4.0, Range=34, Cooldown=7.0},
 		V={Name="Great Starforged Hound", Mult=5.2, Range=38, Cooldown=10.0},
 		F={Name="Magma Beast Flight", Mult=1.8, Range=28, Cooldown=4.0},
 	}},
-	ThunderRumbleCore={Id="ThunderRumbleCore", Name="Trái Lôi Thần (Thunder Rumble Core)", Rarity="Legendary", Type="Elemental", Element="Lightning", Logia=true, Color=Color3.fromRGB(88,210,255), Moves={
+	ThunderRumbleCore={Id="ThunderRumbleCore", Name="Lõi Lôi Thần (Thunder Rumble Core)", Rarity="Legendary", Type="Elemental", Element="Lightning", Logia=true, Color=Color3.fromRGB(88,210,255), Moves={
 		Z={Name="Thunderball Dragon", Mult=2.5, Range=30, Cooldown=3.5},
 		X={Name="Sky Thunder Judgement", Mult=3.2, Range=32, Cooldown=5.0},
 		C={Name="Ion Storm Barrage", Mult=3.9, Range=36, Cooldown=7.0},
 		V={Name="Raigo Thundercloud Sphere", Mult=5.2, Range=42, Cooldown=10.0},
 		F={Name="Lightning Flash Teleport", Mult=1.9, Range=28, Cooldown=4.0},
 	}},
-	AstralGravityCore={Id="AstralGravityCore", Name="Trái Trọng Lực Tinh Vân (Astral Gravity Core)", Rarity="Legendary", Type="Natural", Element="Void", Logia=false, Color=Color3.fromRGB(185,110,255), Moves={
+	AstralGravityCore={Id="AstralGravityCore", Name="Lõi Trọng Lực Tinh Vân (Astral Gravity Core)", Rarity="Legendary", Type="Natural", Element="Void", Logia=false, Color=Color3.fromRGB(185,110,255), Moves={
 		Z={Name="Gravitational Push", Mult=2.5, Range=28, Cooldown=3.5},
 		X={Name="Singularity Crush Zone", Mult=3.3, Range=32, Cooldown=5.0},
 		C={Name="Astral Meteor Summon", Mult=4.0, Range=36, Cooldown=7.0},
 		V={Name="Cataclysmic Starfall", Mult=5.2, Range=42, Cooldown=10.0},
 		F={Name="Boulder Gravity Surf", Mult=1.8, Range=28, Cooldown=4.0},
 	}},
-	DimensionalPortalCore={Id="DimensionalPortalCore", Name="Trái Không Gian (Dimensional Portal Core)", Rarity="Legendary", Type="Natural", Element="Void", Logia=false, Color=Color3.fromRGB(120,165,255), Moves={
+	DimensionalPortalCore={Id="DimensionalPortalCore", Name="Lõi Khe Nứt (Rift Core)", Rarity="Legendary", Type="Natural", Element="Void", Logia=false, Color=Color3.fromRGB(120,165,255), Moves={
 		Z={Name="Warp Strike", Mult=2.4, Range=28, Cooldown=3.5},
 		X={Name="Parallel Dimension Step", Mult=3.0, Range=30, Cooldown=5.0},
 		C={Name="World Gate Teleport", Mult=3.5, Range=40, Cooldown=6.0},
 		V={Name="Quantum Rift Domain", Mult=4.9, Range=38, Cooldown=10.0},
-		F={Name="Rift Portal Dash", Mult=1.8, Range=28, Cooldown=4.0},
+		F={Name="Rift Leap Dash", Mult=1.8, Range=28, Cooldown=4.0},
 	}},
-	SolarTitanCore={Id="SolarTitanCore", Name="Trái Kim Thân Thái Dương (Solar Titan Buddha)", Rarity="Mythical", Type="Beast", Element="Sky", Logia=false, Color=Color3.fromRGB(255,208,68), Moves={
+	SolarTitanCore={Id="SolarTitanCore", Name="Lõi Kim Thân (Colossus Core)", Rarity="Mythical", Type="Beast", Element="Sky", Logia=false, Color=Color3.fromRGB(255,208,68), Moves={
 		Z={Name="Solar Titan Shift", Mult=2.4, Range=28, Cooldown=3.5},
 		X={Name="Heavenly Palm Impact", Mult=3.1, Range=30, Cooldown=5.0},
 		C={Name="Dawn Pillar Nova", Mult=3.8, Range=34, Cooldown=7.0},
 		V={Name="Twilight Retribution", Mult=5.0, Range=40, Cooldown=10.0},
 		F={Name="Radiant Sky Leap", Mult=1.8, Range=28, Cooldown=4.0},
 	}},
-	AetherflowCore={Id="AetherflowCore", Name="Trái Linh Mạch Aether (Aetherflow Core)", Rarity="Mythical", Type="Natural", Element="Sky", Logia=false, Color=Color3.fromRGB(95,245,235), Moves={
+	AetherflowCore={Id="AetherflowCore", Name="Lõi Linh Mạch Aether (Aetherflow Core)", Rarity="Mythical", Type="Natural", Element="Sky", Logia=false, Color=Color3.fromRGB(95,245,235), Moves={
 		Z={Name="Aether Silk Barrage", Mult=2.6, Range=30, Cooldown=3.5},
 		X={Name="Sovereign String Cage", Mult=3.4, Range=32, Cooldown=5.0},
 		C={Name="Overheated Aether Whip", Mult=4.1, Range=36, Cooldown=7.0},
 		V={Name="Sixteen Holy Aether Spears", Mult=5.4, Range=42, Cooldown=10.0},
 		F={Name="Sky Cloud Thread Soar", Mult=1.9, Range=30, Cooldown=3.8},
 	}},
-	AbyssalSovereignCore={Id="AbyssalSovereignCore", Name="Trái Long Vương Hư Không (Abyssal Sovereign Dragon)", Rarity="Mythical", Type="Beast", Element="Void", Logia=false, Color=Color3.fromRGB(178,88,255), Moves={
+	AbyssalSovereignCore={Id="AbyssalSovereignCore", Name="Lõi Long Vương Hư Không (Abyssal Sovereign Core)", Rarity="Mythical", Type="Beast", Element="Void", Logia=false, Color=Color3.fromRGB(178,88,255), Moves={
 		Z={Name="Void Heat Wave Beam", Mult=2.7, Range=32, Cooldown=3.5},
 		X={Name="Abyssal Dragon Talons", Mult=3.4, Range=32, Cooldown=5.0},
 		C={Name="Cataclysmic Meteor Shower", Mult=4.2, Range=38, Cooldown=7.0},
 		V={Name="Imperial Sovereign Transformation", Mult=5.5, Range=44, Cooldown=10.0},
 		F={Name="Draconic Sky Soar", Mult=2.0, Range=28, Cooldown=4.0},
 	}},
-	LightningTempestCore={Id="ThunderRumbleCore", Name="Trái Lôi Thần (Thunder Rumble Core)", Rarity="Legendary", Type="Elemental", Element="Lightning", Logia=true, Color=Color3.fromRGB(88,210,255)},
-	GlacialPermafrostCore={Id="GlacierIceCore", Name="Trái Băng Hà Vĩnh Cửu (Glacier Ice Core)", Rarity="Rare", Type="Elemental", Element="Frost", Logia=true, Color=Color3.fromRGB(115,235,255)},
-	CrimsonMagmaCore={Id="StarforgedMagmaCore", Name="Trái Dung Nham Tinh Cầu (Starforged Magma Core)", Rarity="Epic", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,82,48)},
-	StarlightQuakeCore={Id="SolarTitanCore", Name="Trái Kim Thân Thái Dương (Solar Titan Buddha)", Rarity="Mythical", Type="Beast", Element="Sky", Logia=false, Color=Color3.fromRGB(255,208,68)},
-	CyberPhoenixCore={Id="SolarFlameCore", Name="Trái Hỏa Dương (Solar Flame Core)", Rarity="Rare", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,125,45)},
+	LightningTempestCore={Id="ThunderRumbleCore", Name="Lõi Lôi Thần (Thunder Rumble Core)", Rarity="Legendary", Type="Elemental", Element="Lightning", Logia=true, Color=Color3.fromRGB(88,210,255)},
+	GlacialPermafrostCore={Id="GlacierIceCore", Name="Lõi Băng Hà Vĩnh Cửu (Glacier Ice Core)", Rarity="Rare", Type="Elemental", Element="Frost", Logia=true, Color=Color3.fromRGB(115,235,255)},
+	CrimsonMagmaCore={Id="StarforgedMagmaCore", Name="Lõi Dung Nham Tinh Cầu (Starforged Magma Core)", Rarity="Epic", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,82,48)},
+	StarlightQuakeCore={Id="SolarTitanCore", Name="Lõi Kim Thân (Colossus Core)", Rarity="Mythical", Type="Beast", Element="Sky", Logia=false, Color=Color3.fromRGB(255,208,68)},
+	CyberPhoenixCore={Id="SolarFlameCore", Name="Lõi Hỏa Dương (Solar Flame Core)", Rarity="Rare", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,125,45)},
 }
 
 S.FALLBACK_STYLES = {
@@ -115,35 +115,35 @@ S.FALLBACK_STYLES = {
 }
 
 S.FALLBACK_GUNS = {
-	soul_guitar_void={Id="soul_guitar_void", Name="Đàn Linh Hồn Hư Không (Soul Guitar)", Element="Void"},
-	kabucha_wind={Id="kabucha_wind", Name="Ná Thần Phong (Kabucha)", Element="Sky"},
+	soul_guitar_void={Id="soul_guitar_void", Name="Đàn Hồn Hư Không (Void Lyre)", Element="Void"},
+	kabucha_wind={Id="kabucha_wind", Name="Ná Gió Mặt Trời (Sunwind Sling)", Element="Sky"},
 	bizarre_rifle_cyber={Id="bizarre_rifle_cyber", Name="Pháo Quang Tử Băng (Cyber Rifle)", Element="Frost"},
 }
 
 S.FALLBACK_FAST_TRAVEL = {
-	SkyHub={Id="SkyHub", Name="Sky 1 • Đảo Khởi Đầu (Sky Hub Nexus)", Realm="GoldenSky", Pos=Vector3.new(-317.4,50.5,527.8)},
-	GoldenSky={Id="GoldenSky", Name="Sky 1 • Bầu Trời Hoàng Kim (Golden Sky Hub)", Realm="GoldenSky", Pos=Vector3.new(-313.9,50.5,210.4)},
-	QuestCheckpoint={Id="QuestCheckpoint", Name="Sky 1 • Sân Tập Khởi Nguyên (Quest Checkpoint)", Realm="GoldenSky", Pos=Vector3.new(-313.9,50.5,210.4)},
-	ZiolesGachaShrine={Id="ZiolesGachaShrine", Name="Sky 1 • Điện Thờ Zioles Gacha (Zioles Shrine)", Realm="GoldenSky", Pos=Vector3.new(-560,52.5,996)},
-	AetherShrines={Id="AetherShrines", Name="Sky 1 • Đài Điện Thờ Aether (Aether Shrine)", Realm="GoldenSky", Pos=Vector3.new(340,52.5,996)},
-	WestGarden={Id="WestGarden", Name="Sky 1 • Pháo Đài Không Tặc Vườn Tây (West Garden Bastion)", Realm="GoldenSky", Pos=Vector3.new(-2800,50.5,-65)},
-	LumenPlaza={Id="LumenPlaza", Name="Sky 1 • Quảng Trường Ánh Sáng (Lumen Plaza)", Realm="GoldenSky", Pos=Vector3.new(0,50.5,65)},
+	SkyHub={Id="SkyHub", Name="Tầng Trời 1 • Đảo Khởi Đầu (Sky Hub Nexus)", Realm="GoldenSky", Pos=Vector3.new(-317.4,50.5,527.8)},
+	GoldenSky={Id="GoldenSky", Name="Tầng Trời 1 • Bầu Trời Hoàng Kim (Golden Sky Hub)", Realm="GoldenSky", Pos=Vector3.new(-313.9,50.5,210.4)},
+	QuestCheckpoint={Id="QuestCheckpoint", Name="Tầng Trời 1 • Sân Tập Khởi Nguyên (Quest Checkpoint)", Realm="GoldenSky", Pos=Vector3.new(-313.9,50.5,210.4)},
+	ZiolesGachaShrine={Id="ZiolesGachaShrine", Name="Tầng Trời 1 • Điện Cầu Lõi (Core Shrine)", Realm="GoldenSky", Pos=Vector3.new(-560,52.5,996)},
+	AetherShrines={Id="AetherShrines", Name="Tầng Trời 1 • Đài Điện Thờ Aether (Aether Shrine)", Realm="GoldenSky", Pos=Vector3.new(340,52.5,996)},
+	WestGarden={Id="WestGarden", Name="Tầng Trời 1 • Pháo Đài Không Tặc Vườn Tây (West Garden Bastion)", Realm="GoldenSky", Pos=Vector3.new(-2800,50.5,-65)},
+	LumenPlaza={Id="LumenPlaza", Name="Tầng Trời 1 • Quảng Trường Ánh Sáng (Lumen Plaza)", Realm="GoldenSky", Pos=Vector3.new(0,50.5,65)},
 	SunshardSanctuary={Id="SunshardSanctuary", Name="Golden Sky • Thánh Địa Thái Dương (Sunshard Sanctuary)", Realm="GoldenSky", Pos=Vector3.new(2800,50.5,-55)},
-	BossForecourt={Id="BossForecourt", Name="Sky 1 • Tháp Phán Quyết (Aureon Citadel)", Realm="GoldenSky", Pos=Vector3.new(0,50.5,-285)},
-	FrozenCyber={Id="FrozenCyber", Name="Sky 2 • Cảng Băng Giá (Cyberport Cafe Hub)", Realm="FrozenCyber", Pos=Vector3.new(11620.5,50.9,534.8)},
-	CyberportCafe={Id="CyberportCafe", Name="Sky 2 • Quán Cà Phê Giao Dịch (Cyberport Café)", Realm="FrozenCyber", Pos=Vector3.new(9400,50.9,1785)},
-	PermafrostGarrison={Id="PermafrostGarrison", Name="Sky 2 • Pháo Đài Tuyết (Permafrost Garrison Fortress)", Realm="FrozenCyber", Pos=Vector3.new(9400,50.9,-2055)},
+	BossForecourt={Id="BossForecourt", Name="Tầng Trời 1 • Tháp Phán Quyết (Aureon Citadel)", Realm="GoldenSky", Pos=Vector3.new(0,50.5,-285)},
+	FrozenCyber={Id="FrozenCyber", Name="Tầng Trời 2 • Cảng Băng Giá (Trade Station Hub)", Realm="FrozenCyber", Pos=Vector3.new(11620.5,50.9,534.8)},
+	CyberportCafe={Id="CyberportCafe", Name="Tầng Trời 2 • Trạm Giao Thương (Trade Station)", Realm="FrozenCyber", Pos=Vector3.new(9400,50.9,1785)},
+	PermafrostGarrison={Id="PermafrostGarrison", Name="Tầng Trời 2 • Pháo Đài Tuyết (Permafrost Garrison Fortress)", Realm="FrozenCyber", Pos=Vector3.new(9400,50.9,-2055)},
 	MicrochipRaidLab={Id="MicrochipRaidLab", Name="Frozen Cyber • Phòng Thí Nghiệm Đột Kích (Raid Lab)", Realm="FrozenCyber", Pos=Vector3.new(14600,50.9,1785)},
 	GlacialWreckage={Id="GlacialWreckage", Name="Frozen Cyber • Xác Tàu Băng Cổ Đại (Glacial Wreckage)", Realm="FrozenCyber", Pos=Vector3.new(14600,50.9,-1812)},
 	GlacialDangerSea={Id="GlacialDangerSea", Name="Frozen Cyber • Xác Tàu Băng Cổ Đại (Glacial Danger Sea)", Realm="FrozenCyber", Pos=Vector3.new(14600,50.9,-1812)},
-	CryonArena={Id="CryonArena", Name="Sky 2 • Ngai Vàng Băng Đế (Cryon Citadel)", Realm="FrozenCyber", Pos=Vector3.new(12000,50.9,-285)},
-	ShadowRealm={Id="ShadowRealm", Name="Sky 3 • Pháo Đài Hư Không (Shadow Realm Outpost)", Realm="ShadowRealm", Pos=Vector3.new(-12593.4,50.9,414)},
-	CastleOnTheVoid={Id="CastleOnTheVoid", Name="Sky 3 • Dinh Thự Hư Không (Castle on the Void Mansion)", Realm="ShadowRealm", Pos=Vector3.new(-14600,50.9,2173.1)},
-	UmbralSanctum={Id="UmbralSanctum", Name="Sky 3 • Rừng Tinh Thể Đen (Umbral Crystal Sanctum)", Realm="ShadowRealm", Pos=Vector3.new(-9400,50.9,1815)},
-	UmbralCrystalForest={Id="UmbralCrystalForest", Name="Sky 3 • Rừng Tinh Thể Đen (Umbral Crystal Forest)", Realm="ShadowRealm", Pos=Vector3.new(-9400,50.9,1815)},
-	TempleOfTheCore={Id="TempleOfTheCore", Name="Shadow Realm • Đền Thờ Thức Tỉnh Tộc V4 (Temple of the Core)", Realm="ShadowRealm", Pos=Vector3.new(-14600,50.9,-1785)},
-	LeviathanAbyss={Id="LeviathanAbyss", Name="Sky 3 • Đảo Ảo Ảnh & Vực Thẳm Leviathan (Mirage Abyss)", Realm="ShadowRealm", Pos=Vector3.new(-12000,50.9,-3364.5)},
-	NoxarArena={Id="NoxarArena", Name="Sky 3 • Ngai Vàng Hư Không (Noxar Throne)", Realm="ShadowRealm", Pos=Vector3.new(-11672.2,50.9,-110)},
+	CryonArena={Id="CryonArena", Name="Tầng Trời 2 • Ngai Vàng Băng Đế (Cryon Citadel)", Realm="FrozenCyber", Pos=Vector3.new(12000,50.9,-285)},
+	ShadowRealm={Id="ShadowRealm", Name="Tầng Trời 3 • Tiền Đồn Hư Không (Shadow Realm Outpost)", Realm="ShadowRealm", Pos=Vector3.new(-12593.4,50.9,414)},
+	CastleOnTheVoid={Id="CastleOnTheVoid", Name="Tầng Trời 3 • Pháo Đài Hư Không (Void Bastion)", Realm="ShadowRealm", Pos=Vector3.new(-14600,50.9,2173.1)},
+	UmbralSanctum={Id="UmbralSanctum", Name="Tầng Trời 3 • Rừng Tinh Thể Đen (Umbral Crystal Sanctum)", Realm="ShadowRealm", Pos=Vector3.new(-9400,50.9,1815)},
+	UmbralCrystalForest={Id="UmbralCrystalForest", Name="Tầng Trời 3 • Rừng Tinh Thể Đen (Umbral Crystal Forest)", Realm="ShadowRealm", Pos=Vector3.new(-9400,50.9,1815)},
+	TempleOfTheCore={Id="TempleOfTheCore", Name="Shadow Realm • Đền Thăng Hoa (Ascension Shrine)", Realm="ShadowRealm", Pos=Vector3.new(-14600,50.9,-1785)},
+	LeviathanAbyss={Id="LeviathanAbyss", Name="Tầng Trời 3 • Đảo Hư Quang & Vực Thẳm Thủy Xà (Phantom Isle)", Realm="ShadowRealm", Pos=Vector3.new(-12000,50.9,-3364.5)},
+	NoxarArena={Id="NoxarArena", Name="Tầng Trời 3 • Ngai Vàng Hư Không (Noxar Throne)", Realm="ShadowRealm", Pos=Vector3.new(-11672.2,50.9,-110)},
 	VerdantCrown={Id="VerdantCrown", Name="Realm 4 • Vương Miện Cổ Thụ (The Verdant Crown)", Realm="VerdantCrown", Pos=Vector3.new(0,170.9,-8985)},
 	VerdantWestBough={Id="VerdantWestBough", Name="Realm 4B • Cánh Rừng Tây Cổ Thụ", Realm="VerdantCrown", Pos=Vector3.new(-504.3,170.9,-9110.7)},
 	VerdantEastGrove={Id="VerdantEastGrove", Name="Realm 4C • Đảo Rừng Ngọc Bích", Realm="VerdantCrown", Pos=Vector3.new(504.3,170.9,-9110.7)},
@@ -190,8 +190,8 @@ S.FALLBACK_ENEMIES = {
 	OrderCyborg={Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", VisualAsset="OrderCyborg", Element="Frost", HP=3800, ATK=36, Attack=36, DEF=18, Defense=18, XP=1100, Gold=950, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
 	OrderCyborgBoss={Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", VisualAsset="OrderCyborgBoss", Element="Frost", HP=3800, ATK=36, Attack=36, DEF=18, Defense=18, XP=1100, Gold=950, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
 	SoulReaperRift={Name="SOUL REAPER • TỬ THẦN HƯ KHÔNG", VisualAsset="SoulReaperRift", Element="Void", HP=5800, ATK=42, Attack=42, DEF=22, Defense=22, XP=2200, Gold=1600, Range=20, Speed=13, Aggro=55, Leash=65, Boss=true, Drop="CoreEssence"},
-	SkySeaBeast={Name="THỦY QUÁI BIỂN MÂY (SKY SEA BEAST)", VisualAsset="SkySeaBeast", Element="Frost", HP=5200, ATK=42, Attack=42, DEF=20, Defense=20, XP=1800, Gold=2500, Range=24, Speed=10, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
-	AbyssalLeviathan={Name="LEVIATHAN HƯ KHÔNG (ABYSSAL LEVIATHAN)", VisualAsset="AbyssalLeviathan", Element="Void", HP=7500, ATK=50, Attack=50, DEF=25, Defense=25, XP=3200, Gold=4500, Range=28, Speed=11, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
+	SkySeaBeast={Name="THÚ TRỜI BIỂN MÂY (SKY BEAST)", VisualAsset="SkySeaBeast", Element="Frost", HP=5200, ATK=42, Attack=42, DEF=20, Defense=20, XP=1800, Gold=2500, Range=24, Speed=10, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
+	AbyssalLeviathan={Name="THỦY XÀ VỰC THẲM (ABYSS SERPENT)", VisualAsset="AbyssalLeviathan", Element="Void", HP=7500, ATK=50, Attack=50, DEF=25, Defense=25, XP=3200, Gold=4500, Range=28, Speed=11, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
 	AbyssalDragonHybrid={Name="ABYSSAL DRAGON HYBRID • LONG NHÂN HƯ KHÔNG", VisualAsset="AbyssalDragonHybrid", Element="Void", HP=6800, ATK=46, Attack=46, DEF=24, Defense=24, XP=2800, Gold=3500, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
 	AbyssalSovereignDragon={Name="ABYSSAL SOVEREIGN DRAGON • THÁI CỔ LONG HOÀNG", VisualAsset="AbyssalSovereignDragon", Element="Void", HP=9200, ATK=52, Attack=52, DEF=28, Defense=28, XP=4000, Gold=6000, Range=28, Speed=10, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
 	SkyHubWatchCommander={Name="COMMANDER VALEN • THỦ VỆ SÂN TẬP", VisualAsset="SunshardRoyalGuard", Element="Sky", HP=850, ATK=18, Attack=18, DEF=10, Defense=10, XP=320, Gold=250, Range=11, Speed=11, Aggro=36, Leash=42, Boss=true, Drop="SunshardCore"},
@@ -200,7 +200,7 @@ S.FALLBACK_ENEMIES = {
 	SolarHighPriestBoss={Name="HIGH PRIEST SOLARIUS • ĐẠI TƯ TẾ THÁI DƯƠNG", VisualAsset="SolarTitanBuddha", Element="Sky", HP=2600, ATK=32, Attack=32, DEF=16, Defense=16, XP=950, Gold=800, Range=16, Speed=11, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
 	CyberSyndicateBoss={Name="OVERLORD KRON • TRÙM HẮC THỊ CYBERPORT", VisualAsset="CyberMercenary", Element="Frost", HP=3200, ATK=34, Attack=34, DEF=17, Defense=17, XP=1050, Gold=880, Range=18, Speed=13, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
 	PermafrostWardenBoss={Name="GENERAL BOREAS • THỐNG LĨNH PHÁO ĐÀI BĂNG", VisualAsset="CryoVanguard", Element="Frost", HP=3500, ATK=35, Attack=35, DEF=18, Defense=18, XP=1150, Gold=920, Range=14, Speed=12, Aggro=45, Leash=55, Boss=true, Drop="CoreEssence"},
-	VoidCastellanBoss={Name="LORD MALAKOR • LÃNH CHÚA DINH THỰ HƯ KHÔNG", VisualAsset="AbyssalDreadknight", Element="Void", HP=6200, ATK=44, Attack=44, DEF=23, Defense=23, XP=2400, Gold=1800, Range=16, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
+	VoidCastellanBoss={Name="LORD MALAKOR • LÃNH CHÚA PHÁO ĐÀI HƯ KHÔNG", VisualAsset="AbyssalDreadknight", Element="Void", HP=6200, ATK=44, Attack=44, DEF=23, Defense=23, XP=2400, Gold=1800, Range=16, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
 	UmbralArchfiendBoss={Name="ARCHFIEND ZERATH • KIẾM MA TINH THỂ ĐEN", VisualAsset="AbyssalDragonHybrid", Element="Void", HP=6600, ATK=46, Attack=46, DEF=24, Defense=24, XP=2600, Gold=2100, Range=18, Speed=13, Aggro=52, Leash=65, Boss=true, Drop="CoreEssence"},
 	Sylvaris={Name="SYLVARIS • ĐẠI CỔ THỤ HOÀNG", VisualAsset="AbyssalDragonHybrid", Element="Sky", HP=10500, ATK=56, Attack=56, DEF=26, Defense=26, XP=4200, Gold=5500, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
 	Ignivar={Name="IGNIVAR • TITAN LÒ RÈN LỬA", VisualAsset="SolarTitanBuddha", Element="Sky", HP=12500, ATK=62, Attack=62, DEF=28, Defense=28, XP=4800, Gold=6500, Range=24, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
@@ -209,7 +209,7 @@ S.FALLBACK_ENEMIES = {
 	Chronovex={Name="AION • PHÁP VƯƠNG THỜI GIAN", VisualAsset="OrderCyborgBoss", Element="Sky", HP=16800, ATK=74, Attack=74, DEF=32, Defense=32, XP=6500, Gold=9000, Range=24, Speed=13, Aggro=70, Leash=85, Boss=true, Drop="CoreEssence"},
 	Veyr={Name="VEYR • ĐẤNG KIẾN TẠO ĐẦU TIÊN", VisualAsset="AbyssalSovereignDragon", Element="Void", HP=22000, ATK=85, Attack=85, DEF=36, Defense=36, XP=9000, Gold=15000, Range=30, Speed=12, Aggro=80, Leash=95, Boss=true, Drop="CoreEssence"},
 	VeyrTheArchitect={Name="VEYR • ĐẤNG KIẾN TẠO ĐẦU TIÊN", VisualAsset="AbyssalSovereignDragon", Element="Void", HP=22000, ATK=85, Attack=85, DEF=36, Defense=36, XP=9000, Gold=15000, Range=30, Speed=12, Aggro=80, Leash=95, Boss=true, Drop="CoreEssence"},
-	FrostSeaBeast={Name="THỦY QUÁI BIỂN MÂY (SKY SEA BEAST)", VisualAsset="SkySeaBeast", Element="Frost", HP=5200, ATK=42, Attack=42, DEF=20, Defense=20, XP=1800, Gold=2500, Range=24, Speed=10, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
+	FrostSeaBeast={Name="THÚ TRỜI BIỂN MÂY (SKY BEAST)", VisualAsset="SkySeaBeast", Element="Frost", HP=5200, ATK=42, Attack=42, DEF=20, Defense=20, XP=1800, Gold=2500, Range=24, Speed=10, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
 }
 
 function S.SpawnAllInitialEnemies(G)

@@ -16,6 +16,8 @@ local Debris = game:GetService("Debris")
 local TweenService = game:GetService("TweenService")
 
 local CombatData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SkybreakCombatData"))
+local DevGate = require(script.Parent:WaitForChild("DevGate"))
+local RemoteGuard = require(script.Parent:WaitForChild("RemoteGuard"))
 
 local Expansion = {}
 
@@ -193,9 +195,9 @@ local function ensureExpansionProfile(profile)
 	profile.Haki = type(profile.Haki) == "table" and profile.Haki or { Aura = false, Instinct = false, InstinctDodges = 8 }
 	profile.HakiEXP = math.max(0, tonumber(profile.HakiEXP) or 0)
 	profile.HakiStage = math.clamp(math.max(tonumber(profile.HakiStage) or 0, CombatData.GetHakiStageForEXP(profile.HakiEXP)), 0, 5)
-	profile.HakiColorId = CombatData.HakiColors[profile.HakiColorId] and profile.HakiColorId or "crimson_conqueror"
+	profile.HakiColorId = CombatData.HakiColors[profile.HakiColorId] and profile.HakiColorId or "solar_gold"
 	profile.UnlockedHakiColors = type(profile.UnlockedHakiColors) == "table" and profile.UnlockedHakiColors or {}
-	profile.UnlockedHakiColors.crimson_conqueror = true
+	profile.UnlockedHakiColors.solar_gold = true
 
 	profile.KenEXP = math.max(0, tonumber(profile.KenEXP) or 0)
 	if (tonumber(profile.Level) or 1) >= 700 or profile.KenEXP >= CombatData.KenV2UnlockDodgesEXP then
@@ -288,8 +290,50 @@ local function getMasteryLevel(profile, itemId)
 	return math.clamp(math.floor(lv), 1, CombatData.MasteryConfig.MaxLevel)
 end
 
-local function checkMoveMasteryUnlock(_p, _profile, _itemId, _moveKey, _slot)
-	return true, 1
+local function checkMoveMasteryUnlock(p, profile, itemId, moveKey, slot)
+	if DevGate.IsAllowed(p) and G and G.Runtime and G.Runtime[p] and (G.Runtime[p].ZeroCooldowns == true or G.Runtime[p].DevSandboxUnlocked == true) then
+		return true, 1
+	end
+	local key = string.upper(tostring(moveKey or "Z"))
+	local mCfg = CombatData.MasteryConfig or {}
+	local thresholds = mCfg.MoveUnlockThresholds or { Z = 1, F = 1, X = 50, C = 100, V = 200 }
+	local reqLv = tonumber(thresholds[key]) or 1
+
+	if slot == 1 then
+		local st = CombatData.MartialStyles and CombatData.MartialStyles[CombatData.ResolveStyleId(itemId)]
+		if st and st.Moves and st.Moves[key] and st.Moves[key].Mastery then
+			reqLv = tonumber(st.Moves[key].Mastery) or reqLv
+		end
+	elseif slot == 2 then
+		local fid = CombatData.ResolveFruitId(itemId)
+		local cat = CombatData.FruitCatalog and CombatData.FruitCatalog[fid]
+		if key == "V" and cat and cat.Rarity == "Mythic" then
+			reqLv = tonumber(mCfg.MythicalVThreshold) or 250
+		end
+		local fCfg = C and C.AetherFruits and C.AetherFruits[fid]
+		if fCfg and fCfg.Moves and fCfg.Moves[key] and fCfg.Moves[key].Mastery then
+			reqLv = tonumber(fCfg.Moves[key].Mastery) or reqLv
+		end
+	elseif slot == 3 then
+		local wCfg = C and C.Weapons and C.Weapons[itemId]
+		if wCfg and wCfg.Moves and wCfg.Moves[key] and wCfg.Moves[key].Mastery then
+			reqLv = tonumber(wCfg.Moves[key].Mastery) or reqLv
+		end
+	elseif slot == 4 then
+		local gCfg = C and C.Guns and C.Guns[itemId]
+		if gCfg and gCfg.Moves and gCfg.Moves[key] and gCfg.Moves[key].Mastery then
+			reqLv = tonumber(gCfg.Moves[key].Mastery) or reqLv
+		end
+	end
+
+	local curLv = getMasteryLevel(profile, itemId)
+	if curLv < reqLv then
+		if G and G.Notify and p then
+			G.Notify(p, string.format("Kỹ năng [%s] yêu cầu Mastery Lv. %d (Hiện tại: Lv. %d)!", key, reqLv, curLv))
+		end
+		return false, reqLv
+	end
+	return true, reqLv
 end
 
 local function addMasteryXP(p, itemId, rawXP)
@@ -614,7 +658,7 @@ local function addBusoHakiEXP(p, amount)
 		local stInfo = CombatData.HakiStages[newStage]
 		syncHakiAttributes(p, profile)
 		evaluateAutoTitles(p, profile)
-		G.Notify(p, string.format("BUSOSHOKU HAKI THĂNG CẤP: %s (+%d%% ATK, +%d%% DEF)!", stInfo.Name, math.floor(stInfo.AtkBonus * 100), math.floor(stInfo.DefBonus * 100)))
+		G.Notify(p, string.format("GIÁP Ý CHÍ THĂNG CẤP: %s (+%d%% ATK, +%d%% DEF)!", stInfo.Name, math.floor(stInfo.AtkBonus * 100), math.floor(stInfo.DefBonus * 100)))
 		local hrp = getCharRoot(p)
 		if hrp and R and R.CombatFX then
 			R.CombatFX:FireAllClients({
@@ -1065,6 +1109,7 @@ local function executeMartialStyleTechnique(p, key, payload)
 	rt.Cooldowns[cdKey] = now + finalCd
 	rt.Cooldowns["Slot_" .. key] = now + finalCd
 	rt.Energy = math.max(0, (rt.Energy or 100) - cost)
+	rt.LastCastAt = now
 
 	local range = math.min(45, move.Range or 24)
 	local origin, dir, targetCenter = clampAimRay(hrp, payload, range)
@@ -1239,6 +1284,7 @@ local function executeAimedGunShot(p, moveKey, payload)
 	rt.Cooldowns[cdKey] = now + cd
 	if cost > 0 then
 		rt.Energy = math.max(0, (rt.Energy or 100) - cost)
+		rt.LastCastAt = now
 	end
 
 	local maxLen = math.min(180, (gunId == "cryo_railgun" and 115) or (spec.MaxRange or 115))
@@ -1740,6 +1786,7 @@ local function executeAwakenedFruitV2Move(p, fruitId, key, payload)
 	local cdMult = (profile.RaceV4Active and profile.Race == "Ghoul") and (1 - CombatData.RaceV4Passives.Ghoul.CooldownReductionPct) or 1
 	rt.Cooldowns["Slot_" .. key] = now + cd * cdMult
 	rt.Energy = math.max(0, (rt.Energy or 100) - cost)
+	rt.LastCastAt = now
 
 	local mLv = getMasteryLevel(profile, cid)
 	if cid == "SolarTitanCore" and key == "Z" then
@@ -1869,7 +1916,7 @@ function Expansion.BuyMirageFruit(p, rawFruitId, equipNow)
 	end
 
 	if not chosenItem then
-		G.Notify(p, "Trái này hiện không có trong Mirage Stock giờ này!")
+		G.Notify(p, "Lõi Aether này hiện không có trong Kho Hư Quang giờ này!")
 		return false
 	end
 
@@ -1887,7 +1934,7 @@ function Expansion.BuyMirageFruit(p, rawFruitId, equipNow)
 	end
 	profile.HeldFruit = chosenItem.Id
 	unlockTitle(p, profile, "mirage_tycoon", false)
-	G.Notify(p, string.format("MIRAGE DEALER: Đã mua trực tiếp [%s] với giá %d Gold!", chosenItem.Name, price))
+	G.Notify(p, string.format("THƯƠNG NHÂN HƯ QUANG: Đã mua trực tiếp [%s] với giá %d Gold!", chosenItem.Name, price))
 	G.Sync(p)
 	return true
 end
@@ -1988,7 +2035,7 @@ local function spawnPhysicalDroppedFruit(fruitId, dropPos, dropperName)
 	tl.Parent = bill
 
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Nhặt Trái Ác Quỷ"
+	prompt.ActionText = "Nhặt Lõi Aether"
 	prompt.ObjectText = cat.Name
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = 12
@@ -2009,7 +2056,7 @@ local function spawnPhysicalDroppedFruit(fruitId, dropPos, dropperName)
 		pprof.StoredFruits[cid] = (pprof.StoredFruits[cid] or 0) + 1
 		pprof.HeldFruit = cid
 		m:Destroy()
-		G.Notify(picker, "Đã nhặt Trái Ác Quỷ 3D: [" .. cat.Name .. "]!")
+		G.Notify(picker, "Đã nhặt Lõi Aether 3D: [" .. cat.Name .. "]!")
 		G.Sync(picker)
 	end)
 
@@ -2026,7 +2073,7 @@ function Expansion.DropHeldFruit(p, rawFruitId)
 		return false
 	end
 	if PlayerTradeMap[p] ~= nil or p:GetAttribute("InTrade") == true then
-		G.Notify(p, "Không thể thả Trái Ác Quỷ khi đang ngồi Bàn Giao Dịch!")
+		G.Notify(p, "Không thể thả Lõi Aether khi đang ngồi Bàn Giao Dịch!")
 		return false
 	end
 	ensureExpansionProfile(profile)
@@ -2036,13 +2083,13 @@ function Expansion.DropHeldFruit(p, rawFruitId)
 	end
 	local cid = CombatData.ResolveFruitId(held)
 	if cid == "" or not CombatData.FruitCatalog[cid] then
-		G.Notify(p, "Bạn hiện không cầm Trái Ác Quỷ 3D nào trên tay để thả!")
+		G.Notify(p, "Bạn hiện không cầm Lõi Aether 3D nào trên tay để thả!")
 		return false
 	end
 
 	local count = tonumber(profile.StoredFruits[cid]) or 0
 	if count <= 0 then
-		G.Notify(p, "Bạn không có bản sao lưu kho của trái này để thả ra ngoài!")
+		G.Notify(p, "Bạn không có bản sao lưu kho của Lõi Aether này để thả ra ngoài!")
 		return false
 	end
 	profile.StoredFruits[cid] = count - 1
@@ -2058,7 +2105,7 @@ function Expansion.DropHeldFruit(p, rawFruitId)
 
 	local dropPos = hrp.Position + hrp.CFrame.LookVector * 3.6
 	spawnPhysicalDroppedFruit(cid, dropPos, p.Name)
-	G.Notify(p, "Đã thả Trái Ác Quỷ 3D [" .. CombatData.FruitCatalog[cid].Name .. "] xuống mặt đất!")
+	G.Notify(p, "Đã thả Lõi Aether 3D [" .. CombatData.FruitCatalog[cid].Name .. "] xuống mặt đất!")
 	G.Sync(p)
 	return true
 end
@@ -2149,7 +2196,7 @@ local function cancelTradeSession(session, reason)
 		session.NPCModel:Destroy()
 	end
 	if session.StatusLabel and session.StatusLabel.Parent then
-		session.StatusLabel.Text = "BÀN GIAO DỊCH TRÁI ÁC QUỶ (<= 40% Value Lock)"
+		session.StatusLabel.Text = "BÀN GIAO DỊCH LÕI AETHER (<= 40% Value Lock)"
 	end
 	sendTradeSnapshot(session, "TradeCancelled", reason or "Giao dịch đã kết thúc.")
 end
@@ -2214,6 +2261,10 @@ local function executeAtomicTradeSwap(session)
 		cancelTradeSession(session, "Người chơi đã rời bàn giao dịch.")
 		return
 	end
+	if profA._ReadOnlyFallback == true or (D.Sessions and D.Sessions[pA] and D.Sessions[pA].ReadOnlyFallback == true) then
+		cancelTradeSession(session, "Không thể giao dịch khi dữ liệu đang ở chế độ Bảo Vệ (ReadOnly)!")
+		return
+	end
 	ensureExpansionProfile(profA)
 
 	local valA = computeOfferValue(session.OfferA)
@@ -2227,14 +2278,14 @@ local function executeAtomicTradeSwap(session)
 		return
 	end
 
-	-- Verify PlayerA owns all offered fruits
+	-- Verify PlayerA owns all offered fruits right before atomic swap
 	local needA = {}
 	for _, fid in ipairs(session.OfferA) do
 		needA[fid] = (needA[fid] or 0) + 1
 	end
 	for fid, cnt in pairs(needA) do
 		if (tonumber(profA.StoredFruits[fid]) or 0) < cnt then
-			cancelTradeSession(session, "Kho trái của " .. pA.Name .. " không đủ số lượng đã đặt!")
+			cancelTradeSession(session, "Kho Lõi Aether của " .. pA.Name .. " không đủ số lượng đã đặt!")
 			return
 		end
 	end
@@ -2247,15 +2298,23 @@ local function executeAtomicTradeSwap(session)
 			cancelTradeSession(session, "Đối tác đã rời bàn giao dịch.")
 			return
 		end
+		if profB._ReadOnlyFallback == true or (D.Sessions and D.Sessions[pB] and D.Sessions[pB].ReadOnlyFallback == true) then
+			cancelTradeSession(session, "Đối tác đang ở chế độ Bảo Vệ Dữ Liệu (ReadOnly), không thể giao dịch!")
+			return
+		end
 		ensureExpansionProfile(profB)
 		for _, fid in ipairs(session.OfferB) do
 			needB[fid] = (needB[fid] or 0) + 1
 		end
 		for fid, cnt in pairs(needB) do
 			if (tonumber(profB.StoredFruits[fid]) or 0) < cnt then
-				cancelTradeSession(session, "Kho trái của " .. pB.Name .. " không đủ số lượng đã đặt!")
+				cancelTradeSession(session, "Kho Lõi Aether của " .. pB.Name .. " không đủ số lượng đã đặt!")
 				return
 			end
+		end
+	else
+		for _, fid in ipairs(session.OfferB) do
+			needB[fid] = (needB[fid] or 0) + 1
 		end
 	end
 
@@ -2271,14 +2330,14 @@ local function executeAtomicTradeSwap(session)
 			profB.StoredFruits[fid] = (tonumber(profB.StoredFruits[fid]) or 0) + cnt
 		end
 	end
-	for _, fid in ipairs(session.OfferB) do
+	for fid, cnt in pairs(needB) do
 		if profB then
-			profB.StoredFruits[fid] = math.max(0, (tonumber(profB.StoredFruits[fid]) or 0) - 1)
+			profB.StoredFruits[fid] = math.max(0, (tonumber(profB.StoredFruits[fid]) or 0) - cnt)
 			if profB.StoredFruits[fid] <= 0 then
 				profB.StoredFruits[fid] = nil
 			end
 		end
-		profA.StoredFruits[fid] = (tonumber(profA.StoredFruits[fid]) or 0) + 1
+		profA.StoredFruits[fid] = (tonumber(profA.StoredFruits[fid]) or 0) + cnt
 	end
 
 	local function clearOrphanHeldFruit(plr, prof)
@@ -2297,15 +2356,15 @@ local function executeAtomicTradeSwap(session)
 	end
 
 	unlockTitle(pA, profA, "cafe_broker", false)
-	G.Notify(pA, "GIAO DỊCH THÀNH CÔNG! Đã hoán đổi Trái Ác Quỷ an toàn!")
+	G.Notify(pA, "GIAO DỊCH THÀNH CÔNG! Đã hoán đổi Lõi Aether an toàn!")
 	G.Sync(pA)
-	task.spawn(D.Save, pA, false)
+	D.Save(pA, false)
 
 	if profB and pB then
 		unlockTitle(pB, profB, "cafe_broker", false)
-		G.Notify(pB, "GIAO DỊCH THÀNH CÔNG! Đã hoán đổi Trái Ác Quỷ an toàn!")
+		G.Notify(pB, "GIAO DỊCH THÀNH CÔNG! Đã hoán đổi Lõi Aether an toàn!")
 		G.Sync(pB)
-		task.spawn(D.Save, pB, false)
+		D.Save(pB, false)
 	end
 
 	sendTradeSnapshot(session, "TradeCompleted", "Giao dịch hoàn tất!")
@@ -2383,7 +2442,7 @@ function Expansion.HandleTradeAction(p, actionOrPayload, arg2)
 	local session = PlayerTradeMap[p]
 	if not session or session.Closed then
 		if act ~= "CancelTrade" then
-			G.Notify(p, "Hãy ngồi vào Bàn Giao Dịch 4 Ghế tại Cyberport Cafe để bắt đầu giao dịch!")
+			G.Notify(p, "Hãy ngồi vào Bàn Giao Dịch 4 Ghế tại Trạm Giao Thương (Trade Station) để bắt đầu giao dịch!")
 		end
 		return
 	end
@@ -2409,7 +2468,7 @@ function Expansion.HandleTradeAction(p, actionOrPayload, arg2)
 			return
 		end
 		if #myOffer >= 4 then
-			G.Notify(p, "Chỉ được đặt tối đa 4 Trái Ác Quỷ mỗi phiên giao dịch!")
+			G.Notify(p, "Chỉ được đặt tối đa 4 Lõi Aether mỗi phiên giao dịch!")
 			return
 		end
 		local alreadyOffered = 0
@@ -2581,7 +2640,7 @@ local function buildCafeTradingTables()
 		statusLbl.TextSize = 13
 		statusLbl.TextColor3 = Color3.fromRGB(110, 238, 255)
 		statusLbl.TextStrokeTransparency = 0.2
-		statusLbl.Text = "BÀN GIAO DỊCH TRÁI ÁC QUỶ #" .. tostring(tIdx) .. " (<= 40% Value Lock)"
+		statusLbl.Text = "BÀN GIAO DỊCH LÕI AETHER #" .. tostring(tIdx) .. " (<= 40% Value Lock)"
 		statusLbl.Parent = holoBill
 
 		-- 4 Chairs: Pair 1 (Chair 1 North <-> Chair 2 South, West lane), Pair 2 (Chair 3 North <-> Chair 4 South, East lane)
@@ -2641,8 +2700,8 @@ local function buildCafeTradingTables()
 					PlayerTradeMap[pB] = cur
 					pA:SetAttribute("InTrade", true)
 					pB:SetAttribute("InTrade", true)
-					G.Notify(pA, "Đã kết nối Bàn Giao Dịch Trái Ác Quỷ với " .. pB.Name .. " (Khóa <= 40% giá trị)!")
-					G.Notify(pB, "Đã kết nối Bàn Giao Dịch Trái Ác Quỷ với " .. pA.Name .. " (Khóa <= 40% giá trị)!")
+					G.Notify(pA, "Đã kết nối Bàn Giao Dịch Lõi Aether với " .. pB.Name .. " (Khóa <= 40% giá trị)!")
+					G.Notify(pB, "Đã kết nối Bàn Giao Dịch Lõi Aether với " .. pA.Name .. " (Khóa <= 40% giá trị)!")
 					sendTradeSnapshot(cur, "TradeStarted", "Phiên giao dịch 2 người đã mở!")
 				end
 				return
@@ -2678,8 +2737,8 @@ local function buildCafeTradingTables()
 						ActiveTrades[sid] = soloSession
 						PlayerTradeMap[soloPlr] = soloSession
 						soloPlr:SetAttribute("InTrade", true)
-						G.Notify(soloPlr, "Nhà Sưu Tầm Ảo Ảnh đã ngồi đối diện! Đặt Trái Ác Quỷ (AddFruit) để giao dịch (<= 40% Value Lock + 5s Countdown)!")
-						sendTradeSnapshot(soloSession, "TradeStarted", "Nhà Sưu Tầm Ảo Ảnh sẵn sàng đổi trái công bằng!")
+						G.Notify(soloPlr, "Nhà Sưu Tầm Hư Quang đã ngồi đối diện! Đặt Lõi Aether (AddFruit) để giao dịch (<= 40% Value Lock + 5s Countdown)!")
+						sendTradeSnapshot(soloSession, "TradeStarted", "Nhà Sưu Tầm Hư Quang sẵn sàng đổi lõi công bằng!")
 					end
 				end)
 			elseif cur and not cur.Closed and cur.PlayerA ~= soloPlr and cur.PlayerB ~= soloPlr then
@@ -2710,7 +2769,7 @@ local function buildCafeTradingTables()
 			back.Parent = tModel
 
 			local prompt = Instance.new("ProximityPrompt")
-			prompt.ActionText = "Ngồi Giao Dịch Trái Ác Quỷ (Ghế " .. tostring(cs.Idx) .. ")"
+			prompt.ActionText = "Ngồi Giao Dịch Lõi Aether (Ghế " .. tostring(cs.Idx) .. ")"
 			prompt.ObjectText = "Bàn Giao Dịch #" .. tostring(tIdx)
 			prompt.HoldDuration = 0
 			prompt.MaxActivationDistance = 10
@@ -3026,7 +3085,7 @@ local function startTempleRaceV4Trial(p, altarPos)
 	end
 	ensureExpansionProfile(profile)
 	if TrialSessions[p] and TrialSessions[p].Active then
-		G.Notify(p, "Bạn đang trong Thử Thách Cổ Đại Race V4 (60s)!")
+		G.Notify(p, "Bạn đang trong Thử Thách Thăng Hoa (60s)!")
 		return
 	end
 
@@ -3048,7 +3107,7 @@ local function startTempleRaceV4Trial(p, altarPos)
 	}
 	TrialSessions[p] = session
 	p:SetAttribute("InRaceTrial", true)
-	G.Notify(p, "THỬ THÁCH CỔ ĐẠI BẮT ĐẦU (60 GIÂY): Tiêu diệt 3 Hộ Vệ Đền Thờ Lõi để mở khóa vĩnh viễn RACE V4 & Core Gear!")
+	G.Notify(p, "THỬ THÁCH THĂNG HOA BẮT ĐẦU (60 GIÂY): Tiêu diệt 3 Hộ Vệ Đền Thăng Hoa để mở khóa vĩnh viễn THĂNG HOA & Core Gear!")
 
 	task.spawn(function()
 		while session.Active and p.Parent and os.clock() < session.EndsAt do
@@ -3066,7 +3125,7 @@ local function startTempleRaceV4Trial(p, altarPos)
 					end
 				end
 				if p.Parent then
-					G.Notify(p, "Thử Thách Cổ Đại kết thúc do bạn đã rời khỏi Đền Thờ Lõi. Hãy quay lại kéo Cần Gạt Cổ Đại!")
+					G.Notify(p, "Thử Thách Thăng Hoa kết thúc do bạn đã rời khỏi Đền Thăng Hoa. Hãy quay lại kéo Cần Gạt Cổ Đại!")
 				end
 				return
 			end
@@ -3093,7 +3152,7 @@ local function startTempleRaceV4Trial(p, altarPos)
 					prof.CoreShards = (prof.CoreShards or 0) + 300
 					unlockTitle(p, prof, "core_gear_awakened", false)
 					p:SetAttribute("RaceV4Unlocked", true)
-					G.Notify(p, "HOÀN TẤT THỬ THÁCH CỔ ĐẠI! Đã mở khóa vĩnh viễn RACE V4 [" .. tostring(prof.Race) .. "] + 1 Core Gear + 300 Shards!")
+					G.Notify(p, "HOÀN TẤT THỬ THÁCH THĂNG HOA! Đã mở khóa vĩnh viễn THĂNG HOA [" .. tostring(prof.Race) .. "] + 1 Core Gear + 300 Shards!")
 					local curHrp = getCharRoot(p)
 					if curHrp and R and R.CombatFX then
 						R.CombatFX:FireAllClients({
@@ -3244,7 +3303,7 @@ local function buildWorldNPCsAndAltars()
 					plr,
 					st.MasterName,
 					"ĐẠI SƯ VÕ ĐẠO • MARTIAL DOJO",
-					"Ta truyền dạy [" .. st.Name .. "] cùng 7 tuyệt kỹ Thần Quyền 3 Biển! Hãy mở Võ Đường 3D để lĩnh ngộ hoặc chuyển đổi võ phái.",
+					"Ta truyền dạy [" .. st.Name .. "] cùng 7 tuyệt kỹ Thần Quyền 3 Tầng Trời! Hãy mở Võ Đường 3D để lĩnh ngộ hoặc chuyển đổi võ phái.",
 					"Mở Võ Đường 3D",
 					"OpenScreen:NPCShop:MartialDojo"
 				)
@@ -3252,70 +3311,70 @@ local function buildWorldNPCsAndAltars()
 		)
 	end
 
-	-- 2. Mirage Fruit Stock Dealers at Sky Hub & Cyberport Cafe (#43)
+	-- 2. Phantom Core Stock Dealers at Sky Hub & Trade Station (#43)
 	for idx, anchor in ipairs({ skyPos + Vector3.new(32, 0, -24), cafePos + Vector3.new(-24, 0, 6) }) do
 		spawnNPCStation(
 			npcFolder,
 			"MirageDealer_" .. tostring(idx),
-			"Mirage Fruit Dealer",
+			"Thương Nhân Hư Quang",
 			"Xoay vòng mỗi giờ - Mua trực tiếp bằng Gold",
 			anchor,
 			Color3.fromRGB(255, 198, 78),
-			"Xem & Mua Kho Trái Mirage",
+			"Xem & Mua Kho Lõi Hư Quang",
 			function(plr)
 				refreshMirageStock()
 				G.SendDialogue(
 					plr,
-					"Mirage Fruit Dealer",
-					"THƯƠNG NHÂN ĐẢO ẢO ẢNH",
-					"Kho Trái Ác Quỷ Mirage xoay vòng mỗi giờ với tỉ lệ xuất hiện Trái Thần Thoại gấp đôi! Hãy mở Cửa Hàng Mirage 3D để chọn mua trực tiếp bằng Gold.",
-					"Mở Kho Trái Mirage",
+					"Thương Nhân Hư Quang",
+					"THƯƠNG NHÂN ĐẢO HƯ QUANG",
+					"Kho Lõi Aether Hư Quang xoay vòng mỗi giờ với tỉ lệ xuất hiện Lõi Thần Thoại gấp đôi! Hãy mở Cửa Hàng Hư Quang 3D để chọn mua trực tiếp bằng Gold.",
+					"Mở Kho Lõi Hư Quang",
 					"OpenScreen:NPCShop:MirageDealer"
 				)
 			end
 		)
 	end
 
-	-- 3. Dr. Vega Race Reroll NPC at Sky Hub & Cyberport Cafe (#59)
+	-- 3. Dr. Vega Race Reroll NPC at Sky Hub & Trade Station (#59)
 	for idx, anchor in ipairs({ skyPos + Vector3.new(42, 0, -18), cafePos + Vector3.new(24, 0, 6) }) do
 		spawnNPCStation(
 			npcFolder,
 			"DrVega_" .. tostring(idx),
 			"Dr. Vega - Nhà Khoa Học Tộc Hệ",
-			"Race Reroll (50 Core Shards) & Tộc V4",
+			"Tái Cấu Trúc Huyết Mạch (50 Core Shards) & Thăng Hoa",
 			anchor,
 			Color3.fromRGB(112, 242, 195),
-			"Mở Viện Nghiên Cứu Tộc Hệ & V4",
+			"Mở Viện Nghiên Cứu Tộc Hệ & Thăng Hoa",
 			function(plr)
 				G.SendDialogue(
 					plr,
 					"Dr. Vega - Nhà Khoa Học Tộc Hệ",
-					"VIỆN NGHIÊN CỨU HUYẾT MẠCH & TỘC V4",
-					"Ta tái cấu trúc huyết mạch sang 6 Tộc Hệ Thượng Cổ (Skyborn, Mink, Leviathan, Cyborg, Ghoul, Draco) và kết nối Đền Thờ Lõi V4!",
-					"Mở Phòng Nghiên Cứu V4",
+					"VIỆN NGHIÊN CỨU HUYẾT MẠCH & THĂNG HOA",
+					"Ta tái cấu trúc huyết mạch sang 6 Tộc Hệ Thượng Cổ và kết nối Đền Thăng Hoa!",
+					"Mở Phòng Nghiên Cứu Thăng Hoa",
 					"OpenScreen:NPCShop:DrVegaAndTempleV4"
 				)
 			end
 		)
 	end
 
-	-- 4. Temple of the Core Ancient Gear Altar & Trial Lever (#51)
+	-- 4. Ascension Shrine Ancient Gear Altar & Trial Lever (#51)
 	Expansion.StartTempleRaceV4Trial = startTempleRaceV4Trial
 	spawnNPCStation(
 		npcFolder,
 		"AncientGearTrialLever",
 		"Ancient Gear Altar & Trial Lever",
-		"Temple of the Core - Thử Thách Tộc V4 (60s)",
+		"Đền Thăng Hoa - Thử Thách Thăng Hoa (60s)",
 		templePos + Vector3.new(0, 0, -12),
 		Color3.fromRGB(255, 178, 72),
-		"Mở Đền Thờ Lõi & Thử Thách Tộc V4",
+		"Mở Đền Thăng Hoa & Thử Thách (60s)",
 		function(plr)
 			G.SendDialogue(
 				plr,
 				"Đài Bánh Răng Cổ Đại",
-				"THÁNH ĐIỆN ĐỀN THỜ LÕI • RACE V4",
-				"Cần Gạt Cổ Đại mở khóa Thử Thách Tộc V4 (60 giây) và nâng cấp Core Gear! Hãy mở Bảng Đền Thờ Lõi V4 để bắt đầu thử thách.",
-				"Mở Thử Thách Đền Thờ V4",
+				"THÁNH ĐIỆN ĐỀN THĂNG HOA • ASCENSION SHRINE",
+				"Cần Gạt Cổ Đại mở khóa Thử Thách Thăng Hoa (60 giây) và nâng cấp Core Gear! Hãy mở Bảng Đền Thăng Hoa để bắt đầu thử thách.",
+				"Mở Thử Thách Đền Thăng Hoa",
 				"OpenScreen:NPCShop:DrVegaAndTempleV4"
 			)
 		end
@@ -3323,7 +3382,7 @@ local function buildWorldNPCsAndAltars()
 end
 
 -- ============================================================================
--- 10M BOUNTY ALLIED SKYSEABEAST GUARDIAN SUMMON (#57)
+-- 10M BOUNTY ALLIED SKY BEAST GUARDIAN SUMMON (#57)
 -- ============================================================================
 function Expansion.SummonAlliedSeaBeast(p)
 	local profile = D.Get(p)
@@ -3335,7 +3394,7 @@ function Expansion.SummonAlliedSeaBeast(p)
 	ensureExpansionProfile(profile)
 
 	if (profile.Bounty or 0) < CombatData.SeaBeastSummonBounty and p:GetAttribute("BypassBountyLock") ~= true then
-		G.Notify(p, string.format("Cần đạt >= 10,000,000 Bounty để Triệu Hồi SkySeaBeast Guardian (Hiện tại: %s)!", formatBountyShort(profile.Bounty)))
+		G.Notify(p, string.format("Cần đạt >= 10,000,000 Bounty để Triệu Hồi Thú Trời Hộ Vệ (Hiện tại: %s)!", formatBountyShort(profile.Bounty)))
 		return false
 	end
 
@@ -3343,13 +3402,13 @@ function Expansion.SummonAlliedSeaBeast(p)
 	if existing and existing.Model and existing.Model.Parent then
 		existing.Model:Destroy()
 		AlliedSeaBeasts[p] = nil
-		G.Notify(p, "Đã thu hồi SkySeaBeast Guardian.")
+		G.Notify(p, "Đã thu hồi Thú Trời Hộ Vệ (Sky Beast Guardian).")
 		return true
 	end
 
 	local now = os.clock()
 	if now < (rt.Cooldowns.SummonSeaBeast or 0) then
-		G.Notify(p, string.format("Triệu Hồi SkySeaBeast đang hồi (%ds)!", math.ceil(rt.Cooldowns.SummonSeaBeast - now)))
+		G.Notify(p, string.format("Triệu Hồi Thú Trời đang hồi (%ds)!", math.ceil(rt.Cooldowns.SummonSeaBeast - now)))
 		return false
 	end
 	rt.Cooldowns.SummonSeaBeast = now + 45
@@ -3406,7 +3465,7 @@ function Expansion.SummonAlliedSeaBeast(p)
 	tl.TextSize = 13
 	tl.TextColor3 = Color3.fromRGB(95, 236, 255)
 	tl.TextStrokeTransparency = 0.2
-	tl.Text = "SKY SEA BEAST GUARDIAN - " .. (p.DisplayName or p.Name)
+	tl.Text = "SKY BEAST GUARDIAN - " .. (p.DisplayName or p.Name)
 	tl.Parent = bill
 
 	m.PrimaryPart = body
@@ -3422,7 +3481,7 @@ function Expansion.SummonAlliedSeaBeast(p)
 		NextBeamAt = now + 1.0,
 	}
 	AlliedSeaBeasts[p] = rec
-	G.Notify(p, "TRIỆU HỒI SKY SEA BEAST GUARDIAN (35s): Bắn tia Hydro-Aether Beam 380% ATK mỗi 3.5s!")
+	G.Notify(p, "TRIỆU HỒI THÚ TRỜI HỘ VỆ (35s): Bắn tia Hydro-Aether Beam 380% ATK mỗi 3.5s!")
 	return true
 end
 
@@ -3530,6 +3589,19 @@ function Expansion.RedeemCode(p, rawCode)
 	local spec = CombatData.Giftcodes[cleaned]
 	if not spec then
 		G.Notify(p, "Giftcode không hợp lệ hoặc đã hết hạn: [" .. cleaned .. "]!")
+		return false
+	end
+	if tonumber(spec.Expires) and os.time() > tonumber(spec.Expires) then
+		G.Notify(p, "Giftcode [" .. cleaned .. "] đã hết hạn sử dụng!")
+		return false
+	end
+	local playerLv = tonumber(profile.Level) or 1
+	if tonumber(spec.MinLevel) and playerLv < tonumber(spec.MinLevel) then
+		G.Notify(p, string.format("Giftcode [%s] yêu cầu đạt tối thiểu Level %d!", cleaned, tonumber(spec.MinLevel)))
+		return false
+	end
+	if tonumber(spec.MaxLevel) and playerLv > tonumber(spec.MaxLevel) then
+		G.Notify(p, string.format("Giftcode [%s] chỉ dành cho người chơi từ Level %d trở xuống!", cleaned, tonumber(spec.MaxLevel)))
 		return false
 	end
 	if profile.RedeemedCodes[cleaned] == true then
@@ -3766,7 +3838,7 @@ function Expansion.TeleportToIsland(p, rawIslandId)
 	if realm ~= "GoldenSky" and realm ~= "SkyHub"
 		and not profile.UnlockedWorlds[realm]
 		and not profile.UnlockedWorlds[canonId]
-		and workspace:GetAttribute("EnableDevSandbox") ~= true
+		and not DevGate.IsAllowed(p)
 		and (tonumber(profile.Level) or 1) < realmMinLv then
 		G.Notify(p, string.format("Cần đạt Level %d để mở khóa dịch chuyển tới %s!", realmMinLv, isl.Name or realm))
 		return false
@@ -3832,7 +3904,7 @@ function Expansion.EquipHakiColor(p, rawColorId)
 	if not profile.UnlockedHakiColors[cid] then
 		local cost = spec.CostShards or 150
 		if (profile.CoreShards or 0) < cost then
-			G.Notify(p, string.format("Cần %d Core Shards để mở khóa Màu Haki [%s]!", cost, spec.Name))
+			G.Notify(p, string.format("Cần %d Core Shards để mở khóa Sắc Ý Chí [%s]!", cost, spec.Name))
 			return false
 		end
 		profile.CoreShards -= cost
@@ -3840,7 +3912,7 @@ function Expansion.EquipHakiColor(p, rawColorId)
 	end
 	profile.HakiColorId = cid
 	syncHakiAttributes(p, profile)
-	G.Notify(p, "Đã trang bị Màu Haki Busoshoku: [" .. spec.Name .. "]!")
+	G.Notify(p, "Đã trang bị Sắc Giáp Ý Chí: [" .. spec.Name .. "]!")
 	G.Sync(p)
 	return true
 end
@@ -3921,7 +3993,7 @@ function Expansion.HandleFruitAction(p, actOrPayload, arg2)
 			if p.Character then
 				p.Character:SetAttribute("HeldFruit", cid)
 			end
-			G.Notify(p, "Đã thu thập Trái Ác Quỷ Tự Nhiên: [" .. CombatData.FruitCatalog[cid].Name .. "] (Đã lưu kho & cầm trên tay 3D)!")
+			G.Notify(p, "Đã thu thập Lõi Aether Tự Nhiên: [" .. CombatData.FruitCatalog[cid].Name .. "] (Đã lưu kho & cầm trên tay 3D)!")
 			G.Sync(p)
 		end
 	elseif act == "AwakenFruit" then
@@ -4380,7 +4452,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 				profile.KenV2Unlocked = true
 				unlockTitle(p, profile, "all_seeing_oracle", false)
 				syncHakiAttributes(p, profile)
-				G.Notify(p, "KENBUNSHOKU HAKI V2 THỨC TỈNH: Mở khóa Thiên Nhãn Thấu Thị Target Inspector!")
+				G.Notify(p, "THẤU Ý V2 THỨC TỈNH: Mở khóa Thiên Nhãn Thấu Thị Target Inspector!")
 			end
 		end
 	end
@@ -4527,12 +4599,12 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			if prof then
 				ensureExpansionProfile(prof)
 				if not prof.RaceV4Unlocked and (tonumber(prof.Level) or 1) < 1500 then
-					G.Notify(p, "Hãy vượt qua Thử Thách Cổ Đại tại Temple of the Core (Sky 3) để mở khóa RACE V4!")
+					G.Notify(p, "Hãy vượt qua Thử Thách Thăng Hoa tại Đền Thăng Hoa (Tầng Trời 3) để mở khóa THĂNG HOA!")
 					return
 				end
 				if not prof.RaceV4Active then
 					if (tonumber(prof.AwakeningMeter) or 0) < 25 then
-						G.Notify(p, string.format("Cần tối thiểu 25%% Thanh Thức Tỉnh để kích hoạt RACE V4 (Hiện tại: %d%%)!", math.floor(prof.AwakeningMeter or 0)))
+						G.Notify(p, string.format("Cần tối thiểu 25%% Thanh Thức Tỉnh để kích hoạt THĂNG HOA (Hiện tại: %d%%)!", math.floor(prof.AwakeningMeter or 0)))
 						return
 					end
 					if rt then
@@ -4588,18 +4660,28 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		return false
 	end
 
-	-- 9. Connect Wave 2 & Wave 1 Remotes
-	if R:FindFirstChild("UIRequest") then
-		R.UIRequest.OnServerEvent:Connect(Expansion.HandleUIRequest)
-	end
+	-- 9. Connect Wave 2 & Wave 1 Remotes (UIRequest is unified via UIRequestHandler.server.lua & G.HandleUIRequest)
 	if R:FindFirstChild("FruitAction") then
-		R.FruitAction.OnServerEvent:Connect(Expansion.HandleFruitAction)
+		R.FruitAction.OnServerEvent:Connect(function(p, ...)
+			if not RemoteGuard.Allow(p, "UI") then
+				return
+			end
+			Expansion.HandleFruitAction(p, ...)
+		end)
 	end
 	if R:FindFirstChild("TradeAction") then
-		R.TradeAction.OnServerEvent:Connect(Expansion.HandleTradeAction)
+		R.TradeAction.OnServerEvent:Connect(function(p, ...)
+			if not RemoteGuard.Allow(p, "UI") then
+				return
+			end
+			Expansion.HandleTradeAction(p, ...)
+		end)
 	end
 	if R:FindFirstChild("StatAllocate") then
 		R.StatAllocate.OnServerEvent:Connect(function(p, statOrTbl, amount)
+			if not RemoteGuard.Allow(p, "UI") then
+				return
+			end
 			if type(statOrTbl) == "table" then
 				if statOrTbl.preset or statOrTbl.slot then
 					Expansion.ApplyStatPreset(p, statOrTbl.preset or statOrTbl.slot, statOrTbl.stats)
@@ -4613,12 +4695,18 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 	end
 	if R:FindFirstChild("TeleportIsland") then
 		R.TeleportIsland.OnServerEvent:Connect(function(p, islOrTbl)
+			if not RemoteGuard.Allow(p, "UI") then
+				return
+			end
 			local targetId = type(islOrTbl) == "table" and (islOrTbl.islandId or islOrTbl.nodeId or islOrTbl.id) or islOrTbl
 			Expansion.TeleportToIsland(p, targetId)
 		end)
 	end
 	if R:FindFirstChild("ForgeRequest") then
 		R.ForgeRequest.OnServerEvent:Connect(function(p, actOrTbl, itemId)
+			if not RemoteGuard.Allow(p, "UI") then
+				return
+			end
 			if type(actOrTbl) == "table" then
 				local a = tostring(actOrTbl.action or "ForgeCraft")
 				if a == "AscendStar" or a == "UpgradeStar" or a == "UpgradeWeaponStar" then

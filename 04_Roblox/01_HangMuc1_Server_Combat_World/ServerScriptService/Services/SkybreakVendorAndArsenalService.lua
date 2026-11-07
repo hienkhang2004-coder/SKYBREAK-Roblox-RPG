@@ -470,7 +470,7 @@ local function buildAllVendorStations()
 	local castlePos = (C.FastTravel and C.FastTravel.CastleOnTheVoid and C.FastTravel.CastleOnTheVoid.Pos) or Vector3.new(-14600, 50.9, 2173.1)
 
 	local specs = {
-		-- 1. Master Sword Dealers (Sea 1, Sea 2, Sea 3)
+		-- 1. Master Sword Dealers (Sky 1, Sky 2, Sky 3)
 		{
 			Id = "MasterSwordDealer_Sea1",
 			Title = "Kiếm Sư Thương Nhân",
@@ -481,7 +481,7 @@ local function buildAllVendorStations()
 			Color = Color3.fromRGB(244, 193, 78),
 			RawPos = skyPos + Vector3.new(-22, 0, -16),
 			DialogueRole = "ĐẠI SƯ VŨ KHÍ CẬN CHIẾN",
-			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Biển! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
+			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Tầng Trời! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
 			ButtonLabel = "Mở Cửa Hàng Kiếm 3D",
 		},
 		{
@@ -494,7 +494,7 @@ local function buildAllVendorStations()
 			Color = Color3.fromRGB(244, 193, 78),
 			RawPos = cafePos + Vector3.new(-18, 0, -14),
 			DialogueRole = "ĐẠI SƯ VŨ KHÍ CẬN CHIẾN",
-			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Biển! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
+			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Tầng Trời! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
 			ButtonLabel = "Mở Cửa Hàng Kiếm 3D",
 		},
 		{
@@ -507,7 +507,7 @@ local function buildAllVendorStations()
 			Color = Color3.fromRGB(244, 193, 78),
 			RawPos = castlePos + Vector3.new(-18, 0, -14),
 			DialogueRole = "ĐẠI SƯ VŨ KHÍ CẬN CHIẾN",
-			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Biển! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
+			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Tầng Trời! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
 			ButtonLabel = "Mở Cửa Hàng Kiếm 3D",
 		},
 
@@ -552,31 +552,31 @@ local function buildAllVendorStations()
 			ButtonLabel = "Mở Xưởng Pháp Khí 3D",
 		},
 
-		-- 3. Phantom 4x4 Trading Tables & Collector (Sea 1, Sea 2)
+		-- 3. Phantom 4x4 Trading Tables & Collector (Sky 1, Sky 2)
 		{
 			Id = "PhantomTradingTable_Sea1",
-			Title = "Bàn Giao Dịch Trái 4x4 & Nhà Sưu Tập",
+			Title = "Bàn Giao Dịch Lõi 4x4 & Nhà Sưu Tập",
 			RoleTag = "< GIAO DỊCH CHỐNG LỪA ĐẢO <=40% >",
-			ActionText = "Mở Bàn Giao Dịch Trái 4x4",
+			ActionText = "Mở Bàn Giao Dịch Lõi 4x4",
 			VendorMode = "TradingTable",
 			VisualAsset = "ZiolesGachaNPC",
 			Color = Color3.fromRGB(192, 132, 252),
 			RawPos = skyPos + Vector3.new(18, 0, -18),
 			DialogueRole = "NHÀ SƯU TẬP ẢO ẢNH & BÀN TRAO ĐỔI 4X4",
-			DialogueBody = "Đặt tối đa 4 Trái Ác Quỷ lên bàn cân chống lừa đảo (khóa nghiêm ngặt chênh lệch <= 40%), hoặc ký ngay các Khế Ước Thần Thoại công bằng với Nhà Sưu Tập!",
+			DialogueBody = "Đặt tối đa 4 Lõi Aether lên bàn cân chống lừa đảo (khóa nghiêm ngặt chênh lệch <= 40%), hoặc ký ngay các Khế Ước Thần Thoại công bằng với Nhà Sưu Tập!",
 			ButtonLabel = "Mở Bàn Giao Dịch 4x4",
 		},
 		{
 			Id = "PhantomTradingTable_Sea2",
-			Title = "Bàn Giao Dịch Trái 4x4 & Nhà Sưu Tập",
+			Title = "Bàn Giao Dịch Lõi 4x4 & Nhà Sưu Tập",
 			RoleTag = "< GIAO DỊCH CHỐNG LỪA ĐẢO <=40% >",
-			ActionText = "Mở Bàn Giao Dịch Trái 4x4",
+			ActionText = "Mở Bàn Giao Dịch Lõi 4x4",
 			VendorMode = "TradingTable",
 			VisualAsset = "ZiolesGachaNPC",
 			Color = Color3.fromRGB(192, 132, 252),
 			RawPos = cafePos + Vector3.new(0, 0, 14),
 			DialogueRole = "NHÀ SƯU TẬP ẢO ẢNH & BÀN TRAO ĐỔI 4X4",
-			DialogueBody = "Đặt tối đa 4 Trái Ác Quỷ lên bàn cân chống lừa đảo (khóa nghiêm ngặt chênh lệch <= 40%), hoặc ký ngay các Khế Ước Thần Thoại công bằng với Nhà Sưu Tập!",
+			DialogueBody = "Đặt tối đa 4 Lõi Aether lên bàn cân chống lừa đảo (khóa nghiêm ngặt chênh lệch <= 40%), hoặc ký ngay các Khế Ước Thần Thoại công bằng với Nhà Sưu Tập!",
 			ButtonLabel = "Mở Bàn Giao Dịch 4x4",
 		},
 
@@ -638,29 +638,93 @@ local function resolveVendorPrice(itemId)
 	if catalogPriceCache[itemId] then
 		return catalogPriceCache[itemId].Gold, catalogPriceCache[itemId].Shards, catalogPriceCache[itemId].Entry
 	end
-	local expItem = ArsenalExpansionConfig.Items[itemId]
-	if expItem then
-		return tonumber(expItem.PriceGold) or 0, tonumber(expItem.PriceShards) or 0, nil
-	end
-	local rItem = RarityConfig.Items[itemId]
-	if rItem then
-		if rItem.PriceGold ~= nil or rItem.PriceShards ~= nil then
-			return tonumber(rItem.PriceGold) or 0, tonumber(rItem.PriceShards) or 0, nil
-		end
-		local rar = RarityConfig.GetRarity(rItem.Rarity)
-		local tier = (rar and rar.Tier) or 1
-		if tier <= 1 then
-			return 0, 0, nil
-		end
-		return tier * 15000, (tier >= 4 and tier * 30 or 0), nil
-	end
 	return nil, nil, nil
+end
+
+local function getKnownVendorPositions()
+	local positions = {}
+	local skyPos = C.Spawn or Vector3.new(-317.4, 50.5, 527.8)
+	local cafePos = (C.FastTravel and C.FastTravel.CyberportCafe and C.FastTravel.CyberportCafe.Pos) or Vector3.new(9400, 50.9, 1785)
+	local castlePos = (C.FastTravel and C.FastTravel.CastleOnTheVoid and C.FastTravel.CastleOnTheVoid.Pos) or Vector3.new(-14600, 50.9, 2173.1)
+
+	local staticOffsets = {
+		skyPos + Vector3.new(-22, 0, -16),
+		skyPos + Vector3.new(-28, 0, -6),
+		skyPos + Vector3.new(18, 0, -18),
+		skyPos + Vector3.new(26, 0, -8),
+		cafePos + Vector3.new(-18, 0, -14),
+		cafePos + Vector3.new(18, 0, -14),
+		cafePos + Vector3.new(0, 0, 14),
+		cafePos + Vector3.new(-16, 0, 16),
+		castlePos + Vector3.new(-18, 0, -14),
+		castlePos + Vector3.new(18, 0, -14),
+	}
+	for _, p in ipairs(staticOffsets) do
+		table.insert(positions, p)
+	end
+	for _, inter in pairs(C.Interactions or {}) do
+		if type(inter) == "table" and inter.Pos then
+			table.insert(positions, inter.Pos)
+		end
+	end
+
+	local expWorld = workspace:FindFirstChild("SkybreakExpansionWorld")
+	if expWorld then
+		for _, subName in ipairs({ "VendorNPCs", "InteractiveNPCs" }) do
+			local sub = expWorld:FindFirstChild(subName)
+			if sub then
+				for _, child in ipairs(sub:GetChildren()) do
+					local rp = child:IsA("Model") and (child.PrimaryPart or child:FindFirstChild("HumanoidRootPart")) or (child:IsA("BasePart") and child)
+					if rp and rp.Position then
+						table.insert(positions, rp.Position)
+					end
+				end
+			end
+		end
+	end
+	return positions
+end
+
+local function isPlayerNearVendor(player, maxDist)
+	local limit = tonumber(maxDist) or 20
+	if not player then
+		return false
+	end
+	local ch = player.Character
+	if not ch then
+		if typeof(player) == "Instance" and player:IsA("Player") then
+			return false
+		end
+		return true
+	end
+	local hrp = (type(ch.FindFirstChild) == "function" and ch:FindFirstChild("HumanoidRootPart"))
+		or ch.HumanoidRootPart
+		or ch.PrimaryPart
+	if not hrp or not hrp.Position then
+		return false
+	end
+	local pPos = hrp.Position
+	local vendorPositions = getKnownVendorPositions()
+	if #vendorPositions == 0 then
+		return true
+	end
+	for _, vPos in ipairs(vendorPositions) do
+		if (pPos - vPos).Magnitude <= limit then
+			return true
+		end
+		local dx = pPos.X - vPos.X
+		local dz = pPos.Z - vPos.Z
+		if math.sqrt(dx * dx + dz * dz) <= limit and math.abs(pPos.Y - vPos.Y) <= 12 then
+			return true
+		end
+	end
+	return false
 end
 
 local function handleBuyVendorItem(player, payload)
 	payload = type(payload) == "table" and payload or { itemId = payload }
 	local itemId = tostring(payload.itemId or payload.id or payload.shipId or payload.styleId or payload.value or "")
-	if itemId == "" then
+	if itemId == "" or #itemId > 64 then
 		return false
 	end
 
@@ -668,22 +732,37 @@ local function handleBuyVendorItem(player, payload)
 	if not prof then
 		return false
 	end
+	if not isPlayerNearVendor(player, 20) then
+		G.Notify(player, "Bạn cần đứng gần Thương Nhân (<= 20 studs) để giao dịch!")
+		return false
+	end
+
 	prof.Inventory = type(prof.Inventory) == "table" and prof.Inventory or {}
 	prof.Equipped = type(prof.Equipped) == "table" and prof.Equipped or {}
 	prof.Gold = tonumber(prof.Gold) or 0
 	prof.CoreShards = tonumber(prof.CoreShards) or 0
+
+	local rawQty = tonumber(payload.quantity or payload.count or payload.amount) or 1
+	local qty = math.clamp(math.floor(rawQty), 1, 20)
 
 	-- Case A: Buying / Spawning a Sky-Ship from ShipwrightFleet
 	for _, shipEntry in ipairs(ArsenalExpansionConfig.VendorCatalogs.ShipwrightFleet or {}) do
 		if shipEntry.Id == itemId or shipEntry.ShipId == itemId then
 			prof.UnlockedShips = type(prof.UnlockedShips) == "table" and prof.UnlockedShips or { SkySloop = true }
 			local shipKey = shipEntry.Id
-			if not prof.UnlockedShips[shipKey] and (shipEntry.PriceGold or 0) > 0 then
-				if prof.Gold < shipEntry.PriceGold then
-					G.Notify(player, string.format("Cần %d Gold để đóng chiến hạm [%s]!", shipEntry.PriceGold, shipEntry.NameVi))
-					return true
+			local shipPriceGold = tonumber(shipEntry.PriceGold) or 0
+			local shipPriceShards = tonumber(shipEntry.PriceShards) or 0
+			if not prof.UnlockedShips[shipKey] then
+				if shipPriceGold <= 0 and shipPriceShards <= 0 then
+					G.Notify(player, "Chiến hạm này không có giá hợp lệ trong danh mục!")
+					return false
 				end
-				prof.Gold -= shipEntry.PriceGold
+				if prof.Gold < shipPriceGold or prof.CoreShards < shipPriceShards then
+					G.Notify(player, string.format("Cần %d Gold để đóng chiến hạm [%s]!", shipPriceGold, shipEntry.NameVi))
+					return false
+				end
+				prof.Gold -= shipPriceGold
+				prof.CoreShards -= shipPriceShards
 			end
 			prof.UnlockedShips[shipKey] = true
 			if shipEntry.ShipId then
@@ -713,9 +792,13 @@ local function handleBuyVendorItem(player, payload)
 			if not prof.UnlockedStyles[sKey] then
 				local needG = tonumber(stEntry.PriceGold) or 0
 				local needS = tonumber(stEntry.PriceShards) or 0
+				if needG <= 0 and needS <= 0 then
+					G.Notify(player, "Võ thuật này không có giá hợp lệ trong danh mục!")
+					return false
+				end
 				if prof.Gold < needG or prof.CoreShards < needS then
 					G.Notify(player, string.format("Cần %d Gold & %d Core Shards để lĩnh ngộ [%s]!", needG, needS, stEntry.NameVi))
-					return true
+					return false
 				end
 				prof.Gold -= needG
 				prof.CoreShards -= needS
@@ -727,7 +810,7 @@ local function handleBuyVendorItem(player, payload)
 			prof.DisplayFightingStyle = sKey
 			prof.ActiveSlot = 1
 			player:SetAttribute("FightingStyle", combatId)
-			if player.Character then
+			if player.Character and type(player.Character.SetAttribute) == "function" then
 				player.Character:SetAttribute("FightingStyle", combatId)
 			end
 			G.Notify(player, "Đã lĩnh ngộ & trang bị Võ Thuật: " .. stEntry.NameVi .. "!")
@@ -739,20 +822,19 @@ local function handleBuyVendorItem(player, payload)
 	-- Case C: Standard Arsenal Weapon, Arcane Gun, Wearable 3D Armor Piece, Relic, or Material
 	local itemDef = ArsenalExpansionConfig.Items[itemId] or RarityConfig.Items[itemId]
 	local cItem = C.Items[itemId]
-	if not itemDef and not cItem then
-		G.Notify(player, "Không tìm thấy vật phẩm [" .. itemId .. "] trong danh mục cửa hàng!")
-		return true
-	end
-
-	local costGold, costShards = resolveVendorPrice(itemId)
+	local costGold, costShards, catEntry = resolveVendorPrice(itemId)
 	costGold = tonumber(costGold) or 0
 	costShards = tonumber(costShards) or 0
 
-	local displayName = (itemDef and (itemDef.VietnameseName or itemDef.Name))
+	local displayName = (catEntry and (catEntry.NameVi or catEntry.Name))
+		or (itemDef and (itemDef.VietnameseName or itemDef.Name))
 		or (cItem and cItem.Name)
 		or itemId
 	local isMaterial = (itemDef and (itemDef.Category == "Materials" or itemDef.Category == "Quest"))
 		or (cItem and (cItem.Slot == "Material" or cItem.Slot == "Quest"))
+	if not isMaterial then
+		qty = 1
+	end
 	local alreadyOwned = (tonumber(prof.Inventory[itemId]) or 0) > 0
 
 	-- If already owned and non-stackable equipment, allow free re-equip without double-charging unless forceBuy
@@ -765,35 +847,20 @@ local function handleBuyVendorItem(player, payload)
 		return true
 	end
 
-	local payMode = tostring(payload.currency or payload.payWith or "")
-	if payMode == "Shards" or payMode == "CoreShards" then
-		local shardOnly = costShards > 0 and costShards or math.max(10, math.floor(costGold / 500))
-		if prof.CoreShards < shardOnly then
-			G.Notify(player, string.format("Cần %d Core Shards để sở hữu [%s]!", shardOnly, displayName))
-			return true
-		end
-		prof.CoreShards -= shardOnly
-	elseif payMode == "Gold" then
-		if prof.Gold < costGold then
-			G.Notify(player, string.format("Cần %d Gold để sở hữu [%s]!", costGold, displayName))
-			return true
-		end
-		prof.Gold -= costGold
-	else
-		if costGold > 0 or costShards > 0 then
-			if prof.Gold < costGold or prof.CoreShards < costShards then
-				G.Notify(player, string.format("Cần %d Gold & %d Core Shards để mua [%s]!", costGold, costShards, displayName))
-				return true
-			end
-			prof.Gold -= costGold
-			prof.CoreShards -= costShards
-		end
+	-- Strictly require the item to exist in a valid VendorCatalog with a positive price
+	if not catEntry or (costGold <= 0 and costShards <= 0) then
+		G.Notify(player, "Vật phẩm [" .. tostring(itemId) .. "] không được bán tại cửa hàng Thương Nhân!")
+		return false
 	end
 
-	local qty = math.clamp(math.floor(tonumber(payload.quantity or payload.count) or 1), 1, 20)
-	if not isMaterial then
-		qty = 1
+	local totalGold = costGold * qty
+	local totalShards = costShards * qty
+	if prof.Gold < totalGold or prof.CoreShards < totalShards then
+		G.Notify(player, string.format("Cần %d Gold & %d Core Shards để mua x%d [%s]!", totalGold, totalShards, qty, displayName))
+		return false
 	end
+	prof.Gold -= totalGold
+	prof.CoreShards -= totalShards
 	prof.Inventory[itemId] = (tonumber(prof.Inventory[itemId]) or 0) + qty
 
 	local isGun = (itemDef and (itemDef.WeaponType == "Gun" or itemDef.Icon == "Gun"))
@@ -864,7 +931,7 @@ local function handleTradeWithCollector(player, payload)
 	end
 
 	if type(giveList) ~= "table" or #giveList == 0 or #giveList > 4 then
-		G.Notify(player, "Hãy chọn từ 1 đến 4 vật phẩm/Trái Ác Quỷ để giao dịch với Nhà Sưu Tập!")
+		G.Notify(player, "Hãy chọn từ 1 đến 4 vật phẩm/Lõi Aether để giao dịch với Nhà Sưu Tập!")
 		return true
 	end
 
@@ -1041,7 +1108,7 @@ local function handleStartTempleV4Trial(player)
 	prof.CoreGears = (tonumber(prof.CoreGears) or 0) + 1
 	prof.AwakeningMeter = 100
 	player:SetAttribute("RaceV4Unlocked", true)
-	G.Notify(player, "ĐỀN THỜ LÕI CỔ ĐẠI: Đã kích hoạt Thức Tỉnh Tộc V4 [" .. tostring(prof.Race or "Skyborn") .. "] + 1 Core Gear!")
+	G.Notify(player, "ĐỀN THĂNG HOA: Đã kích hoạt Thăng Hoa [" .. tostring(prof.Race or "Skyborn") .. "] + 1 Core Gear!")
 	G.Sync(player)
 	return true
 end
@@ -1115,21 +1182,6 @@ function VendorService.Start()
 			end
 		end
 	end)
-
-	-- Also listen on legacy ReplicatedStorage.Remotes.UIRequest for our 4 new vendor commands
-	local legacyRemotes = ReplicatedStorage:FindFirstChild("Remotes")
-	local uiReq = legacyRemotes and legacyRemotes:FindFirstChild("UIRequest")
-	if uiReq and uiReq:IsA("RemoteEvent") then
-		uiReq.OnServerEvent:Connect(function(plr, cmdOrPayload, arg2)
-			local cmd = type(cmdOrPayload) == "string" and cmdOrPayload
-				or (type(cmdOrPayload) == "table" and (cmdOrPayload.command or cmdOrPayload.action or cmdOrPayload.cmd))
-			if cmd == "BuyVendorItem" or cmd == "TradeWithCollector" or cmd == "SetFaction" or cmd == "StartTempleV4Trial" then
-				local payload = type(cmdOrPayload) == "table" and cmdOrPayload
-					or (type(arg2) == "table" and arg2 or { value = arg2 })
-				VendorService.HandleUIRequest(plr, cmd, payload)
-			end
-		end)
-	end
 end
 
 return VendorService

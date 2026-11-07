@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local DevGate = require(script.Parent:WaitForChild("DevGate"))
 
 local SocialEconomy = {}
 SocialEconomy._initialized = false
@@ -100,20 +101,20 @@ end
 local ISLAND_DIRECTORY = {
 	{ Id = "SkyHub", Name = "Sky Hub Harbor", Realm = "GoldenSky", Pos = Vector3.new(-317.4, 50.5, 527.8) },
 	{ Id = "GoldenSky", Name = "Aureon Lumen Plaza", Realm = "GoldenSky", Pos = Vector3.new(0, 50.5, 65) },
-	{ Id = "ZiolesGachaShrine", Name = "Zioles Gacha Shrine", Realm = "GoldenSky", Pos = Vector3.new(-560, 52.5, 996) },
+	{ Id = "ZiolesGachaShrine", Name = "Core Shrine", Realm = "GoldenSky", Pos = Vector3.new(-560, 52.5, 996) },
 	{ Id = "AetherShrines", Name = "Aether Home Shrine", Realm = "GoldenSky", Pos = Vector3.new(340, 52.5, 996) },
 	{ Id = "WestGarden", Name = "West Garden Pirate Bastion", Realm = "GoldenSky", Pos = Vector3.new(-2800, 50.5, -65) },
 	{ Id = "SunshardSanctuary", Name = "Sunshard Sky Sanctuary", Realm = "GoldenSky", Pos = Vector3.new(2800, 50.5, -55) },
 	{ Id = "FrozenCyber", Name = "Frozen Cyber Outpost", Realm = "FrozenCyber", Pos = Vector3.new(11620.5, 50.9, 534.8) },
-	{ Id = "CyberportCafe", Name = "Cyberport Cafe Trading Hub", Realm = "FrozenCyber", Pos = Vector3.new(9400, 50.9, 1785) },
+	{ Id = "CyberportCafe", Name = "Trade Station Hub", Realm = "FrozenCyber", Pos = Vector3.new(9400, 50.9, 1785) },
 	{ Id = "PermafrostGarrison", Name = "Permafrost Garrison", Realm = "FrozenCyber", Pos = Vector3.new(9400, 50.9, -2055) },
 	{ Id = "MicrochipRaidLab", Name = "Microchip Awakening Raid Lab", Realm = "FrozenCyber", Pos = Vector3.new(14600, 50.9, 1785) },
 	{ Id = "GlacialWreckage", Name = "Glacial Wreckage Danger Sea", Realm = "FrozenCyber", Pos = Vector3.new(14600, 50.9, -1812) },
 	{ Id = "ShadowRealm", Name = "Shadow Realm Outpost", Realm = "ShadowRealm", Pos = Vector3.new(-12593.4, 50.9, 414) },
-	{ Id = "CastleOnTheVoid", Name = "Castle on the Void", Realm = "ShadowRealm", Pos = Vector3.new(-14600, 50.9, 2173.1) },
+	{ Id = "CastleOnTheVoid", Name = "Void Bastion", Realm = "ShadowRealm", Pos = Vector3.new(-14600, 50.9, 2173.1) },
 	{ Id = "UmbralSanctum", Name = "Umbral Crystal Sanctum", Realm = "ShadowRealm", Pos = Vector3.new(-9400, 50.9, 1815) },
-	{ Id = "TempleOfTheCore", Name = "Temple of the Core (V4)", Realm = "ShadowRealm", Pos = Vector3.new(-14600, 50.9, -1785) },
-	{ Id = "LeviathanAbyss", Name = "Leviathan Abyss Outpost", Realm = "ShadowRealm", Pos = Vector3.new(-12000, 50.9, -3364.5) },
+	{ Id = "TempleOfTheCore", Name = "Ascension Shrine", Realm = "ShadowRealm", Pos = Vector3.new(-14600, 50.9, -1785) },
+	{ Id = "LeviathanAbyss", Name = "Phantom Isle Outpost", Realm = "ShadowRealm", Pos = Vector3.new(-12000, 50.9, -3364.5) },
 	{ Id = "VerdantCrown", Name = "The Verdant Crown", Realm = "VerdantCrown", Pos = Vector3.new(0, 170.9, -8985) },
 	{ Id = "EmberforgeWastes", Name = "Emberforge Wastes", Realm = "EmberforgeWastes", Pos = Vector3.new(12000, 170.5, -9265) },
 	{ Id = "AbyssalTides", Name = "Abyssal Tides", Realm = "AbyssalTides", Pos = Vector3.new(-12000, 170.9, -8964.5) },
@@ -138,8 +139,8 @@ ISLAND_BY_ID.templeofthecoreracev4 = ISLAND_BY_ID.TempleOfTheCore
 
 local SAFE_ZONES = {
 	{ Name = "Sky Hub Sanctuary", Pos = Vector3.new(-317.4, 48, 527.8), Radius = 240 },
-	{ Name = "Cyberport Cafe Safe Zone", Pos = Vector3.new(9400, 48, 1785), Radius = 220 },
-	{ Name = "Castle on the Void Safe Zone", Pos = Vector3.new(-14600, 48, 2173.1), Radius = 190 },
+	{ Name = "Trade Station Safe Zone", Pos = Vector3.new(9400, 48, 1785), Radius = 220 },
+	{ Name = "Void Bastion Safe Zone", Pos = Vector3.new(-14600, 48, 2173.1), Radius = 190 },
 }
 
 local function root(p)
@@ -236,17 +237,17 @@ local function buildHomePointCrystalAnchors()
 
 	local anchorIslands = {
 		{ Id = "SkyHub", Name = "Sky Hub", Realm = "GoldenSky", Pos = Vector3.new(-329, 46.7, 540) },
-		{ Id = "ZiolesGachaShrine", Name = "Zioles Shrine", Realm = "GoldenSky", Pos = Vector3.new(-552, 48.7, 998) },
+		{ Id = "ZiolesGachaShrine", Name = "Core Shrine", Realm = "GoldenSky", Pos = Vector3.new(-552, 48.7, 998) },
 		{ Id = "WestGarden", Name = "West Garden", Realm = "GoldenSky", Pos = Vector3.new(-2788, 46.7, -53) },
 		{ Id = "SunshardSanctuary", Name = "Sunshard Sanctuary", Realm = "GoldenSky", Pos = Vector3.new(2812, 46.7, -45) },
 		{ Id = "FrozenCyber", Name = "Frozen Cyber Dock", Realm = "FrozenCyber", Pos = Vector3.new(11606, 47.1, 545) },
-		{ Id = "CyberportCafe", Name = "Cyberport Cafe", Realm = "FrozenCyber", Pos = Vector3.new(9412, 47.1, 1797) },
+		{ Id = "CyberportCafe", Name = "Trade Station", Realm = "FrozenCyber", Pos = Vector3.new(9412, 47.1, 1797) },
 		{ Id = "PermafrostGarrison", Name = "Permafrost Garrison", Realm = "FrozenCyber", Pos = Vector3.new(9412, 47.1, -2045) },
 		{ Id = "MicrochipRaidLab", Name = "Microchip Raid Lab", Realm = "FrozenCyber", Pos = Vector3.new(14612, 47.1, 1797) },
 		{ Id = "ShadowRealm", Name = "Shadow Realm Dock", Realm = "ShadowRealm", Pos = Vector3.new(-12607, 47.1, 406) },
-		{ Id = "CastleOnTheVoid", Name = "Castle on the Void", Realm = "ShadowRealm", Pos = Vector3.new(-14588, 47.1, 2181) },
-		{ Id = "TempleOfTheCore", Name = "Temple of the Core", Realm = "ShadowRealm", Pos = Vector3.new(-14588, 47.1, -1775) },
-		{ Id = "LeviathanAbyss", Name = "Leviathan Abyss", Realm = "ShadowRealm", Pos = Vector3.new(-11988, 47.1, -3355) },
+		{ Id = "CastleOnTheVoid", Name = "Void Bastion", Realm = "ShadowRealm", Pos = Vector3.new(-14588, 47.1, 2181) },
+		{ Id = "TempleOfTheCore", Name = "Ascension Shrine", Realm = "ShadowRealm", Pos = Vector3.new(-14588, 47.1, -1775) },
+		{ Id = "LeviathanAbyss", Name = "Phantom Isle", Realm = "ShadowRealm", Pos = Vector3.new(-11988, 47.1, -3355) },
 	}
 
 	for _, sp in ipairs(anchorIslands) do
@@ -313,31 +314,31 @@ end
 local LORE_SNIPPETS = {
 	"Mảnh Lõi #01: Trước Ngày Vỡ Tan, Biệt Đội Skyborn canh giữ Lõi Thái Dương giữa tầng mây vĩnh cửu.",
 	"Mảnh Lõi #02: Aureon Sentinel được đúc từ ánh sáng thuần khiết để phong ấn Khe Nứt Hư Không.",
-	"Mảnh Lõi #03: Zioles lưu giữ 12 Trái Aether cổ đại kết tinh từ linh hồn các vì sao rơi.",
+	"Mảnh Lõi #03: Hiền Giả Lõi lưu giữ 12 Lõi Aether cổ đại kết tinh từ linh hồn các vì sao rơi.",
 	"Mảnh Lõi #04: Điện Thờ Aether kết nối mạch năng lượng giữa 20 quần đảo trên Biển Mây.",
 	"Mảnh Lõi #05: Hải Tặc West Garden từng tìm thấy bản vẽ Chiến Hạm Celestial Galleon đầu tiên.",
 	"Mảnh Lõi #06: Thánh Địa Sunshard là nơi Kael rèn thành thần kiếm Dawnbringer huyền thoại.",
 	"Mảnh Lõi #07: Khi Lõi Vỡ Tan, Lãnh Địa Frozen Cyber bị đóng băng trong bão tuyết lượng tử.",
 	"Mảnh Lõi #08: Cryon Prime dựng 3 Cột Băng Vĩnh Cửu để giam cầm thời gian tại Pháo Đài Băng.",
-	"Mảnh Lõi #09: Quán Cà Phê Cyberport trở thành trung tâm giao dịch tự do của cả Hải Quân lẫn Hải Tặc.",
+	"Mảnh Lõi #09: Trạm Giao Thương trở thành trung tâm trao đổi tự do của cả Hải Quân lẫn Hải Tặc.",
 	"Mảnh Lõi #10: Pháo Đài Permafrost cất giữ công thức cường hóa vũ khí +15 không bao giờ xịt.",
-	"Mảnh Lõi #11: Dr. Vega phát minh Microchip Thức Tỉnh V2 tại Phòng Thí Nghiệm Sky 2.",
+	"Mảnh Lõi #11: Dr. Vega phát minh Microchip Thức Tỉnh V2 tại Phòng Thí Nghiệm Tầng Trời 2.",
 	"Mảnh Lõi #12: Dưới Xác Tàu Glacial Wreckage, bầy Cá Mập Trời Terror Sky-Shark rình rập mọi con thuyền.",
-	"Mảnh Lõi #13: Vượt qua Danger Level 6, Đảo Ảo Ảnh Mirage chỉ hiện ra cho kẻ mang dòng máu Thức Tỉnh.",
-	"Mảnh Lõi #14: Blue Resonance Gear là chìa khóa duy nhất mở phong ấn Sức Mạnh Chủng Tộc V4.",
-	"Mảnh Lõi #15: Sky 3 Shadow Realm chìm trong hoàng hôn tím thẫm kể từ khi Noxar chiếm Ngai Vàng.",
+	"Mảnh Lõi #13: Vượt qua Danger Level 6, Đảo Hư Quang chỉ hiện ra cho kẻ mang dòng máu Thăng Hoa.",
+	"Mảnh Lõi #14: Blue Resonance Gear là chìa khóa duy nhất mở phong ấn Sức Mạnh Thăng Hoa.",
+	"Mảnh Lõi #15: Tầng Trời 3 Shadow Realm chìm trong hoàng hôn tím thẫm kể từ khi Noxar chiếm Ngai Vàng.",
 	"Mảnh Lõi #16: 4 Trụ Ánh Sáng Thanh Tẩy là di vật cuối cùng có thể xóa tan Lõi Hư Không Noxar.",
-	"Mảnh Lõi #17: Tại Castle on the Void, 3 Ngọn Đuốc Linh Hồn vẫn đợi kẻ đủ can đảm gọi Soul Reaper.",
-	"Mảnh Lõi #18: Rừng Tinh Thể Umbral ẩn chứa bi kịch của Kiếm Thánh rèn song kiếm Cursed Dual Skyblades.",
-	"Mảnh Lõi #19: Temple of the Core lưu giữ 4 Haki Cổ Đại: Skyborn, Cyborg, Mink và Leviathan.",
-	"Mảnh Lõi #20: Thủy Tổ Abyssal Leviathan mang trái tim bất diệt — chỉ dây cáp Harpoon mới kéo được về cảng.",
+	"Mảnh Lõi #17: Tại Pháo Đài Hư Không, 3 Ngọn Đuốc Linh Hồn vẫn đợi kẻ đủ can đảm gọi Soul Reaper.",
+	"Mảnh Lõi #18: Rừng Tinh Thể Umbral ẩn chứa bi kịch của Kiếm Thánh rèn Song Kiếm Nguyệt Thực.",
+	"Mảnh Lõi #19: Đền Thăng Hoa lưu giữ 6 Huyết Mạch Thượng Cổ của bầu trời.",
+	"Mảnh Lõi #20: Thủy Xà Vực Thẳm mang trái tim bất diệt — chỉ dây cáp Harpoon mới kéo được về cảng.",
 	"Mảnh Lõi #21: Vương Miện Cổ Thụ Verdant Crown mọc lên từ hạt giống sinh mệnh đầu tiên của Bầu Trời.",
-	"Mảnh Lõi #22: Lò Rèn Lửa Emberforge dùng dung nham sao băng để tôi luyện Haki Vũ Trang Bậc 5.",
+	"Mảnh Lõi #22: Lò Rèn Lửa Emberforge dùng dung nham sao băng để tôi luyện Giáp Ý Chí Bậc 5.",
 	"Mảnh Lõi #23: Thủy Triều Vực Sâu Abyssal Tides giao thoa giữa Biển Mây và Đại Dương Cổ Đại.",
 	"Mảnh Lõi #24: Chronos Bastion là pháo đài nằm ngoài dòng chảy thời gian của Đại Giám Hộ Chronos.",
 	"Mảnh Lõi #25: Tận Cùng Bức Màn Veil's End là nơi Veyr canh giữ mảnh Lõi Tối Thượng cuối cùng.",
 	"Mảnh Lõi #26: Tháp Vô Tận Sky Spire gồm 50 tầng thử thách dành cho những Chiến Binh Vượt Giới Hạn.",
-	"Mảnh Lõi #27: Người sở hữu Haki Quan Sát V2 có thể nhìn thấu đẳng cấp và sức mạnh của mọi đối thủ.",
+	"Mảnh Lõi #27: Người sở hữu Thấu Ý V2 có thể nhìn thấu đẳng cấp và sức mạnh của mọi đối thủ.",
 	"Mảnh Lõi #28: Phù Phép Enchantment Scroll khắc cổ ngữ Vampiric và ChainVolt trực tiếp lên lưỡi kiếm.",
 	"Mảnh Lõi #29: Khi 30 Bia Cổ Lore hội tụ, tri thức của Kiến Trúc Sư Bầu Trời sẽ thức tỉnh trọn vẹn.",
 	"Mảnh Lõi #30: SKYBREAK — Những Mảnh Lõi Vỡ Tan nay đã sẵn sàng cho Chủ Nhân Mới của Thiên Giới!",
@@ -1027,7 +1028,7 @@ local MILESTONE_DEFS = {
 	},
 	{
 		Id = "FirstAwakenedFruit",
-		Name = "Thức Tỉnh Trái Aether V2 Đầu Tiên",
+		Name = "Lõi Thức Tỉnh V2 Đầu Tiên",
 		Gold = 15000,
 		Shards = 500,
 		TitleId = "awakened_core",
@@ -1114,7 +1115,7 @@ local MILESTONE_DEFS = {
 	},
 	{
 		Id = "LeviathanSlayer",
-		Name = "Thợ Săn Trái Tim Leviathan",
+		Name = "Thợ Săn Trái Tim Thủy Xà",
 		Gold = 40000,
 		Shards = 1100,
 		TitleId = "leviathan_slayer",
@@ -1130,7 +1131,7 @@ local MILESTONE_DEFS = {
 	},
 	{
 		Id = "HakiStage5",
-		Name = "Bá Khí Vũ Trang Toàn Thân (Stage 5)",
+		Name = "Giáp Ý Chí Toàn Thân (Stage 5)",
 		Gold = 28000,
 		Shards = 750,
 		TitleId = "haki_grandmaster",
@@ -1182,10 +1183,10 @@ end
 local VOID_MERCHANT_STOPS = {
 	{ Id = "SkyHub", Name = "Sky Hub Plaza", Realm = "GoldenSky", Pos = Vector3.new(-310, 46.9, 512) },
 	{ Id = "SunshardSanctuary", Name = "Sunshard Sanctuary", Realm = "GoldenSky", Pos = Vector3.new(2788, 46.9, -59) },
-	{ Id = "ZiolesGachaShrine", Name = "Zioles Gacha Shrine", Realm = "GoldenSky", Pos = Vector3.new(-548, 48.9, 988) },
-	{ Id = "CyberportCafe", Name = "Cyberport Cafe", Realm = "FrozenCyber", Pos = Vector3.new(9388, 47.3, 1792) },
+	{ Id = "ZiolesGachaShrine", Name = "Core Shrine", Realm = "GoldenSky", Pos = Vector3.new(-548, 48.9, 988) },
+	{ Id = "CyberportCafe", Name = "Trade Station", Realm = "FrozenCyber", Pos = Vector3.new(9388, 47.3, 1792) },
 	{ Id = "FrozenOutpost", Name = "Frozen Outpost", Realm = "FrozenCyber", Pos = Vector3.new(11626, 47.3, 520) },
-	{ Id = "CastleOnTheVoid", Name = "Castle on the Void", Realm = "ShadowRealm", Pos = Vector3.new(-14586, 47.3, 2165) },
+	{ Id = "CastleOnTheVoid", Name = "Void Bastion", Realm = "ShadowRealm", Pos = Vector3.new(-14586, 47.3, 2165) },
 	{ Id = "ShadowCitadel", Name = "Shadow Citadel", Realm = "ShadowRealm", Pos = Vector3.new(-12588, 47.3, 408) },
 	{ Id = "ChronosBastion", Name = "Chronos Bastion", Realm = "ChronosBastion", Pos = Vector3.new(-14, 227.3, -13476) },
 }
@@ -1194,7 +1195,7 @@ local VOID_MERCHANT_STOCK = {
 	EnchantScroll = { Id = "EnchantScroll", Name = "Enchant Scroll (Cuộn Phù Phép)", Shards = 95, Gold = 12000, Count = 1 },
 	CoreEssence = { Id = "CoreEssence", Name = "Core Essence x2", Shards = 140, Gold = 18000, Count = 2 },
 	SunshardCore = { Id = "SunshardCore", Name = "Sunshard Core x5", Shards = 110, Gold = 14000, Count = 5 },
-	RandomFruitBox = { Id = "RandomFruitBox", Name = "Hộp Trái Aether Bí Ẩn", Shards = 260, Gold = 35000, Count = 1 },
+	RandomFruitBox = { Id = "RandomFruitBox", Name = "Hộp Lõi Aether Bí Ẩn", Shards = 260, Gold = 35000, Count = 1 },
 }
 local VOID_STOCK_ORDER = { "EnchantScroll", "CoreEssence", "SunshardCore", "RandomFruitBox" }
 
@@ -1975,7 +1976,7 @@ function SocialEconomy.TogglePvP(p, forceState)
 	p:SetAttribute("PvPEnabled", desired)
 	if desired then
 		p:SetAttribute("PvPShieldUntil", 0)
-		G.Notify(p, "CỜ PVP: BẬT (Có thể giao đấu ngoài Vùng An Toàn Sky Hub / Cyberport Cafe)!")
+		G.Notify(p, "CỜ PVP: BẬT (Có thể giao đấu ngoài Vùng An Toàn Sky Hub / Trạm Giao Thương)!")
 	else
 		G.Notify(p, "CỜ PVP: TẮT (Chế độ Hòa Bình PvE)!")
 	end
@@ -2269,7 +2270,7 @@ function SocialEconomy.InspectPlayer(p, payload)
 		WeaponEnchant = weaponEnchant,
 		EquippedGun = tostring(prof.EquippedGun or "soul_guitar_void"),
 		HakiStage = tonumber(prof.HakiStage) or 0,
-		HakiColorId = tostring(prof.HakiColorId or "crimson_conqueror"),
+		HakiColorId = tostring(prof.HakiColorId or "solar_gold"),
 		KenV2Unlocked = prof.KenV2Unlocked == true,
 		HighestSpireFloor = tonumber(prof.HighestSpireFloor) or 0,
 		LeviathanHearts = tonumber(prof.LeviathanHearts) or 0,
@@ -2501,7 +2502,7 @@ end
 local DevTeleportCursor = {}
 
 function SocialEconomy.HandleDevSandbox(p, payload)
-	if not (RunService:IsStudio() or workspace:GetAttribute("EnableDevSandbox") == true) then
+	if not DevGate.IsAllowed(p) then
 		return false
 	end
 	local prof = D and D.Get(p)
@@ -2530,7 +2531,7 @@ function SocialEconomy.HandleDevSandbox(p, payload)
 			end
 			ph.Health = ph.MaxHealth
 		end
-		G.Notify(p, "[DEV SANDBOX] Full Fury: 100% HP, Energy, Stamina, Race V4 Fury & Ken Dodges!")
+		G.Notify(p, "[DEV SANDBOX] Full Fury: 100% HP, Energy, Stamina, Ascension Fury & Will Sense Dodges!")
 		G.Sync(p)
 		return true
 
@@ -2636,7 +2637,7 @@ function SocialEconomy.HandleDevSandbox(p, payload)
 		G.SyncCompanions(p)
 		SocialEconomy.CheckMilestones(p, prof)
 		restoreFullVitals(p)
-		G.Notify(p, "[DEV SANDBOX] UNLOCK ALL: Lv.2550, 12 Awakened Fruits, 6 Styles, 5-Star +15 Weapons, Stage 5 Haki, Race V4 & All Worlds!")
+		G.Notify(p, "[DEV SANDBOX] UNLOCK ALL: Lv.2550, 12 Awakened Cores, 6 Styles, 5-Star +15 Weapons, Stage 5 Will Armor, Ascension & All Worlds!")
 		G.Sync(p)
 		return true
 
@@ -3115,8 +3116,8 @@ function SocialEconomy.Init(gameSvc, dataSvc, worldSvc, configSvc)
 							or (C.Fruits and C.Fruits[rolled] and C.Fruits[rolled].Name)
 							or rolled
 						SocialEconomy.BroadcastWorldBanner(
-							"GACHA THẦN THOẠI XUẤT THẾ!",
-							p.DisplayName .. " vua quay trung Trai MYTHICAL [" .. fName .. "] tai Zioles!",
+							"LÕI THẦN THOẠI XUẤT THẾ!",
+							p.DisplayName .. " vừa cầu trúng Lõi MYTHICAL [" .. fName .. "] tại Điện Cầu Lõi!",
 							"MythicalDrop"
 						)
 					end
@@ -3269,7 +3270,7 @@ function SocialEconomy.Init(gameSvc, dataSvc, worldSvc, configSvc)
 		statePayload.VoidMerchantIsland = tostring(workspace:GetAttribute("VoidMerchantIsland") or "")
 	end
 
-	-- 11. Chain G.HandleUIRequest & Connect SkybreakRemotes.UIRequest
+	-- 11. Chain G.HandleUIRequest
 	local prevHandleUI = G.HandleUIRequest
 	G.HandleUIRequest = function(p, cmd, payload)
 		if SOCIAL_ECONOMY_COMMANDS[cmd] then
@@ -3279,22 +3280,6 @@ function SocialEconomy.Init(gameSvc, dataSvc, worldSvc, configSvc)
 			return prevHandleUI(p, cmd, payload)
 		end
 		return false
-	end
-
-	if R and R:FindFirstChild("UIRequest") then
-		R.UIRequest.OnServerEvent:Connect(function(p, cmdOrTable, arg2)
-			local cmd, payload
-			if type(cmdOrTable) == "string" then
-				cmd = cmdOrTable
-				payload = type(arg2) == "table" and arg2 or { value = arg2 }
-			elseif type(cmdOrTable) == "table" then
-				cmd = cmdOrTable.command or cmdOrTable.action or cmdOrTable.cmd
-				payload = cmdOrTable
-			end
-			if type(cmd) == "string" and SOCIAL_ECONOMY_COMMANDS[cmd] then
-				SocialEconomy.HandleUIRequest(p, cmd, payload)
-			end
-		end)
 	end
 
 	-- 12. Player Disconnect Cleanup

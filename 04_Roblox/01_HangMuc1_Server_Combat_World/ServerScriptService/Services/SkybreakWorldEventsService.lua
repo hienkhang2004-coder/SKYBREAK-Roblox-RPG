@@ -118,7 +118,7 @@ local SHIP_SPECS = {
 	},
 	LeviathanHunterShip = {
 		MeshId = "LeviathanHunterShip",
-		DisplayName = "LEVIATHAN HUNTER DREADNOUGHT",
+		DisplayName = "SERPENT HUNTER DREADNOUGHT",
 		Speed = 92,
 		TurnSpeed = 1.45,
 		CannonDamage = 6500,
@@ -130,7 +130,7 @@ local SHIP_SPECS = {
 local HARBOR_PORTS = {
 	{ Id = "Port_SkyHub", Name = "Cảng Sky Hub", Realm = "GoldenSky", PedestalPos = Vector3.new(-366, 46.7, 548), WaterPos = Vector3.new(-428, 44.0, 565), DefaultShip = "CelestialAetherGalleon" },
 	{ Id = "Port_FrozenCyber", Name = "Cảng Frozen Cyber", Realm = "FrozenCyber", PedestalPos = Vector3.new(11572, 47.1, 560), WaterPos = Vector3.new(11512, 44.0, 585), DefaultShip = "CyberEnforcerShip" },
-	{ Id = "Port_Cyberport", Name = "Cảng Cyberport Cafe", Realm = "FrozenCyber", PedestalPos = Vector3.new(9400, 47.1, 2312), WaterPos = Vector3.new(9400, 44.0, 2365), DefaultShip = "CyberEnforcerShip" },
+	{ Id = "Port_Cyberport", Name = "Cảng Trạm Giao Thương", Realm = "FrozenCyber", PedestalPos = Vector3.new(9400, 47.1, 2312), WaterPos = Vector3.new(9400, 44.0, 2365), DefaultShip = "CyberEnforcerShip" },
 	{ Id = "Port_ShadowRealm", Name = "Cảng Shadow Realm", Realm = "ShadowRealm", PedestalPos = Vector3.new(-12658, 47.1, 446), WaterPos = Vector3.new(-12722, 44.0, 478), DefaultShip = "LeviathanHunterShip" },
 }
 
@@ -270,7 +270,7 @@ local function ensureExtraEnemiesInConfig()
 			Elite = true,
 		},
 		SkySeaBeast = C.Enemies.SkySeaBeast or {
-			Name = "Sky Sea Beast",
+			Name = "Thú Trời (Sky Beast)",
 			VisualAsset = "SkySeaBeast",
 			Element = "Frost",
 			Level = 1650,
@@ -286,7 +286,7 @@ local function ensureExtraEnemiesInConfig()
 			Boss = true,
 		},
 		AbyssalLeviathan = C.Enemies.AbyssalLeviathan or {
-			Name = "Abyssal Leviathan",
+			Name = "Thủy Xà Vực Thẳm (Abyss Serpent)",
 			VisualAsset = "AbyssalLeviathan",
 			Element = "Void",
 			Level = 2350,
@@ -919,7 +919,7 @@ local function buildSoulReaperRitualSet()
 
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Thắp Đuốc Linh Hồn #" .. idx
-		prompt.ObjectText = "Soul Torch #" .. idx .. " • Castle on the Void"
+		prompt.ObjectText = "Soul Torch #" .. idx .. " • Pháo Đài Hư Không"
 		prompt.MaxActivationDistance = 14
 		prompt.HoldDuration = 0
 		prompt.RequiresLineOfSight = false
@@ -968,7 +968,7 @@ local function buildSoulReaperRitualSet()
 				refreshRitualUI()
 				broadcastWorldBanner(
 					"NGHI THỨC HƯ KHÔNG HOÀN TẤT",
-					plr.Name .. " đã thắp sáng 3 Đuốc Linh Hồn và triệu hồi Raid Boss Lv.2050 SOUL REAPER RIFT tại Castle on the Void!",
+					plr.Name .. " đã thắp sáng 3 Đuốc Linh Hồn và triệu hồi Raid Boss Lv.2050 SOUL REAPER RIFT tại Pháo Đài Hư Không!",
 					"Boss"
 				)
 			end
@@ -977,7 +977,7 @@ local function buildSoulReaperRitualSet()
 
 	local altarPrompt = Instance.new("ProximityPrompt")
 	altarPrompt.ActionText = "Xem Trạng Thái Tế Đàn Soul Reaper"
-	altarPrompt.ObjectText = "Soul Altar • Castle on the Void"
+	altarPrompt.ObjectText = "Soul Altar • Pháo Đài Hư Không"
 	altarPrompt.MaxActivationDistance = 14
 	altarPrompt.HoldDuration = 0
 	altarPrompt.RequiresLineOfSight = false
@@ -1774,7 +1774,7 @@ local function buildHarborShipwrights()
 				plr,
 				"Thợ Đóng Tàu • Sky Shipwright",
 				"XƯỞNG CHIẾN HẠM BAY 3D • " .. string.upper(port.Name),
-				"Từ Thuyền Buồm Sky Sloop miễn phí đến Đại Chiến Hạm Aether Galleon và Thần Hạm Săn Leviathan gắn Lao Móc Thần — hãy chọn chiến hạm để hạ thủy!",
+				"Từ Thuyền Buồm Sky Sloop miễn phí đến Đại Chiến Hạm Aether Galleon và Thần Hạm Săn Thủy Xà gắn Lao Móc Thần — hãy chọn chiến hạm để hạ thủy!",
 				"Mở Xưởng Chiến Hạm 3D",
 				"OpenScreen:NPCShop:Shipwright"
 			)
@@ -1902,12 +1902,12 @@ local function spawnLeviathanHeartRelic(deathPos, killerPlayer)
 	tl.TextScaled = true
 	tl.TextColor3 = Color3.fromRGB(255, 110, 155)
 	tl.TextStrokeTransparency = 0.15
-	tl.Text = "TIM THỦY TỔ LEVIATHAN [E]"
+	tl.Text = "TIM THỦY XÀ VỰC THẲM [E]"
 	tl.Parent = bill
 
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Gắn Dây Cáp Kéo Tim Leviathan"
-	prompt.ObjectText = "Leviathan Heart • Thủy Tổ Hư Không"
+	prompt.ActionText = "Gắn Dây Cáp Kéo Tim Thủy Xà"
+	prompt.ObjectText = "Abyss Serpent Heart • Thủy Xà Vực Thẳm"
 	prompt.MaxActivationDistance = 30
 	prompt.HoldDuration = 0.5
 	prompt.RequiresLineOfSight = false
@@ -1928,7 +1928,7 @@ local function spawnLeviathanHeartRelic(deathPos, killerPlayer)
 
 	prompt.Triggered:Connect(function(plr)
 		if heartEntry.TowedByShip and heartEntry.TowedByShip.Model and heartEntry.TowedByShip.Model.Parent then
-			G.Notify(plr, "Tim Leviathan đã được móc cáp vào chiến hạm!")
+			G.Notify(plr, "Tim Thủy Xà đã được móc cáp vào chiến hạm!")
 			return
 		end
 		local shipEntry = ActiveWarships[plr]
@@ -1965,11 +1965,11 @@ local function spawnLeviathanHeartRelic(deathPos, killerPlayer)
 
 		shipEntry.Model:SetAttribute("TowingLeviathanHeart", true)
 		plr:SetAttribute("TowingLeviathanHeart", true)
-		G.Notify(plr, "ĐÃ MÓC CÁP HARPOON! Hãy lái Chiến Hạm kéo Tim Leviathan về bất kỳ Cảng Sky Shipwright / Sky Hub Port (trong 55m) để nhận thưởng Thủy Tổ!")
+		G.Notify(plr, "ĐÃ MÓC CÁP HARPOON! Hãy lái Chiến Hạm kéo Tim Thủy Xà về bất kỳ Cảng Sky Shipwright / Sky Hub Port (trong 55m) để nhận thưởng Thủy Xà Vực Thẳm!")
 	end)
 
 	if killerPlayer then
-		G.Notify(killerPlayer, "TIM THỦY TỔ LEVIATHAN đã trồi lên biển mây! Hãy bấm [E] để gắn cáp Harpoon vào Chiến Hạm và kéo về Cảng!")
+		G.Notify(killerPlayer, "TIM THỦY XÀ VỰC THẲM đã trồi lên biển mây! Hãy bấm [E] để gắn cáp Harpoon vào Chiến Hạm và kéo về Cảng!")
 	end
 end
 
@@ -1993,7 +1993,7 @@ local function detachLeviathanHeartTow(he)
 		he.Prompt.Enabled = true
 	end
 	if he.Label and he.Label.Parent then
-		he.Label.Text = "TIM THỦY TỔ LEVIATHAN [E]"
+		he.Label.Text = "TIM THỦY XÀ VỰC THẲM [E]"
 	end
 end
 
@@ -2032,13 +2032,13 @@ local function tickLeviathanHearts(dt)
 							prof.UnlockedShips = prof.UnlockedShips or {}
 							prof.UnlockedShips.LeviathanHunterShip = true
 							G.Reward(owner, 95000, 35000, 0)
-							G.Notify(owner, "GIAO TIM LEVIATHAN THÀNH CÔNG: +1 Leviathan Heart, +500 Core Shards, +35,000 Gold, Mở khóa Khiên Thủy Tổ & Danh hiệu [Thợ Săn Thủy Tổ Leviathan]!")
+							G.Notify(owner, "GIAO TIM THỦY XÀ THÀNH CÔNG: +1 Tim Thủy Xà, +500 Core Shards, +35,000 Gold, Mở khóa Khiên Thủy Xà & Danh hiệu [Thợ Săn Thủy Xà Vực Thẳm]!")
 							G.Sync(owner)
 							task.spawn(D.Save, owner, false)
 						end
 						broadcastWorldBanner(
-							"TIM THỦY TỔ LEVIATHAN CẬP CẢNG!",
-							owner.Name .. " đã kéo thành công Tim Thủy Tổ Leviathan về " .. port.Name .. "!",
+							"TIM THỦY XÀ VỰC THẲM CẬP CẢNG!",
+							owner.Name .. " đã kéo thành công Tim Thủy Xà Vực Thẳm về " .. port.Name .. "!",
 							"Mythic"
 						)
 					end
@@ -2076,8 +2076,8 @@ function WorldEvents.SpawnSeaMonsterEvent(p, monsterId, customPos)
 
 	if mId == "AbyssalLeviathan" then
 		broadcastWorldBanner(
-			"THỦY TỔ ABYSSAL LEVIATHAN TRỒI LÊN!",
-			"Vùng Biển Mây Nguy Hiểm (Danger 6) rung chuyển — Abyssal Leviathan Lv.2350 đã xuất hiện!",
+			"THỦY XÀ VỰC THẲM TRỒI LÊN!",
+			"Vùng Biển Mây Nguy Hiểm (Danger 6) rung chuyển — Thủy Xà Vực Thẳm Lv.2350 đã xuất hiện!",
 			"Leviathan"
 		)
 	elseif p then
@@ -2225,13 +2225,13 @@ function WorldEvents.SpawnMirageIsland(nearPlayerOrPos)
 	gLbl.TextScaled = true
 	gLbl.TextColor3 = Color3.fromRGB(92, 240, 255)
 	gLbl.TextStrokeTransparency = 0.18
-	gLbl.Text = "BLUE RESONANCE GEAR [RACE V4]"
+	gLbl.Text = "BLUE RESONANCE GEAR [THĂNG HOA]"
 	gLbl.Parent = gBill
 
 	local claimedBy = {}
 	local gPrompt = Instance.new("ProximityPrompt")
-	gPrompt.ActionText = "Thu Thập Blue Resonance Gear [V4]"
-	gPrompt.ObjectText = "Cổ Vật Thức Tỉnh Tộc V4 • Mirage Island"
+	gPrompt.ActionText = "Thu Thập Blue Resonance Gear [Thăng Hoa]"
+	gPrompt.ObjectText = "Cổ Vật Thăng Hoa • Đảo Hư Quang"
 	gPrompt.MaxActivationDistance = 16
 	gPrompt.HoldDuration = 0.4
 	gPrompt.RequiresLineOfSight = false
@@ -2242,7 +2242,7 @@ function WorldEvents.SpawnMirageIsland(nearPlayerOrPos)
 			return
 		end
 		if claimedBy[uid] then
-			G.Notify(plr, "Bạn đã thu thập Blue Resonance Gear trên đảo Mirage đợt này rồi!")
+			G.Notify(plr, "Bạn đã thu thập Blue Resonance Gear trên Đảo Hư Quang đợt này rồi!")
 			return
 		end
 		local prof = D.Get(plr)
@@ -2254,7 +2254,7 @@ function WorldEvents.SpawnMirageIsland(nearPlayerOrPos)
 		prof.RaceV4Unlocked = true
 		prof.RaceTier = 4
 		prof.CoreShards = (prof.CoreShards or 0) + 300
-		G.Notify(plr, "THỨC TỈNH CỔ ĐẠI: Thu thập Blue Resonance Gear (+1 CoreGear, +300 Shards) -> Đã MỞ KHÓA RACE V4!")
+		G.Notify(plr, "THĂNG HOA CỔ ĐẠI: Thu thập Blue Resonance Gear (+1 CoreGear, +300 Shards) -> Đã MỞ KHÓA THĂNG HOA!")
 		G.Sync(plr)
 	end)
 
@@ -2284,12 +2284,12 @@ function WorldEvents.SpawnMirageIsland(nearPlayerOrPos)
 	dLbl.TextScaled = true
 	dLbl.TextColor3 = Color3.fromRGB(215, 138, 255)
 	dLbl.TextStrokeTransparency = 0.18
-	dLbl.Text = "MIRAGE STOCK DEALER • TRÁI HIẾM [E]"
+	dLbl.Text = "THƯƠNG NHÂN HƯ QUANG • LÕI HIẾM [E]"
 	dLbl.Parent = dBill
 
 	local dPrompt = Instance.new("ProximityPrompt")
-	dPrompt.ActionText = "Giao Dịch Kho Trái Ác Quỷ Mirage"
-	dPrompt.ObjectText = "Mirage Stock Dealer • Đảo Ảo Ảnh"
+	dPrompt.ActionText = "Giao Dịch Kho Lõi Aether Hư Quang"
+	dPrompt.ObjectText = "Thương Nhân Hư Quang • Đảo Hư Quang"
 	dPrompt.MaxActivationDistance = 16
 	dPrompt.HoldDuration = 0
 	dPrompt.RequiresLineOfSight = false
@@ -2298,10 +2298,10 @@ function WorldEvents.SpawnMirageIsland(nearPlayerOrPos)
 		G.Interact(plr, "MirageDealer")
 		G.SendDialogue(
 			plr,
-			"Mirage Stock Dealer",
-			"THƯƠNG NHÂN ĐẢO ẢO ẢNH",
-			"Chào mừng tới Đảo Ảo Ảnh Mirage! Kho Trái Ác Quỷ Thần Thoại của ta có tỉ lệ xuất hiện cao gấp đôi — hãy mở Cửa Hàng Mirage 3D!",
-			"Mở Cửa Hàng Mirage 3D",
+			"Thương Nhân Hư Quang",
+			"THƯƠNG NHÂN ĐẢO HƯ QUANG",
+			"Chào mừng tới Đảo Hư Quang (Phantom Isle)! Kho Lõi Aether Thần Thoại của ta có tỉ lệ xuất hiện cao gấp đôi — hãy mở Cửa Hàng Hư Quang 3D!",
+			"Mở Cửa Hàng Hư Quang 3D",
 			"OpenScreen:NPCShop:MirageDealer"
 		)
 	end)
@@ -2318,8 +2318,8 @@ function WorldEvents.SpawnMirageIsland(nearPlayerOrPos)
 	workspace:SetAttribute("MirageIslandEndsAt", endsAt)
 
 	broadcastWorldBanner(
-		"ĐẢO ẢO ẢNH MIRAGE XUẤT HIỆN!",
-		"Mirage Sky Island đã hiện ra trong 15 phút! Tìm Blue Resonance Gear (Race V4) & Mirage Stock Dealer!",
+		"ĐẢO HƯ QUANG XUẤT HIỆN!",
+		"Đảo Hư Quang (Phantom Isle) đã hiện ra trong 15 phút! Tìm Blue Resonance Gear (Thăng Hoa) & Thương Nhân Hư Quang!",
 		"Mirage"
 	)
 	return m, center
@@ -2339,7 +2339,7 @@ function WorldEvents.StartPirateRaidSiege(triggerPlayer)
 		end
 		if aliveAny then
 			if triggerPlayer then
-				G.Notify(triggerPlayer, "Đợt Hải Tặc Công Thành tại Castle on the Void đang diễn ra!")
+				G.Notify(triggerPlayer, "Đợt Hải Tặc Công Thành tại Pháo Đài Hư Không đang diễn ra!")
 			end
 			return
 		end
@@ -2376,8 +2376,8 @@ function WorldEvents.StartPirateRaidSiege(triggerPlayer)
 	}
 
 	broadcastWorldBanner(
-		"HẢI TẶC CÔNG THÀNH CASTLE ON THE VOID!",
-		"8 Hải Tặc Hư Không & Chỉ Huy Công Thành đang tấn công! Người kết liễu Chỉ Huy sẽ nhận chắc chắn 1 Trái Ác Quỷ 3D!",
+		"HẢI TẶC CÔNG THÀNH PHÁO ĐÀI HƯ KHÔNG!",
+		"8 Hải Tặc Hư Không & Chỉ Huy Công Thành đang tấn công! Người kết liễu Chỉ Huy sẽ nhận chắc chắn 1 Lõi Aether 3D!",
 		"PirateRaid"
 	)
 end
@@ -2416,7 +2416,7 @@ local function buildPirateRaidHornBeacon()
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Kích Hoạt Sự Kiện Pirate Raid"
-	prompt.ObjectText = "Castle on the Void • Thưởng Trái Ác Quỷ 3D"
+	prompt.ObjectText = "Pháo Đài Hư Không • Thưởng Lõi Aether 3D"
 	prompt.MaxActivationDistance = 15
 	prompt.HoldDuration = 0
 	prompt.RequiresLineOfSight = false
@@ -3504,7 +3504,7 @@ local function spawnSpireFloorEnemies(p, session, floorNum)
 
 	if isMilestoneBoss then
 		local bossPool = { "PirateCaptainVance", "OrderCyborgBoss", "CryonPrime", "SoulReaperRift", "Noxar" }
-		local bId = bossPool[math.clamp(math.ceil(floorNum / 10), 1, #bossPool)]
+		local bId = bossPool[math.clamp(math.ceil(floorNum / 10), 1, math.max(1, #bossPool))]
 		if not C.Enemies[bId] then
 			bId = "GoldenKnight"
 		end
@@ -3991,11 +3991,11 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 				prof.StoredFruits[wonFruit] = (prof.StoredFruits[wonFruit] or 0) + 1
 				prof.HeldFruit = wonFruit
 				local fName = (C.AetherFruits and C.AetherFruits[wonFruit] and C.AetherFruits[wonFruit].Name) or wonFruit
-				G.Notify(topPlr, "CHIẾN LỢI PHẨM PIRATE RAID: Bạn kết liễu Chỉ Huy Hải Tặc và nhận được Trái Ác Quỷ 3D [" .. fName .. "]!")
+				G.Notify(topPlr, "CHIẾN LỢI PHẨM PIRATE RAID: Bạn kết liễu Chỉ Huy Hải Tặc và nhận được Lõi Aether 3D [" .. fName .. "]!")
 				G.Sync(topPlr)
 				broadcastWorldBanner(
 					"CHIẾN THẮNG PIRATE RAID!",
-					topPlr.Name .. " đã hạ gục Chỉ Huy Hải Tặc tại Castle on the Void và nhận Trái Ác Quỷ [" .. fName .. "]!",
+					topPlr.Name .. " đã hạ gục Chỉ Huy Hải Tặc tại Pháo Đài Hư Không và nhận Lõi Aether [" .. fName .. "]!",
 					"Fruit"
 				)
 				if R and R:FindFirstChild("StateUpdate") then
@@ -4254,24 +4254,13 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 		statePayload.ActiveShip = normalizeShipId(profile.ActiveShip)
 	end
 
-	-- 8. Chain G.HandleUIRequest + listen on R.UIRequest for Wave 3 World commands
+	-- 8. Chain G.HandleUIRequest for Wave 3 World commands
 	local prevHandleUI = G.HandleUIRequest
 	G.HandleUIRequest = function(p, cmd, payload)
 		if prevHandleUI and prevHandleUI(p, cmd, payload) then
 			return true
 		end
 		return WorldEvents.HandleUIRequest(p, cmd, payload)
-	end
-	if R:FindFirstChild("UIRequest") then
-		R.UIRequest.OnServerEvent:Connect(function(p, cmd, payload)
-			if type(cmd) == "table" then
-				payload = cmd
-				cmd = payload.command or payload.action or payload.cmd
-			end
-			if type(cmd) == "string" and WAVE3_WORLD_COMMANDS[cmd] then
-				WorldEvents.HandleUIRequest(p, cmd, payload)
-			end
-		end)
 	end
 
 	Players.PlayerRemoving:Connect(function(p)

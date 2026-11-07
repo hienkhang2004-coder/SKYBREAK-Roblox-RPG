@@ -91,14 +91,50 @@ local function sanitizeForDataStore(val, depth)
 end
 
 local persistent = not Run:IsStudio() or C.StudioPersistence
+local storeName = (type(C.StoreName) == "string" and C.StoreName ~= "" and C.StoreName ~= "SKYBREAK_v3") and C.StoreName or "SKYBREAK_LIVE_v1"
 local okStore, store = pcall(function()
-	return persistent and DSS:GetDataStore(C.StoreName) or nil
+	return persistent and DSS:GetDataStore(storeName) or nil
 end)
 if not okStore or not store then
 	persistent = false
 	store = nil
 end
 local token = game.JobId .. ":" .. Http:GenerateGUID(false)
+
+local CURRENT_SCHEMA_VERSION = 2
+D.CURRENT_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION
+
+local SCHEMA_MIGRATIONS = {
+	[1] = function(p)
+		if type(p.UnlockedShips) ~= "table" then
+			p.UnlockedShips = { SkySloop = true }
+		else
+			p.UnlockedShips.SkySloop = true
+		end
+		if type(p.UnlockedHakiColors) ~= "table" then
+			p.UnlockedHakiColors = { solar_gold = true }
+		elseif next(p.UnlockedHakiColors) == nil then
+			p.UnlockedHakiColors.solar_gold = true
+		end
+		p.SchemaVersion = 2
+	end,
+}
+
+local function migrateProfile(p)
+	if type(p) ~= "table" then
+		return p
+	end
+	local ver = tonumber(p.SchemaVersion) or 1
+	while ver < CURRENT_SCHEMA_VERSION and SCHEMA_MIGRATIONS[ver] do
+		SCHEMA_MIGRATIONS[ver](p)
+		ver = tonumber(p.SchemaVersion) or (ver + 1)
+		p.SchemaVersion = ver
+	end
+	p.SchemaVersion = CURRENT_SCHEMA_VERSION
+	return p
+end
+
+D.MigrateProfile = migrateProfile
 
 local function clone(t)
 	if type(t) ~= "table" then
@@ -121,7 +157,7 @@ end
 
 local function defaults()
 	return {
-		SchemaVersion = 1,
+		SchemaVersion = CURRENT_SCHEMA_VERSION,
 		StarterGrantDone = true,
 		Level = 1,
 		XP = 0,
@@ -212,9 +248,9 @@ local function defaults()
 		},
 		HakiStage = 0,
 		HakiEXP = 0,
-		HakiColorId = "crimson_conqueror",
+		HakiColorId = "solar_gold",
 		UnlockedHakiColors = {
-			crimson_conqueror = true,
+			solar_gold = true,
 		},
 		KenEXP = 0,
 		KenV2Unlocked = false,
@@ -236,11 +272,9 @@ local function defaults()
 			["Skyborn Novice"] = true,
 			sky_rookie = true,
 		},
-		ActiveShip = "CelestialAetherGalleon",
+		ActiveShip = "SkySloop",
 		UnlockedShips = {
 			SkySloop = true,
-			CelestialBrigantine = true,
-			CelestialAetherGalleon = true,
 		},
 		Transformed = false,
 		TransformId = nil,
@@ -314,13 +348,14 @@ local function hydrate(p)
 	end
 	local def = defaults()
 	local isLegacyUnseeded = (p.StarterGrantDone == nil and p.StoredFruits == nil and p.Inventory == nil)
+	migrateProfile(p)
 	for k, v in pairs(def) do
 		if p[k] == nil then
 			p[k] = clone(v)
 		end
 	end
 
-	p.SchemaVersion = 1
+	p.SchemaVersion = CURRENT_SCHEMA_VERSION
 	p.StarterGrantDone = true
 	p.ClassId = (type(p.ClassId) == "string" and C.Classes[p.ClassId]) and p.ClassId or def.ClassId
 	p.Level = cleanNum(p.Level, 1, C.MaxLevel, def.Level)
@@ -423,7 +458,7 @@ local function hydrate(p)
 	p.HakiStage = cleanNum(p.HakiStage, 0, 5, 0)
 	p.HakiEXP = cleanNum(p.HakiEXP, 0, 1e12, 0)
 	p.HakiColorId = (type(p.HakiColorId) == "string" and p.HakiColorId ~= "") and p.HakiColorId or def.HakiColorId
-	p.UnlockedHakiColors.crimson_conqueror = true
+	p.UnlockedHakiColors.solar_gold = true
 	p.KenEXP = cleanNum(p.KenEXP, 0, 1e12, 0)
 	p.KenV2Unlocked = p.KenV2Unlocked == true
 
@@ -445,7 +480,6 @@ local function hydrate(p)
 	p.ActiveShip = (type(p.ActiveShip) == "string" and p.ActiveShip ~= "") and p.ActiveShip or def.ActiveShip
 	p.UnlockedShips = type(p.UnlockedShips) == "table" and p.UnlockedShips or clone(def.UnlockedShips)
 	p.UnlockedShips.SkySloop = true
-	p.UnlockedShips.CelestialAetherGalleon = true
 	p.Transformed = p.Transformed == true
 	p.HomeIsland = (type(p.HomeIsland) == "string" and p.HomeIsland ~= "") and p.HomeIsland or "SkyHub"
 
@@ -529,7 +563,7 @@ local function hydrate(p)
 end
 
 local function valid(p)
-	if type(p) ~= "table" or p.SchemaVersion ~= 1 then
+	if type(p) ~= "table" or (p.SchemaVersion ~= CURRENT_SCHEMA_VERSION and p.SchemaVersion ~= 1) then
 		return false
 	end
 	for _, key in ipairs({"Level", "XP", "Gold", "QuestIndex", "CoreShards", "Bounty", "Honor"}) do
@@ -667,7 +701,16 @@ function D.Load(player)
 	if loadedFromStore then
 		statusText = "Đã tải"
 	elseif readOnlyFallback then
-		statusText = "Tạm lưu bộ nhớ (Bảo vệ)"
+		statusText = "Tạm lưu bộ nhớ (Bảo vệ ReadOnly)"
+		profile._ReadOnlyFallback = true
+		pcall(function()
+			player:SetAttribute("ReadOnlyFallback", true)
+			local rems = game.ReplicatedStorage:FindFirstChild("Remotes")
+			local notifyEv = rems and rems:FindFirstChild("Notify")
+			if notifyEv then
+				notifyEv:FireClient(player, "CẢNH BÁO DATASTORE: Đang ở chế độ Bảo Vệ Dữ Liệu Gốc (ReadOnly). Hệ thống sẽ tự động thử tải lại mỗi 30 giây!")
+			end
+		end)
 	elseif persistent then
 		statusText = "Tạm lưu bộ nhớ"
 	elseif loadedFromStudioCache then
@@ -715,11 +758,34 @@ function D.Save(player, release)
 	if not s.Active then
 		return false
 	end
+	if s.ReadOnlyFallback or (type(s.Profile) == "table" and s.Profile._ReadOnlyFallback == true) then
+		warn("[SKYBREAK] Protected cloud save from ReadOnlyFallback overwrite for", player.Name)
+		s.SaveStatus = "Bảo vệ dữ liệu gốc (ReadOnly)"
+		return false
+	end
 	s.Busy = true
 
-	local hydratedSnapshot = hydrate(clone(s.Profile))
+	local rawCopy = clone(s.Profile)
+	rawCopy._ReadOnlyFallback = nil
+	local hydratedSnapshot = hydrate(rawCopy)
+	hydratedSnapshot._ReadOnlyFallback = nil
 	if Run:IsStudio() or not persistent then
 		D.StudioSessionCache[player.UserId] = hydratedSnapshot
+	end
+
+	local okEnc, encoded = pcall(function()
+		return Http:JSONEncode(hydratedSnapshot)
+	end)
+	if okEnc and type(encoded) == "string" then
+		local byteLen = #encoded
+		if byteLen > 3500000 then
+			warn("[SKYBREAK] Aborting save: profile JSON exceeds 3.5MB (" .. tostring(byteLen) .. " bytes) for", player.Name)
+			s.SaveStatus = "Vượt giới hạn dung lượng (>3.5MB)"
+			s.Busy = false
+			return false
+		elseif byteLen > 1000000 then
+			warn("[SKYBREAK] Profile JSON size warning (>1MB: " .. tostring(byteLen) .. " bytes) for", player.Name)
+		end
 	end
 
 	if not persistent or not store then
@@ -733,20 +799,14 @@ function D.Save(player, release)
 	local ok, record = retry(function()
 		return store:UpdateAsync("u_" .. player.UserId, function(old)
 			local nowSec = os.time()
+			if s.ReadOnlyFallback or (type(s.Profile) == "table" and s.Profile._ReadOnlyFallback == true) then
+				blockedClobber = true
+				return nil
+			end
 			if type(old) == "table" then
 				if old.Owner ~= nil and old.Owner ~= token and (tonumber(old.Expires) or 0) > nowSec then
 					lockStolen = true
 					return nil
-				end
-				if s.ReadOnlyFallback and type(old.Data) == "table" then
-					local cloudLv = tonumber(old.Data.Level) or 1
-					local localLv = tonumber(hydratedSnapshot.Level) or 1
-					local cloudGold = tonumber(old.Data.Gold) or 0
-					local localGold = tonumber(hydratedSnapshot.Gold) or 0
-					if cloudLv > localLv or cloudGold > localGold then
-						blockedClobber = true
-						return nil
-					end
 				end
 			end
 			return {
@@ -806,8 +866,39 @@ function D.Start()
 		while true do
 			task.wait(C.AutosaveSeconds)
 			for player, s in pairs(D.Sessions) do
-				if s.Active and not s.Releasing then
+				if s.Active and not s.Releasing and not s.ReadOnlyFallback then
 					task.spawn(D.Save, player, false)
+				end
+			end
+		end
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(30)
+			if persistent and store then
+				for player, s in pairs(D.Sessions) do
+					if s.Active and not s.Releasing and (s.ReadOnlyFallback or (type(s.Profile) == "table" and s.Profile._ReadOnlyFallback == true)) then
+						task.spawn(function()
+							local ok, record = pcall(function()
+								return store:GetAsync("u_" .. player.UserId)
+							end)
+							if ok and type(record) == "table" and type(record.Data) == "table" then
+								local recovered = hydrate(clone(record.Data))
+								recovered._ReadOnlyFallback = nil
+								s.Profile = recovered
+								s.ReadOnlyFallback = false
+								s.SaveStatus = "Đã phục hồi từ Cloud"
+								pcall(function()
+									player:SetAttribute("ReadOnlyFallback", false)
+									local rems = game.ReplicatedStorage:FindFirstChild("Remotes")
+									local notifyEv = rems and rems:FindFirstChild("Notify")
+									if notifyEv then
+										notifyEv:FireClient(player, "DATASTORE: Đã kết nối lại và khôi phục dữ liệu gốc thành công!")
+									end
+								end)
+							end
+						end)
+					end
 				end
 			end
 		end

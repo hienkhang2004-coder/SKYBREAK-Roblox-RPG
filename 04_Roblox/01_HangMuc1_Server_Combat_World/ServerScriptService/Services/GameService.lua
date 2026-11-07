@@ -7,6 +7,8 @@ local C=require(game.ReplicatedStorage.Shared.Config)
 local D=require(script.Parent.PlayerDataService)
 local W=require(script.Parent.WorldService)
 local Cosmetics=require(script.Parent.CosmeticService)
+local DevGate=require(script.Parent.DevGate)
+local RemoteGuard=require(script.Parent.RemoteGuard)
 local G={Runtime={},Joining={},Enemies={},Boss=nil,Preparing=false,ResetAt=0,Chests={},Shrines={},JumpPads={},WorldPortals={}}
 local R=game.ReplicatedStorage.Remotes
 if not R:FindFirstChild("CombatEvent") then
@@ -776,7 +778,7 @@ function G.EnterWorldPortal(p,gate)
 	profile.UnlockedWorlds=profile.UnlockedWorlds or {}
 	local targetRealm=gate.TargetRealm or "GoldenSky"
 	local minLv=REALM_MIN_LV[targetRealm] or 1
-	if targetRealm~="GoldenSky" and not profile.UnlockedWorlds[targetRealm] and workspace:GetAttribute("EnableDevSandbox")~=true and (tonumber(profile.Level) or 1)<minLv then
+	if targetRealm~="GoldenSky" and not profile.UnlockedWorlds[targetRealm] and not DevGate.IsAllowed(p) and (tonumber(profile.Level) or 1)<minLv then
 		rt.PortalTouchCooldown=now+2.0
 		G.Notify(p,"Cổng Không Gian ["..tostring(gate.StageLabel or targetRealm).."] yêu cầu đạt Level "..minLv.."!")
 		return
@@ -956,7 +958,7 @@ function G.Interact(p,id)
 		profile.ActiveSlot=2
 		profile.HeldFruit=fid
 		if p.Character then p.Character:SetAttribute("HeldFruit",fid) end
-		G.SendDialogue(p,"Bệ Đá Trái Ác Quỷ",fcfg and fcfg.Rarity or "Mythical","Bạn đã thu thập & trang bị 3D ["..fname.."]! Bấm [G] để mở bảng Trái Ác Quỷ hoặc dùng chiêu [Z][X][C][V][F]!","Mở Bảng Trái Ác Quỷ [G]","OpenScreen:Fruits")
+		G.SendDialogue(p,"Bệ Đá Lõi Aether",fcfg and fcfg.Rarity or "Mythical","Bạn đã thu thập & trang bị 3D ["..fname.."]! Bấm [G] để mở bảng Lõi Aether hoặc dùng chiêu [Z][X][C][V][F]!","Mở Bảng Lõi Aether [G]","OpenScreen:Fruits")
 		G.Sync(p)
 		return
 	elseif id=="Zioles" or id=="ZiolesGachaNPC" then
@@ -967,9 +969,9 @@ function G.Interact(p,id)
 		local afterCount=0
 		for _,cnt in pairs(profile.StoredFruits or {}) do afterCount+=(tonumber(cnt) or 0) end
 		if afterCount>prevCount or profile.HeldFruit~=prevHeld then
-			G.SendDialogue(p,"Zioles • Aether Core Gacha","THƯƠNG NHÂN TRÁI ÁC QUỶ","Ta nắm giữ 12 Trái Ác Quỷ Thượng Cổ đã được tách riêng thành thực thể 3D! Ngươi vừa quay Gacha thành công — hãy mở bảng FRUITS [G] để ăn trái, cầm trái 3D trên tay hoặc thức tỉnh V2!","Mở Bảng Trái Ác Quỷ [G]","OpenScreen:Fruits")
+			G.SendDialogue(p,"Hiền Giả Lõi • Core Oracle","HIỀN GIẢ LÕI AETHER","Ta nắm giữ 12 Lõi Aether Thượng Cổ đã được tách riêng thành thực thể 3D! Ngươi vừa cầu lõi thành công — hãy mở bảng LÕI AETHER [G] để hấp thụ, cầm lõi 3D trên tay hoặc thức tỉnh V2!","Mở Bảng Lõi Aether [G]","OpenScreen:Fruits")
 		else
-			G.SendDialogue(p,"Zioles • Aether Core Gacha","THƯƠNG NHÂN TRÁI ÁC QUỶ","Mỗi lượt quay Gacha Trái Ác Quỷ Thượng Cổ cần 25,000 Gold (hoặc 1 Vé Quay Trái Miễn Phí từ Quà Đăng Nhập / Giftcode)!","Mở Bảng Trái Ác Quỷ [G]","OpenScreen:Fruits")
+			G.SendDialogue(p,"Hiền Giả Lõi • Core Oracle","HIỀN GIẢ LÕI AETHER","Mỗi lượt cầu Lõi Aether Thượng Cổ cần 25,000 Gold (hoặc 1 Vé Cầu Lõi Miễn Phí từ Quà Đăng Nhập / Giftcode)!","Mở Bảng Lõi Aether [G]","OpenScreen:Fruits")
 		end
 		return
 	elseif id=="AncientMonk" or id=="AncientMonkNPC" then
@@ -993,11 +995,11 @@ function G.Interact(p,id)
 		profile.Accepted=true
 		G.SendDialogue(p,"Lyra • Chỉ Huy Skyborn","NHIỆM VỤ ["..q.Id.."] "..q.Name,q.Text.." (Phần thưởng: +"..tostring(q.XP).." XP, +"..tostring(q.Gold).." Gold)","Xem Nhật Ký Nhiệm Vụ [L]","OpenScreen:Quests")
 	elseif id=="Kael" then
-		G.SendDialogue(p,"Kael • Đại Sư Rèn Thần Khí","LÒ RÈN HUYỀN THOẠI","Hãy dùng Sunshard Core và Sky Iron để chế tác Thần Khí Dawnbringer, Cursed Dual Skyblades và cường hóa vũ khí lên +15 phát sáng rực rỡ!","Mở Lò Rèn Thần Khí","OpenScreen:Forge")
+		G.SendDialogue(p,"Kael • Đại Sư Rèn Thần Khí","LÒ RÈN HUYỀN THOẠI","Hãy dùng Sunshard Core và Sky Iron để chế tác Thần Khí Dawnbringer, Song Kiếm Nguyệt Thực (Eclipse Twinblades) và cường hóa vũ khí lên +15 phát sáng rực rỡ!","Mở Lò Rèn Thần Khí","OpenScreen:Forge")
 	elseif id=="FrozenPortal" then
 		if G.WorldPortals and G.WorldPortals.WorldGate_Sea1_to_Sea2 then
 			G.EnterWorldPortal(p,G.WorldPortals.WorldGate_Sea1_to_Sea2)
-		elseif not inLockedEncounter(p) and (profile.UnlockedWorlds.FrozenCyber or workspace:GetAttribute("EnableDevSandbox")==true or (tonumber(profile.Level) or 1)>=700) then
+		elseif not inLockedEncounter(p) and (profile.UnlockedWorlds.FrozenCyber or DevGate.IsAllowed(p) or (tonumber(profile.Level) or 1)>=700) then
 			profile.UnlockedWorlds.FrozenCyber=true
 			if not workspace:FindFirstChild('FrozenCyber') then G.Notify(p,'Frozen Cyber đang được chuẩn bị.')
 			else
@@ -1005,19 +1007,19 @@ function G.Interact(p,id)
 				G.Teleport(p,require(game.ReplicatedStorage.Shared.RealmConfig).FrozenCyber.Spawn)
 			end
 		else
-			G.Notify(p,"Cổng Sky 2 (Frozen Cyber) yêu cầu đạt Level 700 hoặc hoàn thành Q05!")
+			G.Notify(p,"Cổng Tầng Trời 2 (Frozen Cyber) yêu cầu đạt Level 700 hoặc hoàn thành Q05!")
 		end
 	elseif id=='FrozenReturnHub' then if not inLockedEncounter(p) then p:SetAttribute('CurrentRealm','GoldenSky');G.Teleport(p,C.Spawn) end
 	elseif id=='ShadowPortal'then
 		if G.WorldPortals and G.WorldPortals.WorldGate_Sea2_to_Sea3 then
 			G.EnterWorldPortal(p,G.WorldPortals.WorldGate_Sea2_to_Sea3)
-		elseif not inLockedEncounter(p) and (profile.UnlockedWorlds.ShadowRealm or workspace:GetAttribute("EnableDevSandbox")==true or (tonumber(profile.Level) or 1)>=1500) then
+		elseif not inLockedEncounter(p) and (profile.UnlockedWorlds.ShadowRealm or DevGate.IsAllowed(p) or (tonumber(profile.Level) or 1)>=1500) then
 			profile.UnlockedWorlds.ShadowRealm=true
 			if not workspace:FindFirstChild('ShadowRealm')then return end
 			p:SetAttribute('CurrentRealm','ShadowRealm')
 			G.Teleport(p,require(game.ReplicatedStorage.Shared.RealmConfig).ShadowRealm.Spawn)
 		else
-			G.Notify(p,"Cổng Sky 3 (Shadow Realm) yêu cầu đạt Level 1500!")
+			G.Notify(p,"Cổng Tầng Trời 3 (Shadow Realm) yêu cầu đạt Level 1500!")
 		end
 	elseif id=='ShadowReturnHub' or id=='VerdantReturnHub' or id=='EmberReturnHub' or id=='AbyssalReturnHub' or id=='ChronosReturnHub' or id=='VeilsReturnHub' then if not inLockedEncounter(p) then p:SetAttribute('CurrentRealm','GoldenSky');G.Teleport(p,C.Spawn) end
 	elseif id=="ReturnHub" or id=="LeaveArena" then
@@ -1223,6 +1225,15 @@ function G.Kill(e)
 			if isBossOrElite then
 				prof.Bounty=(prof.Bounty or 2500000)+15000
 				prof.Honor=(prof.Honor or 2500000)+15000
+				if e.Id=="Noxar" then
+					prof.FirstClearBosses=type(prof.FirstClearBosses)=="table" and prof.FirstClearBosses or {}
+					prof.FirstClearBosses.Noxar=true
+					prof.UnlockedHakiColors=type(prof.UnlockedHakiColors)=="table" and prof.UnlockedHakiColors or {}
+					if not prof.UnlockedHakiColors.crimson_conqueror then
+						prof.UnlockedHakiColors.crimson_conqueror=true
+						G.Notify(p,"Chiến công hạ gục Noxar lần đầu: Mở khóa sắc Ý Chí [Hồng Liên Bá Ý]!")
+					end
+				end
 				G.Notify(p,"Chiến công hạ gục "..e.Config.Name..": +15,000 Bounty / Honor!")
 			end
 			G.Reward(p,e.Config.XP or 0,e.Config.Gold or 0,shards) G.QuestEvent(p,"Kill",e.Id)
@@ -1318,7 +1329,7 @@ function G.PlayerDamage(p,amount,attackerEnemy)
 				amount=0,
 				crit=false,
 				element="Sky",
-				Text="NÉ HAKI! ("..tostring(profile.Haki.InstinctDodges).."/8)",
+				Text="THẤU Ý NÉ! ("..tostring(profile.Haki.InstinctDodges).."/8)",
 			})
 			R.CombatFX:FireAllClients({
 				Kind="InstinctDodge",
@@ -1596,7 +1607,7 @@ function G.BuildSkyShip(pOrShipId,spawnPos,customShipId)
 		shipTitleColor=_RGB(92,240,255)
 		shipVisualAsset="CyberEnforcerShip"
 	elseif shipId=="LeviathanHunterShip" then
-		shipTitle="LEVIATHAN HUNTER • VOID DREADNOUGHT"
+		shipTitle="SERPENT HUNTER • VOID DREADNOUGHT"
 		shipTitleColor=_RGB(215,112,255)
 		shipVisualAsset="LeviathanHunterShip"
 	end
@@ -1649,15 +1660,15 @@ function G.BuildSkyShip(pOrShipId,spawnPos,customShipId)
 	local islandTargets={
 		{Name="Sunshard Sanctuary", Realm="GoldenSky", Pos=_V3(2800,50.5,-55)},
 		{Name="West Garden Bastion", Realm="GoldenSky", Pos=_V3(-2800,50.5,-65)},
-		{Name="Zioles Gacha Shrine", Realm="GoldenSky", Pos=_V3(-560,52.5,996)},
-		{Name="Cyberport Cafe", Realm="FrozenCyber", Pos=_V3(9400,50.9,1785)},
+		{Name="Core Shrine", Realm="GoldenSky", Pos=_V3(-560,52.5,996)},
+		{Name="Trade Station", Realm="FrozenCyber", Pos=_V3(9400,50.9,1785)},
 		{Name="Permafrost Garrison", Realm="FrozenCyber", Pos=_V3(9400,50.9,-2055)},
 		{Name="Microchip Raid Lab", Realm="FrozenCyber", Pos=_V3(14600,50.9,1785)},
 		{Name="Glacial Wreckage", Realm="FrozenCyber", Pos=_V3(14600,50.9,-1812)},
-		{Name="Castle on the Void", Realm="ShadowRealm", Pos=_V3(-14600,50.9,2173.1)},
+		{Name="Void Bastion", Realm="ShadowRealm", Pos=_V3(-14600,50.9,2173.1)},
 		{Name="Umbral Crystal Sanctum", Realm="ShadowRealm", Pos=_V3(-9400,50.9,1815)},
-		{Name="Temple of the Core", Realm="ShadowRealm", Pos=_V3(-14600,50.9,-1785)},
-		{Name="Leviathan Abyss (Mirage Island)", Realm="ShadowRealm", Pos=_V3(-12000,50.9,-3364.5)},
+		{Name="Ascension Shrine", Realm="ShadowRealm", Pos=_V3(-14600,50.9,-1785)},
+		{Name="Phantom Isle (Serpent Abyss)", Realm="ShadowRealm", Pos=_V3(-12000,50.9,-3364.5)},
 		{Name="Sky Hub", Realm="GoldenSky", Pos=C.Spawn},
 	}
 	local routeIdx=1
@@ -1751,6 +1762,7 @@ function G.UseSlotMove(p,key)
 	rt.Cooldowns[key]=now+cd
 	if cost>0 then
 		rt.Energy=math.max(0,(rt.Energy or 100)-cost)
+		rt.LastCastAt=now
 	end
 
 	local moveName=(moveSpec and (moveSpec.Name or moveSpec.Id)) or (activeId.."_"..key)
@@ -2102,7 +2114,7 @@ function G.Equipment(p,payload)
 		local realm=node.Realm or "GoldenSky"
 		profile.UnlockedWorlds=profile.UnlockedWorlds or {}
 		local minLv=REALM_MIN_LV[realm] or 1
-		if realm~="GoldenSky" and realm~="SkyHub" and not profile.UnlockedWorlds[realm] and not profile.UnlockedWorlds[tostring(nodeId)] and workspace:GetAttribute("EnableDevSandbox")~=true and (tonumber(profile.Level) or 1)<minLv then
+		if realm~="GoldenSky" and realm~="SkyHub" and not profile.UnlockedWorlds[realm] and not profile.UnlockedWorlds[tostring(nodeId)] and not DevGate.IsAllowed(p) and (tonumber(profile.Level) or 1)<minLv then
 			G.Notify(p,"Cần đạt Level "..minLv.." để mở khóa dịch chuyển tới "..(node.Name or realm).."!")
 			return
 		end
@@ -2350,7 +2362,7 @@ function G.Equipment(p,payload)
 		local fid=tostring(payload.fruitId or profile.EquippedFruit or "GaleCore")
 		if profile.HeldFruit==fid and not payload.forceHold then
 			profile.HeldFruit=""
-			G.Notify(p,"Đã cất Trái Ác Quỷ 3D vào túi.")
+			G.Notify(p,"Đã cất Lõi Aether 3D vào túi.")
 		else
 			local owned=(tonumber(profile.StoredFruits and profile.StoredFruits[fid]) or 0)>0 or profile.EquippedFruit==fid
 			if not owned then
@@ -2376,7 +2388,7 @@ function G.Equipment(p,payload)
 		elseif (profile.Gold or 0)>=25000 then
 			profile.Gold-=25000
 		else
-			G.Notify(p,"Cần 25,000 Gold (hoặc 1 Vé Quay Trái Miễn Phí) để quay Gacha Zioles!")
+			G.Notify(p,"Cần 25,000 Gold (hoặc 1 Vé Cầu Lõi Miễn Phí) để cầu Lõi Aether tại Hiền Giả Lõi!")
 			return
 		end
 		local canonicalIds={
@@ -2387,10 +2399,10 @@ function G.Equipment(p,payload)
 		local fruit=getFruitCfg(fruitId)
 		profile.StoredFruits[fruitId]=(profile.StoredFruits[fruitId] or 0)+1
 		profile.HeldFruit=fruitId
-		G.Notify(p,"GACHA TRÁI ÁC QUỶ: Bạn quay trúng ["..(fruit.Rarity or "Legendary").."] "..(fruit.Name or fruitId).." (Đã cầm trên tay 3D)!")
+		G.Notify(p,"ĐIỆN CẦU LÕI AETHER: Bạn cầu trúng ["..(fruit.Rarity or "Legendary").."] "..(fruit.Name or fruitId).." (Đã cầm trên tay 3D)!")
 	elseif act=="EatFruit" then
 		if p:GetAttribute("InTrade")==true then
-			G.Notify(p,"Không thể ăn Trái Ác Quỷ khi đang ngồi Bàn Giao Dịch!")
+			G.Notify(p,"Không thể hấp thụ Lõi Aether khi đang ngồi Bàn Giao Dịch!")
 			return
 		end
 		local fid=tostring(payload.fruitId or profile.EquippedFruit or "SolarTitanCore")
@@ -2398,7 +2410,7 @@ function G.Equipment(p,payload)
 		local storedCnt=tonumber(profile.StoredFruits and profile.StoredFruits[fid]) or 0
 		if profile.EquippedFruit~=fid then
 			if storedCnt<=0 then
-				G.Notify(p,"Bạn chưa có ["..(fruit and fruit.Name or fid).."] trong kho! Hãy quay Gacha Zioles, mua tại Mirage Dealer hoặc nhặt Trái Tự Nhiên.")
+				G.Notify(p,"Bạn chưa có ["..(fruit and fruit.Name or fid).."] trong kho! Hãy cầu lõi tại Hiền Giả Lõi, mua tại Thương Nhân Hư Quang hoặc nhặt Lõi Tự Nhiên.")
 				return
 			end
 			profile.StoredFruits[fid]=storedCnt-1
@@ -2412,7 +2424,7 @@ function G.Equipment(p,payload)
 		if p.Character then p.Character:SetAttribute("FruitTransform","") end
 		p:SetAttribute("DragonFormTier",0)
 		if p.Character then p.Character:SetAttribute("DragonFormTier",0) end
-		G.Notify(p,"Đã ăn & trang bị "..(fruit and fruit.Name or fid).."! Bấm [2] và dùng chiêu [Z][X][C][V][F]!")
+		G.Notify(p,"Đã hấp thụ & trang bị "..(fruit and fruit.Name or fid).."! Bấm [2] và dùng chiêu [Z][X][C][V][F]!")
 	elseif act=="AwakenFruit" then
 		local fid=tostring(payload.fruitId or profile.EquippedFruit or "SolarTitanCore")
 		local fruit=getFruitCfg(fid)
@@ -2479,7 +2491,7 @@ function G.Equipment(p,payload)
 			end
 		end
 	elseif act=="BoostLevel" then
-		if not (RunService:IsStudio() or workspace:GetAttribute("EnableDevSandbox")==true) then
+		if not DevGate.IsAllowed(p) then
 			G.Notify(p,"Tính năng Đột Phá Cấp Nhanh chỉ mở trong chế độ Studio / Dev Sandbox!")
 			return
 		end
@@ -2494,7 +2506,7 @@ function G.Equipment(p,payload)
 		profile.XP=0
 		ensureProfileFields(profile)
 		G.SyncCompanions(p)
-		G.Notify(p,"ĐỘT PHÁ CẤP ĐỘ BLOX FRUITS: Đạt Lv. "..tostring(profile.Level).." / "..tostring(maxLv).." (Còn "..tostring(profile.StatPoints).." Stat Points)!")
+		G.Notify(p,"ĐỘT PHÁ CẤP ĐỘ SKYBREAK: Đạt Lv. "..tostring(profile.Level).." / "..tostring(maxLv).." (Còn "..tostring(profile.StatPoints).." Stat Points)!")
 	elseif act=="RefundStats" then
 		local refund=0
 		for k,v in pairs(profile.StatAlloc) do
@@ -2516,7 +2528,7 @@ function G.Equipment(p,payload)
 		if profile.Haki.Aura and r then
 			R.CombatFX:FireAllClients({Kind="HakiStageUp",Action="HakiStageUp",Stage=math.max(1,stg),Position=r.Position,Actor=p.UserId})
 		end
-		G.Notify(p,"Haki Vũ Trang (Busoshoku): "..(profile.Haki.Aura and ("BẬT — "..bonusTxt) or "TẮT"))
+		G.Notify(p,"Giáp Ý Chí (Will Armor): "..(profile.Haki.Aura and ("BẬT — "..bonusTxt) or "TẮT"))
 	elseif act=="ToggleInstinct" then
 		profile.Haki.Instinct=not profile.Haki.Instinct
 		local dodges=math.clamp(tonumber(profile.Haki.InstinctDodges) or 8,0,8)
@@ -2533,22 +2545,23 @@ function G.Equipment(p,payload)
 		if profile.Haki.Instinct and r then
 			R.CombatFX:FireAllClients({Kind="InstinctDodge",Action="InstinctToggle",Position=r.Position,DodgesLeft=dodges,MaxDodges=8,Actor=p.UserId})
 		end
-		G.Notify(p,"Haki Quan Sát (Kenbunshoku"..(profile.KenV2Unlocked and " V2" or "").."): "..(profile.Haki.Instinct and string.format("BẬT (%d/8 Né)",dodges) or "TẮT"))
+		G.Notify(p,"Thấu Ý (Will Sense"..(profile.KenV2Unlocked and " V2" or "").."): "..(profile.Haki.Instinct and string.format("BẬT (%d/8 Né)",dodges) or "TẮT"))
 	elseif act=="ConquerorBurst" then
 		if r and rt then
 			local now=os.clock()
 			local rem=(rt.Cooldowns.ConquerorBurst or 0)-now
 			if rem>0 then
-				G.Notify(p,string.format("Haki Bá Vương đang hồi chiêu (%.1fs)!",rem))
+				G.Notify(p,string.format("Bá Ý đang hồi chiêu (%.1fs)!",rem))
 				return
 			end
 			if (rt.Energy or 100)<20 then
-				G.Notify(p,"Cần 20 Aether Energy để phát động Haki Bá Vương!")
+				G.Notify(p,"Cần 20 Aether Energy để phát động Bá Ý!")
 				return
 			end
 			rt.Cooldowns.ConquerorBurst=now+18
 			rt.Cooldowns.ConquerorHaki=now+18
 			rt.Energy=math.max(0,(rt.Energy or 100)-20)
+			rt.LastCastAt=now
 			profile.Haki.ConquerorUnlocked=true
 			local stats=G.Stats(p)
 			local dmg=((stats and stats.ATK) or 50)*3.5
@@ -2569,7 +2582,7 @@ function G.Equipment(p,payload)
 				userId=p.UserId,
 			})
 			R.CombatFX:FireAllClients({Kind="Skill",Position=r.Position,Actor=p.UserId,Action="ConquerorHaki"})
-			G.Notify(p,"HAKI BÁ VƯƠNG: Chấn động không gian (Choáng 4s, Hồi chiêu 18s)!")
+			G.Notify(p,"BÁ Ý (SOVEREIGN WILL): Chấn động không gian (Choáng 4s, Hồi chiêu 18s)!")
 		end
 	elseif act=="ActivateRaceV4" then
 		if rt then
@@ -2601,12 +2614,12 @@ function G.Equipment(p,payload)
 			if r then
 				R.CombatFX:FireAllClients({Kind="RaceV4Unlock",Position=r.Position,Actor=p.UserId,Action="RaceV4Awaken",Race=raceName})
 			end
-			G.Notify(p,"THỨC TỈNH CHỦNG TỘC V4 ["..raceName.."]: Toàn bộ chỉ số +30%!")
+			G.Notify(p,"THĂNG HOA HUYẾT MẠCH ["..raceName.."]: Toàn bộ chỉ số +30%!")
 		else
 			if rt then rt.LeviathanShieldHP=0 end
 			p:SetAttribute("LeviathanShieldHP",0)
 			if p.Character then p.Character:SetAttribute("LeviathanShieldHP",0) end
-			G.Notify(p,"Đã thu hồi trạng thái Thức Tỉnh Tộc V4 ["..raceName.."].")
+			G.Notify(p,"Đã thu hồi trạng thái Thăng Hoa ["..raceName.."].")
 		end
 	elseif act=="RerollRace" then
 		local curIdx=1
@@ -2617,7 +2630,7 @@ function G.Equipment(p,payload)
 		if p.Character and profile.RaceV4Active then
 			p.Character:SetAttribute("RaceV4",profile.Race)
 		end
-		G.Notify(p,"Đã thức tỉnh dòng máu mới: Chủng tộc "..profile.Race.." (V4)!")
+		G.Notify(p,"Đã thức tỉnh dòng máu mới: Chủng tộc "..profile.Race.." (Thăng Hoa)!")
 	elseif act=="SetFaction" then
 		profile.Faction=(payload.faction=="Marine") and "Marine" or "Pirate"
 		G.Notify(p,"Đã chọn phe: "..(profile.Faction=="Marine" and "Hải Quân Thiên Không (Sky Marines)" or "Hải Tặc Bầu Trời (Sky Pirates)").."!")
@@ -2644,7 +2657,7 @@ function G.Equipment(p,payload)
 			local seaId=(act=="SummonLeviathan" or payload.bossId=="AbyssalLeviathan") and "AbyssalLeviathan"
 				or ((payload.bossId=="SkySeaBeast") and "SkySeaBeast" or ((math.random()<0.5) and "SkySeaBeast" or "AbyssalLeviathan"))
 			G.SpawnEnemy(seaId,r.Position+_V3(0,2,-26),false,true)
-			G.Notify(p,"SỰ KIỆN BIỂN MÂY: "..(seaId=="AbyssalLeviathan" and "Thủy Tổ Hư Không ABYSSAL LEVIATHAN" or "Thủy Quái SKY SEA BEAST").." đã trồi lên từ biển mây!")
+			G.Notify(p,"SỰ KIỆN BIỂN MÂY: "..(seaId=="AbyssalLeviathan" and "Thủy Xà Vực Thẳm ABYSS SERPENT" or "Thú Trời SKY BEAST").." đã trồi lên từ biển mây!")
 		end
 	end
 	if h then
@@ -3107,18 +3120,18 @@ function G.EnsureWorld()
 	-- 6 Aether Jump Pads
 	-- Interactive Shrine & Raid Console Triggers at the 12 Grand Sky Islands + 5 Expansion Realms (invisible Part triggers so 100% of Models in SkybreakWorldObjects are rigged 3D characters)
 	local islandSpecs={
-		{Id="ZiolesGachaShrine", Title=" ZIOLES GACHA SHRINE • ĐIỆN THỜ TRIỆU HỒI TRÁI ÁC QUỶ", Realm="GoldenSky", Pos=_V3(-560,48.5,988), GlowCol=_RGB(110,235,255)},
+		{Id="ZiolesGachaShrine", Title=" CORE SHRINE • ĐIỆN CẦU LÕI AETHER", Realm="GoldenSky", Pos=_V3(-560,48.5,988), GlowCol=_RGB(110,235,255)},
 		{Id="AetherShrines", Title=" AETHER HOME SHRINE • ĐÀI ĐIỆN THỜ LƯU ĐIỂM HỒI SINH", Realm="GoldenSky", Pos=_V3(340,48.5,988), GlowCol=_RGB(88,238,255)},
 		{Id="WestGardenPirateBastion", Title=" WEST GARDEN PIRATE BASTION • PHÁO ĐÀI VƯỜN TÂY", Realm="GoldenSky", Pos=_V3(-2800,46.5,-50), GlowCol=_RGB(255,205,82)},
 		{Id="SunshardSanctuary", Title=" SUNSHARD SANCTUARY • THÁNH ĐỊA THÁI DƯƠNG", Realm="GoldenSky", Pos=_V3(2800,46.5,-42), GlowCol=_RGB(255,218,95)},
-		{Id="CyberportCafe", Title=" CYBERPORT CAFÉ • QUÁN CÀ PHÊ GIAO DỊCH SKY 2", Realm="FrozenCyber", Pos=_V3(9400,46.9,1798), GlowCol=_RGB(88,238,255)},
+		{Id="CyberportCafe", Title=" TRADE STATION • TRẠM GIAO THƯƠNG TẦNG TRỜI 2", Realm="FrozenCyber", Pos=_V3(9400,46.9,1798), GlowCol=_RGB(88,238,255)},
 		{Id="PermafrostGarrison", Title=" PERMAFROST GARRISON • PHÁO ĐÀI TUYẾT BĂNG", Realm="FrozenCyber", Pos=_V3(9400,46.9,-2040), GlowCol=_RGB(115,242,255)},
 		{Id="MicrochipRaidLab", Title=" MICROCHIP RAID LAB • PHÒNG THÍ NGHIỆM THỨC TỈNH", Realm="FrozenCyber", Pos=_V3(14600,46.9,1765), GlowCol=_RGB(95,240,255), IsRaidLab=true},
 		{Id="GlacialWreckage", Title=" GLACIAL WRECKAGE • XÁC TÀU BĂNG CỔ ĐẠI", Realm="FrozenCyber", Pos=_V3(14600,46.9,-1796), GlowCol=_RGB(145,242,255)},
-		{Id="CastleOnTheVoid", Title=" CASTLE ON THE VOID • DINH THỰ HƯ KHÔNG", Realm="ShadowRealm", Pos=_V3(-14600,46.9,2158), GlowCol=_RGB(225,110,255)},
+		{Id="CastleOnTheVoid", Title=" VOID BASTION • PHÁO ĐÀI HƯ KHÔNG", Realm="ShadowRealm", Pos=_V3(-14600,46.9,2158), GlowCol=_RGB(225,110,255)},
 		{Id="UmbralSanctum", Title=" UMBRAL CRYSTAL SANCTUM • RỪNG TINH THỂ ĐEN", Realm="ShadowRealm", Pos=_V3(-9400,46.9,1802), GlowCol=_RGB(245,95,255)},
-		{Id="TempleOfTheCore", Title=" TEMPLE OF THE CORE • ĐỀN THỜ TỘC V4", Realm="ShadowRealm", Pos=_V3(-14600,46.9,-1772), GlowCol=_RGB(210,120,255)},
-		{Id="LeviathanAbyss", Title=" MIRAGE SKY ISLAND • VỰC THẲM LEVIATHAN", Realm="ShadowRealm", Pos=_V3(-12000,46.9,-3350), GlowCol=_RGB(78,238,255)},
+		{Id="TempleOfTheCore", Title=" ASCENSION SHRINE • ĐỀN THĂNG HOA", Realm="ShadowRealm", Pos=_V3(-14600,46.9,-1772), GlowCol=_RGB(210,120,255)},
+		{Id="LeviathanAbyss", Title=" PHANTOM ISLE • VỰC THẲM THỦY XÀ", Realm="ShadowRealm", Pos=_V3(-12000,46.9,-3350), GlowCol=_RGB(78,238,255)},
 		{Id="VerdantCrown", Title=" THE VERDANT CROWN • VƯƠNG MIỆN CỔ THỤ (REALM 4)", Realm="VerdantCrown", Pos=_V3(0,166.9,-8970), GlowCol=_RGB(95,242,155)},
 		{Id="EmberforgeWastes", Title=" EMBERFORGE WASTES • HOANG MẠC LÒ RÈN LỬA (REALM 5)", Realm="EmberforgeWastes", Pos=_V3(12000,166.5,-9250), GlowCol=_RGB(255,145,78)},
 		{Id="AbyssalTides", Title=" ABYSSAL TIDES • THỦY TRIỀU VỰC SÂU (REALM 6)", Realm="AbyssalTides", Pos=_V3(-12000,166.9,-8950), GlowCol=_RGB(68,215,245)},
@@ -3179,36 +3192,36 @@ function G.EnsureWorld()
 	wpFolder.Parent=workspace
 
 	local worldPortalSpecs={
-		-- Sea 1: Golden Sky Odyssey (Worlds 1 -> 2 -> 3 -> 4 -> 5 -> Sea 2)
-		{Id="WorldGate_01", Order=1, NextOrder=2, StageLabel="WORLD 1  WORLD 2", Title="Cổng Cuối World 1 (Aureon Citadel Exit)", TargetTitle="World 2 • Zioles Gacha Shrine", TargetRealm="GoldenSky", TargetWorldKey="ZiolesGachaShrine", Element="Sky", Pos=_V3(-42,46.5,-435), TargetPos=_V3(-560,52.5,996), Col=_RGB(255,215,85)},
-		{Id="WorldGate_02", Order=2, NextOrder=3, StageLabel="WORLD 2  WORLD 3", Title="Cổng Cuối World 2 (Zioles Shrine Exit)", TargetTitle="World 3 • Aether Home Shrine", TargetRealm="GoldenSky", TargetWorldKey="AetherShrines", Element="Sky", Pos=_V3(-560,48.5,956), TargetPos=_V3(340,52.5,996), Col=_RGB(95,238,255)},
+		-- Tầng Trời 1: Golden Sky Odyssey (Worlds 1 -> 2 -> 3 -> 4 -> 5 -> Tầng Trời 2)
+		{Id="WorldGate_01", Order=1, NextOrder=2, StageLabel="WORLD 1  WORLD 2", Title="Cổng Cuối World 1 (Aureon Citadel Exit)", TargetTitle="World 2 • Core Shrine", TargetRealm="GoldenSky", TargetWorldKey="ZiolesGachaShrine", Element="Sky", Pos=_V3(-42,46.5,-435), TargetPos=_V3(-560,52.5,996), Col=_RGB(255,215,85)},
+		{Id="WorldGate_02", Order=2, NextOrder=3, StageLabel="WORLD 2  WORLD 3", Title="Cổng Cuối World 2 (Core Shrine Exit)", TargetTitle="World 3 • Aether Home Shrine", TargetRealm="GoldenSky", TargetWorldKey="AetherShrines", Element="Sky", Pos=_V3(-560,48.5,956), TargetPos=_V3(340,52.5,996), Col=_RGB(95,238,255)},
 		{Id="WorldGate_03", Order=3, NextOrder=4, StageLabel="WORLD 3  WORLD 4", Title="Cổng Cuối World 3 (Aether Shrine Exit)", TargetTitle="World 4 • West Garden Pirate Bastion", TargetRealm="GoldenSky", TargetWorldKey="WestGarden", Element="Sky", Pos=_V3(340,48.5,956), TargetPos=_V3(-2800,50.5,-65), Col=_RGB(255,205,82)},
 		{Id="WorldGate_04", Order=4, NextOrder=5, StageLabel="WORLD 4  WORLD 5", Title="Cổng Cuối World 4 (West Garden Exit)", TargetTitle="World 5 • Sunshard Sky Sanctuary", TargetRealm="GoldenSky", TargetWorldKey="SunshardSanctuary", Element="Sky", Pos=_V3(-2828,46.5,-40), TargetPos=_V3(2800,50.5,-55), Col=_RGB(255,222,95)},
-		{Id="WorldGate_05", Order=5, NextOrder=6, StageLabel="WORLD 5  WORLD 6 (SKY 2)", Title="Cổng Cuối World 5 (Sunshard Apex Exit)", TargetTitle="World 6 • Frozen Cyber Continent (Sky 2)", TargetRealm="FrozenCyber", TargetWorldKey="FrozenCyber", Element="Frost", Pos=_V3(2800,46.5,-445), TargetPos=_V3(11620.5,50.9,534.8), Col=_RGB(88,238,255)},
-		-- Sea 2: Frozen Cyber Odyssey (Worlds 6 -> 7 -> 8 -> 9 -> 10 -> Sea 3)
-		{Id="WorldGate_06", Order=6, NextOrder=7, StageLabel="WORLD 6  WORLD 7", Title="Cổng Cuối World 6 (Cryon Citadel Exit)", TargetTitle="World 7 • Cyberport Café Trading Hub", TargetRealm="FrozenCyber", TargetWorldKey="CyberportCafe", Element="Frost", Pos=_V3(12000,46.9,-430), TargetPos=_V3(9400,50.9,1785), Col=_RGB(88,238,255)},
-		{Id="WorldGate_07", Order=7, NextOrder=8, StageLabel="WORLD 7  WORLD 8", Title="Cổng Cuối World 7 (Cyberport Exit)", TargetTitle="World 8 • Permafrost Garrison Fortress", TargetRealm="FrozenCyber", TargetWorldKey="PermafrostGarrison", Element="Frost", Pos=_V3(9400,46.9,1825), TargetPos=_V3(9400,50.9,-2055), Col=_RGB(115,242,255)},
+		{Id="WorldGate_05", Order=5, NextOrder=6, StageLabel="WORLD 5  WORLD 6 (TẦNG TRỜI 2)", Title="Cổng Cuối World 5 (Sunshard Apex Exit)", TargetTitle="World 6 • Frozen Cyber Continent", TargetRealm="FrozenCyber", TargetWorldKey="FrozenCyber", Element="Frost", Pos=_V3(2800,46.5,-445), TargetPos=_V3(11620.5,50.9,534.8), Col=_RGB(88,238,255)},
+		-- Tầng Trời 2: Frozen Cyber Odyssey (Worlds 6 -> 7 -> 8 -> 9 -> 10 -> Tầng Trời 3)
+		{Id="WorldGate_06", Order=6, NextOrder=7, StageLabel="WORLD 6  WORLD 7", Title="Cổng Cuối World 6 (Cryon Citadel Exit)", TargetTitle="World 7 • Trade Station", TargetRealm="FrozenCyber", TargetWorldKey="CyberportCafe", Element="Frost", Pos=_V3(12000,46.9,-430), TargetPos=_V3(9400,50.9,1785), Col=_RGB(88,238,255)},
+		{Id="WorldGate_07", Order=7, NextOrder=8, StageLabel="WORLD 7  WORLD 8", Title="Cổng Cuối World 7 (Trade Station Exit)", TargetTitle="World 8 • Permafrost Garrison Fortress", TargetRealm="FrozenCyber", TargetWorldKey="PermafrostGarrison", Element="Frost", Pos=_V3(9400,46.9,1825), TargetPos=_V3(9400,50.9,-2055), Col=_RGB(115,242,255)},
 		{Id="WorldGate_08", Order=8, NextOrder=9, StageLabel="WORLD 8  WORLD 9", Title="Cổng Cuối World 8 (Permafrost Exit)", TargetTitle="World 9 • Microchip Awakening Raid Lab", TargetRealm="FrozenCyber", TargetWorldKey="MicrochipRaidLab", Element="Frost", Pos=_V3(9400,46.9,-2025), TargetPos=_V3(14600,50.9,1785), Col=_RGB(95,245,255)},
 		{Id="WorldGate_09", Order=9, NextOrder=10, StageLabel="WORLD 9  WORLD 10", Title="Cổng Cuối World 9 (Raid Lab Exit)", TargetTitle="World 10 • Glacial Wreckage Danger Sea", TargetRealm="FrozenCyber", TargetWorldKey="GlacialWreckage", Element="Frost", Pos=_V3(14600,46.9,1855), TargetPos=_V3(14600,50.9,-1812), Col=_RGB(135,242,255)},
-		{Id="WorldGate_10", Order=10, NextOrder=11, StageLabel="WORLD 10  WORLD 11 (SKY 3)", Title="Cổng Cuối World 10 (Glacial Abyss Exit)", TargetTitle="World 11 • Shadow Realm Continent (Sky 3)", TargetRealm="ShadowRealm", TargetWorldKey="ShadowRealm", Element="Void", Pos=_V3(14600,46.9,-1361.3), TargetPos=_V3(-12593.4,50.9,414), Col=_RGB(215,95,255)},
-		-- Sea 3: Shadow Realm Odyssey (Worlds 11 -> 12 -> 13 -> 14 -> 15 -> Realm 4)
-		{Id="WorldGate_11", Order=11, NextOrder=12, StageLabel="WORLD 11  WORLD 12", Title="Cổng Cuối World 11 (Noxar Throne Exit)", TargetTitle="World 12 • Castle on the Void Mansion", TargetRealm="ShadowRealm", TargetWorldKey="CastleOnTheVoid", Element="Void", Pos=_V3(-11672.2,46.9,-270), TargetPos=_V3(-14600,50.9,2173.1), Col=_RGB(225,110,255)},
-		{Id="WorldGate_12", Order=12, NextOrder=13, StageLabel="WORLD 12  WORLD 13", Title="Cổng Cuối World 12 (Castle Void Exit)", TargetTitle="World 13 • Umbral Crystal Sanctum", TargetRealm="ShadowRealm", TargetWorldKey="UmbralSanctum", Element="Void", Pos=_V3(-14600,46.9,1565), TargetPos=_V3(-9400,50.9,1815), Col=_RGB(245,95,255)},
-		{Id="WorldGate_13", Order=13, NextOrder=14, StageLabel="WORLD 13  WORLD 14", Title="Cổng Cuối World 13 (Umbral Sanctum Exit)", TargetTitle="World 14 • Temple of the Core (Race V4)", TargetRealm="ShadowRealm", TargetWorldKey="TempleOfTheCore", Element="Void", Pos=_V3(-9400,46.9,1845), TargetPos=_V3(-14600,50.9,-1785), Col=_RGB(210,120,255)},
-		{Id="WorldGate_14", Order=14, NextOrder=15, StageLabel="WORLD 14  WORLD 15", Title="Cổng Cuối World 14 (Temple Core Exit)", TargetTitle="World 15 • Mirage Sky Island (Leviathan Abyss)", TargetRealm="ShadowRealm", TargetWorldKey="LeviathanAbyss", Element="Void", Pos=_V3(-14600,46.9,-1768), TargetPos=_V3(-12000,50.9,-3364.5), Col=_RGB(78,238,255)},
-		{Id="WorldGate_15", Order=15, NextOrder=16, StageLabel="WORLD 15  WORLD 16 (REALM 4)", Title="Cổng Cuối World 15 (Mirage Abyss Exit)", TargetTitle="World 16 • The Verdant Crown (Realm 4)", TargetRealm="VerdantCrown", TargetWorldKey="VerdantCrown", Element="Sky", Pos=_V3(-12000,46.9,-2945), TargetPos=_V3(0,170.9,-8985), Col=_RGB(95,242,155)},
+		{Id="WorldGate_10", Order=10, NextOrder=11, StageLabel="WORLD 10  WORLD 11 (TẦNG TRỜI 3)", Title="Cổng Cuối World 10 (Glacial Abyss Exit)", TargetTitle="World 11 • Shadow Realm Continent", TargetRealm="ShadowRealm", TargetWorldKey="ShadowRealm", Element="Void", Pos=_V3(14600,46.9,-1361.3), TargetPos=_V3(-12593.4,50.9,414), Col=_RGB(215,95,255)},
+		-- Tầng Trời 3: Shadow Realm Odyssey (Worlds 11 -> 12 -> 13 -> 14 -> 15 -> Realm 4)
+		{Id="WorldGate_11", Order=11, NextOrder=12, StageLabel="WORLD 11  WORLD 12", Title="Cổng Cuối World 11 (Noxar Throne Exit)", TargetTitle="World 12 • Void Bastion", TargetRealm="ShadowRealm", TargetWorldKey="CastleOnTheVoid", Element="Void", Pos=_V3(-11672.2,46.9,-270), TargetPos=_V3(-14600,50.9,2173.1), Col=_RGB(225,110,255)},
+		{Id="WorldGate_12", Order=12, NextOrder=13, StageLabel="WORLD 12  WORLD 13", Title="Cổng Cuối World 12 (Void Bastion Exit)", TargetTitle="World 13 • Umbral Crystal Sanctum", TargetRealm="ShadowRealm", TargetWorldKey="UmbralSanctum", Element="Void", Pos=_V3(-14600,46.9,1565), TargetPos=_V3(-9400,50.9,1815), Col=_RGB(245,95,255)},
+		{Id="WorldGate_13", Order=13, NextOrder=14, StageLabel="WORLD 13  WORLD 14", Title="Cổng Cuối World 13 (Umbral Sanctum Exit)", TargetTitle="World 14 • Ascension Shrine", TargetRealm="ShadowRealm", TargetWorldKey="TempleOfTheCore", Element="Void", Pos=_V3(-9400,46.9,1845), TargetPos=_V3(-14600,50.9,-1785), Col=_RGB(210,120,255)},
+		{Id="WorldGate_14", Order=14, NextOrder=15, StageLabel="WORLD 14  WORLD 15", Title="Cổng Cuối World 14 (Ascension Shrine Exit)", TargetTitle="World 15 • Phantom Isle (Serpent Abyss)", TargetRealm="ShadowRealm", TargetWorldKey="LeviathanAbyss", Element="Void", Pos=_V3(-14600,46.9,-1768), TargetPos=_V3(-12000,50.9,-3364.5), Col=_RGB(78,238,255)},
+		{Id="WorldGate_15", Order=15, NextOrder=16, StageLabel="WORLD 15  WORLD 16 (REALM 4)", Title="Cổng Cuối World 15 (Phantom Isle Exit)", TargetTitle="World 16 • The Verdant Crown (Realm 4)", TargetRealm="VerdantCrown", TargetWorldKey="VerdantCrown", Element="Sky", Pos=_V3(-12000,46.9,-2945), TargetPos=_V3(0,170.9,-8985), Col=_RGB(95,242,155)},
 		-- Expansion Realms 4-8 (Worlds 16 -> 17 -> 18 -> 19 -> 20 -> Ascension Loop to World 1)
 		{Id="WorldGate_16", Order=16, NextOrder=17, StageLabel="WORLD 16  WORLD 17 (REALM 5)", Title="Cổng Cuối World 16 (Verdant Crown Exit)", TargetTitle="World 17 • Emberforge Wastes (Realm 5)", TargetRealm="EmberforgeWastes", TargetWorldKey="EmberforgeWastes", Element="Sky", Pos=_V3(0,166.9,-8520), TargetPos=_V3(12000,170.5,-9265), Col=_RGB(255,145,78)},
 		{Id="WorldGate_17", Order=17, NextOrder=18, StageLabel="WORLD 17  WORLD 18 (REALM 6)", Title="Cổng Cuối World 17 (Emberforge Exit)", TargetTitle="World 18 • Abyssal Tides (Realm 6)", TargetRealm="AbyssalTides", TargetWorldKey="AbyssalTides", Element="Frost", Pos=_V3(12000,166.5,-9230), TargetPos=_V3(-12000,170.9,-8964.5), Col=_RGB(68,215,245)},
 		{Id="WorldGate_18", Order=18, NextOrder=19, StageLabel="WORLD 18  WORLD 19 (REALM 7)", Title="Cổng Cuối World 18 (Abyssal Tides Exit)", TargetTitle="World 19 • Chronos Bastion (Realm 7)", TargetRealm="ChronosBastion", TargetWorldKey="ChronosBastion", Element="Sky", Pos=_V3(-12000,166.9,-8545), TargetPos=_V3(0,230.9,-13485), Col=_RGB(255,215,92)},
 		{Id="WorldGate_19", Order=19, NextOrder=20, StageLabel="WORLD 19  WORLD 20 (REALM 8)", Title="Cổng Cuối World 19 (Chronos Bastion Exit)", TargetTitle="World 20 • The Veil's End (Realm 8)", TargetRealm="VeilsEnd", TargetWorldKey="VeilsEnd", Element="Void", Pos=_V3(0,226.9,-13005), TargetPos=_V3(0,310.9,-17626.9), Col=_RGB(215,115,255)},
 		{Id="WorldGate_20", Order=20, NextOrder=1, StageLabel="WORLD 20  WORLD 1 (ASCENSION)", Title="Cổng Tận Cùng Bức Màn (Veil's End Apex)", TargetTitle="World 1 • Golden Sky Hub (Luân Hồi Thiên Giới)", TargetRealm="GoldenSky", TargetWorldKey="GoldenSky", Element="Sky", Pos=_V3(0,306.9,-18230), TargetPos=_V3(-317.4,50.5,527.8), Col=_RGB(255,232,125)},
-		-- Direct Main Continent Sea Gates & Spawn Plaza Portals
-		{Id="WorldGate_SkyHub_Plaza", Order=1, NextOrder=2, StageLabel="SKY HUB  WORLD 2", Title="Cổng Dịch Chuyển Sky Hub", TargetTitle="World 2 • Zioles Gacha Shrine", TargetRealm="GoldenSky", TargetWorldKey="ZiolesGachaShrine", Element="Sky", Pos=_V3(-290,46.5,558), TargetPos=_V3(-560,52.5,996), Col=_RGB(255,215,85)},
-		{Id="WorldGate_Sea2_Plaza", Order=6, NextOrder=7, StageLabel="SKY 2 HUB  WORLD 7", Title="Cổng Dịch Chuyển Frozen Cyber", TargetTitle="World 7 • Cyberport Café Trading Hub", TargetRealm="FrozenCyber", TargetWorldKey="CyberportCafe", Element="Frost", Pos=_V3(11648,46.9,512), TargetPos=_V3(9400,50.9,1785), Col=_RGB(88,238,255)},
-		{Id="WorldGate_Sea3_Plaza", Order=11, NextOrder=12, StageLabel="SKY 3 HUB  WORLD 12", Title="Cổng Dịch Chuyển Shadow Realm", TargetTitle="World 12 • Castle on the Void Mansion", TargetRealm="ShadowRealm", TargetWorldKey="CastleOnTheVoid", Element="Void", Pos=_V3(-12622,46.9,395), TargetPos=_V3(-14600,50.9,2173.1), Col=_RGB(215,95,255)},
-		{Id="WorldGate_Sea1_to_Sea2", Order=1, NextOrder=6, StageLabel="SKY 1  SKY 2 GATE", Title="Cổng Bắc Aureon Citadel", TargetTitle="Sky 2 • Frozen Cyber Continent", TargetRealm="FrozenCyber", TargetWorldKey="FrozenCyber", Element="Frost", Pos=_V3(42,46.5,-412), TargetPos=_V3(11620.5,50.9,534.8), Col=_RGB(88,238,255)},
-		{Id="WorldGate_Sea2_to_Sea3", Order=6, NextOrder=11, StageLabel="SKY 2  SKY 3 GATE", Title="Cổng Bắc Cryon Citadel", TargetTitle="Sky 3 • Shadow Realm Continent", TargetRealm="ShadowRealm", TargetWorldKey="ShadowRealm", Element="Void", Pos=_V3(12610,46.9,-448), TargetPos=_V3(-12593.4,50.9,414), Col=_RGB(215,95,255)},
+		-- Direct Main Continent Gates & Spawn Plaza Portals
+		{Id="WorldGate_SkyHub_Plaza", Order=1, NextOrder=2, StageLabel="SKY HUB  WORLD 2", Title="Cổng Dịch Chuyển Sky Hub", TargetTitle="World 2 • Core Shrine", TargetRealm="GoldenSky", TargetWorldKey="ZiolesGachaShrine", Element="Sky", Pos=_V3(-290,46.5,558), TargetPos=_V3(-560,52.5,996), Col=_RGB(255,215,85)},
+		{Id="WorldGate_Sea2_Plaza", Order=6, NextOrder=7, StageLabel="TẦNG TRỜI 2  WORLD 7", Title="Cổng Dịch Chuyển Frozen Cyber", TargetTitle="World 7 • Trade Station", TargetRealm="FrozenCyber", TargetWorldKey="CyberportCafe", Element="Frost", Pos=_V3(11648,46.9,512), TargetPos=_V3(9400,50.9,1785), Col=_RGB(88,238,255)},
+		{Id="WorldGate_Sea3_Plaza", Order=11, NextOrder=12, StageLabel="TẦNG TRỜI 3  WORLD 12", Title="Cổng Dịch Chuyển Shadow Realm", TargetTitle="World 12 • Void Bastion", TargetRealm="ShadowRealm", TargetWorldKey="CastleOnTheVoid", Element="Void", Pos=_V3(-12622,46.9,395), TargetPos=_V3(-14600,50.9,2173.1), Col=_RGB(215,95,255)},
+		{Id="WorldGate_Sea1_to_Sea2", Order=1, NextOrder=6, StageLabel="TẦNG TRỜI 1 -> 2", Title="Cổng Bắc Aureon Citadel", TargetTitle="Tầng Trời 2 • Frozen Cyber Continent", TargetRealm="FrozenCyber", TargetWorldKey="FrozenCyber", Element="Frost", Pos=_V3(42,46.5,-412), TargetPos=_V3(11620.5,50.9,534.8), Col=_RGB(88,238,255)},
+		{Id="WorldGate_Sea2_to_Sea3", Order=6, NextOrder=11, StageLabel="TẦNG TRỜI 2 -> 3", Title="Cổng Bắc Cryon Citadel", TargetTitle="Tầng Trời 3 • Shadow Realm Continent", TargetRealm="ShadowRealm", TargetWorldKey="ShadowRealm", Element="Void", Pos=_V3(12610,46.9,-448), TargetPos=_V3(-12593.4,50.9,414), Col=_RGB(215,95,255)},
 	}
 	G.WorldPortals={}
 	for _,wp in ipairs(worldPortalSpecs) do
@@ -3412,12 +3425,12 @@ function G.EnsureWorld()
 		ztl.TextScaled=true
 		ztl.TextColor3=_RGB(255,218,92)
 		ztl.TextStrokeTransparency=0.2
-		ztl.Text="Zioles • Aether Core Gacha"
+		ztl.Text="Hiền Giả Lõi • Core Oracle"
 		ztl.Parent=zbill
 
 		local zprompt=_IN("ProximityPrompt")
-		zprompt.ActionText="Random Trái Aether (Gacha)"
-		zprompt.ObjectText="Zioles • Aether Core Gacha (25,000 Gold)"
+		zprompt.ActionText="Cầu Lõi Aether (Core Shrine)"
+		zprompt.ObjectText="Hiền Giả Lõi • Core Oracle (25,000 Gold)"
 		zprompt.MaxActivationDistance=14
 		zprompt.HoldDuration=0
 		zprompt.Parent=zBody
@@ -3492,8 +3505,8 @@ function G.EnsureWorld()
 		{Name="NPC_GlacialExplorer", Asset="SkyShipwrightNPC", Title=" Thuyền Trưởng Thám Hiểm • Glacial Navigator", Pos=_V3(14578,49.1,-1800), FloorY=46.9, Col=_RGB(145,242,255)},
 		{Name="NPC_ShadowVanguard", Asset="Chronos", Title=" Chronos • Giám Hộ Hư Ảnh (Shadow Outpost)", Pos=_V3(-12574,49.5,432), FloorY=46.9, Col=_RGB(215,115,255)},
 		{Name="NPC_CastleVoidSteward", Asset="Lyra", Title=" Tổng Quản Hư Không • Void Citadel Steward", Pos=_V3(-14618,49.1,2160), FloorY=46.9, Col=_RGB(225,110,255)},
-		{Name="NPC_UmbralSwordmaster", Asset="Kael", Title=" Kiếm Thánh Hắc Tinh • CDK Master Smith", Pos=_V3(-9420,49.1,1805), FloorY=46.9, Col=_RGB(245,95,255)},
-		{Name="NPC_MirageHunter", Asset="SkyShipwrightNPC", Title=" Thợ Săn Thủy Tổ • Leviathan Hunter", Pos=_V3(-12020,49.1,-3352), FloorY=46.9, Col=_RGB(78,238,255)},
+		{Name="NPC_UmbralSwordmaster", Asset="Kael", Title=" Kiếm Thánh Hắc Tinh • Eclipse Twinblades Smith", Pos=_V3(-9420,49.1,1805), FloorY=46.9, Col=_RGB(245,95,255)},
+		{Name="NPC_MirageHunter", Asset="SkyShipwrightNPC", Title=" Thợ Săn Thủy Xà • Serpent Hunter", Pos=_V3(-12020,49.1,-3352), FloorY=46.9, Col=_RGB(78,238,255)},
 		{Name="NPC_VerdantKeeper", Asset="AncientMonkNPC", Title=" Đại Sư Cổ Thụ • Verdant Crown Keeper", Pos=_V3(-18,169.1,-8972), FloorY=166.9, Col=_RGB(95,242,155)},
 		{Name="NPC_EmberforgeSmith", Asset="Kael", Title=" Thợ Rèn Hỏa Tinh • Star-Forge Master", Pos=_V3(11982,168.7,-9252), FloorY=166.5, Col=_RGB(255,145,78)},
 		{Name="NPC_AbyssalNavigator", Asset="SkyShipwrightNPC", Title=" Hoa Tiêu Vực Thẳm • Abyssal Navigator", Pos=_V3(-12020,169.1,-8952), FloorY=166.9, Col=_RGB(68,215,245)},
@@ -3555,11 +3568,11 @@ function G.EnsureWorld()
 					rt.Cooldowns[cdKey]=now+60
 					profile.Gold=(profile.Gold or 0)+500
 					profile.CoreShards=(profile.CoreShards or 0)+50
-					G.SendDialogue(p,rn.Title,"ĐỒNG MINH VIỄN CHINH","Chào chiến binh Skyborn! Ta đã tiếp tế cho ngươi +500 Gold và +50 Core Shards. Hãy kiểm tra Trái Ác Quỷ [G] hoặc Lò Rèn trước khi khiêu chiến Boss đảo này!","Mở Trái Ác Quỷ [G]","OpenScreen:Fruits")
+					G.SendDialogue(p,rn.Title,"ĐỒNG MINH VIỄN CHINH","Chào chiến binh Skyborn! Ta đã tiếp tế cho ngươi +500 Gold và +50 Core Shards. Hãy kiểm tra Lõi Aether [G] hoặc Lò Rèn trước khi khiêu chiến Boss đảo này!","Mở Lõi Aether [G]","OpenScreen:Fruits")
 					G.Sync(p)
 				else
 					local rem=rt and math.max(1,math.ceil((rt.Cooldowns[cdKey] or 0)-now)) or 60
-					G.SendDialogue(p,rn.Title,"ĐỒNG MINH VIỄN CHINH","Hòm tiếp tế chiến trường đang tái nạp ("..tostring(rem).."s). Hãy kiểm tra Trái Ác Quỷ [G] hoặc Lò Rèn trước khi khiêu chiến Boss đảo này!","Mở Trái Ác Quỷ [G]","OpenScreen:Fruits")
+					G.SendDialogue(p,rn.Title,"ĐỒNG MINH VIỄN CHINH","Hòm tiếp tế chiến trường đang tái nạp ("..tostring(rem).."s). Hãy kiểm tra Lõi Aether [G] hoặc Lò Rèn trước khi khiêu chiến Boss đảo này!","Mở Lõi Aether [G]","OpenScreen:Fruits")
 				end
 			end
 		end)
@@ -3704,7 +3717,7 @@ function G.Join(p)
 	end
 	if G.Runtime[p] then return end
 	ensureProfileFields(profile)
-	local rt={Stamina=100,Energy=0,ShieldUntil=0,InvincibleUntil=0,ActionUntil=0,LastAttack=0,Combo=0,LastHurt=0,NextInstinctRegen=os.clock()+5,Requests={},Cooldowns={},Companions={},Safe=C.Spawn,MoveAt=os.clock()}
+	local rt={Stamina=100,Energy=100,LastCastAt=0,ShieldUntil=0,InvincibleUntil=0,ActionUntil=0,LastAttack=0,Combo=0,LastHurt=0,NextInstinctRegen=os.clock()+5,Requests={},Cooldowns={},Companions={},Safe=C.Spawn,MoveAt=os.clock()}
 	G.Runtime[p]=rt
 	G.UpdatePlayerPortalCompass(p,profile.CurrentWorldOrder or 1)
 	rt.CharConn=p.CharacterAdded:Connect(function(ch) G.Character(p,ch) end)
@@ -3720,7 +3733,7 @@ function G.Start()
 		end
 	end
 	R.CombatRequest.OnServerEvent:Connect(function(p,payload)
-		if type(payload)~="table" then return end
+		if not RemoteGuard.Allow(p,"Combat") or type(payload)~="table" then return end
 		local act=payload.action
 		if act=="Attack" or act=="Light" or act=="M1" or act=="Heavy" or act=="ChargeHeavy" or act=="ChargedSlash" or act=="Shoot" or act=="Dodge" or act=="Dash" then
 			G.Action(p,act,payload)
@@ -3729,7 +3742,7 @@ function G.Start()
 		end
 	end)
 	R.AbilityRequest.OnServerEvent:Connect(function(p,payload)
-		if type(payload)~="table" then return end
+		if not RemoteGuard.Allow(p,"Ability") or type(payload)~="table" then return end
 		if G.HandleAbilityExtra and G.HandleAbilityExtra(p,payload) then return end
 		local id=payload.skillId or payload.action
 		if payload.action=="SlotMove" or payload.key or id=="Z" or id=="X" or id=="C" or id=="V" or id=="F" then
@@ -3755,14 +3768,21 @@ function G.Start()
 		end
 	end)
 	R.InteractRequest.OnServerEvent:Connect(function(p,payload,extra)
+		if not RemoteGuard.Allow(p,"Interact") then return end
 		if type(payload)=="string" then
 			G.Interact(p,payload,extra)
 		elseif type(payload)=="table" then
 			G.Interact(p,payload.interactableId or payload.chestId or payload.action or payload.id,payload)
 		end
 	end)
-	R.EquipmentRequest.OnServerEvent:Connect(function(p,payload) G.Equipment(p,payload) end)
-	R.AppearanceRequest.OnServerEvent:Connect(function(p,payload) G.ChooseAppearance(p,payload) end)
+	R.EquipmentRequest.OnServerEvent:Connect(function(p,payload)
+		if not RemoteGuard.Allow(p,"Equipment") then return end
+		G.Equipment(p,payload)
+	end)
+	R.AppearanceRequest.OnServerEvent:Connect(function(p,payload)
+		if not RemoteGuard.Allow(p,"Appearance") then return end
+		G.ChooseAppearance(p,payload)
+	end)
 
 	G.EnsureProfileFields=ensureProfileFields
 	StaticData.SpawnAllInitialEnemies(G)
@@ -3923,6 +3943,7 @@ function G.Start()
 						end
 					end
 					rt.Stamina=math.min(100,rt.Stamina+17*dt)
+					if now-(rt.LastCastAt or 0)>=1.5 and now>=(rt.ActionUntil or 0) then rt.Energy=math.min(100,(rt.Energy or 100)+8*dt) end
 					if now-rt.LastHurt>7 then h.Health=math.min(h.MaxHealth,h.Health+3*dt) end
 				end
 				if sync>=.3 then G.Sync(p) end

@@ -32,6 +32,9 @@ legacyRemotes.Parent = ReplicatedStorage
 local legacyUICmd = legacyRemotes:FindFirstChild("UICommand") or Instance.new("RemoteEvent")
 legacyUICmd.Name = "UICommand"
 legacyUICmd.Parent = legacyRemotes
+local legacyUIRequest = legacyRemotes:FindFirstChild("UIRequest") or Instance.new("RemoteEvent")
+legacyUIRequest.Name = "UIRequest"
+legacyUIRequest.Parent = legacyRemotes
 
 local InventoryService = require(script.Parent:WaitForChild("InventoryService"))
 local SkillService = require(script.Parent:WaitForChild("SkillService"))
@@ -41,6 +44,7 @@ local CraftingService = require(script.Parent:WaitForChild("CraftingService"))
 
 local Services = script.Parent.Parent:WaitForChild("Services")
 local GameService = require(Services:WaitForChild("GameService"))
+local RemoteGuard = require(Services:WaitForChild("RemoteGuard"))
 
 local EXPANSION_COMMANDS = {
 	RedeemCode = true,
@@ -114,13 +118,14 @@ local function dispatchExpansionCommand(player, cmd, payload)
 			return true, nil
 		end
 	end
-	if GameService.HandleUIRequest then
+	if type(GameService.HandleUIRequest) == "function" then
 		local ok = GameService.HandleUIRequest(player, cmd, payload)
 		if ok == true then
 			return true, nil
 		end
+		return false, nil
 	end
-	for _, svcName in ipairs({ "SkybreakVendorAndArsenalService", "SkybreakSocialEconomyService", "SkybreakWorldEventsService", "SkybreakCombatExpansion" }) do
+	for _, svcName in ipairs({ "SkybreakSocialEconomyService", "SkybreakWorldEventsService", "SkybreakCombatExpansion" }) do
 		local expMod = Services:FindFirstChild(svcName)
 		if expMod and expMod:IsA("ModuleScript") then
 			local loaded, exp = pcall(require, expMod)
@@ -136,6 +141,9 @@ local function dispatchExpansionCommand(player, cmd, payload)
 end
 
 local function handleCommand(player, cmdOrPayload, arg2)
+	if not RemoteGuard.Allow(player, "UI") then
+		return
+	end
 	local cmd = nil
 	local payload = nil
 	if type(cmdOrPayload) == "string" then
@@ -145,7 +153,10 @@ local function handleCommand(player, cmdOrPayload, arg2)
 		cmd = cmdOrPayload.command or cmdOrPayload.action or cmdOrPayload.cmd
 		payload = cmdOrPayload
 	end
-	if type(cmd) ~= "string" or cmd == "" or #cmd > 48 then
+	if type(cmd) ~= "string" or cmd == "" or #cmd > 64 then
+		return
+	end
+	if payload ~= nil and not RemoteGuard.ValidatePayload(payload, 4) then
 		return
 	end
 
@@ -200,6 +211,7 @@ end
 uiCommandEvent.OnServerEvent:Connect(handleCommand)
 legacyUICmd.OnServerEvent:Connect(handleCommand)
 sharedUIRequest.OnServerEvent:Connect(handleCommand)
+legacyUIRequest.OnServerEvent:Connect(handleCommand)
 
 getSnapshotFn.OnServerInvoke = function(player)
 	if GameService.Rate(player, "UI_Snapshot", 0.25) then
