@@ -1,7 +1,7 @@
 -- SkybreakCombatData.lua
 -- Shared authoritative definitions for SKYBREAK Wave 2 Combat, 5 Martial Arts Styles,
--- Mastery & 12-Fruit Awakened V2 Movesets, Mirage Hourly Stock, 4-Chair Cafe Fruit Trading,
--- 5-Stage Busoshoku Haki + 8 Aura Skins, 6 Race V4 Passives, Bounty/Honor (0..30M),
+-- Mastery & 12-Core Awakened V2 Movesets, Phantom Isle Hourly Stock, 4-Chair Trade Station,
+-- 5-Stage Will Armor + 8 Aura Skins, 6 Ascension Passives, Renown/Valor (0..30M),
 -- 34 Glowing Overhead Titles, Star Ascension, and Giftcodes.
 
 local CombatData = {}
@@ -334,10 +334,10 @@ CombatData.MartialStyles = {
 
 	celestial_godhuman = {
 		Id = "celestial_godhuman",
-		Name = "Thiên Thần Tuyệt Kỹ",
-		DisplayName = "Thiên Thần Tuyệt Kỹ - Celestial Godhuman",
+		Name = "Thần Võ Aether",
+		DisplayName = "Thần Võ Aether - Celestial Paragon",
 		MasterNPC = "GrandmasterAurelius",
-		MasterName = "Thần Võ Aurelius - Celestial Godhuman",
+		MasterName = "Thần Võ Aurelius - Celestial Paragon",
 		IslandId = "TempleOfTheCore",
 		MasterOffset = Vector3.new(22, 0, -18),
 		PriceGold = 3500000,
@@ -462,7 +462,7 @@ end
 CombatData.GunSpecs = {
 	soul_guitar_void = {
 		Id = "soul_guitar_void",
-		Name = "Soul Guitar of the Void",
+		Name = "Đàn Hồn Hư Không - Void Lyre",
 		SubKind = "SoulGuitarWave",
 		MaxRange = 125,
 		BeamRadius = 11.5,
@@ -492,7 +492,7 @@ CombatData.GunSpecs = {
 	},
 	solar_kabucha = {
 		Id = "solar_kabucha",
-		Name = "Solar Kabucha",
+		Name = "Ná Gió Mặt Trời - Sunwind Sling",
 		SubKind = "SolarBlast",
 		MaxRange = 115,
 		BeamRadius = 8.5,
@@ -519,7 +519,7 @@ CombatData.GunSpecs = {
 	},
 	kabucha_wind = {
 		Id = "kabucha_wind",
-		Name = "Tempest Kabucha Slingshot",
+		Name = "Ná Phong Bão - Tempest Sunwind Sling",
 		SubKind = "WindGaleShot",
 		MaxRange = 115,
 		BeamRadius = 9.0,
@@ -701,21 +701,21 @@ function CombatData.ResolveFruitId(rawId)
 end
 
 CombatData.FruitCatalog = {
-	GaleCore = { Id = "GaleCore", Name = "Trái Cuồng Phong - Gale Core", Rarity = "Common", Type = "Elemental", Logia = true, Element = "Sky", GoldValue = 75000, AwakenShards = 400 },
-	SandstoneCore = { Id = "SandstoneCore", Name = "Trái Sa Mạc - Sandstone Core", Rarity = "Uncommon", Type = "Elemental", Logia = true, Element = "Sand", GoldValue = 240000, AwakenShards = 500 },
-	SolarFlameCore = { Id = "SolarFlameCore", Name = "Trái Thái Dương Hỏa - Solar Flame", Rarity = "Uncommon", Type = "Elemental", Logia = true, Element = "Flame", GoldValue = 380000, AwakenShards = 650 },
-	GlacierIceCore = { Id = "GlacierIceCore", Name = "Trái Vĩnh Băng - Glacier Ice", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Frost", GoldValue = 550000, AwakenShards = 800, WaterWalk = "Ice" },
-	CelestialLightCore = { Id = "CelestialLightCore", Name = "Trái Thánh Quang - Celestial Light", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Light", GoldValue = 850000, AwakenShards = 950 },
-	StarforgedMagmaCore = { Id = "StarforgedMagmaCore", Name = "Trái Dung Nham Tinh Cầu - Starforged Magma", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Magma", GoldValue = 1150000, AwakenShards = 1100, WaterWalk = "Basalt" },
-	ThunderRumbleCore = { Id = "ThunderRumbleCore", Name = "Trái Lôi Thần - Thunder Rumble", Rarity = "Legendary", Type = "Elemental", Logia = true, Element = "Lightning", GoldValue = 2100000, AwakenShards = 1500 },
-	AstralGravityCore = { Id = "AstralGravityCore", Name = "Trái Trọng Trường - Astral Gravity", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Gravity", GoldValue = 2500000, AwakenShards = 1650 },
-	DimensionalPortalCore = { Id = "DimensionalPortalCore", Name = "Trái Không Gian - Dimensional Portal", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Portal", GoldValue = 2900000, AwakenShards = 1800 },
-	SolarTitanCore = { Id = "SolarTitanCore", Name = "Trái Kim Thân Hộ Pháp - Solar Titan", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, Element = "Light", GoldValue = 4200000, AwakenShards = 2200 },
-	AetherflowCore = { Id = "AetherflowCore", Name = "Trái Huyết Tinh Aether - Aetherflow", Rarity = "Mythic", Type = "Natural", Logia = false, Element = "Aether", GoldValue = 4800000, AwakenShards = 2400 },
-	AbyssalSovereignCore = { Id = "AbyssalSovereignCore", Name = "Trái Hắc Long Hư Không - Abyssal Sovereign", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, DragonFury = true, Element = "Void", GoldValue = 6500000, AwakenShards = 2800 },
+	GaleCore = { Id = "GaleCore", Name = "Lõi Cuồng Phong - Gale Core", Rarity = "Common", Type = "Elemental", Logia = true, Element = "Sky", GoldValue = 75000, AwakenShards = 400 },
+	SandstoneCore = { Id = "SandstoneCore", Name = "Lõi Sa Thạch - Sandstone Core", Rarity = "Uncommon", Type = "Elemental", Logia = true, Element = "Sand", GoldValue = 240000, AwakenShards = 500 },
+	SolarFlameCore = { Id = "SolarFlameCore", Name = "Lõi Nhật Viêm - Solar Flame Core", Rarity = "Uncommon", Type = "Elemental", Logia = true, Element = "Flame", GoldValue = 380000, AwakenShards = 650 },
+	GlacierIceCore = { Id = "GlacierIceCore", Name = "Lõi Băng Hà - Glacier Ice Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Frost", GoldValue = 550000, AwakenShards = 800, WaterWalk = "Ice" },
+	CelestialLightCore = { Id = "CelestialLightCore", Name = "Lõi Thiên Quang - Celestial Light Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Light", GoldValue = 850000, AwakenShards = 950 },
+	StarforgedMagmaCore = { Id = "StarforgedMagmaCore", Name = "Lõi Tinh Nham - Starforged Magma Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Magma", GoldValue = 1150000, AwakenShards = 1100, WaterWalk = "Basalt" },
+	ThunderRumbleCore = { Id = "ThunderRumbleCore", Name = "Lõi Lôi Đình - Thunder Rumble Core", Rarity = "Legendary", Type = "Elemental", Logia = true, Element = "Lightning", GoldValue = 2100000, AwakenShards = 1500 },
+	AstralGravityCore = { Id = "AstralGravityCore", Name = "Lõi Tinh Cầu - Astral Gravity Core", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Gravity", GoldValue = 2500000, AwakenShards = 1650 },
+	DimensionalPortalCore = { Id = "DimensionalPortalCore", Name = "Lõi Khe Nứt - Rift Core", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Portal", GoldValue = 2900000, AwakenShards = 1800 },
+	SolarTitanCore = { Id = "SolarTitanCore", Name = "Lõi Kim Thân - Colossus Core", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, Element = "Light", GoldValue = 4200000, AwakenShards = 2200 },
+	AetherflowCore = { Id = "AetherflowCore", Name = "Lõi Tinh Lưu - Aetherflow Core", Rarity = "Mythic", Type = "Natural", Logia = false, Element = "Aether", GoldValue = 4800000, AwakenShards = 2400 },
+	AbyssalSovereignCore = { Id = "AbyssalSovereignCore", Name = "Lõi Long Đế Vực Thẳm - Abyssal Sovereign Core", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, DragonFury = true, Element = "Void", GoldValue = 6500000, AwakenShards = 2800 },
 }
 
--- Complete Awakened V2 Moveset for all 12 Devil Fruits (#42)
+-- Complete Awakened V2 Moveset for all 12 Aether Cores (#42)
 -- MultBoost ranges +28%..+42% (1.28..1.42), RadiusScale expands AoE, Hits adds multi-hit shockwaves
 CombatData.AwakenedFruitMoves = {
 	GaleCore = {
@@ -730,7 +730,7 @@ CombatData.AwakenedFruitMoves = {
 		X = { Name = "Abyssal Quicksand Pit V2 - Hố Cát Tử Thần", MultBoost = 1.33, RadiusScale = 1.42, Hits = 3, Mechanic = "QuicksandSink", PullStrength = 22 },
 		C = { Name = "Pharaoh Sandstorm V2 - Bão Cát Hoàng Đế", MultBoost = 1.35, RadiusScale = 1.45, Hits = 4, Mechanic = "BlindDoT", DoTTicks = 3 },
 		V = { Name = "Desert Burial Cataclysm V2 - Đại Mộ Sa Mạc", MultBoost = 1.39, RadiusScale = 1.52, Hits = 5, Mechanic = "QuicksandSink", PullStrength = 28 },
-		F = { Name = "Mirage Sand Flight V2 - Lốc Cát Phi Hành", MultBoost = 1.28, RadiusScale = 1.30, Hits = 2, Mechanic = "SpeedGlide" },
+		F = { Name = "Phantom Sand Flight V2 - Lốc Cát Phi Hành", MultBoost = 1.28, RadiusScale = 1.30, Hits = 2, Mechanic = "SpeedGlide" },
 	},
 	SolarFlameCore = {
 		Z = { Name = "Blue Flare Bullets V2 - Thanh Viêm Liên Đạn", MultBoost = 1.31, RadiusScale = 1.35, Hits = 3, Mechanic = "SolarBurnDoT", DoTTicks = 3 },
@@ -805,7 +805,7 @@ CombatData.AwakenedFruitMoves = {
 }
 
 -- ============================================================================
--- 4. HOURLY DETERMINISTIC MIRAGE FRUIT STOCK ROTATION (#43) & 40% TRADING (#44)
+-- 4. HOURLY DETERMINISTIC PHANTOM ISLE CORE STOCK ROTATION (#43) & 40% TRADING (#44)
 -- ============================================================================
 CombatData.TradeMaxValueDiffRatio = 0.40
 CombatData.TradeCountdownSeconds = 5
@@ -877,7 +877,7 @@ function CombatData.GetHourlyMirageStock(unixTime)
 end
 
 -- ============================================================================
--- 5. SIX RACE V4 PASSIVES & DR. VEGA RACE REROLL (#51, #52, #59)
+-- 5. SIX ASCENSION PASSIVES & DR. VEGA LINEAGE REROLL (#51, #52, #59)
 -- ============================================================================
 CombatData.RaceOrder = { "Skyborn", "Mink", "Leviathan", "Cyborg", "Ghoul", "Draco" }
 CombatData.RaceRerollCostShards = 50
@@ -886,7 +886,7 @@ CombatData.TrialDurationSeconds = 60
 CombatData.RaceV4Passives = {
 	Skyborn = {
 		Id = "Skyborn",
-		Name = "Thiên Tộc V4 - King's Aerial Dominion",
+		Name = "Thiên Tộc Thăng Hoa - King's Aerial Dominion",
 		StaggerRadius = 22,
 		StaggerInterval = 2.8,
 		StaggerDuration = 0.85,
@@ -896,7 +896,7 @@ CombatData.RaceV4Passives = {
 	},
 	Mink = {
 		Id = "Mink",
-		Name = "Tộc Thú V4 - Tempest Tornado Dash",
+		Name = "Tộc Phong Linh Thăng Hoa - Tempest Tornado Dash",
 		WalkSpeedBonus = 0.45,
 		WhirlwindRadius = 15,
 		MiniStunDuration = 0.55,
@@ -905,7 +905,7 @@ CombatData.RaceV4Passives = {
 	},
 	Leviathan = {
 		Id = "Leviathan",
-		Name = "Hải Tộc V4 - Water Leviathan Shield",
+		Name = "Tộc Hải Lưu Thăng Hoa - Tidal Abyss Shield",
 		ShieldMaxHPPct = 0.25,
 		ShieldRegenPctPerSec = 0.035,
 		ArmorBreakSlowPct = 0.35,
@@ -917,7 +917,7 @@ CombatData.RaceV4Passives = {
 	},
 	Cyborg = {
 		Id = "Cyborg",
-		Name = "Cơ Giới V4 - Quantum Chain Orbs",
+		Name = "Tộc Cơ Giới Thăng Hoa - Quantum Chain Orbs",
 		ChainMaxTargets = 4,
 		ChainRadius = 26,
 		ChainDamageRatio = 0.32,
@@ -927,7 +927,7 @@ CombatData.RaceV4Passives = {
 	},
 	Ghoul = {
 		Id = "Ghoul",
-		Name = "Huyết Tộc V4 - Blood-Siphon Domain",
+		Name = "Tộc Dạ Ảnh Thăng Hoa - Nightshade Siphon Domain",
 		SkillLifeLeechPct = 0.18,
 		BasicLifeLeechPct = 0.10,
 		CooldownReductionPct = 0.22,
@@ -937,7 +937,7 @@ CombatData.RaceV4Passives = {
 	},
 	Draco = {
 		Id = "Draco",
-		Name = "Long Tộc V4 - Primordial Thorn Pyre",
+		Name = "Tộc Long Huyết Thăng Hoa - Primordial Thorn Pyre",
 		ThornReflectPct = 0.25,
 		BurnAuraRadius = 24,
 		BurnAuraAtkRatio = 0.42,
@@ -947,15 +947,15 @@ CombatData.RaceV4Passives = {
 }
 
 -- ============================================================================
--- 6. 5-STAGE BUSOSHOKU HAKI + 8 AURA COLOR SKINS (#53) & KEN V2 (#54)
+-- 6. 5-STAGE WILL ARMOR + 8 AURA COLOR SKINS (#53) & WILL SENSE V2 (#54)
 -- ============================================================================
 CombatData.HakiStages = {
-	[0] = { Stage = 0, Name = "Stage 0 - Buso Hands", Coverage = "Hands", MinEXP = 0, AtkBonus = 0.08, DefBonus = 0.05, BreakBonus = 3 },
-	[1] = { Stage = 1, Name = "Stage 1 - Buso Arms", Coverage = "Arms", MinEXP = 80, AtkBonus = 0.11, DefBonus = 0.08, BreakBonus = 5 },
-	[2] = { Stage = 2, Name = "Stage 2 - Buso Torso & Arms", Coverage = "Torso+Arms", MinEXP = 240, AtkBonus = 0.14, DefBonus = 0.11, BreakBonus = 7 },
-	[3] = { Stage = 3, Name = "Stage 3 - Buso Upper Body & Legs", Coverage = "UpperBody+Legs", MinEXP = 520, AtkBonus = 0.17, DefBonus = 0.13, BreakBonus = 10 },
-	[4] = { Stage = 4, Name = "Stage 4 - Full Body Busoshoku", Coverage = "FullBody", MinEXP = 950, AtkBonus = 0.19, DefBonus = 0.16, BreakBonus = 13 },
-	[5] = { Stage = 5, Name = "Stage 5 - Sovereign Overdrive", Coverage = "SovereignOverdrive", MinEXP = 1600, AtkBonus = 0.22, DefBonus = 0.18, BreakBonus = 16 },
+	[0] = { Stage = 0, Name = "Stage 0 - Giáp Ý Chí: Song Thủ (Will Armor Hands)", Coverage = "Hands", MinEXP = 0, AtkBonus = 0.08, DefBonus = 0.05, BreakBonus = 3 },
+	[1] = { Stage = 1, Name = "Stage 1 - Giáp Ý Chí: Cánh Tay (Will Armor Arms)", Coverage = "Arms", MinEXP = 80, AtkBonus = 0.11, DefBonus = 0.08, BreakBonus = 5 },
+	[2] = { Stage = 2, Name = "Stage 2 - Giáp Ý Chí: Thân Trên (Will Armor Torso)", Coverage = "Torso+Arms", MinEXP = 240, AtkBonus = 0.14, DefBonus = 0.11, BreakBonus = 7 },
+	[3] = { Stage = 3, Name = "Stage 3 - Giáp Ý Chí: Tứ Chi (Will Armor Limbs)", Coverage = "UpperBody+Legs", MinEXP = 520, AtkBonus = 0.17, DefBonus = 0.13, BreakBonus = 10 },
+	[4] = { Stage = 4, Name = "Stage 4 - Giáp Ý Chí: Toàn Thân (Full Body Will Armor)", Coverage = "FullBody", MinEXP = 950, AtkBonus = 0.19, DefBonus = 0.16, BreakBonus = 13 },
+	[5] = { Stage = 5, Name = "Stage 5 - Bá Ý Siêu Việt (Sovereign Will Overdrive)", Coverage = "SovereignOverdrive", MinEXP = 1600, AtkBonus = 0.22, DefBonus = 0.18, BreakBonus = 16 },
 }
 
 function CombatData.GetHakiStageForEXP(exp)
@@ -981,7 +981,7 @@ CombatData.HakiColorOrder = {
 }
 
 CombatData.HakiColors = {
-	crimson_conqueror = { Id = "crimson_conqueror", Name = "Hồng Liên Bá Vương - Crimson Conqueror", Color = Color3.fromRGB(255, 52, 72), CostShards = 0 },
+	crimson_conqueror = { Id = "crimson_conqueror", Name = "Hồng Liên Bá Ý - Crimson Sovereign", Color = Color3.fromRGB(255, 52, 72), CostShards = 0 },
 	solar_gold = { Id = "solar_gold", Name = "Hoàng Kim Thái Dương - Solar Gold", Color = Color3.fromRGB(255, 206, 68), CostShards = 150 },
 	cryo_cyan = { Id = "cryo_cyan", Name = "Hàn Băng Cực Quang - Cryo Cyan", Color = Color3.fromRGB(72, 232, 255), CostShards = 150 },
 	void_violet = { Id = "void_violet", Name = "Tử Tinh Hư Không - Void Violet", Color = Color3.fromRGB(178, 84, 255), CostShards = 250 },
@@ -1071,59 +1071,59 @@ CombatData.Titles = {
 	sky_rookie = { Id = "sky_rookie", Name = "Tân Binh Bầu Trời", Color = Color3.fromRGB(165, 225, 255), Desc = "Khởi đầu hành trình trên đại hải trình bầu trời." },
 	cloud_strider = { Id = "cloud_strider", Name = "Kẻ Lướt Mây Trắng", Color = Color3.fromRGB(125, 235, 255), MinLevel = 120, Desc = "Đạt cấp độ Lv. 120." },
 	aureon_slayer = { Id = "aureon_slayer", Name = "Người Phá Tháp Ánh Sáng", Color = Color3.fromRGB(255, 214, 92), MinLevel = 700, BossClear = "AureonSentinel", Desc = "Chinh phục Aureon Sentinel hoặc đạt Lv. 700." },
-	cyber_vanguard = { Id = "cyber_vanguard", Name = "Tiên Phong Băng Thành", Color = Color3.fromRGB(102, 240, 255), WorldReq = "FrozenCyber", Desc = "Đặt chân tới Sky 2 - Frozen Cyber." },
+	cyber_vanguard = { Id = "cyber_vanguard", Name = "Tiên Phong Băng Thành", Color = Color3.fromRGB(102, 240, 255), WorldReq = "FrozenCyber", Desc = "Đặt chân tới Tầng Trời 2 (Sky 2) - Frozen Cyber." },
 	cryon_breaker = { Id = "cryon_breaker", Name = "Kẻ Nghiền Băng Vĩnh Cửu", Color = Color3.fromRGB(85, 210, 255), MinLevel = 1500, BossClear = "CryonPrime", Desc = "Chinh phục Cryon Prime hoặc đạt Lv. 1500." },
-	shadow_walker = { Id = "shadow_walker", Name = "Hành Giả Bóng Đêm", Color = Color3.fromRGB(190, 120, 255), WorldReq = "ShadowRealm", Desc = "Bước vào Sky 3 - Shadow Realm." },
+	shadow_walker = { Id = "shadow_walker", Name = "Hành Giả Bóng Đêm", Color = Color3.fromRGB(190, 120, 255), WorldReq = "ShadowRealm", Desc = "Bước vào Tầng Trời 3 (Sky 3) - Shadow Realm." },
 	void_emperor = { Id = "void_emperor", Name = "Đế Vương Hư Không", Color = Color3.fromRGB(196, 84, 255), MinLevel = 2200, BossClear = "Noxar", Desc = "Đánh bại Noxar - The Void Sovereign." },
 	apex_creator = { Id = "apex_creator", Name = "Đỉnh Cao Sáng Thế", Color = Color3.fromRGB(255, 240, 165), MinLevel = 2550, BossClear = "Veyr", Desc = "Đạt MAX LEVEL 2550 hoặc đánh bại Veyr." },
 	golden_sword_saint = { Id = "golden_sword_saint", Name = "Kiếm Thánh Hoàng Kim", Color = Color3.fromRGB(255, 208, 72), ItemOwned = "saber_of_aureon", Desc = "Sở hữu Đại Kiếm Thánh Quang hoặc Kiếm Thuật tinh thông." },
-	cursed_dual_master = { Id = "cursed_dual_master", Name = "Song Kiếm Tuyệt Thế", Color = Color3.fromRGB(255, 110, 195), ItemOwned = "cursed_dual_skyblades", Desc = "Sở hữu Cursed Dual Skyblades (CDK)." },
+	cursed_dual_master = { Id = "cursed_dual_master", Name = "Song Kiếm Tuyệt Thế", Color = Color3.fromRGB(255, 110, 195), ItemOwned = "cursed_dual_skyblades", Desc = "Sở hữu Song Kiếm Nguyệt Thực (Eclipse Twinblades)." },
 	abyssal_blade_lord = { Id = "abyssal_blade_lord", Name = "Hắc Kiếm Bá Chủ", Color = Color3.fromRGB(178, 92, 255), ItemOwned = "noxar_abyssal_greatsword", Desc = "Sở hữu Noxar's Abyssal Greatsword." },
-	six_realms_godfist = { Id = "six_realms_godfist", Name = "Thần Quyền Lục Giới", Color = Color3.fromRGB(255, 232, 130), StyleReq = "celestial_godhuman", Desc = "Lĩnh ngộ Thiên Thần Tuyệt Kỹ - Celestial Godhuman." },
+	six_realms_godfist = { Id = "six_realms_godfist", Name = "Thần Quyền Lục Giới", Color = Color3.fromRGB(255, 232, 130), StyleReq = "celestial_godhuman", Desc = "Lĩnh ngộ Thần Võ Aether - Celestial Paragon." },
 	jade_dragon_sifu = { Id = "jade_dragon_sifu", Name = "Long Quyền Tông Sư", Color = Color3.fromRGB(64, 245, 168), StyleReq = "jade_dragon", Desc = "Lĩnh ngộ Long Quyền Ngọc Bích." },
 	thunder_talon_flash = { Id = "thunder_talon_flash", Name = "Lôi Trảo Nhất Thiểm", Color = Color3.fromRGB(92, 198, 255), StyleReq = "thunder_talon", Desc = "Lĩnh ngộ Lôi Trảo Cước." },
 	ashura_sun_fist = { Id = "ashura_sun_fist", Name = "Tu La Thái Dương", Color = Color3.fromRGB(255, 132, 48), StyleReq = "solar_ashura", Desc = "Lĩnh ngộ Thái Dương Tu La Quyền." },
-	soul_virtuoso = { Id = "soul_virtuoso", Name = "Nhạc Sĩ Hư Không", Color = Color3.fromRGB(205, 112, 255), ItemOwned = "soul_guitar_void", Desc = "Sở hữu Soul Guitar of the Void." },
+	soul_virtuoso = { Id = "soul_virtuoso", Name = "Nhạc Sĩ Hư Không", Color = Color3.fromRGB(205, 112, 255), ItemOwned = "soul_guitar_void", Desc = "Sở hữu Đàn Hồn Hư Không (Void Lyre)." },
 	subzero_marksman = { Id = "subzero_marksman", Name = "Xạ Thủ Tuyệt Độ", Color = Color3.fromRGB(95, 242, 255), ItemOwned = "cryo_railgun", Desc = "Sở hữu Cryo Railgun." },
-	sea_king_slayer = { Id = "sea_king_slayer", Name = "Kẻ Diệt Hải Vương", Color = Color3.fromRGB(68, 215, 255), Desc = "Hạ gục Sky Sea Beast hoặc Abyssal Leviathan." },
-	awakened_ascendant = { Id = "awakened_ascendant", Name = "Chân Thân Thức Tỉnh", Color = Color3.fromRGB(255, 155, 72), Desc = "Thức tỉnh V2 bất kỳ Trái Ác Quỷ nào." },
+	sea_king_slayer = { Id = "sea_king_slayer", Name = "Kẻ Diệt Thú Trời", Color = Color3.fromRGB(68, 215, 255), Desc = "Hạ gục Thú Trời (Sky Beast) hoặc Thủy Xà Vực Thẳm (Abyss Serpent)." },
+	awakened_ascendant = { Id = "awakened_ascendant", Name = "Chân Thân Thức Tỉnh", Color = Color3.fromRGB(255, 155, 72), Desc = "Mở khóa Lõi Thức Tỉnh (Awakened Core) bất kỳ." },
 	sovereign_dragon_king = { Id = "sovereign_dragon_king", Name = "Hoàng Long Cửu Thiên", Color = Color3.fromRGB(215, 92, 255), Desc = "Hóa Hoàng Long Khổng Lồ ở 100% Nộ Khí." },
 	dimensional_traveler = { Id = "dimensional_traveler", Name = "Lữ Khách Xuyên Không", Color = Color3.fromRGB(120, 185, 255), Desc = "Khai mở Cổng Không Gian dịch chuyển liên đảo." },
-	mirage_tycoon = { Id = "mirage_tycoon", Name = "Đại Thương Gia Ảo Ảnh", Color = Color3.fromRGB(255, 215, 108), Desc = "Mua Trái Ác Quỷ trực tiếp từ Mirage Fruit Dealer." },
-	cafe_broker = { Id = "cafe_broker", Name = "Nhà Môi Giới Trái Ác Quỷ", Color = Color3.fromRGB(132, 245, 195), Desc = "Hoàn tất giao dịch Trái Ác Quỷ tại Cyberport Cafe." },
-	iron_buso_master = { Id = "iron_buso_master", Name = "Thiết Giáp Bá Khí", Color = Color3.fromRGB(255, 92, 108), MinHakiStage = 4, Desc = "Đạt Busoshoku Haki Stage 4 (Full Body)." },
-	conqueror_overdrive = { Id = "conqueror_overdrive", Name = "Bá Vương Tuyệt Đỉnh", Color = Color3.fromRGB(255, 52, 78), MinHakiStage = 5, Desc = "Đạt Busoshoku Haki Stage 5 (Sovereign Overdrive)." },
-	all_seeing_oracle = { Id = "all_seeing_oracle", Name = "Thiên Nhãn Thấu Thị", Color = Color3.fromRGB(135, 232, 255), KenV2Req = true, Desc = "Khai mở Kenbunshoku Haki V2." },
-	core_gear_awakened = { Id = "core_gear_awakened", Name = "Huyết Mạch Thức Tỉnh V4", Color = Color3.fromRGB(255, 196, 84), RaceV4Req = true, Desc = "Vượt qua Thử Thách Cổ Đại mở khóa Tộc V4." },
+	mirage_tycoon = { Id = "mirage_tycoon", Name = "Đại Thương Gia Hư Quang", Color = Color3.fromRGB(255, 215, 108), Desc = "Mua Lõi Aether trực tiếp tại Đảo Hư Quang (Phantom Isle)." },
+	cafe_broker = { Id = "cafe_broker", Name = "Nhà Môi Giới Lõi Aether", Color = Color3.fromRGB(132, 245, 195), Desc = "Hoàn tất giao dịch Lõi Aether tại Trạm Giao Thương (Trade Station)." },
+	iron_buso_master = { Id = "iron_buso_master", Name = "Thiết Giáp Ý Chí", Color = Color3.fromRGB(255, 92, 108), MinHakiStage = 4, Desc = "Đạt Giáp Ý Chí (Will Armor) Stage 4 Toàn Thân." },
+	conqueror_overdrive = { Id = "conqueror_overdrive", Name = "Bá Ý Tuyệt Đỉnh", Color = Color3.fromRGB(255, 52, 78), MinHakiStage = 5, Desc = "Đạt Giáp Ý Chí Stage 5 (Sovereign Will Overdrive)." },
+	all_seeing_oracle = { Id = "all_seeing_oracle", Name = "Thiên Nhãn Thấu Ý", Color = Color3.fromRGB(135, 232, 255), KenV2Req = true, Desc = "Khai mở Thấu Ý (Will Sense) V2." },
+	core_gear_awakened = { Id = "core_gear_awakened", Name = "Huyết Mạch Thăng Hoa", Color = Color3.fromRGB(255, 196, 84), RaceV4Req = true, Desc = "Vượt qua Thử Thách Cổ Đại tại Đền Thăng Hoa (Ascension Shrine)." },
 	star_forger = { Id = "star_forger", Name = "Thần Thợ Rèn Tinh Tú", Color = Color3.fromRGB(255, 224, 98), MaxStarReq = 5, Desc = "Thăng hoa bất kỳ thần khí nào lên 5 Sao." },
-	rising_hunter_1m = { Id = "rising_hunter_1m", Name = "Thợ Săn Tân Tinh 1M", Color = Color3.fromRGB(145, 228, 255), MinBounty = 1000000, Desc = "Đạt 1,000,000 Bounty." },
-	sky_warlord_5m = { Id = "sky_warlord_5m", Name = "Thất Vũ Hải Bầu Trời 5M", Color = Color3.fromRGB(120, 245, 185), MinBounty = 5000000, Desc = "Đạt 5,000,000 Bounty." },
-	seabeast_caller_10m = { Id = "seabeast_caller_10m", Name = "Bá Vương Chiến Hải 10M", Color = Color3.fromRGB(72, 215, 255), MinBounty = 10000000, Desc = "Đạt 10,000,000 Bounty & mở khóa Triệu Hồi Hải Vương." },
-	yonko_sky_20m = { Id = "yonko_sky_20m", Name = "Tứ Hoàng Thượng Giới 20M", Color = Color3.fromRGB(255, 148, 64), MinBounty = 20000000, Desc = "Đạt 20,000,000 Bounty." },
-	celestial_supremacy_30m = { Id = "celestial_supremacy_30m", Name = "Độc Tôn Thiên Giới 30M", Color = Color3.fromRGB(255, 78, 125), MinBounty = 30000000, Desc = "Đạt đỉnh phong 30,000,000 Bounty." },
-	grand_master_600 = { Id = "grand_master_600", Name = "Đại Tông Sư Thông Thạo", Color = Color3.fromRGB(255, 236, 145), Desc = "Đạt Mastery Lv. 600 trên bất kỳ vũ khí hoặc trái nào." },
+	rising_hunter_1m = { Id = "rising_hunter_1m", Name = "Thợ Săn Tân Tinh 1M", Color = Color3.fromRGB(145, 228, 255), MinBounty = 1000000, Desc = "Đạt 1,000,000 Điểm Uy Danh (Renown)." },
+	sky_warlord_5m = { Id = "sky_warlord_5m", Name = "Thống Lĩnh Bầu Trời 5M", Color = Color3.fromRGB(120, 245, 185), MinBounty = 5000000, Desc = "Đạt 5,000,000 Điểm Uy Danh (Renown)." },
+	seabeast_caller_10m = { Id = "seabeast_caller_10m", Name = "Triệu Hồi Thú Trời 10M", Color = Color3.fromRGB(72, 215, 255), MinBounty = 10000000, Desc = "Đạt 10,000,000 Điểm Uy Danh & mở khóa Triệu Hồi Thú Trời." },
+	yonko_sky_20m = { Id = "yonko_sky_20m", Name = "Bá Chủ Thượng Giới 20M", Color = Color3.fromRGB(255, 148, 64), MinBounty = 20000000, Desc = "Đạt 20,000,000 Điểm Uy Danh (Renown)." },
+	celestial_supremacy_30m = { Id = "celestial_supremacy_30m", Name = "Độc Tôn Thiên Giới 30M", Color = Color3.fromRGB(255, 78, 125), MinBounty = 30000000, Desc = "Đạt đỉnh phong 30,000,000 Điểm Uy Danh (Renown)." },
+	grand_master_600 = { Id = "grand_master_600", Name = "Đại Tông Sư Thông Thạo", Color = Color3.fromRGB(255, 236, 145), Desc = "Đạt Mastery Lv. 600 trên bất kỳ vũ khí hoặc Lõi Aether nào." },
 	spire_challenger = { Id = "spire_challenger", Name = "Kẻ Thách Đấu Tháp Vô Tận", Color = Color3.fromRGB(130, 226, 255), Desc = "Chinh phục Tầng 10 Tháp Vô Tận Sky Spire." },
 	spire_ascendant = { Id = "spire_ascendant", Name = "Bậc Thăng Thiên Tháp Vô Tận", Color = Color3.fromRGB(196, 138, 255), Desc = "Chinh phục Tầng 25 Tháp Vô Tận Sky Spire." },
 	sky_spire_sovereign = { Id = "sky_spire_sovereign", Name = "Độc Tôn Đỉnh Tháp Vô Tận", Color = Color3.fromRGB(255, 214, 88), Desc = "Chinh phục đỉnh Tầng 50/50 Endless Sky Spire." },
 	apex_of_the_spire = { Id = "apex_of_the_spire", Name = "Thiên Đỉnh Vô Cực", Color = Color3.fromRGB(255, 226, 118), Desc = "Đạt thành tựu Tầng 50 Tháp Vô Tận Sky Spire." },
-	leviathan_slayer = { Id = "leviathan_slayer", Name = "Thợ Săn Thủy Tổ Leviathan", Color = Color3.fromRGB(72, 238, 255), Desc = "Kéo thành công Tim Thủy Tổ Leviathan về Cảng Sky Shipwright." },
+	leviathan_slayer = { Id = "leviathan_slayer", Name = "Thợ Săn Thủy Xà Vực Thẳm", Color = Color3.fromRGB(72, 238, 255), Desc = "Kéo thành công Tim Thủy Xà Vực Thẳm (Abyss Serpent) về Cảng Sky Shipwright." },
 	sky_vanguard = { Id = "sky_vanguard", Name = "Tiên Phong Thiên Không", Color = Color3.fromRGB(142, 228, 255), MinLevel = 100, Desc = "Đạt cột mốc Cấp 100." },
 	golden_conqueror = { Id = "golden_conqueror", Name = "Chinh Phục Tầng Mây Vàng", Color = Color3.fromRGB(255, 212, 92), MinLevel = 700, Desc = "Đạt cột mốc Cấp 700." },
 	cyber_overlord = { Id = "cyber_overlord", Name = "Bá Chủ Băng Giá Cyber", Color = Color3.fromRGB(96, 238, 255), MinLevel = 1500, Desc = "Đạt cột mốc Cấp 1500." },
 	skybreak_sovereign = { Id = "skybreak_sovereign", Name = "Chúa Tể Thiên Giới Skybreak", Color = Color3.fromRGB(255, 238, 152), MinLevel = 2550, Desc = "Đạt đỉnh cao tối thượng Cấp 2550." },
-	awakened_core = { Id = "awakened_core", Name = "Lõi Aether Thức Tỉnh", Color = Color3.fromRGB(255, 162, 84), Desc = "Hoàn thành thành tựu Thức Tỉnh Trái Aether V2 đầu tiên." },
+	awakened_core = { Id = "awakened_core", Name = "Lõi Aether Thức Tỉnh", Color = Color3.fromRGB(255, 162, 84), Desc = "Hoàn thành thành tựu Lõi Thức Tỉnh (Awakened Core) đầu tiên." },
 	starforged_master = { Id = "starforged_master", Name = "Chủ Nhân Thần Binh Ngũ Tinh", Color = Color3.fromRGB(255, 222, 96), MaxStarReq = 5, Desc = "Sở hữu vũ khí Thăng Hoa 5 Sao." },
 	arcane_enchanter = { Id = "arcane_enchanter", Name = "Nghệ Nhân Phù Phép Cổ Ngữ", Color = Color3.fromRGB(186, 124, 255), Desc = "Khắc phù phép Enchant lên vũ khí lần đầu." },
 	forge_grandmaster = { Id = "forge_grandmaster", Name = "Tuyệt Đỉnh Thần Rèn (+15)", Color = Color3.fromRGB(255, 194, 78), Desc = "Cường hóa thần binh chạm mốc +15." },
-	warlord_of_clouds = { Id = "warlord_of_clouds", Name = "Danh Vọng Thiên Hà 3M", Color = Color3.fromRGB(132, 242, 198), MinBounty = 3000000, Desc = "Đạt thành tựu 3,000,000 Bounty / Honor." },
-	emperor_of_the_sky = { Id = "emperor_of_the_sky", Name = "Tứ Hoàng Biển Mây 10M", Color = Color3.fromRGB(255, 138, 72), MinBounty = 10000000, Desc = "Đạt thành tựu 10,000,000 Bounty / Honor." },
+	warlord_of_clouds = { Id = "warlord_of_clouds", Name = "Danh Vọng Thiên Hà 3M", Color = Color3.fromRGB(132, 242, 198), MinBounty = 3000000, Desc = "Đạt thành tựu 3,000,000 Uy Danh / Vinh Quang." },
+	emperor_of_the_sky = { Id = "emperor_of_the_sky", Name = "Đế Quân Biển Mây 10M", Color = Color3.fromRGB(255, 138, 72), MinBounty = 10000000, Desc = "Đạt thành tựu 10,000,000 Uy Danh / Vinh Quang." },
 	skyborn_scholar = { Id = "skyborn_scholar", Name = "Học Giả Thiên Không", Color = Color3.fromRGB(146, 224, 255), Desc = "Thu thập 10/30 Bia Cổ Lore Skybreak." },
 	core_archivist = { Id = "core_archivist", Name = "Sử Quan Mảnh Lõi", Color = Color3.fromRGB(196, 148, 255), Desc = "Thu thập 20/30 Bia Cổ Lore Skybreak." },
 	omniscient_chronicler = { Id = "omniscient_chronicler", Name = "Đại Học Giả Toàn Tri", Color = Color3.fromRGB(255, 228, 112), Desc = "Giải mã trọn bộ 30/30 Bia Cổ Lore Skybreak." },
 	lore_seeker = { Id = "lore_seeker", Name = "Người Tầm Cổ Ngữ", Color = Color3.fromRGB(152, 232, 255), Desc = "Đạt thành tựu thu thập 10 Bia Cổ Ngữ." },
 	chronicler_of_aether = { Id = "chronicler_of_aether", Name = "Hiền Triết Lõi Sáng Thế", Color = Color3.fromRGB(255, 234, 136), Desc = "Đạt thành tựu trọn bộ 30 Bia Cổ Ngữ." },
 	fleet_commander = { Id = "fleet_commander", Name = "Thuyền Trưởng Hạm Đội Sky Crew", Color = Color3.fromRGB(112, 218, 255), Desc = "Thành lập hoặc gia nhập Hạm Đội Sky Crew." },
-	haki_grandmaster = { Id = "haki_grandmaster", Name = "Tông Sư Bá Khí Vũ Trang", Color = Color3.fromRGB(255, 76, 98), MinHakiStage = 5, Desc = "Đạt thành tựu Bá Khí Vũ Trang Toàn Thân (Stage 5)." },
+	haki_grandmaster = { Id = "haki_grandmaster", Name = "Tông Sư Giáp Ý Chí", Color = Color3.fromRGB(255, 76, 98), MinHakiStage = 5, Desc = "Đạt thành tựu Giáp Ý Chí Toàn Thân (Will Armor Stage 5)." },
 }
 
 -- ============================================================================
@@ -1134,24 +1134,32 @@ CombatData.Giftcodes = {
 		Code = "SKYBREAK2026",
 		Gold = 25000,
 		DoubleExpSeconds = 900,
+		Expires = 1796688000,
+		MinLevel = 1,
 		Desc = "+25,000 Gold & 15 Phút x2 EXP",
 	},
 	AETHERV2 = {
 		Code = "AETHERV2",
 		CoreShards = 150,
+		Shards = 150,
+		Expires = 1796688000,
+		MinLevel = 1,
 		Desc = "+150 Core Shards",
 	},
-	MYTHICFRUIT = {
-		Code = "MYTHICFRUIT",
-		StoredFruit = "AbyssalSovereignCore",
-		AltStoredFruit = "SolarTitanCore",
-		FreeFruitVouchers = 1,
-		Desc = "+1 Trái Thần Thoại Lưu Kho",
+	SKYBREAKLAUNCH = {
+		Code = "SKYBREAKLAUNCH",
+		Gold = 10000,
+		DoubleExpSeconds = 1800,
+		Expires = 1795305600,
+		MinLevel = 1,
+		Desc = "+10,000 Gold & 30 Phút x2 EXP",
 	},
 	FREESTAT = {
 		Code = "FREESTAT",
 		FreeStatRefund = true,
 		StatRefundTokens = 1,
+		Expires = 1796688000,
+		MinLevel = 1,
 		Desc = "Hoàn Toàn Bộ Điểm Chỉ Số Miễn Phí",
 	},
 }

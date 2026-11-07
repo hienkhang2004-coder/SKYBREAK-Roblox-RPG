@@ -132,25 +132,25 @@ end)
 local LORE_LINES = {
   Citizen = {
     "Mảnh Core Shards giữ cho các quần đảo lơ lửng trên biển mây Aether.",
-    "Nghe nói Hải Tặc Bầu Trời của Vance đang tập kết ở West Garden!",
+    "Nghe nói Không Tặc Bầu Trời của Vance đang tập kết ở West Garden!",
     "Rơi xuống biển mây đừng lo, mạch Sky-Geyser sẽ đẩy bạn bay ngược lên bến cảng.",
-    "Đến Zioles Gacha Shrine thử vận may xem, biết đâu quay trúng Trái Thần Thoại!",
+    "Đến Điện Cầu Lõi của Hiền Giả Aether thử vận may xem, biết đâu nhận được Lõi Thần Thoại!",
   },
   Guard = {
-    "[CẢNH VỆ] Khu vực Sky Hub an toàn. Hãy cẩn thận khi vượt cổng sang Sky 2!",
-    "[CẢNH VỆ] Thủy quái Abyssal Leviathan chỉ trồi lên ở vùng biển sâu Sky 3.",
-    "[CẢNH VỆ] Đạt 10 Triệu Bounty sẽ triệu hồi được SkySeaBeast hộ vệ!",
+    "[CẢNH VỆ] Khu vực Sky Hub an toàn. Hãy cẩn thận khi vượt cổng sang Tầng Trời 2 (Sky 2)!",
+    "[CẢNH VỆ] Thủy Xà Vực Thẳm (Abyss Serpent) chỉ trồi lên ở vùng biển sâu Tầng Trời 3 (Sky 3).",
+    "[CẢNH VỆ] Đạt 10 Triệu Điểm Uy Danh sẽ triệu hồi được Thú Trời (Sky Beast) hộ vệ!",
     "[CẢNH VỆ] Chiến hạm Aether Galleon đã sẵn sàng tại bến cảng cho Sky Crew.",
   },
   Master = {
-    "Luyện thành thục 4 đòn M1 Kata để khai mở tuyệt kỹ Celestial Godhuman!",
+    "Luyện thành thục 4 đòn M1 Kata để khai mở tuyệt kỹ Thần Võ Aether (Celestial Paragon)!",
     "Đạt Mastery Lv.600 trên võ thuật và vũ khí sẽ mở khóa danh hiệu Đại Tông Sư.",
-    "Kết hợp Busoshoku Haki Stage 5 và Kenbunshoku V2 để áp đảo mọi Boss!",
+    "Kết hợp Giáp Ý Chí (Will Armor) Stage 5 và Thấu Ý (Will Sense) V2 để áp đảo mọi Boss!",
   },
   Merchant = {
     "Kael có thể nâng cấp Thần Khí lên 5 Sao và khắc phù phép tại lò rèn Aether.",
-    "Mirage Fruit Stock làm mới mỗi giờ, hoặc ghé Cyberport Café giao dịch 4 ghế!",
-    "Thu thập Microchip tại Raid Lab Sky 2 để Thức Tỉnh V2 toàn bộ chiêu Trái Ác Quỷ!",
+    "Kho Lõi tại Đảo Hư Quang (Phantom Isle) làm mới mỗi giờ, hoặc ghé Trạm Giao Thương (Trade Station)!",
+    "Thu thập Microchip tại Đấu Trường Giải Mã Lõi (Sky 2) để mở khóa Lõi Thức Tỉnh (Awakened Core)!",
   },
   Greet = {
     "Chào chiến binh Skyborn! Chúc hành trình thuận buồm xuôi gió.",
@@ -164,8 +164,8 @@ local AMBIENT_SPAWN_SPECS = {
   { Name = "SkyHub_WatchGuard_Gate", Asset = "SunshardRoyalGuard", Role = "Guard", Label = "Thủ Vệ Cổng Không Gian • Gate Guard", Pos = Vector3.new(-296.0, 49.5, 550.0), Face = Vector3.new(-317.4, 49.5, 527.8) },
   { Name = "SkyHub_Villager_Aria", Asset = "Female_Adventurer", Role = "Citizen", Label = "Cư Dân Bầu Trời • Aria", Pos = Vector3.new(-308.0, 49.5, 515.0), Face = Vector3.new(-321.0, 49.5, 523.0) },
   { Name = "SkyHub_Villager_Toma", Asset = "Male_Novice", Role = "Citizen", Label = "Học Giả Aether • Toma", Pos = Vector3.new(-326.0, 49.5, 513.0), Face = Vector3.new(-314.0, 49.5, 523.0) },
-  { Name = "Cyberport_Patron_Lin", Asset = "Female_Adventurer", Role = "Merchant", Label = "Thương Khách Café • Lin", Pos = Vector3.new(9376.0, 49.9, 1780.0), Face = Vector3.new(9400.0, 49.9, 1785.0) },
-  { Name = "CastleVoid_Sentinel_Korr", Asset = "Male_SkyGuardian", Role = "Guard", Label = "Hộ Vệ Dinh Thự • Korr", Pos = Vector3.new(-14578.0, 49.9, 2160.0), Face = Vector3.new(-14600.0, 49.9, 2173.1) },
+  { Name = "Cyberport_Patron_Lin", Asset = "Female_Adventurer", Role = "Merchant", Label = "Thương Khách Giao Thương • Lin", Pos = Vector3.new(9376.0, 49.9, 1780.0), Face = Vector3.new(9400.0, 49.9, 1785.0) },
+  { Name = "CastleVoid_Sentinel_Korr", Asset = "Male_SkyGuardian", Role = "Guard", Label = "Hộ Vệ Pháo Đài • Korr", Pos = Vector3.new(-14578.0, 49.9, 2160.0), Face = Vector3.new(-14600.0, 49.9, 2173.1) },
 }
 
 local function classifyNPCRole(inst)

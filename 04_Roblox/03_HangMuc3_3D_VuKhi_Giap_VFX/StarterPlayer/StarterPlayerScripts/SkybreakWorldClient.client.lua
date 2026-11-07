@@ -1056,25 +1056,25 @@ task.spawn(function()
     local LORE_LINES = {
         Citizen = {
             "Mảnh Core Shards giữ cho các quần đảo lơ lửng trên biển mây Aether.",
-            "Nghe nói Hải Tặc Bầu Trời của Vance đang tập kết ở West Garden!",
+            "Nghe nói Không Tặc Bầu Trời của Vance đang tập kết ở West Garden!",
             "Rơi xuống biển mây đừng lo, mạch Sky-Geyser sẽ đẩy bạn bay ngược lên bến cảng.",
-            "Đến Zioles Gacha Shrine thử vận may xem, biết đâu quay trúng Trái Thần Thoại!",
+            "Đến Điện Cầu Lõi của Hiền Giả Aether thử vận may xem, biết đâu nhận được Lõi Thần Thoại!",
         },
         Guard = {
-            "[CẢNH VỆ] Khu vực Sky Hub an toàn. Hãy cẩn thận khi vượt cổng sang Sky 2!",
-            "[CẢNH VỆ] Thủy quái Abyssal Leviathan chỉ trồi lên ở vùng biển sâu Sky 3.",
-            "[CẢNH VỆ] Đạt 10 Triệu Bounty sẽ triệu hồi được SkySeaBeast hộ vệ!",
+            "[CẢNH VỆ] Khu vực Sky Hub an toàn. Hãy cẩn thận khi vượt cổng sang Tầng Trời 2 (Sky 2)!",
+            "[CẢNH VỆ] Thủy Xà Vực Thẳm (Abyss Serpent) chỉ trồi lên ở vùng biển sâu Tầng Trời 3 (Sky 3).",
+            "[CẢNH VỆ] Đạt 10 Triệu Điểm Uy Danh sẽ triệu hồi được Thú Trời (Sky Beast) hộ vệ!",
             "[CẢNH VỆ] Chiến hạm Aether Galleon đã sẵn sàng tại bến cảng cho Sky Crew.",
         },
         Master = {
-            "Luyện thành thục 4 đòn M1 Kata để khai mở tuyệt kỹ Celestial Godhuman!",
+            "Luyện thành thục 4 đòn M1 Kata để khai mở tuyệt kỹ Thần Võ Aether (Celestial Paragon)!",
             "Đạt Mastery Lv.600 trên võ thuật và vũ khí sẽ mở khóa danh hiệu Đại Tông Sư.",
-            "Kết hợp Busoshoku Haki Stage 5 và Kenbunshoku V2 để áp đảo mọi Boss!",
+            "Kết hợp Giáp Ý Chí (Will Armor) Stage 5 và Thấu Ý (Will Sense) V2 để áp đảo mọi Boss!",
         },
         Merchant = {
             "Kael có thể nâng cấp Thần Khí lên 5 Sao và khắc phù phép tại lò rèn Aether.",
-            "Mirage Fruit Stock làm mới mỗi giờ, hoặc ghé Cyberport Café giao dịch 4 ghế!",
-            "Thu thập Microchip tại Raid Lab Sky 2 để Thức Tỉnh V2 toàn bộ chiêu Trái Ác Quỷ!",
+            "Kho Lõi tại Đảo Hư Quang (Phantom Isle) làm mới mỗi giờ, hoặc ghé Trạm Giao Thương (Trade Station)!",
+            "Thu thập Microchip tại Đấu Trường Giải Mã Lõi (Sky 2) để mở khóa Lõi Thức Tỉnh (Awakened Core)!",
         },
         Greet = {
             "Chào chiến binh Skyborn! Chúc hành trình thuận buồm xuôi gió.",
@@ -1922,11 +1922,11 @@ end)
 local inspectFields = {}
 local FIELD_DEFS = {
     { Key = "Title", Label = "Danh Hiệu", X = 18, Y = 84 },
-    { Key = "Race", Label = "Tộc Hệ & V4", X = 216, Y = 84 },
+    { Key = "Race", Label = "Tộc Hệ & Thăng Hoa", X = 216, Y = 84 },
     { Key = "Style", Label = "Võ Thuật", X = 18, Y = 126 },
-    { Key = "Fruit", Label = "Trái Ác Quỷ", X = 216, Y = 126 },
+    { Key = "Fruit", Label = "Lõi Aether", X = 216, Y = 126 },
     { Key = "Sword", Label = "Thần Khí & Sao", X = 18, Y = 168 },
-    { Key = "Haki", Label = "Haki & Phù Phép", X = 216, Y = 168 },
+    { Key = "Haki", Label = "Ý Chí & Phù Phép", X = 216, Y = 168 },
 }
 for _, fd in ipairs(FIELD_DEFS) do
     local boxName = "Field_" .. fd.Key
@@ -2095,7 +2095,7 @@ local function buildFallbackInspectFromPlayer(plr)
         Style = styleName,
         Fruit = fruitName ~= "" and string.format("%s (Lv.%d%s)", fruitName, fruitMas, fruitV2) or "Chưa trang bị",
         Sword = string.format("%s%s (*%d)", swordName, enh > 0 and (" +" .. tostring(enh)) or "", stars),
-        Haki = string.format("Buso Stg.%d%s", hakiStage, enchant ~= "" and (" • " .. enchant) or ""),
+        Haki = string.format("Giáp Ý Chí Stg.%d%s", hakiStage, enchant ~= "" and (" • " .. enchant) or ""),
         Stats = {
             Melee = tonumber(p:GetAttribute("Stat_Melee") or statsTbl.Melee or statsTbl.ATK) or math.max(1, level),
             Defense = tonumber(p:GetAttribute("Stat_Defense") or statsTbl.Defense or statsTbl.DEF) or math.max(1, level),
@@ -2151,11 +2151,11 @@ local function showInspectCard(data)
     if not hakiStr then
         local hStage = tonumber(data.HakiStage)
         local ench = tostring(data.WeaponEnchant or data.Enchant or "")
-        local kenTag = (data.KenV2Unlocked == true) and " • Ken V2" or ""
+        local kenTag = (data.KenV2Unlocked == true) and " • Thấu Ý V2" or ""
         if hStage ~= nil then
-            hakiStr = string.format("Buso Stg.%d%s%s", hStage, kenTag, ench ~= "" and (" • " .. ench) or "")
+            hakiStr = string.format("Giáp Ý Chí Stg.%d%s%s", hStage, kenTag, ench ~= "" and (" • " .. ench) or "")
         else
-            hakiStr = ench ~= "" and ench or "Buso Stg.0"
+            hakiStr = ench ~= "" and ench or "Giáp Ý Chí Stg.0"
         end
     end
 
@@ -2224,7 +2224,7 @@ end)
 -- PlayerHUD occupies (16,14) -> (368,140), so (382,14) is 100% clear of HP/Energy/EXP!
 -- ============================================================================
 local devPhasePillLabel = nil
-if RunService:IsStudio() or workspace:GetAttribute("EnableDevSandbox") == true then
+if RunService:IsStudio() then
     local sandboxGui = playerGui:FindFirstChild("SkybreakDevSandboxGui") or Instance.new("ScreenGui")
     sandboxGui.Name = "SkybreakDevSandboxGui"
     sandboxGui.DisplayOrder = 45
@@ -2272,8 +2272,8 @@ if RunService:IsStudio() or workspace:GetAttribute("EnableDevSandbox") == true t
         { Label = "Unlock Full 100% Save", Sub = "UnlockFullSave" },
         { Label = "Spawn 3D Galleon Ship", Sub = "SpawnShip", Extra = { altSubAction = "SpawnGalleonShip", shipId = "CelestialAetherGalleon", shipMeshId = "CelestialAetherGalleon" } },
         { Label = "Spawn Boss Aureon", Sub = "SpawnBoss", Extra = { altSubAction = "SpawnBossAureon", bossId = "AureonSentinel", enemyId = "AureonSentinel" } },
-        { Label = "Trigger Mirage Island", Sub = "TriggerMirage", Extra = { altSubAction = "TriggerMirageIsland" } },
-        { Label = "Trigger Leviathan", Sub = "TriggerLeviathan" },
+        { Label = "Trigger Phantom Isle", Sub = "TriggerMirage", Extra = { altSubAction = "TriggerMirageIsland" } },
+        { Label = "Trigger Abyss Serpent", Sub = "TriggerLeviathan" },
         { Label = "Inspect Self Card", Sub = "InspectSelf", LocalFn = function()
             showInspectCard(buildFallbackInspectFromPlayer(localPlayer))
         end },
@@ -2323,9 +2323,9 @@ if RunService:IsStudio() or workspace:GetAttribute("EnableDevSandbox") == true t
 
     local TELEPORTS = {
         { Label = "Sky Hub", Id = "SkyHub", Pos = Vector3.new(-317.4, 50.5, 527.8) },
-        { Label = "Cyberport Cafe", Id = "CyberportCafe", Pos = Vector3.new(9400.0, 50.9, 1785.0) },
+        { Label = "Trade Station", Id = "CyberportCafe", Pos = Vector3.new(9400.0, 50.9, 1785.0) },
         { Label = "Raid Lab", Id = "MicrochipRaidLab", Pos = Vector3.new(14600.0, 50.9, 1785.0) },
-        { Label = "Castle Void", Id = "CastleOnTheVoid", Pos = Vector3.new(-14600.0, 50.9, 2173.1) },
+        { Label = "Void Bastion", Id = "CastleOnTheVoid", Pos = Vector3.new(-14600.0, 50.9, 2173.1) },
     }
     for idx, tp in ipairs(TELEPORTS) do
         local col = (idx - 1) % 4

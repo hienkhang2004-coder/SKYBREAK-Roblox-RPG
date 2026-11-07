@@ -3566,7 +3566,7 @@ local function resolveActiveCombatLoadout()
 					headerName = "Bán Long Nhân • Dạng 1"
 				else
 					moves = fDef.Form1Moves or moves
-					headerName = "Trái Long Vương Hư Không"
+					headerName = "Lõi Long Đế Vực Thẳm"
 				end
 			end
 			local mas = tonumber(masteryTable[fDef.Id] or masteryTable.Fruit or player:GetAttribute("FruitMastery")) or math.max(1, math.min(600, playerLv))
@@ -3596,7 +3596,7 @@ local function resolveActiveCombatLoadout()
 	end
 
 	local fallbackFruit = C.AetherFruits and C.AetherFruits.GaleCore
-	return 2, "GaleCore", (fallbackFruit and fallbackFruit.Name) or "Trái Gió • Gale Core", "Sky", math.max(1, playerLv), (fallbackFruit and fallbackFruit.Moves) or {}
+	return 2, "GaleCore", (fallbackFruit and fallbackFruit.Name) or "Lõi Cuồng Phong • Gale Core", "Sky", math.max(1, playerLv), (fallbackFruit and fallbackFruit.Moves) or {}
 end
 
 local function triggerBloxSkillCooldown(moveKey, customDuration)
@@ -3735,7 +3735,7 @@ task.spawn(function()
 		headerTitle.TextColor3 = Color3.fromRGB(255, 246, 214)
 		headerTitle.TextXAlignment = Enum.TextXAlignment.Left
 		headerTitle.TextTruncate = Enum.TextTruncate.AtEnd
-		headerTitle.Text = "Trái Ác Quỷ"
+		headerTitle.Text = "Lõi Aether"
 		headerTitle.Parent = headerCard
 
 		headerMasText = Instance.new("TextLabel")

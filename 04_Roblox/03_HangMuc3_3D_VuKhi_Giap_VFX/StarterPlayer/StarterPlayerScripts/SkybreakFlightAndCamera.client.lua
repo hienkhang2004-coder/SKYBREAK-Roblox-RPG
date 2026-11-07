@@ -287,7 +287,7 @@ local function ensureOverlayGui()
 	gplbl.Font = Enum.Font.GothamBold
 	gplbl.TextSize = 11
 	gplbl.TextColor3 = Color3.fromRGB(224, 244, 255)
-	gplbl.Text = "[X] Attack   [Y] Heavy   [B] Dash   [LB/RB] Slot 1-4   [RT+XYBA] Z/X/C/V   [R3] Lock   [D-Down] Soru"
+	gplbl.Text = "[X] Attack • [Y] Heavy • [B] Dash • [LB/RB] Slot 1-4 • [RT+XYBA] Z/X/C/V • [R3] Lock • [D-Down] Blink Dash"
 	gplbl.Parent = gp
 
 	overlayGui = sg
@@ -1347,7 +1347,7 @@ end
 -- ============================================================================
 local EMOTE_SLICES = {
 	{ Id = "Meditate", Title = "1. Sit & Meditate", Sub = "Levitate + Chakra Ring", Color = Color3.fromRGB(92, 232, 255) },
-	{ Id = "ConquerorFlex", Title = "2. Conqueror Flex", Sub = "Crimson Sovereign Aura", Color = Color3.fromRGB(238, 68, 88) },
+	{ Id = "ConquerorFlex", Title = "2. Sovereign Will Flex", Sub = "Crimson Sovereign Aura", Color = Color3.fromRGB(238, 68, 88) },
 	{ Id = "SwordSalute", Title = "3. Sword Salute", Sub = "Skyborn Honor Crest", Color = Color3.fromRGB(255, 212, 88) },
 	{ Id = "VictoryFloat", Title = "4. Victory Levitation", Sub = "Astral Champion Halo", Color = Color3.fromRGB(184, 118, 255) },
 	{ Id = "BattleTaunt", Title = "5. Battle Taunt", Sub = "Challenger Shock Ring", Color = Color3.fromRGB(255, 148, 62) },

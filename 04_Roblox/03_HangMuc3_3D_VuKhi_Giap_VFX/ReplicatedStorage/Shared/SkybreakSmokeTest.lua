@@ -579,7 +579,7 @@ function SmokeTest.RunClientAudit()
         "SkybreakWorldOverlayGui",
         "SkybreakNebulaWipeGui",
     }
-    if RunService:IsStudio() or workspace:GetAttribute("EnableDevSandbox") == true then
+    if RunService:IsStudio() then
         table.insert(requiredGuis, "SkybreakDevSandboxGui")
     end
     for _, guiName in ipairs(requiredGuis) do
