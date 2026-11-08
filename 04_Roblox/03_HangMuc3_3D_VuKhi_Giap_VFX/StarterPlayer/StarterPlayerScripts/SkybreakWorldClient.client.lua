@@ -1334,6 +1334,15 @@ task.spawn(function()
         local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
         local pPos = hrp and hrp.Position or nil
 
+        -- Hub co nhieu NPC dung sat nhau: moi luc chi cho 1 cau noi vu vo (loi chao khi lai gan van uu tien),
+        -- truoc day ca chuc bong thoai bat cung luc va de len nhau.
+        local ambientShowing = 0
+        for _, oe in pairs(tracked) do
+            if oe.Billboard and oe.Billboard.Enabled and oe.Billboard:GetAttribute("Greeting") ~= true then
+                ambientShowing += 1
+            end
+        end
+
         for key, e in pairs(tracked) do
             if not e.Inst.Parent or not e.Root.Parent then
                 tracked[key] = nil
@@ -1384,17 +1393,25 @@ task.spawn(function()
                 local greets = LORE_LINES.Greet
                 e.Label.Text = greets[math.random(1, #greets)]
                 e.Billboard.Enabled = true
+                e.Billboard:SetAttribute("Greeting", true)
                 e.SpeechHideAt = now + 4.8
                 e.NextSpeechAt = now + 10.5
             elseif now >= e.NextSpeechAt and dist <= 44 then
-                local pool = LORE_LINES[e.Role] or LORE_LINES.Citizen
-                e.LineIndex = (e.LineIndex % #pool) + 1
-                e.Label.Text = pool[e.LineIndex]
-                e.Billboard.Enabled = true
-                e.SpeechHideAt = now + 5.2
-                e.NextSpeechAt = now + math.random(9, 14)
+                if ambientShowing >= 1 then
+                    e.NextSpeechAt = now + 2 + math.random() * 3
+                else
+                    local pool = LORE_LINES[e.Role] or LORE_LINES.Citizen
+                    e.LineIndex = (e.LineIndex % #pool) + 1
+                    e.Label.Text = pool[e.LineIndex]
+                    e.Billboard.Enabled = true
+                    e.Billboard:SetAttribute("Greeting", false)
+                    ambientShowing += 1
+                    e.SpeechHideAt = now + 5.2
+                    e.NextSpeechAt = now + math.random(9, 14)
+                end
             elseif e.Billboard.Enabled and now >= e.SpeechHideAt then
                 e.Billboard.Enabled = false
+                e.Billboard:SetAttribute("Greeting", false)
             end
             e.WasNear = isNear
 
@@ -2227,7 +2244,8 @@ local devPhasePillLabel = nil
 if RunService:IsStudio() then
     local sandboxGui = playerGui:FindFirstChild("SkybreakDevSandboxGui") or Instance.new("ScreenGui")
     sandboxGui.Name = "SkybreakDevSandboxGui"
-    sandboxGui.DisplayOrder = 45
+    -- Duoi SkybreakUI (25) de nut DEV khong de len Shop/menu; chi hien trong Studio.
+    sandboxGui.DisplayOrder = 20
     sandboxGui.ResetOnSpawn = false
     sandboxGui.IgnoreGuiInset = false
     sandboxGui.Parent = playerGui

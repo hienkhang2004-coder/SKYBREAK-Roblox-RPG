@@ -1556,7 +1556,7 @@ local function spawnWorld3DDevilFruits()
         rarLbl.TextSize = 12
         rarLbl.TextColor3 = Color3.fromRGB(240, 248, 255)
         rarLbl.TextStrokeTransparency = 0.25
-        rarLbl.Text = '[' .. tostring(rarityText) .. '] • 3D DEVIL FRUIT'
+        rarLbl.Text = '[' .. tostring(rarityText) .. '] • 3D AETHER CORE'
         rarLbl.Parent = bill
         return bill
     end
@@ -1699,7 +1699,7 @@ local function spawnWorld3DDevilFruits()
 
     local PEDESTAL_FRUITS = {
         { Id = 'DimensionalPortalCore', Asset = 'Fruit_DimensionalPortalCore', Name = 'Trái Không Gian (Portal)', Rarity = 'LEGENDARY', Color = Color3.fromRGB(110, 215, 255), Offset = Vector3.new(-5.8, 0, 0) },
-        { Id = 'SolarTitanCore', Asset = 'Fruit_SolarTitanCore', Name = 'Trái Kim Thân Phật Tổ (Buddha)', Rarity = 'MYTHICAL', Color = Color3.fromRGB(255, 216, 78), Offset = Vector3.new(0, 0.35, 0) },
+        { Id = 'SolarTitanCore', Asset = 'Fruit_SolarTitanCore', Name = 'Lõi Kim Thân (Colossus Core)', Rarity = 'MYTHICAL', Color = Color3.fromRGB(255, 216, 78), Offset = Vector3.new(0, 0.35, 0) },
         { Id = 'AetherflowCore', Asset = 'Fruit_AetherflowCore', Name = 'Trái Linh Mạch Aether (Aetherflow)', Rarity = 'MYTHICAL', Color = Color3.fromRGB(235, 115, 252), Offset = Vector3.new(5.8, 0, 0) },
     }
 
@@ -1770,8 +1770,8 @@ local function spawnWorld3DDevilFruits()
 
         local prompt = Instance.new('ProximityPrompt')
         prompt.Name = 'InspectFruit3DPrompt'
-        prompt.ActionText = 'Ấn [E] Thử Cầm / Xem Trái Ác Quỷ 3D'
-        prompt.ObjectText = 'Ấn [E] Thử Cầm / Xem Trái Ác Quỷ 3D — ' .. spec.Name
+        prompt.ActionText = 'Ấn [E] Thử Cầm / Xem Lõi Aether 3D'
+        prompt.ObjectText = 'Ấn [E] Thử Cầm / Xem Lõi Aether 3D — ' .. spec.Name
         prompt.KeyboardKeyCode = Enum.KeyCode.E
         prompt.HoldDuration = 0
         prompt.MaxActivationDistance = 14
@@ -2493,20 +2493,7 @@ local function boot()
                 animateScript.Disabled = true
                 animateScript:Destroy()
             end
-            for _, child in ipairs(h:GetChildren()) do
-                if child:IsA('Animator') then
-                    child:Destroy()
-                end
-            end
-            hChildConnection = h.ChildAdded:Connect(function(child)
-                if child:IsA('Animator') then
-                    task.defer(function()
-                        if child.Parent then
-                            child:Destroy()
-                        end
-                    end)
-                end
-            end)
+            -- Giu Animator (do server tao) de locomotion chuan Roblox phat va dong bo cho moi nguoi choi.
             restoreNativeAvatarVisibility(ch)
             chChildConnection = ch.DescendantAdded:Connect(function(desc)
                 if desc.Name == 'Animate' and desc:IsA('BaseScript') then
@@ -3741,7 +3728,7 @@ local function boot()
     end)
 
     workspace:SetAttribute('DelegatedV5Ready', true)
-    print('[SKYBREAK] V12 GoldenSky / Beast Transformations / Busoshoku Haki / Race V4 Wings ready')
+    print('[SKYBREAK] V12 GoldenSky / Beast Transformations / Will Armor / Ascension Wings ready')
 end
 
 local ok, err = xpcall(boot, debug.traceback)

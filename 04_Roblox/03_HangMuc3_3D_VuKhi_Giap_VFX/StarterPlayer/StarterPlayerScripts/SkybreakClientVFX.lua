@@ -1271,7 +1271,7 @@ local function ensureKenVignetteGui()
 	badge.TextSize = 12
 	badge.TextColor3 = Color3.fromRGB(142, 228, 255)
 	badge.TextStrokeTransparency = 0.35
-	badge.Text = "KENBUNSHOKU HAKI  |  SENSE 120m"
+	badge.Text = "WILL SENSE  |  SENSE 120m"
 	badge.Parent = sg
 
 	kenVignetteGui = sg
@@ -1304,7 +1304,7 @@ function SkybreakClientVFX.UpdateInstinctVision()
 			local badge = sg:FindFirstChild("KenStatus")
 			if badge and badge:IsA("TextLabel") then
 				local dodges = tonumber((ch and ch:GetAttribute("InstinctDodges")) or (localPlayer and localPlayer:GetAttribute("InstinctDodges"))) or 8
-				badge.Text = string.format("%s  |  DODGES %d/8  |  SENSE 120m", kenV2 and "KENBUNSHOKU V2" or "KENBUNSHOKU HAKI", math.clamp(math.floor(dodges), 0, 8))
+				badge.Text = string.format("%s  |  DODGES %d/8  |  SENSE 120m", kenV2 and "WILL SENSE V2" or "WILL SENSE", math.clamp(math.floor(dodges), 0, 8))
 			end
 		end
 	end

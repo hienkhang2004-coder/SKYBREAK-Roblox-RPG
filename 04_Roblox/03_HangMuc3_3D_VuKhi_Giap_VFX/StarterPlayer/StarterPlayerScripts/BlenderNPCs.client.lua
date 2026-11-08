@@ -351,6 +351,14 @@ function _G.SkybreakStartLivingNPCs()
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     local pPos = hrp and hrp.Position or nil
 
+    -- Chung bong thoai voi SkybreakWorldClient: moi luc chi 1 cau noi vu vo (loi chao danh dau attribute Greeting).
+    local ambientShowing = 0
+    for _, oe in pairs(tracked) do
+      if oe.Billboard and oe.Billboard.Enabled and oe.Billboard:GetAttribute("Greeting") ~= true then
+        ambientShowing += 1
+      end
+    end
+
     for key, e in pairs(tracked) do
       if not e.Inst.Parent or not e.Root.Parent then
         if e.Billboard and e.Billboard.Parent then e.Billboard:Destroy() end
@@ -369,13 +377,21 @@ function _G.SkybreakStartLivingNPCs()
         e.Inst:SetAttribute("NPCTalkAt", now)
         e.Label.Text = LORE_LINES.Greet[math.random(1, #LORE_LINES.Greet)]
         e.Billboard.Enabled, e.SpeechHideAt, e.NextSpeechAt = true, now + 4.8, now + 10.5
+        e.Billboard:SetAttribute("Greeting", true)
       elseif now >= e.NextSpeechAt and dist <= 44 then
-        local pool = LORE_LINES[e.Role] or LORE_LINES.Citizen
-        e.LineIndex = (e.LineIndex % #pool) + 1
-        e.Label.Text = pool[e.LineIndex]
-        e.Billboard.Enabled, e.SpeechHideAt, e.NextSpeechAt = true, now + 5.2, now + math.random(9, 14)
+        if ambientShowing >= 1 then
+          e.NextSpeechAt = now + 2 + math.random() * 3
+        else
+          local pool = LORE_LINES[e.Role] or LORE_LINES.Citizen
+          e.LineIndex = (e.LineIndex % #pool) + 1
+          e.Label.Text = pool[e.LineIndex]
+          e.Billboard.Enabled, e.SpeechHideAt, e.NextSpeechAt = true, now + 5.2, now + math.random(9, 14)
+          e.Billboard:SetAttribute("Greeting", false)
+          ambientShowing += 1
+        end
       elseif e.Billboard.Enabled and now >= e.SpeechHideAt then
         e.Billboard.Enabled = false
+        e.Billboard:SetAttribute("Greeting", false)
       end
       e.WasNear = isNear
 

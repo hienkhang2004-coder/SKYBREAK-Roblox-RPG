@@ -2,6 +2,13 @@ local E={}
 local goldenSky={lf="rbxassetid://125580929564532",up="rbxassetid://127430124985900",bk="rbxassetid://134226231755373",ft="rbxassetid://93641632642731",rt="rbxassetid://139087821108688",dn="rbxassetid://94264818636230"}
 local frozenSky={bk="rbxassetid://130166325051175",lf="rbxassetid://134595860932390",up="rbxassetid://76551248708701",dn="rbxassetid://73836580094387",ft="rbxassetid://121870448069569",rt="rbxassetid://88459308214078"}
 local shadowSky={ft="rbxassetid://139181899969965",bk="rbxassetid://80772803029327",up="rbxassetid://137756491511210",lf="rbxassetid://111204609743343",dn="rbxassetid://70710544916823",rt="rbxassetid://100462189328496"}
+-- Built-in engine skybox (always loadable). Used when a realm's uploaded faces fail
+-- (e.g. "User is not authorized to access Asset") so the sky never renders black/missing.
+local DEFAULT_SKY={bk="rbxasset://textures/sky/sky512_bk.tex",dn="rbxasset://textures/sky/sky512_dn.tex",ft="rbxasset://textures/sky/sky512_ft.tex",lf="rbxasset://textures/sky/sky512_lf.tex",rt="rbxasset://textures/sky/sky512_rt.tex",up="rbxasset://textures/sky/sky512_up.tex"}
+local failedSets={}
+local function setFaces(sky,images)
+ sky.SkyboxFt=images.ft sky.SkyboxBk=images.bk sky.SkyboxLf=images.lf sky.SkyboxRt=images.rt sky.SkyboxUp=images.up sky.SkyboxDn=images.dn
+end
 E.Skyboxes={
 GoldenSky=goldenSky,
 FrozenCyber=frozenSky,
@@ -33,7 +40,7 @@ function E.Apply(name)
   end
  end
  local sky=lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky",lighting) sky.Name="SKYBREAK_RealmSky"
- sky.SkyboxFt=images.ft sky.SkyboxBk=images.bk sky.SkyboxLf=images.lf sky.SkyboxRt=images.rt sky.SkyboxUp=images.up sky.SkyboxDn=images.dn
+ setFaces(sky,failedSets[images] and DEFAULT_SKY or images)
  sky.CelestialBodiesShown=true sky.StarCount=1200
  lighting.ClockTime=p.Clock lighting.Brightness=p.Brightness lighting.Ambient=p.Ambient lighting.OutdoorAmbient=p.Outdoor
  lighting.EnvironmentDiffuseScale=.88 lighting.EnvironmentSpecularScale=.65 lighting.ExposureCompensation=.04 lighting.ShadowSoftness=.20
@@ -47,5 +54,15 @@ function E.Apply(name)
  local sunRays=lighting:FindFirstChild("SkybreakSunRays") or Instance.new("SunRaysEffect",lighting) sunRays.Name="SkybreakSunRays" sunRays.Enabled=true sunRays.Intensity=.08 sunRays.Spread=.65
  lighting:SetAttribute("SkybreakEnvironment",name)
  return name
+end
+-- Called by RealmEnvironment.client after PreloadAsync reports a failed face. Swaps the live
+-- sky to DEFAULT_SKY if it currently shows that set (covers ClientBootstrap's direct Apply()).
+function E.MarkSkyFailed(name)
+ local set=E.Skyboxes[name] if not set or failedSets[set] then return end
+ failedSets[set]=true
+ local lighting=game:GetService("Lighting")
+ local cur=lighting:GetAttribute("SkybreakEnvironment")
+ local sky=lighting:FindFirstChild("SKYBREAK_RealmSky")
+ if sky and sky:IsA("Sky") and cur and E.Skyboxes[cur]==set then setFaces(sky,DEFAULT_SKY) end
 end
 return E

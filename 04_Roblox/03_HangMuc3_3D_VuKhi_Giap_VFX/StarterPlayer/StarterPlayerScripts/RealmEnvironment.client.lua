@@ -64,11 +64,23 @@ local function change(rawName, initial)
             for _, id in pairs(Environment.Skyboxes[name]) do
                 table.insert(assets, id)
             end
+            local failedIds = {}
             local ok, err = pcall(function()
-                ContentProvider:PreloadAsync(assets)
+                ContentProvider:PreloadAsync(assets, function(contentId, status)
+                    if status ~= Enum.AssetFetchStatus.Success then
+                        table.insert(failedIds, tostring(contentId))
+                    end
+                end)
             end)
             if not ok then
                 warn('[SKYBREAK] Sky preload', name, err)
+            end
+            if #failedIds > 0 then
+                -- Unauthorized/missing faces: fall back to the built-in sky instead of black faces.
+                warn('[SKYBREAK] Sky faces failed for', name, table.concat(failedIds, ', '), '-> default sky')
+                if Environment.MarkSkyFailed then
+                    Environment.MarkSkyFailed(name)
+                end
             end
             loaded[name] = ok
         end

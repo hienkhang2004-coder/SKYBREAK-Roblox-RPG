@@ -2945,7 +2945,9 @@ task.spawn(function()
 	local markers={}
 	local function register(o)
 		if o:IsA("BasePart") and o:GetAttribute("InteractableId") then markers[o]=true end
-		if o:IsA("ProximityPrompt") and o.Name~="InspectFruit3DPrompt" then o.Style=Enum.ProximityPromptStyle.Custom end
+		-- Only hide prompts the HUD [E]/INTERACT button replaces (parent has InteractableId). Custom style with no
+		-- PromptShown UI left world-event prompts (pillars, altar, ship board/cannon...) untappable on touch.
+		if o:IsA("ProximityPrompt") and o.Name~="InspectFruit3DPrompt" and o.Parent and o.Parent:GetAttribute("InteractableId") then o.Style=Enum.ProximityPromptStyle.Custom end
 		if o:IsA("ParticleEmitter") and o.Name=="SkybreakCloud" then o:Emit(8) end
 	end
 	for _,o in ipairs(workspace:GetDescendants()) do register(o) end

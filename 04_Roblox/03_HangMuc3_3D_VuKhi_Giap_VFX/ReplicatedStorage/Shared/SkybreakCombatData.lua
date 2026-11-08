@@ -707,7 +707,7 @@ CombatData.FruitCatalog = {
 	GlacierIceCore = { Id = "GlacierIceCore", Name = "Lõi Băng Hà - Glacier Ice Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Frost", GoldValue = 550000, AwakenShards = 800, WaterWalk = "Ice" },
 	CelestialLightCore = { Id = "CelestialLightCore", Name = "Lõi Thiên Quang - Celestial Light Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Light", GoldValue = 850000, AwakenShards = 950 },
 	StarforgedMagmaCore = { Id = "StarforgedMagmaCore", Name = "Lõi Tinh Nham - Starforged Magma Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Magma", GoldValue = 1150000, AwakenShards = 1100, WaterWalk = "Basalt" },
-	ThunderRumbleCore = { Id = "ThunderRumbleCore", Name = "Lõi Lôi Đình - Thunder Rumble Core", Rarity = "Legendary", Type = "Elemental", Logia = true, Element = "Lightning", GoldValue = 2100000, AwakenShards = 1500 },
+	ThunderRumbleCore = { Id = "ThunderRumbleCore", Name = "Lõi Lôi Đình - Thunder Core", Rarity = "Legendary", Type = "Elemental", Logia = true, Element = "Lightning", GoldValue = 2100000, AwakenShards = 1500 },
 	AstralGravityCore = { Id = "AstralGravityCore", Name = "Lõi Tinh Cầu - Astral Gravity Core", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Gravity", GoldValue = 2500000, AwakenShards = 1650 },
 	DimensionalPortalCore = { Id = "DimensionalPortalCore", Name = "Lõi Khe Nứt - Rift Core", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Portal", GoldValue = 2900000, AwakenShards = 1800 },
 	SolarTitanCore = { Id = "SolarTitanCore", Name = "Lõi Kim Thân - Colossus Core", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, Element = "Light", GoldValue = 4200000, AwakenShards = 2200 },
@@ -1129,12 +1129,16 @@ CombatData.Titles = {
 -- ============================================================================
 -- 8. GIFTCODES (#100) & STAR ASCENSION TIERS (#104)
 -- ============================================================================
+-- Han dung giftcode tinh tu ngay publish (D7): server ghi ngay chay that dau tien
+-- vao DataStore SKYBREAK_META_v1, khoa "LaunchUnix". Muon dat tay thi dien Unix time vao day.
+CombatData.LaunchUnixOverride = nil
+
 CombatData.Giftcodes = {
 	SKYBREAK2026 = {
 		Code = "SKYBREAK2026",
 		Gold = 25000,
 		DoubleExpSeconds = 900,
-		Expires = 1796688000,
+		ExpiresDays = 30,
 		MinLevel = 1,
 		Desc = "+25,000 Gold & 15 Phút x2 EXP",
 	},
@@ -1142,7 +1146,7 @@ CombatData.Giftcodes = {
 		Code = "AETHERV2",
 		CoreShards = 150,
 		Shards = 150,
-		Expires = 1796688000,
+		ExpiresDays = 30,
 		MinLevel = 1,
 		Desc = "+150 Core Shards",
 	},
@@ -1150,7 +1154,7 @@ CombatData.Giftcodes = {
 		Code = "SKYBREAKLAUNCH",
 		Gold = 10000,
 		DoubleExpSeconds = 1800,
-		Expires = 1795305600,
+		ExpiresDays = 14,
 		MinLevel = 1,
 		Desc = "+10,000 Gold & 30 Phút x2 EXP",
 	},
@@ -1158,7 +1162,7 @@ CombatData.Giftcodes = {
 		Code = "FREESTAT",
 		FreeStatRefund = true,
 		StatRefundTokens = 1,
-		Expires = 1796688000,
+		ExpiresDays = 30,
 		MinLevel = 1,
 		Desc = "Hoàn Toàn Bộ Điểm Chỉ Số Miễn Phí",
 	},
