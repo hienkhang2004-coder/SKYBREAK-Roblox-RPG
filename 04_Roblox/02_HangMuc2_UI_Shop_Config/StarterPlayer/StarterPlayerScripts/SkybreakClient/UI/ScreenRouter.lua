@@ -50,8 +50,10 @@ function ScreenRouter.Navigate(route, options)
     end
 
     -- Cleanup active screen animations and resources (e.g. ViewportFrame connections)
+    -- HUD duoc App giu co dinh (khong Build lai khi quay ve), nen khong duoc Cleanup HUD o day:
+    -- HUD.Cleanup huy minimap + avatar portrait va xoa HUD.Refs, mo Shop/Map xong quay ve se mat ca hai.
     local prevModule = ScreenRouter.RegisteredScreens[previous]
-    if prevModule and type(prevModule.Cleanup) == "function" then
+    if prevModule and previous ~= UIState.Screens.HUD and type(prevModule.Cleanup) == "function" then
         pcall(prevModule.Cleanup)
     end
     Animations.CleanupScope("Screen_" .. tostring(previous))

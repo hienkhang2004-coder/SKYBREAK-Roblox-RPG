@@ -945,7 +945,7 @@ function WorldMap.Build(parent)
     local detailPanel = PremiumPanel.Create(root, {
         name = "WorldDetail",
         variant = "gold",
-        title = string.upper(getIslandName(selectedIsland)),
+        title = UIFactory.Upper(getIslandName(selectedIsland)),
         subtitle = selectedIsland.SeaLabel .. "  •  " .. selectedIsland.LevelRange,
         position = UDim2.new(0.61, 10, 0, 74),
         size = UDim2.new(0.39, -26, 1, -88),
@@ -1192,8 +1192,8 @@ function WorldMap.Build(parent)
         local bossLineCol = isHere and colors.SUCCESS or colors.ACCENT_GOLD_BRIGHT
         if selectedIsland.BossKey and bossAlive then
             bossLineText = I18n.Pick(
-                string.format("BOSS %s: ĐANG XUẤT HIỆN (HP %d%%)", string.upper(selectedIsland.BossDisplay or selectedIsland.BossKey), bossHpPct),
-                string.format("BOSS %s: ALIVE IN WORKSPACE (HP %d%%)", string.upper(selectedIsland.BossDisplay or selectedIsland.BossKey), bossHpPct)
+                string.format("BOSS %s: ĐANG XUẤT HIỆN (HP %d%%)", UIFactory.Upper(selectedIsland.BossDisplay or selectedIsland.BossKey), bossHpPct),
+                string.format("BOSS %s: ALIVE IN WORKSPACE (HP %d%%)", UIFactory.Upper(selectedIsland.BossDisplay or selectedIsland.BossKey), bossHpPct)
             )
             bossLineCol = colors.HP_RED
         end
@@ -1304,7 +1304,7 @@ function WorldMap.Build(parent)
     PremiumButton.Create(detailPanel, {
         name = "FastTravelButton",
         icon = "Wing",
-        label = I18n.Pick("DỊCH CHUYỂN TỨC THỜI ĐẾN " .. string.upper(getIslandName(selectedIsland)), "FAST TRAVEL TO " .. string.upper(getIslandName(selectedIsland))),
+        label = I18n.Pick("DỊCH CHUYỂN TỨC THỜI ĐẾN " .. UIFactory.Upper(getIslandName(selectedIsland)), "FAST TRAVEL TO " .. UIFactory.Upper(getIslandName(selectedIsland))),
         variant = "gold",
         position = UDim2.new(0, 16, 1, -98),
         size = UDim2.new(1, -32, 0, 42),

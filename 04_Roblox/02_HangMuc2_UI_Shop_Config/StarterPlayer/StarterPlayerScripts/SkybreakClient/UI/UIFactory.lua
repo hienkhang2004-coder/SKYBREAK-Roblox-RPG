@@ -12,6 +12,7 @@ local I18n = require(script.Parent:WaitForChild("I18n"))
 
 local UIFactory = {}
 
+UIFactory.Upper = I18n.Upper -- viet hoa ho tro dau tieng Viet
 function UIFactory.Create(className, parent, props)
     local inst = Instance.new(className)
     for k, v in pairs(props or {}) do
@@ -987,7 +988,7 @@ function UIFactory.BuildScreenHeader(parent, opts)
     local closeBtn = UIFactory.Create("TextButton", rightStrip, {
         Name = "CloseToHUDBtn",
         Size = UDim2.fromOffset(98, 32),
-        BackgroundColor3 = Color3.new(1, 1, 1),
+        BackgroundColor3 = Color3.fromRGB(214, 40, 80),
         BackgroundTransparency = 0.02,
         BorderSizePixel = 0,
         AutoButtonColor = true,
@@ -1000,7 +1001,7 @@ function UIFactory.BuildScreenHeader(parent, opts)
     })
     UIFactory.Corner(closeBtn, 7)
     UIFactory.Stroke(closeBtn, Color3.fromRGB(255, 164, 180), 1.4, 0.10)
-    UIFactory.Gradient(closeBtn, Color3.fromRGB(251, 55, 98), Color3.fromRGB(168, 22, 58), 90)
+    -- Khong gan UIGradient len TextButton: gradient nhuom ca chu, chu "DONG [ESC]" thanh do tren nen do (vo hinh).
     if type(opts.OnClose) == "function" then
         closeBtn.Activated:Connect(function()
             opts.OnClose()

@@ -768,7 +768,7 @@ function Inventory.RefreshStats()
     if setInfo and setInfo.BestSet then
         local bs = setInfo.BestSet
         local setName = tostring(I18n.GetLanguage() == "en" and bs.NameEn or bs.NameVi)
-        refs.SetHeaderLabel.Text = string.format("* %s (%d/4)", string.upper(setName), bs.Count or 0)
+        refs.SetHeaderLabel.Text = string.format("* %s (%d/4)", UIFactory.Upper(setName), bs.Count or 0)
         refs.SetBonusBodyLabel.Text = string.format(
             "<font color='%s'>• [2/4] %s</font>\n<font color='%s'>• [4/4] %s</font>",
             bs.Bonus2Active and "#34D399" or "#7C90B3",
@@ -777,7 +777,7 @@ function Inventory.RefreshStats()
             tostring(I18n.GetLanguage() == "en" and bs.Bonus4En or bs.Bonus4Vi)
         )
     else
-        refs.SetHeaderLabel.Text = string.format("* %s • LV. %d", string.upper(classCfg.Name or "SKYGUARDIAN"), lvl)
+        refs.SetHeaderLabel.Text = string.format("* %s • LV. %d", UIFactory.Upper(classCfg.Name or "SKYGUARDIAN"), lvl)
         refs.SetBonusBodyLabel.Text = string.format(
             "<font color='#5CE1FF'><b>%s</b></font>\n%s",
             I18n.Pick("HÀO QUANG 8 BỘ THẦN GIÁP 3D (2/4 & 4/4)", "8 WEARABLE 3D ARMOR SETS (2/4 & 4/4)"),
@@ -1010,7 +1010,7 @@ function Inventory.RefreshTooltip(overrideItemId)
     )
     refs.DetailRarityStroke.Color = rarity.BorderBright or rarity.Color
     local starPrefix = (stars > 0) and string.format("*%d ", stars) or ""
-    refs.DetailRarityText.Text = string.upper(starPrefix .. I18n.GetRarityLabel(rarity.Id))
+    refs.DetailRarityText.Text = UIFactory.Upper(starPrefix .. I18n.GetRarityLabel(rarity.Id))
     refs.DetailRarityText.TextColor3 = (rarity.Tier == 5) and Color3.fromRGB(18, 16, 12) or Color3.fromRGB(252, 254, 255)
 
     local slotTxt = cfg.Slot and I18n.GetSlotLabel(cfg.Slot) or I18n.Pick("Nguyên Liệu / Vật Phẩm", "Material / Item")

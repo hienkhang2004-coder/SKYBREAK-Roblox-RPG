@@ -24,6 +24,27 @@ end)
 
 local I18n = {}
 
+-- Viet hoa ho tro tieng Viet: string.upper chi doi chu ASCII nen "Kiếm" thanh "KIếM".
+local VI_UPPER = {}
+do
+	local lowerChars = "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ"
+	local upperChars = "ÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ"
+	local ups = {}
+	for _, cp in utf8.codes(upperChars) do
+		table.insert(ups, utf8.char(cp))
+	end
+	local i = 0
+	for _, cp in utf8.codes(lowerChars) do
+		i += 1
+		VI_UPPER[utf8.char(cp)] = ups[i]
+	end
+end
+
+function I18n.Upper(text)
+	local s = string.upper(tostring(text or ""))
+	return (string.gsub(s, utf8.charpattern, VI_UPPER))
+end
+
 local CurrentLang: string = "vi"
 local Listeners: { (string) -> () } = {}
 
@@ -380,8 +401,8 @@ local ITEM_NAME_EN: { [string]: string } = {
 	solar_ashura = "Solar Ashura Fist",
 	SolarAshura = "Solar Ashura Fist",
 	AbyssalTalon = "Solar Ashura Fist",
-	celestial_godhuman = "Celestial Godhuman",
-	CelestialGodhuman = "Celestial Godhuman",
+	celestial_godhuman = "Celestial Ascendant",
+	CelestialGodhuman = "Celestial Ascendant",
 
 	-- Aether Fruits (Slot 2)
 	GaleCore = "Gale Core",
@@ -615,7 +636,7 @@ local SORT_LABEL_VI: { [string]: string } = {
 function I18n.GetSlotLabel(slotOrCategory: string?): string
 	local key = tostring(slotOrCategory or "Item")
 	if I18n.IsEnglish() then
-		return SLOT_LABEL_EN[key] or string.upper(key)
+		return SLOT_LABEL_EN[key] or I18n.Upper(key)
 	end
 	return SLOT_LABEL_VI[key] or key
 end
@@ -623,17 +644,17 @@ end
 function I18n.GetRarityLabel(rarityId: string?): string
 	local key = tostring(rarityId or "Common")
 	if I18n.IsEnglish() then
-		return string.upper(key)
+		return I18n.Upper(key)
 	end
-	return RARITY_LABEL_VI[key] or string.upper(key)
+	return RARITY_LABEL_VI[key] or I18n.Upper(key)
 end
 
 function I18n.GetSortLabel(sortMode: string?): string
 	local key = tostring(sortMode or "Rarity")
 	if I18n.IsEnglish() then
-		return string.upper(key)
+		return I18n.Upper(key)
 	end
-	return SORT_LABEL_VI[key] or string.upper(key)
+	return SORT_LABEL_VI[key] or I18n.Upper(key)
 end
 
 function I18n.GetHotbarSlotSummary(slotIndex: number, snapshot: any): (string, string, string)

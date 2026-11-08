@@ -702,9 +702,9 @@ WorldConfig.Quests = {
         RealmId = "ShadowRealm",
         LevelReq = 23,
         Rewards = { EXP = 9500, Gold = 5000, CoreShards = 750, Items = { { Id = "leviathan_shield", Count = 1 } } },
-        Description = "Tiến vào Vực Thủy Xà Vực Thẳm (hoặc Đền Thăng Hoa) tại Shadow Realm và đánh bại Thủy Xà Vực Thẳm ABYSS SERPENT hoặc SOUL REAPER.",
+        Description = "Tiến vào Vực Thủy Xà Vực Thẳm (hoặc Đền Thăng Hoa) tại Shadow Realm và đánh bại Thủy Xà Vực Thẳm ABYSS SERPENT hoặc VOID HARBINGER.",
         Objectives = {
-            { Id = "1", Label = "Đánh bại Thủy Xà Vực Thẳm / Soul Reaper", Target = 1 },
+            { Id = "1", Label = "Đánh bại Thủy Xà Vực Thẳm / Void Harbinger", Target = 1 },
         },
     },
     {

@@ -393,7 +393,7 @@ function QuestJournal.Build(parent)
 
         UIFactory.Label(qCard, {
             Name = "QTitle",
-            Text = string.format("%s • %s (LV. %d+)", q.Id, string.upper(q.Name), tonumber(q.LevelReq) or 1),
+            Text = string.format("%s • %s (LV. %d+)", q.Id, UIFactory.Upper(q.Name), tonumber(q.LevelReq) or 1),
             Position = UDim2.fromOffset(12, 7),
             Size = UDim2.new(1, -24, 0, 18),
             TextSize = 12,
@@ -473,7 +473,7 @@ function QuestJournal.Build(parent)
     local detailPanel = PremiumPanel.Create(root, {
         name = "QuestJournal",
         variant = "gold",
-        title = selectedQuestEntry and (selectedQuestEntry.config.Id .. " • " .. string.upper(selectedQuestEntry.config.Name)) or I18n.Pick("CHỌN NHIỆM VỤ", "SELECT A QUEST"),
+        title = selectedQuestEntry and (selectedQuestEntry.config.Id .. " • " .. UIFactory.Upper(selectedQuestEntry.config.Name)) or I18n.Pick("CHỌN NHIỆM VỤ", "SELECT A QUEST"),
         subtitle = selectedQuestEntry
             and string.format(
                 "%s: %s  •  %s: Lv.%d",

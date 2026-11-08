@@ -478,8 +478,8 @@ function HUD.Build(parent, responsiveState)
     local _, staminaBarApi = StatBar.Create(vitalsCard, {
         name = "StaminaBar",
         type = "Energy",
-        current = snap.vitals.stamina,
-        max = snap.vitals.maxStamina,
+        current = snap.vitals.energy or 100,
+        max = snap.vitals.maxEnergy or 100,
         label = "AETHER",
         cornerRadius = 10,
         textSize = 11,
@@ -1165,7 +1165,7 @@ function HUD.Build(parent, responsiveState)
                                 registerComboHit(tonumber(payload.comboCount or payload.combo))
                                 pulseAimReticle()
                             elseif kind == "DamageNumber" or kind == "Hit" or kind == "GunShot" or action == "Hit" or action == "Damage" or action == "SlashHit" or payload.damage or payload.amount or payload.Amount then
-                                local rawTxt = string.upper(tostring(payload.Text or payload.text or payload.amount or payload.Amount or ""))
+                                local rawTxt = UIFactory.Upper(tostring(payload.Text or payload.text or payload.amount or payload.Amount or ""))
                                 local isHealOrMiss = rawTxt:find("HP", 1, true) ~= nil or rawTxt:find("DODGE", 1, true) ~= nil or rawTxt:find("MISS", 1, true) ~= nil
                                 if not isHealOrMiss and (payload.attacker == nil or payload.attacker == player) then
                                     registerComboHit(nil)
@@ -1452,7 +1452,7 @@ function HUD.Build(parent, responsiveState)
             ref.KeyBox.BackgroundColor3 = Color3.fromRGB(14, 20, 34)
             ref.KeyLabel.TextColor3 = Color3.fromRGB(255, 232, 156)
             ref.NameLabel.TextColor3 = Color3.fromRGB(14, 18, 30)
-            ref.NameLabel.Text = isMobile and string.upper(cleanText) or ("* " .. string.upper(cleanText))
+            ref.NameLabel.Text = isMobile and UIFactory.Upper(cleanText) or ("* " .. UIFactory.Upper(cleanText))
         else
             ref.Grad.Color = ColorSequence.new(Color3.fromRGB(22, 34, 58), Color3.fromRGB(11, 18, 33))
             ref.Stroke.Color = colors.STROKE_STEEL
@@ -1843,10 +1843,16 @@ function HUD.Build(parent, responsiveState)
         end
     else
         -- Mobile Right-Thumb Combat Arc (#125)
+        -- Keep clear of Roblox's TouchGui JumpButton (bottom-right; 70px small / 120px large screens).
+        -- SkybreakUI (DisplayOrder 25) sits above TouchGui, so overlapping buttons ate every jump tap.
+        local arcVp = viewportVec or Vector2.new(1366, 768)
+        local arcScale = math.max(0.1, (responsiveState and responsiveState.UIScale) or 1)
+        local jumpClearPx = (math.min(arcVp.X, arcVp.Y) <= 500) and 104 or 180
+        local arcShiftX = math.ceil(jumpClearPx / arcScale)
         local touchArc = UIFactory.Create("Frame", root, {
             Name = "MobileTouchArc",
             AnchorPoint = Vector2.new(1, 1),
-            Position = UDim2.new(1, -14, 1, -14),
+            Position = UDim2.new(1, -14 - arcShiftX, 1, -14),
             Size = UDim2.fromOffset(236, 224),
             BackgroundTransparency = 1,
             ZIndex = 8,
@@ -1888,6 +1894,47 @@ function HUD.Build(parent, responsiveState)
             { key = "Skill3", id = sk3.Id, name = sk3.Name, kb = "C", pal = "gold", icon = "Bolt", pos = UDim2.new(1, -20, 1, -102), req = sk3.LevelReq or 10, masReq = sk3.MasteryReq or 100, cd = sk3.Cooldown or 12, cost = sk3.EnergyCost or 25, act = "Skill3" },
             { key = "Ultimate", id = skUlt.Id, name = skUlt.Name, kb = "R", pal = "mythic", icon = "Crown", pos = UDim2.new(1, -82, 1, -148), req = skUlt.LevelReq or 20, masReq = skUlt.MasteryReq or 200, cd = skUlt.Cooldown or 45, cost = skUlt.EnergyCost or 50, act = "Ultimate" },
             { key = "Dodge", id = "Dodge", name = I18n.Pick("Lướt", "Dash"), kb = "Q", pal = "cyan", icon = "Wing", pos = UDim2.new(1, -162, 1, -14), req = 1, masReq = 1, cd = 2.0, cost = 10, act = "Dodge" },
+            -- Touch parity with desktop dock: [V] awaken/potion, [F] flight / F-move, [Tab] target lock
+            { key = "FruitV", id = "FruitAwakenV", name = I18n.Pick("Thức Tỉnh", "Awaken"), kb = "V", pal = "mythic", icon = "Flame", pos = UDim2.new(1, -162, 1, -80), req = 1, masReq = 200, cd = 18, cost = 35, act = "V" },
+            { key = "FlightF", id = "SkyFlightF", name = I18n.Pick("Thiên Vũ", "Flight"), kb = "F", pal = "cyan", icon = "Wing", pos = UDim2.new(1, -150, 1, -146), req = 1, masReq = 1, cd = 6, cost = 12, act = "FlightOrF" },
+            { key = "LockTarget", id = "ToggleLock", name = I18n.Pick("Khóa", "Lock"), kb = "Tab", pal = "slate", icon = "Compass", pos = UDim2.new(1, -20, 1, -168), req = 1, masReq = 1, cd = 0, cost = 0, act = "ToggleLock" },
+        }
+
+        local function slotAware(letter, classAction)
+            local curSlot = tonumber((player and player:GetAttribute("ActiveSlot")) or Store.GetView().activeHotbarSlot) or 1
+            if curSlot == 2 or curSlot == 4 then
+                HUDController.TriggerAction(letter) -- fruit / gun slot moves, same as desktop cards
+            else
+                HUDController.TriggerAction(classAction)
+            end
+        end
+
+        local function flightOrF()
+            local tfx = workspace:FindFirstChild("TempFX")
+            local cmd = tfx and tfx:FindFirstChild("SkybreakFlightCamCommand")
+            local hasCmd = cmd ~= nil and cmd:IsA("BindableEvent")
+            if player and player:GetAttribute("SkybreakFlightActive") == true then
+                if hasCmd then cmd:Fire("StopFlight") end -- touch has no Space/M1 key to exit flight
+                return
+            end
+            local curSlot = tonumber(player and player:GetAttribute("ActiveSlot")) or 1
+            if curSlot == 2 and hasCmd then
+                cmd:Fire("StartFlight") -- no-op unless equipped fruit supports free flight
+                task.delay(0.12, function()
+                    if player and player:GetAttribute("SkybreakFlightActive") ~= true then
+                        HUDController.TriggerAction("F")
+                    end
+                end)
+            else
+                HUDController.TriggerAction("F")
+            end
+        end
+
+        local ARC_DISPATCH = {
+            Skill1 = function() slotAware("Z", "Skill1") end,
+            Skill2 = function() slotAware("X", "Skill2") end,
+            Skill3 = function() slotAware("C", "Skill3") end,
+            FlightOrF = flightOrF,
         }
 
         for _, an in ipairs(arcNodes) do
@@ -1908,7 +1955,12 @@ function HUD.Build(parent, responsiveState)
                 maxCooldown = an.cd,
                 zIndex = 9,
                 onActivated = function()
-                    HUDController.TriggerAction(an.act)
+                    local fn = ARC_DISPATCH[an.act]
+                    if fn then
+                        fn()
+                    else
+                        HUDController.TriggerAction(an.act)
+                    end
                 end,
             })
             skillSlotApis[an.key] = {
@@ -2016,9 +2068,10 @@ function HUD.Update(snapshot, viewState)
 
     if refs.StaminaBarApi then
         refs.StaminaBarApi:Update({
-            current = snap.vitals.stamina,
-            max = snap.vitals.maxStamina,
-            customText = string.format("AETHER  %d / %d", math.floor(snap.vitals.stamina or 0), math.floor(snap.vitals.maxStamina or 100)),
+            -- Thanh AETHER la Energy cua server (rt.Energy), khong phai Stamina luot.
+            current = snap.vitals.energy or 0,
+            max = snap.vitals.maxEnergy or 100,
+            customText = string.format("AETHER  %d / %d", math.floor(snap.vitals.energy or 0), math.floor(snap.vitals.maxEnergy or 100)),
         })
     end
 
@@ -2239,7 +2292,7 @@ function HUD.Update(snapshot, viewState)
             if lockName then
                 refs.AimModePill.Visible = true
                 refs.AimModeStroke.Color = Color3.fromRGB(251, 55, 98)
-                refs.AimModeLabel.Text = "LOCK • " .. string.upper(lockName)
+                refs.AimModeLabel.Text = "LOCK • " .. UIFactory.Upper(lockName)
             elseif curSlot == 4 then
                 refs.AimModePill.Visible = true
                 refs.AimModeStroke.Color = Color3.fromRGB(253, 224, 71)
@@ -2330,7 +2383,7 @@ function HUD.Update(snapshot, viewState)
             or (snap.player and snap.player.mastery)
             or pLv
         ) or 1
-        local curEnergy = tonumber(snap.vitals.stamina) or 100
+        local curEnergy = tonumber(snap.vitals.energy) or 100
         local cds = snap.cooldowns or {}
         local elapsedSync = math.max(0, os.clock() - (Store.LastServerSyncClock or os.clock()))
 

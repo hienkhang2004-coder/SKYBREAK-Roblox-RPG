@@ -65,9 +65,15 @@ function Responsive.GetState(viewportSize, layoutOverride, textScaleSetting)
     local refWidth = isPortrait and 760 or 1366
     local refHeight = isPortrait and 1220 or 768
     local rawScale = math.min(w / refWidth, h / refHeight)
-    local uiScale = math.clamp(rawScale, 0.68, 1.25)
-
     local userTextScale = math.clamp(tonumber(textScaleSetting) or 1.0, 0.85, 1.25)
+    -- Touch floor 0.75 keeps 54px arc buttons ~40px+ physical; Settings "UI SCALE MULTIPLIER" now applies.
+    local uiScale = math.clamp(rawScale, isMobile and 0.75 or 0.68, 1.25) * userTextScale
+
+    -- Canvas always fills the viewport (pre-scale units). The old fixed 1366x768 canvas overflowed
+    -- small screens once uiScale hit its floor (844x390 -> drawn 929x522), pushing edge-anchored
+    -- HUD/menu elements off-screen.
+    local canvasW = math.floor(w / uiScale)
+    local canvasH = math.floor(h / uiScale)
 
     return {
         Viewport = Vector2.new(w, h),
@@ -78,9 +84,9 @@ function Responsive.GetState(viewportSize, layoutOverride, textScaleSetting)
         IsCompact = isPortrait or w < 1024 or h < 640,
         TouchControls = isMobile,
         GamepadEnabled = gamepadEnabled,
-        CanvasSize = UDim2.fromOffset(refWidth, refHeight),
-        CanvasWidth = refWidth,
-        CanvasHeight = refHeight,
+        CanvasSize = UDim2.fromOffset(canvasW, canvasH),
+        CanvasWidth = canvasW,
+        CanvasHeight = canvasH,
         UIScale = uiScale,
         TextScale = userTextScale,
         CollapseSidebar = isPortrait or w < 900,

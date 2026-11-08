@@ -246,7 +246,7 @@ local FRUIT_CATALOG = {
         ShortVi = "Lôi Thần",
         ShortEn = "Thunder Rumble",
         NameVi = "Lõi Lôi Thần (Thunder Rumble)",
-        NameEn = "Thunder Rumble Core",
+        NameEn = "Thunder Core",
         Rarity = "Legendary",
         Type = "Elemental",
         Element = "Lightning",
@@ -366,7 +366,7 @@ local FRUIT_CATALOG = {
         DescEn = "[V] transforms into a 3D Sovereign Void Dragon unleashing cataclysmic breath!",
         Moves = {
             { Key = "Z", Name = "Void Heat Wave Beam", Mult = "2.7x ATK", Range = "32m", Cd = "3.5s" },
-            { Key = "X", Name = "Abyssal Dragon Talons", Mult = "3.4x ATK", Range = "32m", Cd = "5.0s" },
+            { Key = "X", Name = "Abyssal Void Talons", Mult = "3.4x ATK", Range = "32m", Cd = "5.0s" },
             { Key = "C", Name = "Cataclysmic Meteor Shower", Mult = "4.2x ATK", Range = "38m", Cd = "7.0s" },
             { Key = "V", Name = "Imperial Sovereign Dragon 3D", Mult = "5.5x ATK", Range = "44m", Cd = "10.0s" },
             { Key = "F", Name = "Draconic Sky Soar", Mult = "2.0x ATK", Range = "28m", Cd = "4.0s" },
@@ -1168,7 +1168,7 @@ local function launchZiolesGachaCarousel(root)
         vpStroke.Color = rCol
         rarityStroke.Color = rCol
         rarityLabel.TextColor3 = rCol
-        rarityLabel.Text = string.upper(fInfo.Rarity) .. "  •  " .. string.upper(fInfo.Element)
+        rarityLabel.Text = UIFactory.Upper(fInfo.Rarity) .. "  •  " .. UIFactory.Upper(fInfo.Element)
         fruitNameLbl.Text = getFruitName(fInfo)
         fruitNameLbl.TextColor3 = fInfo.Color
         progFill.BackgroundColor3 = rCol
@@ -1223,7 +1223,7 @@ local function launchZiolesGachaCarousel(root)
             Store.PushLoot({
                 Category = "Item",
                 Title = getFruitName(wonFruitInfo),
-                Subtitle = string.format("[%s] %s", string.upper(wonFruitInfo.Rarity), I18n.Pick("Gacha Hiền Giả Aether", "Aether Oracle Gacha")),
+                Subtitle = string.format("[%s] %s", UIFactory.Upper(wonFruitInfo.Rarity), I18n.Pick("Gacha Hiền Giả Aether", "Aether Oracle Gacha")),
                 Color = RARITY_COLORS[wonFruitInfo.Rarity] or wonFruitInfo.Color,
             })
         elseif landed and rayContainer.Visible then
@@ -1403,7 +1403,7 @@ function Fruits.Build(parent, _responsiveState)
     UIFactory.Stroke(orbitPill, colors.ACCENT_GOLD, 1.0, 0.32)
     refs.OrbitFruitCaption = UIFactory.Label(orbitPill, {
         Name = "OrbitCaptionText",
-        Text = "* 3D: " .. string.upper(getFruitShortName(selectedFruit)),
+        Text = "* 3D: " .. UIFactory.Upper(getFruitShortName(selectedFruit)),
         Position = UDim2.fromOffset(6, 0),
         Size = UDim2.new(1, -12, 1, 0),
         TextSize = 9,
@@ -1939,7 +1939,7 @@ function Fruits.Update(snap)
             refs.InnerRingStroke.Color = selectedFruit.Color
         end
         if refs.OrbitFruitCaption then
-            refs.OrbitFruitCaption.Text = "* 3D: " .. string.upper(getFruitShortName(selectedFruit))
+            refs.OrbitFruitCaption.Text = "* 3D: " .. UIFactory.Upper(getFruitShortName(selectedFruit))
         end
         if refs.ViewportBox then
             mount3DFruitPreview(refs.ViewportBox, selectedFruit)

@@ -927,7 +927,7 @@ function Forge.Build(parent, responsiveState)
             Name = "Sub",
             Text = string.format(
                 "%s   •   %s Gold",
-                string.upper(I18n.GetRarityLabel(rInfo.Id)),
+                UIFactory.Upper(I18n.GetRarityLabel(rInfo.Id)),
                 UIFactory.FormatNumber(recipe.GoldCost or 0)
             ),
             Position = UDim2.fromOffset(74, 30),
@@ -981,7 +981,7 @@ function Forge.Build(parent, responsiveState)
     local anvilCard = PremiumPanel.Create(root, {
         name = "AnvilPanel",
         variant = "gold",
-        title = string.upper(dispTitle),
+        title = UIFactory.Upper(dispTitle),
         subtitle = selectedRecipe.Description or I18n.Pick("Bàn Rèn Thần Khí Kael • Xoay 360 & Đột Phá Sao *1 -> *5", "Kael's Celestial Anvil • 360 Orbit & *1 -> *5 Star Breakthrough"),
         position = isPortrait and UDim2.new(0, 14, 0.40, 34) or UDim2.new(0.39, 4, 0, 72),
         size = isPortrait and UDim2.new(1, -28, 0.60, -48) or UDim2.new(0.61, -18, 1, -86),

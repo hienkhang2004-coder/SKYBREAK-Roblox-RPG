@@ -116,7 +116,7 @@ end
 
 -- #100: Redeem Giftcode handler
 local function redeemGiftcode(rawInput, codeBox)
-    local cleaned = string.upper((tostring(rawInput or ""):gsub("%s+", "")))
+    local cleaned = UIFactory.Upper((tostring(rawInput or ""):gsub("%s+", "")))
     if cleaned == "" then
         Store.ShowToast(
             I18n.Pick("Vui lòng nhập mã Giftcode trước khi nhấn Nhận Quà!", "Please enter a Giftcode before clicking Redeem!"),
@@ -388,7 +388,7 @@ function Settings.Build(parent, responsiveState)
 
     UIFactory.Label(fxBox, {
         Name = "Title",
-        Text = I18n.Pick("MỨC CHẤT LƯỢNG HIỆU ỨNG  •  Hiện tại: ", "FX QUALITY TIER  •  Current: ") .. string.upper(fxQuality),
+        Text = I18n.Pick("MỨC CHẤT LƯỢNG HIỆU ỨNG  •  Hiện tại: ", "FX QUALITY TIER  •  Current: ") .. UIFactory.Upper(fxQuality),
         Position = UDim2.fromOffset(14, 7),
         Size = UDim2.new(1, -28, 0, 18),
         TextSize = 12,
@@ -407,7 +407,7 @@ function Settings.Build(parent, responsiveState)
     for idx, tier in ipairs({ "Low", "Medium", "High" }) do
         PremiumButton.Create(fxRow, {
             name = "FX_" .. tier,
-            label = string.upper(tier),
+            label = UIFactory.Upper(tier),
             variant = fxQuality == tier and "primary" or "secondary",
             selected = fxQuality == tier,
             size = UDim2.new(0.333, -6, 1, 0),
@@ -515,7 +515,7 @@ function Settings.Build(parent, responsiveState)
         local isSel = (s.layoutMode or "Auto") == mode
         PremiumButton.Create(modeRow, {
             name = "Mode_" .. mode,
-            label = string.upper(mode),
+            label = UIFactory.Upper(mode),
             variant = isSel and "primary" or "secondary",
             selected = isSel,
             size = UDim2.new(0.333, -6, 1, 0),

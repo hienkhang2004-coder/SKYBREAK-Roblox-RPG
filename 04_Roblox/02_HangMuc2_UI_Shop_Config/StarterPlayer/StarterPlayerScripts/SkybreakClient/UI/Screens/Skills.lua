@@ -788,7 +788,7 @@ function Skills.Build(parent)
         Name = "MultLine",
         Text = string.format(
             "%s  •  HP %.2fx  |  ATK %.2fx  |  DEF %.2fx  |  SPD %d",
-            string.upper(classCfg.Name),
+            UIFactory.Upper(classCfg.Name),
             classCfg.BaseMultipliers.HP,
             classCfg.BaseMultipliers.ATK,
             classCfg.BaseMultipliers.DEF,
@@ -850,7 +850,7 @@ function Skills.Build(parent)
         name = "SwitchClassButton",
         label = (selectedClassId == snap.player.classId)
             and I18n.Pick("ĐANG SỬ DỤNG HỆ PHÁI NÀY", "ACTIVE CLASS EQUIPPED")
-            or (I18n.Pick("KÍCH HOẠT ", "ACTIVATE ") .. string.upper(classCfg.Name)),
+            or (I18n.Pick("KÍCH HOẠT ", "ACTIVATE ") .. UIFactory.Upper(classCfg.Name)),
         variant = (selectedClassId == snap.player.classId) and "gold" or "primary",
         position = UDim2.fromOffset(10, 66),
         size = UDim2.new(0.60, -12, 0, 32),
@@ -917,7 +917,7 @@ function Skills.Build(parent)
 
         UIFactory.Badge(
             row,
-            "[" .. sk.Keybind .. "] " .. string.upper(sk.Type),
+            "[" .. sk.Keybind .. "] " .. UIFactory.Upper(sk.Type),
             UDim2.fromOffset(58, 8),
             UDim2.fromOffset(92, 20),
             sk.Type == "Ultimate" and colors.ACCENT_GOLD or colors.ACCENT_SAPPHIRE,

@@ -116,7 +116,7 @@ function ItemSlot.Create(parent, props)
                 elseif tonumber(itemCfg.LevelReq) and tonumber(itemCfg.LevelReq) > 1 then
                     topLeftText = "LV." .. tostring(itemCfg.LevelReq)
                 else
-                    topLeftText = rarity.ShortTag or string.upper(rarity.Id or "COMMON")
+                    topLeftText = rarity.ShortTag or UIFactory.Upper(rarity.Id or "COMMON")
                 end
             end
         end

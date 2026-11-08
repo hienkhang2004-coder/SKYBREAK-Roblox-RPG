@@ -18,6 +18,7 @@ local CoreConfig = CoreShared and CoreShared:FindFirstChild("Config") and requir
 
 local UIFactory = require(script.Parent.Parent:WaitForChild("UIFactory"))
 local Store = require(script.Parent.Parent:WaitForChild("Store"))
+local HttpService = game:GetService("HttpService")
 local ScreenRouter = require(script.Parent.Parent:WaitForChild("ScreenRouter"))
 local I18n = require(script.Parent.Parent:WaitForChild("I18n"))
 local PremiumPanel = require(script.Parent.Parent:WaitForChild("Components"):WaitForChild("PremiumPanel"))
@@ -342,10 +343,10 @@ local function renderHeroAndTwoColCatalog(body, cfg)
 	if sel then
 		ViewportOrbit.MountAssetAsync(attachTrackedOrbit(vp), sel.a3d, selAccent, { FitMultiplier = 1.08, ResetAngles = true, UprightWeapon = sel.up == true })
 	end
-	mkText(vpFrame, "MCap", "MÔ HÌNH 3D: " .. string.upper(tostring(sel and sel.st or sel and sel.t or "ASSET")), u2(0, 6, 1, -20), u2(1, -12, 0, 16), 9, GOLDB, true, TXC, false, 6)
+	mkText(vpFrame, "MCap", "MÔ HÌNH 3D: " .. UIFactory.Upper(tostring(sel and sel.st or sel and sel.t or "ASSET")), u2(0, 6, 1, -20), u2(1, -12, 0, 16), 9, GOLDB, true, TXC, false, 6)
 
 	local rightBox = mkBox(heroCard, "HeroRight", u2o(346, 12), u2(1, -360, 0, 182), nil, nil, nil, nil, nil, 4)
-	mkText(rightBox, "IT", string.upper(tostring(sel and sel.t or "")), u2o(0, 0), u2(1, 0, 0, 22), 16, selPal[3], true)
+	mkText(rightBox, "IT", UIFactory.Upper(tostring(sel and sel.t or "")), u2o(0, 0), u2(1, 0, 0, 22), 16, selPal[3], true)
 	mkText(rightBox, "IM", sel and sel.hsub or "", u2o(0, 21), u2(1, 0, 0, 16), 11, selPal[1]:Lerp(c3w, 0.25), true)
 
 	for bIdx = 1, 2 do
@@ -414,7 +415,7 @@ local MIRAGE_FRUITS = {
 	{ "GaleCore", "Lõi Phong Vũ (Gale)", "Gale Core", "Common", 35000, "Nguyên Tố Gió • Miễn ST thường", "[Z] Phong Đao Trảm (1.9x ATK)", "[V] Cuồng Phong Lốc Xoáy" },
 	{ "SolarFlameCore", "Lõi Thái Dương Hỏa", "Solar Flame Core", "Rare", 450000, "Nguyên Tố Lửa • Đại Viêm Đế", "[Z] Hỏa Quyền Liệt Dương (2.2x ATK)", "[V] Đại Viêm Đế Mặt Trời" },
 	{ "CelestialLightCore", "Lõi Thánh Quang (Light)", "Celestial Light Core", "Epic", 1150000, "Nguyên Tố Ánh Sáng • Farm số 1", "[Z] Mưa Giáo Ánh Sáng (2.4x ATK)", "[F] Phi Hành Tốc Độ Ánh Sáng" },
-	{ "ThunderRumbleCore", "Lõi Lôi Vũ (Rumble)", "Thunder Rumble Core", "Legendary", 2100000, "Nguyên Tố Sấm Sét • Lôi Cầu Cửu Thiên", "[Z] Lôi Long Chấn Động (2.5x ATK)", "[V] Quả Cầu Sấm Sét Cửu Thiên" },
+	{ "ThunderRumbleCore", "Lõi Lôi Vũ (Rumble)", "Thunder Core", "Legendary", 2100000, "Nguyên Tố Sấm Sét • Lôi Cầu Cửu Thiên", "[Z] Lôi Long Chấn Động (2.5x ATK)", "[V] Quả Cầu Sấm Sét Cửu Thiên" },
 	{ "DimensionalPortalCore", "Lõi Khe Nứt", "Rift Core", "Legendary", 2450000, "Không Gian • Cổng Dịch Chuyển 40m", "[C] Cổng Thế Giới Dịch Chuyển", "[V] Lãnh Địa Chiều Không Gian" },
 	{ "SolarTitanCore", "Lõi Kim Thân", "Colossus Core", "Mythic", 4200000, "Hóa Kim Thân Khổng Lồ 3D (+58% Giáp)", "[Z] Hóa Kim Thân 3D (Tầm đánh x2.2)", "[V] Thiên Thủ Phán Quyết Hoàng Kim" },
 	{ "AetherflowCore", "Lõi Linh Thể Aether", "Aetherflow Core", "Mythic", 4600000, "Linh Thể • Tơ Linh Mạch Sắc Bén", "[Z] Lồng Tơ Thánh Vương", "[V] Thập Lục Thánh Thương Aether" },
@@ -436,8 +437,8 @@ local function buildMirageTab(body, snap)
 		local isEq = (snap.fruits and snap.fruits.equippedFruit == fid)
 		local pTxt = fmt(price) .. " GOLD"
 		local entry = {
-			id = fid, t = isEn and nEn or nVi, st = fid, r = rar, top = "LÕI 3D", bot = string.upper(rar) .. " V2", ic = "Fruit", a3d = "Fruit_" .. fid,
-			hsub = string.upper(rar) .. " • 5 CHIÊU [Z][X][C][V][F] • " .. pTxt,
+			id = fid, t = isEn and nEn or nVi, st = fid, r = rar, top = "LÕI 3D", bot = UIFactory.Upper(rar) .. " V2", ic = "Fruit", a3d = "Fruit_" .. fid,
+			hsub = UIFactory.Upper(rar) .. " • 5 CHIÊU [Z][X][C][V][F] • " .. pTxt,
 			csub = inStock and ((isEq and "• ĐANG TRANG BỊ TRÊN SLOT [2]") or ("• ĐANG CÒN HÀNG • " .. subVi)) or "• TẠM HẾT HÀNG (ĐỢI LÀM MỚI 2H)",
 			scol = inStock and SUCC or DANG,
 			sb = { { skZ, subVi .. " • Sẵn sàng Lõi Thức Tỉnh tại Raid [P]." }, { skX, "Mua trực tiếp bằng Gold tại Thương Nhân Hư Quang không cần may rủi Gacha." } },
@@ -509,6 +510,8 @@ local function buildArsenalVendorTab(body, snap, mode)
 		local owned, eq = getOwnedQty(snap, itemId) > 0, isItemEquipped(snap, itemId)
 		local dispName = isEn and (cfg.Name or itemId) or (cfg.VietnameseName or cfg.Name or itemId)
 		local lvReq = tonumber(entry.LevelReq or cfg.LevelReq) or 1
+		-- Chua du level: khoa nut ngay tren client, bao bang Toast (thong bao server bi bang Shop che).
+		local lvLocked = (not owned) and ((tonumber(snap.player and snap.player.level) or 1) < lvReq)
 		local seaStr = tostring(entry.Sea or cfg.Sea or "Sea1"):gsub("Sea", "Sky ")
 		local stats = cfg.Stats or {}
 		local mainStat = (tonumber(stats.ATK) and ("+" .. stats.ATK .. " ATK")) or (tonumber(stats.HP) and ("+" .. stats.HP .. " HP")) or "+45 ATK"
@@ -520,7 +523,7 @@ local function buildArsenalVendorTab(body, snap, mode)
 		local sb = {}
 		if cfg.ArmorSetId and AEC.ArmorSetsById and AEC.ArmorSetsById[cfg.ArmorSetId] then
 			local aSet = AEC.ArmorSetsById[cfg.ArmorSetId]
-			local setUp = string.upper(tostring(aSet.NameVi or cfg.ArmorSetId))
+			local setUp = UIFactory.Upper(tostring(aSet.NameVi or cfg.ArmorSetId))
 			sb[1] = { "[2/4 BỘ " .. setUp .. "]", tostring(aSet.Bonus2Vi or "Tăng mạnh Sinh Lực & Sát Thương bộ giáp.") }
 			sb[2] = { "[4/4 BỘ " .. setUp .. "]", tostring(aSet.Bonus4Vi or "Kích hoạt Hào Quang Thần Giáp 3D toàn diện.") }
 		else
@@ -536,16 +539,24 @@ local function buildArsenalVendorTab(body, snap, mode)
 			id = itemId, t = dispName, st = cfg.Name or dispName, r = rarity, ac = accent, top = topTag, ic = iconKind,
 			rtag = (lvReq >= 2300) and "MỚI" or nil, rcol = rgb(225, 29, 72),
 			a3d = asset3D, up = string.sub(tostring(asset3D), 1, 4) == "Wep_",
-			hsub = string.format("%s • %s • %s • LV.%d (%s)", string.upper(rarity), mainStat, secStat, lvReq, seaStr),
+			hsub = string.format("%s • %s • %s • LV.%d (%s)", UIFactory.Upper(rarity), mainStat, secStat, lvReq, seaStr),
 			csub = string.format("%s • %s • Lv.%d %s", mainStat, eq and "Đang trang bị" or (owned and "Đã sở hữu" or secStat), lvReq, seaStr),
 			sb = sb,
-			cbtn = eq and pick("ĐANG TRANG BỊ", "EQUIPPED") or (owned and pick("TRANG BỊ NGAY", "EQUIP NOW") or ("MUA • " .. priceShort)),
-			cvar = (eq or owned) and "primary" or ((not isSword and (rarity == "Mythic" or rarity == "Legendary")) and "primary" or "gold"),
+			cbtn = eq and pick("ĐANG TRANG BỊ", "EQUIPPED") or (owned and pick("TRANG BỊ NGAY", "EQUIP NOW"))
+				or (lvLocked and pick("CẦN LV." .. lvReq, "REQUIRES LV." .. lvReq) or ("MUA • " .. priceShort)),
+			cvar = (eq or owned) and "primary" or (lvLocked and "secondary")
+				or ((not isSword and (rarity == "Mythic" or rarity == "Legendary")) and "primary" or "gold"),
 			hbtn = eq and pick("ĐANG TRANG BỊ TRÊN NHÂN VẬT 3D", "CURRENTLY EQUIPPED ON 3D HERO")
-				or (owned and ("TRANG BỊ NGAY • " .. string.upper(dispName)) or ("MỞ KHÓA & TRANG BỊ • " .. priceShort)),
-			hvar = isSword and "gold" or "primary", cicon = isSword and "Sword" or iconKind,
+				or (owned and ("TRANG BỊ NGAY • " .. UIFactory.Upper(dispName)))
+				or (lvLocked and pick("CẦN ĐẠT LV." .. lvReq .. " ĐỂ MỞ KHÓA • " .. priceShort, "REACH LV." .. lvReq .. " TO UNLOCK • " .. priceShort))
+				or ("MỞ KHÓA & TRANG BỊ • " .. priceShort),
+			hvar = lvLocked and "secondary" or (isSword and "gold" or "primary"), cicon = isSword and "Sword" or iconKind,
 			sel = selFn(st, selKey, itemId),
 			act = function()
+				if lvLocked then
+					Store.ShowToast(pick(string.format("Cần đạt Lv.%d để mua [%s]!", lvReq, dispName), string.format("Reach Lv.%d to buy [%s]!", lvReq, dispName)), "warning")
+					return
+				end
 				fireUIAction("BuyVendorItem", { itemId = itemId, autoEquip = true })
 				if snap.isDemoMode then Store.ApplyDemoPreviewAction("EquipItem", { itemId = itemId }) end
 			end,
@@ -593,7 +604,7 @@ local function buildMartialDojoTab(body, snap)
 				id = s.Id, t = title, st = s.NameEn or title, r = s.Rarity or "Legendary",
 				ac = hexToColor(s.AccentHex, GOLD), top = "VÕ HỌC", ic = "Fist",
 				rtag = ((s.LevelReq or 1) >= 2400) and "MỚI" or nil, a3d = s.Model3DKind or "Martial_Godhuman",
-				hsub = string.format("%s • SƯ PHỤ: %s • LV.%d (%s)", string.upper(s.Rarity or "MYTHIC"), string.upper(tostring(s.MasterVi or "ĐẠI SƯ")), s.LevelReq or 1, tostring(s.Sea or "Sea1"):gsub("Sea", "Sky ")),
+				hsub = string.format("%s • SƯ PHỤ: %s • LV.%d (%s)", UIFactory.Upper(s.Rarity or "MYTHIC"), UIFactory.Upper(tostring(s.MasterVi or "ĐẠI SƯ")), s.LevelReq or 1, tostring(s.Sea or "Sea1"):gsub("Sea", "Sky ")),
 				csub = tostring(s.MasterVi or "Sư Phụ Võ Đường") .. " • " .. priceTxt .. " • [Z][X][C]",
 				sb = {
 					{ "[Z] Đột Kích Khí Công • [X] Phá Toái Chấn Động", "Mở khóa Hộ Uyển Hào Quang 3D trên hai tay cùng chuỗi đòn đánh cận chiến tốc độ cao." },
@@ -618,7 +629,7 @@ local function buildMartialDojoTab(body, snap)
 			fPill(st, "martialSea", "ALL", "TẤT CẢ 7 VÕ ĐƯỜNG", 172, "gold"),
 			fPill(st, "martialSea", "Sea1", "SKY 1 • NHẬP MÔN", 156, "primary"),
 			fPill(st, "martialSea", "Sea2", "SKY 2 • ĐỘT PHÁ", 156, "primary"),
-			fPill(st, "martialSea", "Sea3", "SKY 3 • GODHUMAN & VOID", 198, "gold"),
+			fPill(st, "martialSea", "Sea3", "SKY 3 • ASCENDANT & VOID", 198, "gold"),
 		},
 	})
 end
@@ -806,7 +817,7 @@ local function buildDrVegaAndTempleV4Tab(body, snap)
 		if string.lower(curRace):find(string.lower(wk), 1, true) then wingKey = "Wing_" .. wk; break end
 	end
 	ViewportOrbit.MountAssetAsync(attachTrackedOrbit(vp), wingKey, GOLDB, { FitMultiplier = 1.08, ResetAngles = true })
-	mkText(wingBox, "WI", string.format("NÂNG CẤP THIÊN PHÚ CÁNH THĂNG HOA [%s]:\n• Mở khóa Đôi Cánh 3D phát sáng độc quyền theo Huyết Thống.\n• Hào quang Thăng Hoa phản sát thương & +30%% toàn bộ chỉ số khi bật [Y]!", string.upper(wingKey)), u2o(170, 10), u2(1, -182, 1, -20), 11, TEXT1, false, nil, true)
+	mkText(wingBox, "WI", string.format("NÂNG CẤP THIÊN PHÚ CÁNH THĂNG HOA [%s]:\n• Mở khóa Đôi Cánh 3D phát sáng độc quyền theo Huyết Thống.\n• Hào quang Thăng Hoa phản sát thương & +30%% toàn bộ chỉ số khi bật [Y]!", UIFactory.Upper(wingKey)), u2o(170, 10), u2(1, -182, 1, -20), 11, TEXT1, false, nil, true)
 
 	mkBtn(rightPanel, "StartV4", v4Unlocked and pick("ĐÃ THĂNG HOA • VÀO ẢI CORE GEAR", "ASCENSION AWAKENED • ENTER GEAR TRIAL") or pick("KÉO CẦN GẠT BẮT ĐẦU ẢI CỔ ĐẠI (60S)", "PULL ANCIENT LEVER • START 60S TRIAL"),
 		"gold", u2(0, 14, 1, -52), u2(0.52, -18, 0, 40), function() fireUIAction("StartTempleV4Trial", {}) end, { icon = "Flame" })
@@ -836,7 +847,7 @@ local function buildTradingTableTab(body, snap)
 	for _, fid in ipairs(recvList) do local _, _, pr = getFruitMeta(fid); recvVal += pr end
 	local diffPct = (math.abs(giveVal - recvVal) / math.max(giveVal, recvVal, 1)) * 100
 	local isFair = diffPct <= 40.0
-	local lpName = string.upper(tostring((Players.LocalPlayer and Players.LocalPlayer.Name) or "SKYBORN"))
+	local lpName = UIFactory.Upper(tostring((Players.LocalPlayer and Players.LocalPlayer.Name) or "SKYBORN"))
 
 	local sideA, sideB = mkSplitPanels(
 		body, "SideA", string.format("BÊN A: %s (BẠN) • BÀN ĐẶT 4 Ô", lpName),
@@ -1053,15 +1064,39 @@ function NPCShop.Build(parent, _responsiveState)
 	return root
 end
 
+-- Chu ky cac truong snapshot ma Shop hien thi. Server Sync ~0.3s/lan; truoc day moi lan deu xoa va dung lai
+-- toan bo Shop (nut bi thay giua luc nhan chuot -> bam hut, Toast khong hien). Bo qua cac truong dong ho dem nguoc.
+local function shopSignature(snap)
+	local function dropTimers(t)
+		if type(t) ~= "table" then return t end
+		local o = {}
+		for k, v in pairs(t) do
+			local ks = tostring(k)
+			if not (ks:find("Time") or ks:find("time") or ks:find("Seconds") or ks:find("Until") or ks:find("Remaining") or ks:find("Clock") or ks:find("Countdown")) then
+				o[ks] = v
+			end
+		end
+		return o
+	end
+	local ok, sig = pcall(function()
+		return HttpService:JSONEncode({ snap.player, snap.currency or snap.currencies, snap.inventory, snap.equipped, dropTimers(snap.fruits), snap.isDemoMode == true })
+	end)
+	return ok and sig or nil
+end
+
 function NPCShop.Update(snap)
 	snap = snap or Store.GetSnapshot()
 	if NPCShop.Refs.HeaderRefs and NPCShop.Refs.HeaderRefs.UpdateCurrencies then
 		NPCShop.Refs.HeaderRefs.UpdateCurrencies(snap)
 	end
+	local sig = shopSignature(snap)
+	if sig ~= nil and sig == NPCShop.LastSnapSig then return end
+	NPCShop.LastSnapSig = sig
 	if NPCShop.Refs.Root and NPCShop.Refs.Root.Parent then NPCShop.RebuildWorkspace() end
 end
 
 function NPCShop.Cleanup()
+	NPCShop.LastSnapSig = nil
 	NPCShop.TickerAlive = false
 	clearOrbitsAndBusts()
 	NPCShop.Refs = {}

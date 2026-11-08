@@ -200,8 +200,8 @@ local function inspectTargetPlayer(plr, rootForModal)
     UIFactory.Label(modal, {
         Name = "ModalTitle",
         Text = I18n.Pick(
-            "SOI TRANG BỊ 3D TRỰC TIẾP • " .. string.upper(tostring(plr.DisplayName or plr.Name)),
-            "LIVE 3D LOADOUT INSPECTOR • " .. string.upper(tostring(plr.DisplayName or plr.Name))
+            "SOI TRANG BỊ 3D TRỰC TIẾP • " .. UIFactory.Upper(tostring(plr.DisplayName or plr.Name)),
+            "LIVE 3D LOADOUT INSPECTOR • " .. UIFactory.Upper(tostring(plr.DisplayName or plr.Name))
         ),
         Position = UDim2.fromOffset(18, 12),
         Size = UDim2.new(1, -120, 0, 24),
@@ -1072,7 +1072,7 @@ function SocialRewards.Build(parent, _responsiveState)
     UIFactory.Padding(codeBox, 0, 12, 0, 12)
 
     local function submitGiftcode(rawCode)
-        local clean = string.upper((tostring(rawCode or "")):gsub("%s+", ""))
+        local clean = UIFactory.Upper((tostring(rawCode or "")):gsub("%s+", ""))
         if clean == "" then
             Store.ShowToast(I18n.Pick("Hãy nhập hoặc bấm chọn 1 Mã Giftcode bên dưới!", "Enter or tap a Giftcode chip below!"), "warning")
             return

@@ -1742,8 +1742,8 @@ ArsenalExpansionConfig.VendorCatalogs = {
         {
             Id = "celestial_godhuman",
             StyleId = "celestial_godhuman",
-            NameVi = "Thiên Thần Tuyệt Kỹ Godhuman",
-            NameEn = "Celestial Godhuman",
+            NameVi = "Thiên Thần Tuyệt Kỹ Thiên Nhân",
+            NameEn = "Celestial Ascendant",
             Rarity = "Mythic",
             Sea = "Sea3",
             LevelReq = 1950,

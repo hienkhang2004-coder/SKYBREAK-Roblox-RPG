@@ -301,7 +301,7 @@ function RaidPhase.Create(parent, props)
         local rawBossName = tostring(state.bossName or "AUREON SENTINEL")
         local bossLv = tonumber(state.bossLevel or state.level) or 150
         local ribbonTitle = rawBossName
-        if not string.find(string.upper(rawBossName), "LV") then
+        if not string.find(UIFactory.Upper(rawBossName), "LV") then
             ribbonTitle = string.format("%s • LV. %d", rawBossName, bossLv)
         end
         ribbonRefs.SetTitle(ribbonTitle)

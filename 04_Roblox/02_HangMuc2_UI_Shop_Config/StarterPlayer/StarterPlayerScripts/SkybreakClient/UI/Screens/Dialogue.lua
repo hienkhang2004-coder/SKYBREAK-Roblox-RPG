@@ -143,8 +143,8 @@ local SPEAKER_PRESETS = {
         C2En = "[2] STATS & MASTERY [K]",
         C2Cmd = "OpenScreen:Skills",
         C2Icon = "Bolt",
-        C3Vi = "[3] ĐIỀU KIỆN GODHUMAN",
-        C3En = "[3] GODHUMAN REQUIREMENTS",
+        C3Vi = "[3] ĐIỀU KIỆN ASCENDANT",
+        C3En = "[3] ASCENDANT REQUIREMENTS",
         LoreVi = "\"Tu luyện thông thạo 4 hệ quyền pháp cơ bản lên Lv.400 để lĩnh hội Thiên Thần Tuyệt Kỹ Godhuman và Chưởng Pháp Thời Không Hư Không Lv.2450!\"",
         LoreEn = "\"Master the foundational martial styles to Lv.400 to awaken Celestial Godhuman and Chrono Void Palm!\"",
     },
@@ -994,10 +994,10 @@ function Dialogue.CreateOverlay(parent)
         local spk = tostring(dialogueState.speaker or "HIỀN GIẢ AETHER • ĐẠI THƯƠNG NHÂN LÕI AETHER")
         local keyword, preset = classifySpeaker(spk)
 
-        speakerLabel.Text = string.upper(spk)
+        speakerLabel.Text = UIFactory.Upper(spk)
         local rawRole = dialogueState.role
         if type(rawRole) == "string" and #rawRole > 0 then
-            roleLabel.Text = string.upper(rawRole)
+            roleLabel.Text = UIFactory.Upper(rawRole)
         else
             roleLabel.Text = isEn and preset.RoleEn or preset.RoleVi
         end

@@ -90,14 +90,14 @@ function Raid.Build(parent)
         anchorPoint = Vector2.new(0, 0),
         position = UDim2.fromOffset(16, 126),
         size = UDim2.new(1, -32, 0, 110),
-        bossName = raidCfg.Name .. "  •  " .. string.upper(raidCfg.Title),
+        bossName = raidCfg.Name .. "  •  " .. UIFactory.Upper(raidCfg.Title),
         bossHp = raidCfg.MaxHP,
         bossMaxHp = raidCfg.MaxHP,
         visible = true,
     })
     raidPreviewApi:Update({
         active = true,
-        bossName = raidCfg.Name .. "  •  " .. string.upper(raidCfg.Title),
+        bossName = raidCfg.Name .. "  •  " .. UIFactory.Upper(raidCfg.Title),
         phase = 1,
         maxPhases = raidCfg.MaxPhases,
         phaseTitle = raidCfg.Phases[1] and raidCfg.Phases[1].Name or "PHASE 1",
@@ -286,7 +286,7 @@ function Raid.Build(parent)
     PremiumButton.Create(rightPanel, {
         name = "TravelToBossRealm",
         icon = "Sword",
-        label = I18n.Pick("DỊCH CHUYỂN & KHIÊU CHIẾN BOSS (" .. string.upper(selectedRaidId) .. ")", "WARP & START BOSS RUSH (" .. string.upper(selectedRaidId) .. ")"),
+        label = I18n.Pick("DỊCH CHUYỂN & KHIÊU CHIẾN BOSS (" .. UIFactory.Upper(selectedRaidId) .. ")", "WARP & START BOSS RUSH (" .. UIFactory.Upper(selectedRaidId) .. ")"),
         variant = "gold",
         position = UDim2.new(0, 14, 1, -52),
         size = UDim2.new(1, -28, 0, 40),
