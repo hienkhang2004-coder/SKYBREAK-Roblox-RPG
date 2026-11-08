@@ -34,6 +34,21 @@ for _, remoteName in ipairs(REQUIRED_REMOTES) do
 	end
 end
 
+do
+	local okOv, errOv = pcall(function()
+		local C = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+		-- Timeout 10s: neu sync chua tao ModuleScript moi thi canh bao, khong treo ca server.
+		local ovMod = ServerScriptService:WaitForChild("Services"):WaitForChild("CombatRuntimeOverrides", 10)
+		if not ovMod then
+			error("thieu ModuleScript ServerScriptService/Services/CombatRuntimeOverrides (chay lai DONG_BO_CODE_VAO_GAME.bat ban Blender-Python)")
+		end
+		require(ovMod).Install(C)
+	end)
+	if not okOv then
+		warn("[SKYBREAK SERVER BOOTSTRAP] CombatRuntimeOverrides:", errOv)
+	end
+end
+
 local ok, err = xpcall(function()
 	require(ServerScriptService.Services.GameService).Start()
 	local vendorMod = ServerScriptService.Services:FindFirstChild("SkybreakVendorAndArsenalService")

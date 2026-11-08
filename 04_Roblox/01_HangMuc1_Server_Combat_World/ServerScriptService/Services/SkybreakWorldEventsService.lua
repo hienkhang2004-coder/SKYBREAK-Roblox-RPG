@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local DevGate = require(script.Parent:WaitForChild("DevGate"))
 
 local WorldEvents = {}
 WorldEvents._initialized = false
@@ -140,6 +141,25 @@ local RAID_DIFFICULTIES = {
 	Mythic = { Id = "Mythic", Label = "MYTHIC", HPMult = 2.0, ATKMult = 1.42, Shards = 220, Gold = 55000, XP = 145000, Microchip = true },
 }
 
+-- Viet hoa ho tro tieng Viet (string.upper chi doi chu ASCII: "Cảng" -> "CảNG").
+local VI_UPPER_MAP = {}
+do
+	local lowerChars = "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ"
+	local upperChars = "ÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ"
+	local ups = {}
+	for _, cp in utf8.codes(upperChars) do
+		table.insert(ups, utf8.char(cp))
+	end
+	local i = 0
+	for _, cp in utf8.codes(lowerChars) do
+		i += 1
+		VI_UPPER_MAP[utf8.char(cp)] = ups[i]
+	end
+end
+local function upperVi(text)
+	return (string.gsub(string.upper(tostring(text or "")), utf8.charpattern, VI_UPPER_MAP))
+end
+
 local function root(p)
 	local ch = p and p.Character
 	if not ch then
@@ -228,6 +248,35 @@ local function normalizeShipId(rawId)
 	return "CelestialAetherGalleon"
 end
 
+-- Cac ten goi cua cung mot chien ham (Id ban o Shipwright <-> ShipId/mesh).
+local SHIP_ALIASES = {
+	SkySloop = { "SkySloop" },
+	CyberEnforcer = { "CyberEnforcerShip", "CyberEnforcer" },
+	CyberEnforcerShip = { "CyberEnforcerShip", "CyberEnforcer" },
+	CelestialAetherGalleon = { "CelestialAetherGalleon", "CelestialBrigantine" },
+	CelestialBrigantine = { "CelestialAetherGalleon", "CelestialBrigantine" },
+	LeviathanHunterShip = { "LeviathanHunterShip", "LeviathanHunter" },
+	LeviathanHunter = { "LeviathanHunterShip", "LeviathanHunter" },
+}
+
+-- Nguoi choi co so huu chien ham nay khong (da mua o Thuyen Truong Tho Dong Tau, hoac duoc thuong).
+local function playerOwnsShip(prof, rawId)
+	local owned = prof and prof.UnlockedShips
+	if type(owned) ~= "table" then
+		return tostring(rawId) == "SkySloop"
+	end
+	local id = tostring(rawId or "")
+	if owned[id] then
+		return true
+	end
+	for _, alias in ipairs(SHIP_ALIASES[id] or {}) do
+		if owned[alias] then
+			return true
+		end
+	end
+	return id == "SkySloop"
+end
+
 local function isBossEnemy(e)
 	if not e then
 		return false
@@ -302,7 +351,7 @@ local function ensureExtraEnemiesInConfig()
 			Boss = true,
 		},
 		SoulReaperRift = C.Enemies.SoulReaperRift or {
-			Name = "Soul Reaper of the Rift",
+			Name = "Void Harbinger of the Rift",
 			VisualAsset = "SoulReaperRift",
 			Element = "Void",
 			Level = 2050,
@@ -845,7 +894,7 @@ local function buildSoulReaperRitualSet()
 	aLbl.TextScaled = true
 	aLbl.TextColor3 = Color3.fromRGB(220, 130, 255)
 	aLbl.TextStrokeTransparency = 0.18
-	aLbl.Text = "TẾ ĐÀN SOUL REAPER [0/3 ĐUỐC]"
+	aLbl.Text = "TẾ ĐÀN VOID HARBINGER [0/3 ĐUỐC]"
 	aLbl.Parent = aBill
 
 	local torchOffsets = {
@@ -873,9 +922,9 @@ local function buildSoulReaperRitualSet()
 			end
 		end
 		if SoulRitualState.Boss and SoulRitualState.Boss.Alive and SoulRitualState.Boss.Model and SoulRitualState.Boss.Model.Parent then
-			aLbl.Text = "SOUL REAPER RIFT ĐANG HIỆN THẾ!"
+			aLbl.Text = "VOID HARBINGER RIFT ĐANG HIỆN THẾ!"
 		else
-			aLbl.Text = string.format("TẾ ĐÀN SOUL REAPER [%d/3 ĐUỐC]", litCount)
+			aLbl.Text = string.format("TẾ ĐÀN VOID HARBINGER [%d/3 ĐUỐC]", litCount)
 		end
 		return litCount
 	end
@@ -931,7 +980,7 @@ local function buildSoulReaperRitualSet()
 				SoulRitualState.Torches = { false, false, false }
 			end
 			if SoulRitualState.Boss and SoulRitualState.Boss.Alive then
-				G.Notify(plr, "Raid Boss Soul Reaper Rift đang ở ngay tại Tế Đàn!")
+				G.Notify(plr, "Raid Boss Void Harbinger Rift đang ở ngay tại Tế Đàn!")
 				return
 			end
 			if os.clock() < (SoulRitualState.ResetAt or 0) then
@@ -968,7 +1017,7 @@ local function buildSoulReaperRitualSet()
 				refreshRitualUI()
 				broadcastWorldBanner(
 					"NGHI THỨC HƯ KHÔNG HOÀN TẤT",
-					plr.Name .. " đã thắp sáng 3 Đuốc Linh Hồn và triệu hồi Raid Boss Lv.2050 SOUL REAPER RIFT tại Pháo Đài Hư Không!",
+					plr.Name .. " đã thắp sáng 3 Đuốc Linh Hồn và triệu hồi Raid Boss Lv.2050 VOID HARBINGER RIFT tại Pháo Đài Hư Không!",
 					"Boss"
 				)
 			end
@@ -976,7 +1025,7 @@ local function buildSoulReaperRitualSet()
 	end
 
 	local altarPrompt = Instance.new("ProximityPrompt")
-	altarPrompt.ActionText = "Xem Trạng Thái Tế Đàn Soul Reaper"
+	altarPrompt.ActionText = "Xem Trạng Thái Tế Đàn Void Harbinger"
 	altarPrompt.ObjectText = "Soul Altar • Pháo Đài Hư Không"
 	altarPrompt.MaxActivationDistance = 14
 	altarPrompt.HoldDuration = 0
@@ -984,7 +1033,7 @@ local function buildSoulReaperRitualSet()
 	altarPrompt.Parent = altarBase
 	altarPrompt.Triggered:Connect(function(plr)
 		local lit = refreshRitualUI()
-		G.Notify(plr, string.format("Tế Đàn Hư Không: %d/3 Đuốc Linh Hồn đã thắp. Hãy thắp đủ 3 ngọn đuốc quanh Tế Đàn để triệu hồi Lv.2050 Soul Reaper Rift!", lit))
+		G.Notify(plr, string.format("Tế Đàn Hư Không: %d/3 Đuốc Linh Hồn đã thắp. Hãy thắp đủ 3 ngọn đuốc quanh Tế Đàn để triệu hồi Lv.2050 Void Harbinger Rift!", lit))
 	end)
 
 	SoulRitualState.RefreshUI = refreshRitualUI
@@ -1040,6 +1089,11 @@ local function tickRegularArchetypeAndLeash(e, dt)
 		return true
 	end
 	if isBossEnemy(e) then
+		return false
+	end
+	-- Training Drone (Q01) la bia tap dung yen: de GameService.TickEnemy xu ly theo Config.Aggro,
+	-- khong ep aggro >= 38 / leash 95 va khong cho bay theo nguoi choi Lv1.
+	if e.Id == "TrainingDrone" then
 		return false
 	end
 
@@ -1448,9 +1502,12 @@ function WorldEvents.SpawnWarship(p, requestedShipId, customSpawnPos, autoBoard)
 
 	local spec = SHIP_SPECS[meshId] or SHIP_SPECS.CelestialAetherGalleon
 	if prof then
-		prof.UnlockedShips = prof.UnlockedShips or {}
-		prof.UnlockedShips[meshId] = true
-		prof.ActiveShip = meshId
+		-- Khong cap quyen so huu o day (truoc day goi SpawnShip voi shipId bat ky la co ngay chien ham 500k Gold).
+		-- Quyen so huu chi den tu mua o Shipwright (VendorAndArsenalService) hoac phan thuong.
+		prof.UnlockedShips = prof.UnlockedShips or { SkySloop = true }
+		if requestedShipId and playerOwnsShip(prof, requestedShipId) then
+			prof.ActiveShip = tostring(requestedShipId)
+		end
 	end
 
 	local spawnPos = customSpawnPos
@@ -1759,7 +1816,7 @@ local function buildHarborShipwrights()
 		tl.TextScaled = true
 		tl.TextColor3 = Color3.fromRGB(110, 238, 255)
 		tl.TextStrokeTransparency = 0.18
-		tl.Text = "SKY SHIPWRIGHT • " .. string.upper(port.Name)
+		tl.Text = "SKY SHIPWRIGHT • " .. upperVi(port.Name)
 		tl.Parent = bill
 
 		local prompt = Instance.new("ProximityPrompt")
@@ -1773,7 +1830,7 @@ local function buildHarborShipwrights()
 			G.SendDialogue(
 				plr,
 				"Thợ Đóng Tàu • Sky Shipwright",
-				"XƯỞNG CHIẾN HẠM BAY 3D • " .. string.upper(port.Name),
+				"XƯỞNG CHIẾN HẠM BAY 3D • " .. upperVi(port.Name),
 				"Từ Thuyền Buồm Sky Sloop miễn phí đến Đại Chiến Hạm Aether Galleon và Thần Hạm Săn Thủy Xà gắn Lao Móc Thần — hãy chọn chiến hạm để hạ thủy!",
 				"Mở Xưởng Chiến Hạm 3D",
 				"OpenScreen:NPCShop:Shipwright"
@@ -3739,7 +3796,13 @@ function WorldEvents.HandleUIRequest(p, cmd, payload)
 
 	payload = type(payload) == "table" and payload or { value = payload }
 	if canonicalCmd == "SpawnShip" then
-		WorldEvents.SpawnWarship(p, payload.shipId or payload.id or payload.value, payload.spawnPos, payload.autoBoard ~= false)
+		local reqShip = payload.shipId or payload.id or payload.value
+		if reqShip ~= nil and not playerOwnsShip(D.Get(p), reqShip) then
+			G.Notify(p, "Bạn chưa sở hữu chiến hạm này! Hãy mua tại Thợ Đóng Tàu (Sky Shipwright).")
+			return false
+		end
+		-- Khong nhan spawnPos tu client: tau tu dua nguoi choi len boong, nen spawnPos tu do = dich chuyen tuy y.
+		WorldEvents.SpawnWarship(p, reqShip, nil, payload.autoBoard ~= false)
 		G.Sync(p)
 		return true
 	elseif canonicalCmd == "FireShipCannon" then
@@ -4152,11 +4215,16 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 				e.NextWave3BossPattern = now + cd
 
 				local nearestPlr, nearestPos, bestD = nil, nil, 130
+				-- Chi danh nguoi dang giao chien: trong tam Aggro (+10), hoac da gay sat thuong len boss.
+				-- Truoc day moi boss ban AoE vao bat ky ai trong 130 stud, ke ca nguoi di ngang (vd. san tap Q01).
+				local engageR = math.max(tonumber(e.Config and e.Config.Aggro) or 44, 30) + 10
+				local arenaBoss = (e == G.Boss) or (e.IsRaidBoss == true) or (e.IsSpireBoss == true)
 				for _, plr in ipairs(Players:GetPlayers()) do
 					local pr = root(plr)
 					if pr then
 						local d = dist(pr.Position, e.Body.Position)
-						if d < bestD then
+						local engaged = arenaBoss or d <= engageR or (e.Contributors ~= nil and e.Contributors[plr] ~= nil)
+						if engaged and d < bestD then
 							bestD = d
 							nearestPlr = plr
 							nearestPos = pr.Position
@@ -4208,10 +4276,22 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 				WorldEvents.StartMicrochipRaid(p, payload.difficulty)
 				return
 			elseif payload.action == "SpawnSkyShip" then
-				WorldEvents.SpawnWarship(p, payload.shipId, payload.dockPos, true)
+				-- Cung luat voi UIRequest SpawnShip: kiem tra so huu, khong nhan dockPos tu client
+				-- (tau tu dua nguoi choi len boong => dockPos tu do = dich chuyen tuy y).
+				local reqShip = payload.shipId
+				if reqShip ~= nil and not playerOwnsShip(D.Get(p), reqShip) then
+					G.Notify(p, "Bạn chưa sở hữu chiến hạm này! Hãy mua tại Thợ Đóng Tàu (Sky Shipwright).")
+					return
+				end
+				WorldEvents.SpawnWarship(p, reqShip, nil, true)
 				G.Sync(p)
 				return
 			elseif payload.action == "SpawnSeaEvent" or payload.action == "SummonLeviathan" then
+				-- Lenh debug: client bat ky goi duoc qua EquipmentRequest => spawn TerrorSkyShark vo han,
+				-- keo Leviathan/SkySeaBeast (singleton) ve canh minh & spam WorldBanner. Chi cho Studio/Dev.
+				if not DevGate.IsAllowed(p) then
+					return
+				end
 				local mId = (payload.action == "SummonLeviathan" or payload.bossId == "AbyssalLeviathan") and "AbyssalLeviathan" or (payload.bossId or "SkySeaBeast")
 				WorldEvents.SpawnSeaMonsterEvent(p, mId)
 				return

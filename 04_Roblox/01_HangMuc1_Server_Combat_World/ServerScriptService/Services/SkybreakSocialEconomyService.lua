@@ -143,6 +143,25 @@ local SAFE_ZONES = {
 	{ Name = "Void Bastion Safe Zone", Pos = Vector3.new(-14600, 48, 2173.1), Radius = 190 },
 }
 
+-- Viet hoa ho tro tieng Viet (string.upper chi doi chu ASCII: "Cảng" -> "CảNG").
+local VI_UPPER_MAP = {}
+do
+	local lowerChars = "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ"
+	local upperChars = "ÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ"
+	local ups = {}
+	for _, cp in utf8.codes(upperChars) do
+		table.insert(ups, utf8.char(cp))
+	end
+	local i = 0
+	for _, cp in utf8.codes(lowerChars) do
+		i += 1
+		VI_UPPER_MAP[utf8.char(cp)] = ups[i]
+	end
+end
+local function upperVi(text)
+	return (string.gsub(string.upper(tostring(text or "")), utf8.charpattern, VI_UPPER_MAP))
+end
+
 local function root(p)
 	local ch = p and p.Character
 	if not ch then
@@ -277,7 +296,7 @@ local function buildHomePointCrystalAnchors()
 		tl.TextScaled = true
 		tl.TextColor3 = Color3.fromRGB(112, 244, 255)
 		tl.TextStrokeTransparency = 0.18
-		tl.Text = "HOME POINT • " .. string.upper(sp.Name)
+		tl.Text = "HOME POINT • " .. upperVi(sp.Name)
 		tl.Parent = bill
 
 		local prompt = Instance.new("ProximityPrompt")
@@ -328,7 +347,7 @@ local LORE_SNIPPETS = {
 	"Mảnh Lõi #14: Blue Resonance Gear là chìa khóa duy nhất mở phong ấn Sức Mạnh Thăng Hoa.",
 	"Mảnh Lõi #15: Tầng Trời 3 Shadow Realm chìm trong hoàng hôn tím thẫm kể từ khi Noxar chiếm Ngai Vàng.",
 	"Mảnh Lõi #16: 4 Trụ Ánh Sáng Thanh Tẩy là di vật cuối cùng có thể xóa tan Lõi Hư Không Noxar.",
-	"Mảnh Lõi #17: Tại Pháo Đài Hư Không, 3 Ngọn Đuốc Linh Hồn vẫn đợi kẻ đủ can đảm gọi Soul Reaper.",
+	"Mảnh Lõi #17: Tại Pháo Đài Hư Không, 3 Ngọn Đuốc Linh Hồn vẫn đợi kẻ đủ can đảm gọi Void Harbinger.",
 	"Mảnh Lõi #18: Rừng Tinh Thể Umbral ẩn chứa bi kịch của Kiếm Thánh rèn Song Kiếm Nguyệt Thực.",
 	"Mảnh Lõi #19: Đền Thăng Hoa lưu giữ 6 Huyết Mạch Thượng Cổ của bầu trời.",
 	"Mảnh Lõi #20: Thủy Xà Vực Thẳm mang trái tim bất diệt — chỉ dây cáp Harpoon mới kéo được về cảng.",
@@ -440,7 +459,7 @@ local function build30LoreTablets()
 			G.SendDialogue(
 				plr,
 				string.format("Bia Cổ Skybreak #%02d/30 (Đã thu thập %d/30)", idx, total),
-				"BÍ SỬ THIÊN GIỚI • " .. string.upper(isl.Name),
+				"BÍ SỬ THIÊN GIỚI • " .. upperVi(isl.Name),
 				snippet .. "\nPhần thưởng: +150 Core Shards, +1,500 Gold!" .. milestoneNote,
 				"Tiếp Tục Thám Hiểm",
 				""
@@ -825,7 +844,7 @@ local function build4TierTreasureChests()
 			end
 
 			SocialEconomy.AdvanceDailyTask(plr, "Explore", 1)
-			G.Notify(plr, string.format("MỞ %s: +%d Gold, +%d Core Shards%s!", string.upper(spec.Name), spec.Gold, spec.Shards, gotScroll and ", +1 Enchant Scroll" or ""))
+			G.Notify(plr, string.format("MỞ %s: +%d Gold, +%d Core Shards%s!", upperVi(spec.Name), spec.Gold, spec.Shards, gotScroll and ", +1 Enchant Scroll" or ""))
 			G.Sync(plr)
 		end)
 	end
@@ -1377,7 +1396,22 @@ function SocialEconomy.RepeatQuest(p, payload)
 	end
 
 	if requestedIdx then
-		prof.QuestIndex = math.clamp(math.floor(requestedIdx), 1, maxQ)
+		-- Chi cho chon nhiem vu da mo khoa (<= nhiem vu cao nhat tung dat). Truoc day client gui questIndex=14
+		-- la nhay thang toi nhiem vu cuoi o Lv1, bo qua toan bo cot truyen.
+		local highest = math.max(tonumber(prof.HighestQuestIndex) or 1, tonumber(prof.QuestIndex) or 1)
+		for qi, qq in ipairs(C.Quests) do
+			if prof.CompletedQuests and prof.CompletedQuests[qq.Id] then
+				highest = math.max(highest, qi + 1)
+			end
+		end
+		highest = math.min(highest, maxQ)
+		prof.HighestQuestIndex = highest
+		local target = math.clamp(math.floor(requestedIdx), 1, maxQ)
+		if target > highest then
+			G.Notify(p, "Chưa mở khóa nhiệm vụ này! Hãy hoàn thành các nhiệm vụ trước.")
+			return false
+		end
+		prof.QuestIndex = target
 	elseif (tonumber(prof.QuestIndex) or 1) > maxQ then
 		prof.QuestIndex = maxQ
 	end
@@ -3005,13 +3039,32 @@ function SocialEconomy.Init(gameSvc, dataSvc, worldSvc, configSvc)
 		applyPlayerVsPlayerHitCheck(p, pr.Position, look, approxRange or 14, rawDmg, tostring(actionKey or "Attack"))
 	end
 
+	-- Dau vet "chieu da thuc su ra": cooldown/nhip M1 bi dat lai trong luc goi. Truoc day postAbilityEffects
+	-- (sat thuong PvP + ChronoHaste -15% CD) chay ca khi chieu dang hoi => spam remote 15-20 lan/giay.
+	local function castMarker(rt, keys)
+		if not rt then
+			return ""
+		end
+		local cds = type(rt.Cooldowns) == "table" and rt.Cooldowns or {}
+		local parts = { tostring(rt.NextStyleM1At) }
+		for _, k in ipairs(keys) do
+			parts[#parts + 1] = tostring(cds[k])
+		end
+		return table.concat(parts, "|")
+	end
+
 	local origAction = G.Action
 	G.Action = function(p, action, payload)
 		local rt = G.Runtime[p]
 		if rt and rt.ZeroCooldowns then
 			rt.Cooldowns = {}
 		end
+		local actKeys = { tostring(action), "Attack", "Heavy", "GunM1", "ChargedCrescentSlash" }
+		local before = castMarker(rt, actKeys)
 		origAction(p, action, payload)
+		if castMarker(G.Runtime[p], actKeys) == before then
+			return
+		end
 		if action ~= "Dodge" and action ~= "Dash" and action ~= "FlashStep" then
 			local cfg = C.Actions and C.Actions[action]
 			postAbilityEffects(p, action, (cfg and cfg.Range) or 13, (cfg and cfg.Multiplier) or 1.1)
@@ -3024,8 +3077,12 @@ function SocialEconomy.Init(gameSvc, dataSvc, worldSvc, configSvc)
 		if rt and rt.ZeroCooldowns then
 			rt.Cooldowns = {}
 		end
-		origUseSlotMove(p, key, payload)
 		local k = string.upper(tostring(key or "Z"))
+		local before = castMarker(rt, { "Slot_" .. k })
+		origUseSlotMove(p, key, payload)
+		if castMarker(G.Runtime[p], { "Slot_" .. k }) == before then
+			return
+		end
 		local mult = (k == "V" and 2.4) or (k == "C" and 1.8) or (k == "X" and 1.45) or 1.2
 		local rng = (k == "V" and 24) or (k == "C" and 18) or 15
 		postAbilityEffects(p, "Slot_" .. k, rng, mult)

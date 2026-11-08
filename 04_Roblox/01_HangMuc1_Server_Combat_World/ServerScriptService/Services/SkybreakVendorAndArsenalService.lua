@@ -641,86 +641,6 @@ local function resolveVendorPrice(itemId)
 	return nil, nil, nil
 end
 
-local function getKnownVendorPositions()
-	local positions = {}
-	local skyPos = C.Spawn or Vector3.new(-317.4, 50.5, 527.8)
-	local cafePos = (C.FastTravel and C.FastTravel.CyberportCafe and C.FastTravel.CyberportCafe.Pos) or Vector3.new(9400, 50.9, 1785)
-	local castlePos = (C.FastTravel and C.FastTravel.CastleOnTheVoid and C.FastTravel.CastleOnTheVoid.Pos) or Vector3.new(-14600, 50.9, 2173.1)
-
-	local staticOffsets = {
-		skyPos + Vector3.new(-22, 0, -16),
-		skyPos + Vector3.new(-28, 0, -6),
-		skyPos + Vector3.new(18, 0, -18),
-		skyPos + Vector3.new(26, 0, -8),
-		cafePos + Vector3.new(-18, 0, -14),
-		cafePos + Vector3.new(18, 0, -14),
-		cafePos + Vector3.new(0, 0, 14),
-		cafePos + Vector3.new(-16, 0, 16),
-		castlePos + Vector3.new(-18, 0, -14),
-		castlePos + Vector3.new(18, 0, -14),
-	}
-	for _, p in ipairs(staticOffsets) do
-		table.insert(positions, p)
-	end
-	for _, inter in pairs(C.Interactions or {}) do
-		if type(inter) == "table" and inter.Pos then
-			table.insert(positions, inter.Pos)
-		end
-	end
-
-	local expWorld = workspace:FindFirstChild("SkybreakExpansionWorld")
-	if expWorld then
-		for _, subName in ipairs({ "VendorNPCs", "InteractiveNPCs" }) do
-			local sub = expWorld:FindFirstChild(subName)
-			if sub then
-				for _, child in ipairs(sub:GetChildren()) do
-					local rp = child:IsA("Model") and (child.PrimaryPart or child:FindFirstChild("HumanoidRootPart")) or (child:IsA("BasePart") and child)
-					if rp and rp.Position then
-						table.insert(positions, rp.Position)
-					end
-				end
-			end
-		end
-	end
-	return positions
-end
-
-local function isPlayerNearVendor(player, maxDist)
-	local limit = tonumber(maxDist) or 20
-	if not player then
-		return false
-	end
-	local ch = player.Character
-	if not ch then
-		if typeof(player) == "Instance" and player:IsA("Player") then
-			return false
-		end
-		return true
-	end
-	local hrp = (type(ch.FindFirstChild) == "function" and ch:FindFirstChild("HumanoidRootPart"))
-		or ch.HumanoidRootPart
-		or ch.PrimaryPart
-	if not hrp or not hrp.Position then
-		return false
-	end
-	local pPos = hrp.Position
-	local vendorPositions = getKnownVendorPositions()
-	if #vendorPositions == 0 then
-		return true
-	end
-	for _, vPos in ipairs(vendorPositions) do
-		if (pPos - vPos).Magnitude <= limit then
-			return true
-		end
-		local dx = pPos.X - vPos.X
-		local dz = pPos.Z - vPos.Z
-		if math.sqrt(dx * dx + dz * dz) <= limit and math.abs(pPos.Y - vPos.Y) <= 12 then
-			return true
-		end
-	end
-	return false
-end
-
 local function handleBuyVendorItem(player, payload)
 	payload = type(payload) == "table" and payload or { itemId = payload }
 	local itemId = tostring(payload.itemId or payload.id or payload.shipId or payload.styleId or payload.value or "")
@@ -732,8 +652,15 @@ local function handleBuyVendorItem(player, payload)
 	if not prof then
 		return false
 	end
-	if not isPlayerNearVendor(player, 20) then
-		G.Notify(player, "Bạn cần đứng gần Thương Nhân (<= 20 studs) để giao dịch!")
+	-- Khong bat dung gan NPC: nut Shop (phim N) tren HUD mo cua hang o moi noi.
+	-- Chong lam dung dua vao catalog, gia day du, LevelReq va RemoteGuard.
+	local playerLevel = tonumber(prof.Level) or 1
+	local function levelBlocked(entry, label)
+		local need = entry and tonumber(entry.LevelReq) or nil
+		if need and playerLevel < need then
+			G.Notify(player, string.format("Cần đạt Level %d để mua [%s]!", need, tostring(label or itemId)))
+			return true
+		end
 		return false
 	end
 
@@ -753,6 +680,9 @@ local function handleBuyVendorItem(player, payload)
 			local shipPriceGold = tonumber(shipEntry.PriceGold) or 0
 			local shipPriceShards = tonumber(shipEntry.PriceShards) or 0
 			if not prof.UnlockedShips[shipKey] then
+				if levelBlocked(shipEntry, shipEntry.NameVi) then
+					return false
+				end
 				if shipPriceGold <= 0 and shipPriceShards <= 0 then
 					G.Notify(player, "Chiến hạm này không có giá hợp lệ trong danh mục!")
 					return false
@@ -790,6 +720,9 @@ local function handleBuyVendorItem(player, payload)
 			prof.UnlockedStyles = type(prof.UnlockedStyles) == "table" and prof.UnlockedStyles or { skyborn_combat = true }
 			local sKey = stEntry.Id
 			if not prof.UnlockedStyles[sKey] then
+				if levelBlocked(stEntry, stEntry.NameVi) then
+					return false
+				end
 				local needG = tonumber(stEntry.PriceGold) or 0
 				local needS = tonumber(stEntry.PriceShards) or 0
 				if needG <= 0 and needS <= 0 then
@@ -853,6 +786,10 @@ local function handleBuyVendorItem(player, payload)
 		return false
 	end
 
+	if levelBlocked(catEntry, displayName) then
+		return false
+	end
+
 	local totalGold = costGold * qty
 	local totalShards = costShards * qty
 	if prof.Gold < totalGold or prof.CoreShards < totalShards then
@@ -893,9 +830,14 @@ local function getTradeItemValue(id)
 		return tonumber(CombatData.FruitCatalog[cid].Value or CombatData.FruitCatalog[cid].Price) or 100000, cid, true
 	end
 	local rawId = tostring(id or "")
+	-- Do khoi dau duoc PlayerDataService.hydrate phat lai toi thieu 1 moi lan Load => khong cho giao dich.
+	if rawId == "starter_sword" or rawId == "starter_daggers" or rawId == "starter_staff" or rawId == "aether_flintlock" then
+		return 0, rawId, false
+	end
 	local g, s = resolveVendorPrice(rawId)
 	if g or s then
-		return math.max(25000, (tonumber(g) or 0) + (tonumber(s) or 0) * 500), rawId, false
+		-- Dinh gia theo gia that; san 25000 cu bien do 1.500 Gold thanh 25.000 gia tri giao dich.
+		return (tonumber(g) or 0) + (tonumber(s) or 0) * 500, rawId, false
 	end
 	return 0, rawId, false
 end
@@ -925,9 +867,11 @@ local function handleTradeWithCollector(player, payload)
 		end
 	end
 
+	local clientChosenReceive = false
 	if not giveList and type(payload.giveFruits or payload.giveItems) == "table" then
 		giveList = payload.giveFruits or payload.giveItems
 		receiveList = payload.receiveFruits or payload.receiveItems
+		clientChosenReceive = (type(receiveList) == "table")
 	end
 
 	if type(giveList) ~= "table" or #giveList == 0 or #giveList > 4 then
@@ -990,7 +934,8 @@ local function handleTradeWithCollector(player, payload)
 	local normalizedReceives = {}
 	for _, raw in ipairs(receiveList) do
 		local val, normId, isFruit = getTradeItemValue(raw)
-		if val <= 0 or normId == "" then
+		-- Client tu chon do nhan: chi cho phep Loi Aether (khong cho lay do vendor bo qua LevelReq/Sea).
+		if val <= 0 or normId == "" or (clientChosenReceive and not isFruit) then
 			G.Notify(player, "Vật phẩm nhận không hợp lệ: " .. tostring(raw))
 			return true
 		end

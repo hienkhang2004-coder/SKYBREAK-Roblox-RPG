@@ -34,6 +34,28 @@ local function cleanNum(v, minV, maxV, fallback, doFloor)
 	return v
 end
 
+-- DataStore tu choi chuoi khong phai UTF-8 hop le => UpdateAsync nem loi MOI lan luu, mat het tien trinh.
+-- (vd. CrewName bi cat theo byte giua ky tu tieng Viet, hoac client gui byte rac).
+local function toValidUtf8(s)
+	if utf8.len(s) ~= nil then
+		return s
+	end
+	local parts = {}
+	local i, n = 1, #s
+	while i <= n do
+		local len, badPos = utf8.len(s, i)
+		if len ~= nil then
+			table.insert(parts, string.sub(s, i))
+			break
+		end
+		if badPos > i then
+			table.insert(parts, string.sub(s, i, badPos - 1))
+		end
+		i = badPos + 1
+	end
+	return table.concat(parts)
+end
+
 local function sanitizeForDataStore(val, depth)
 	depth = (depth or 0) + 1
 	if depth > 14 then
@@ -48,7 +70,7 @@ local function sanitizeForDataStore(val, depth)
 		end
 		return val
 	elseif tv == "string" then
-		return val
+		return toValidUtf8(val)
 	elseif tv ~= "table" then
 		return nil
 	end
@@ -78,7 +100,7 @@ local function sanitizeForDataStore(val, depth)
 		end
 	else
 		for k, v in pairs(val) do
-			local sk = (type(k) == "string") and k or tostring(k)
+			local sk = toValidUtf8((type(k) == "string") and k or tostring(k))
 			if sk ~= "" then
 				local sv = sanitizeForDataStore(v, depth)
 				if sv ~= nil then
@@ -422,9 +444,13 @@ local function hydrate(p)
 			end
 		end
 	end
-	for fruitId, count in pairs(def.StoredFruits) do
-		if (cleanFruits[fruitId] or 0) < count then
-			cleanFruits[fruitId] = count
+	-- Chi seed trai khoi dau cho ho so moi/legacy. Neu ep "san" moi lan hydrate (ca khi Save),
+	-- trai da giao dich/tha/an se tu hoi sinh khi vao lai => nhan ban vo han (ke ca Mythic).
+	if isLegacyUnseeded then
+		for fruitId, count in pairs(def.StoredFruits) do
+			if (cleanFruits[fruitId] or 0) < count then
+				cleanFruits[fruitId] = count
+			end
 		end
 	end
 	p.StoredFruits = cleanFruits
@@ -636,7 +662,7 @@ function D.Load(player)
 		return D.Sessions[player].Profile
 	end
 	local uid = player.UserId
-	local waitDeadline = os.clock() + 12
+	local waitDeadline = os.clock() + 45 -- > thoi gian cho khoa phien (~20s) + retry
 	while D.Loading[uid] and os.clock() < waitDeadline do
 		task.wait(0.1)
 	end
@@ -645,25 +671,43 @@ function D.Load(player)
 	end
 	D.Loading[uid] = true
 
-	local cached = D.StudioSessionCache[uid]
+	local cached = (Run:IsStudio() or not persistent) and D.StudioSessionCache[uid] or nil
 	local profile = cached and hydrate(clone(cached)) or hydrate(defaults())
 	local expires = os.time() + C.LeaseSeconds
 	local loadedFromStore = false
 	local loadedFromStudioCache = (cached ~= nil)
 
 	if persistent and store then
-		for lockTry = 1, 2 do
+		-- Cho server cu luu xong (~20s) truoc khi gianh khoa; chi gianh khi khoa van con sau ngan ay lan thu.
+		local LOCK_WAIT_TRIES = 8
+		for lockTry = 1, LOCK_WAIT_TRIES + 1 do
 			local lockHeldByOther = false
+			local corruptRecord = false
+			local forceSteal = (lockTry > LOCK_WAIT_TRIES)
 			local ok, record = retry(function()
+				lockHeldByOther = false
+				corruptRecord = false
 				return store:UpdateAsync("u_" .. uid, function(old)
 					local nowSec = os.time()
-					if lockTry == 1 and type(old) == "table" and old.Owner ~= nil and old.Owner ~= token and (tonumber(old.Expires) or 0) > nowSec then
+					if old ~= nil and type(old) ~= "table" then
+						corruptRecord = true
+						return nil
+					end
+					if not forceSteal and type(old) == "table" and old.Owner ~= nil and old.Owner ~= token and (tonumber(old.Expires) or 0) > nowSec then
 						lockHeldByOther = true
 						return nil
 					end
-					local rawData = (type(old) == "table" and type(old.Data) == "table") and clone(old.Data)
-						or (cached and clone(cached))
-						or defaults()
+					local rawData
+					if type(old) == "table" and type(old.Data) == "table" then
+						rawData = clone(old.Data)
+					elseif type(old) == "table" and old.Data == nil and (old.Level ~= nil or old.Inventory ~= nil or old.SchemaVersion ~= nil) then
+						rawData = clone(old) -- ban ghi cu chua boc {Data=...}: giu du lieu, khong ghi de bang mac dinh
+					elseif type(old) == "table" then
+						corruptRecord = true -- ban ghi la: KHONG ghi de, chuyen sang ReadOnly
+						return nil
+					else
+						rawData = (cached and clone(cached)) or defaults()
+					end
 					local migrated = hydrate(rawData)
 					if not valid(migrated) then
 						warn("[SKYBREAK] Repaired invalid profile fields for", player.Name)
@@ -676,10 +720,16 @@ function D.Load(player)
 					}
 				end)
 			end)
-			if lockHeldByOther and lockTry == 1 then
-				task.wait(1.5)
+			if lockHeldByOther and not forceSteal then
+				task.wait(2.5)
+				if player.Parent ~= Players then
+					break
+				end
 			else
-				if ok and type(record) == "table" and type(record.Data) == "table" then
+				if corruptRecord then
+					warn("[SKYBREAK] Unrecognised DataStore record shape for", player.Name, "- refusing to overwrite")
+				end
+				if ok and not corruptRecord and type(record) == "table" and type(record.Data) == "table" then
 					profile = hydrate(record.Data)
 					expires = record.Expires or expires
 					loadedFromStore = true
@@ -737,7 +787,8 @@ end
 
 function D.Get(player)
 	local s = D.Sessions[player]
-	if not s or not s.Active then
+	-- Dang Release: snapshot cuoi da/dang chup, moi thay doi sau do se mat (vd. trade luc dang thoat => dupe).
+	if not s or not s.Active or s.Releasing then
 		return nil
 	end
 	if persistent and os.time() >= s.Expires then
@@ -752,8 +803,14 @@ function D.Save(player, release)
 		return false
 	end
 	local waitStart = os.clock()
-	while s.Busy and (os.clock() - waitStart) < 15 do
+	local maxWait = release and 20 or 15
+	while s.Busy and (os.clock() - waitStart) < maxWait do
 		task.wait(0.1)
+	end
+	if s.Busy then
+		-- Khong chay 2 UpdateAsync song song: snapshot cu co the commit sau va ghi de snapshot moi.
+		warn("[SKYBREAK] Save skipped, previous save still in flight for", player.Name)
+		return false
 	end
 	if not s.Active then
 		return false
@@ -765,10 +822,20 @@ function D.Save(player, release)
 	end
 	s.Busy = true
 
-	local rawCopy = clone(s.Profile)
-	rawCopy._ReadOnlyFallback = nil
-	local hydratedSnapshot = hydrate(rawCopy)
-	hydratedSnapshot._ReadOnlyFallback = nil
+	-- Loi o day (vd. bang vong lap lam clone() tran stack) truoc kia de Busy = true vinh vien.
+	local okSnap, hydratedSnapshot = pcall(function()
+		local rawCopy = clone(s.Profile)
+		rawCopy._ReadOnlyFallback = nil
+		local snap = hydrate(rawCopy)
+		snap._ReadOnlyFallback = nil
+		return snap
+	end)
+	if not okSnap or type(hydratedSnapshot) ~= "table" then
+		warn("[SKYBREAK] Failed to build save snapshot for", player.Name, hydratedSnapshot)
+		s.SaveStatus = "Lỗi dữ liệu"
+		s.Busy = false
+		return false
+	end
 	if Run:IsStudio() or not persistent then
 		D.StudioSessionCache[player.UserId] = hydratedSnapshot
 	end
@@ -803,11 +870,11 @@ function D.Save(player, release)
 				blockedClobber = true
 				return nil
 			end
-			if type(old) == "table" then
-				if old.Owner ~= nil and old.Owner ~= token and (tonumber(old.Expires) or 0) > nowSec then
-					lockStolen = true
-					return nil
-				end
+			-- Chi ghi khi chinh server nay dang giu khoa. Owner == nil (server khac da Release) hoac
+			-- ban ghi bi xoa (old == nil) deu KHONG duoc ghi de bang snapshot cu.
+			if type(old) ~= "table" or old.Owner ~= token then
+				lockStolen = true
+				return nil
 			end
 			return {
 				Data = hydratedSnapshot,
@@ -822,6 +889,13 @@ function D.Save(player, release)
 		s.SaveStatus = "Phiên khác đang mở"
 		s.Active = false
 		s.Busy = false
+		if not release then
+			task.defer(function()
+				if player.Parent == Players then
+					player:Kick("SKYBREAK: Dữ liệu của bạn đang mở ở máy chủ khác. Vui lòng vào lại.")
+				end
+			end)
+		end
 		return false
 	end
 	if blockedClobber then
@@ -840,7 +914,11 @@ function D.Save(player, release)
 			D.StudioSessionCache[player.UserId] = nil
 		end
 	else
-		D.StudioSessionCache[player.UserId] = hydratedSnapshot
+		-- Live: KHONG cache snapshot that bai. Cache nay tung duoc Load coi la nguon tin cay (bo qua ReadOnly)
+		-- va co the ghi de du lieu moi hon tu server khac khi nguoi choi quay lai server nay.
+		if Run:IsStudio() or not persistent then
+			D.StudioSessionCache[player.UserId] = hydratedSnapshot
+		end
 		s.SaveStatus = "Tạm lưu bộ nhớ"
 	end
 	s.Busy = false
@@ -852,11 +930,22 @@ function D.Release(player)
 		D.Loading[player.UserId] = nil
 	end
 	local s = D.Sessions[player]
-	if not s or s.Releasing then
+	if not s then
+		return
+	end
+	if s.Releasing then
+		-- Release dang chay (vd. PlayerRemoving): doi xong de BindToClose khong tra ve som roi tat server.
+		local t0 = os.clock()
+		while D.Sessions[player] == s and (os.clock() - t0) < 28 do
+			task.wait(0.1)
+		end
 		return
 	end
 	s.Releasing = true
-	D.Save(player, true)
+	local okSave, errSave = pcall(D.Save, player, true)
+	if not okSave then
+		warn("[SKYBREAK] Release save error for", player.Name, errSave)
+	end
 	s.Active = false
 	D.Sessions[player] = nil
 end
@@ -878,14 +967,46 @@ function D.Start()
 			if persistent and store then
 				for player, s in pairs(D.Sessions) do
 					if s.Active and not s.Releasing and (s.ReadOnlyFallback or (type(s.Profile) == "table" and s.Profile._ReadOnlyFallback == true)) then
+						if s.Recovering then
+							continue
+						end
+						s.Recovering = true
 						task.spawn(function()
+							-- Gianh khoa phien nhu D.Load: chi nhan khi khong server nao khac dang giu khoa con han.
+							-- Nguoi choi moi (chua co ban ghi) cung duoc tao ban ghi o day.
+							local heldByOther = false
 							local ok, record = pcall(function()
-								return store:GetAsync("u_" .. player.UserId)
+								return store:UpdateAsync("u_" .. player.UserId, function(old)
+									local nowSec = os.time()
+									if type(old) == "table" and old.Owner ~= nil and old.Owner ~= token and (tonumber(old.Expires) or 0) > nowSec then
+										heldByOther = true
+										return nil
+									end
+									local rawData
+									if type(old) == "table" and type(old.Data) == "table" then
+										rawData = clone(old.Data)
+									elseif old == nil then
+										rawData = defaults() -- nguoi choi moi that su
+									else
+										heldByOther = true -- ban ghi la/cu: khong ghi de bang mac dinh
+										return nil
+									end
+									return {
+										Data = hydrate(rawData),
+										Owner = token,
+										Expires = nowSec + C.LeaseSeconds,
+									}
+								end)
 							end)
+							s.Recovering = false
+							if heldByOther or not (s.Active and not s.Releasing) then
+								return
+							end
 							if ok and type(record) == "table" and type(record.Data) == "table" then
 								local recovered = hydrate(clone(record.Data))
 								recovered._ReadOnlyFallback = nil
 								s.Profile = recovered
+								s.Expires = tonumber(record.Expires) or (os.time() + C.LeaseSeconds)
 								s.ReadOnlyFallback = false
 								s.SaveStatus = "Đã phục hồi từ Cloud"
 								pcall(function()

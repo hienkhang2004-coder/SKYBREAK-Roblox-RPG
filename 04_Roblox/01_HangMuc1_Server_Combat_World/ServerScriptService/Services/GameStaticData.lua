@@ -56,7 +56,7 @@ S.FALLBACK_FRUITS = {
 		V={Name="Great Starforged Hound", Mult=5.2, Range=38, Cooldown=10.0},
 		F={Name="Magma Beast Flight", Mult=1.8, Range=28, Cooldown=4.0},
 	}},
-	ThunderRumbleCore={Id="ThunderRumbleCore", Name="Lõi Lôi Thần (Thunder Rumble Core)", Rarity="Legendary", Type="Elemental", Element="Lightning", Logia=true, Color=Color3.fromRGB(88,210,255), Moves={
+	ThunderRumbleCore={Id="ThunderRumbleCore", Name="Lõi Lôi Thần (Thunder Core)", Rarity="Legendary", Type="Elemental", Element="Lightning", Logia=true, Color=Color3.fromRGB(88,210,255), Moves={
 		Z={Name="Thunderball Dragon", Mult=2.5, Range=30, Cooldown=3.5},
 		X={Name="Sky Thunder Judgement", Mult=3.2, Range=32, Cooldown=5.0},
 		C={Name="Ion Storm Barrage", Mult=3.9, Range=36, Cooldown=7.0},
@@ -93,12 +93,12 @@ S.FALLBACK_FRUITS = {
 	}},
 	AbyssalSovereignCore={Id="AbyssalSovereignCore", Name="Lõi Long Vương Hư Không (Abyssal Sovereign Core)", Rarity="Mythical", Type="Beast", Element="Void", Logia=false, Color=Color3.fromRGB(178,88,255), Moves={
 		Z={Name="Void Heat Wave Beam", Mult=2.7, Range=32, Cooldown=3.5},
-		X={Name="Abyssal Dragon Talons", Mult=3.4, Range=32, Cooldown=5.0},
+		X={Name="Abyssal Void Talons", Mult=3.4, Range=32, Cooldown=5.0},
 		C={Name="Cataclysmic Meteor Shower", Mult=4.2, Range=38, Cooldown=7.0},
 		V={Name="Imperial Sovereign Transformation", Mult=5.5, Range=44, Cooldown=10.0},
 		F={Name="Draconic Sky Soar", Mult=2.0, Range=28, Cooldown=4.0},
 	}},
-	LightningTempestCore={Id="ThunderRumbleCore", Name="Lõi Lôi Thần (Thunder Rumble Core)", Rarity="Legendary", Type="Elemental", Element="Lightning", Logia=true, Color=Color3.fromRGB(88,210,255)},
+	LightningTempestCore={Id="ThunderRumbleCore", Name="Lõi Lôi Thần (Thunder Core)", Rarity="Legendary", Type="Elemental", Element="Lightning", Logia=true, Color=Color3.fromRGB(88,210,255)},
 	GlacialPermafrostCore={Id="GlacierIceCore", Name="Lõi Băng Hà Vĩnh Cửu (Glacier Ice Core)", Rarity="Rare", Type="Elemental", Element="Frost", Logia=true, Color=Color3.fromRGB(115,235,255)},
 	CrimsonMagmaCore={Id="StarforgedMagmaCore", Name="Lõi Dung Nham Tinh Cầu (Starforged Magma Core)", Rarity="Epic", Type="Elemental", Element="Sky", Logia=true, Color=Color3.fromRGB(255,82,48)},
 	StarlightQuakeCore={Id="SolarTitanCore", Name="Lõi Kim Thân (Colossus Core)", Rarity="Mythical", Type="Beast", Element="Sky", Logia=false, Color=Color3.fromRGB(255,208,68)},
@@ -107,10 +107,10 @@ S.FALLBACK_FRUITS = {
 
 S.FALLBACK_STYLES = {
 	SkybornCombat={Id="SkybornCombat", Name="Võ Thuật Skyborn (Skyborn Combat)", Element="Sky"},
-	ElectricClaw={Id="ElectricClaw", Name="Lôi Trảo Cực Tốc (Electric Claw)", Element="Lightning"},
-	GlacialKarate={Id="GlacialKarate", Name="Băng Hà Quyền (Glacial Sharkman Karate)", Element="Frost"},
-	DragonTalon={Id="DragonTalon", Name="Long Trảo Hỏa (Dragon Talon)", Element="Sky"},
-	GodhumanSkyborn={Id="GodhumanSkyborn", Name="Thần Quyền (Godhuman Skyborn)", Element="Sky"},
+	ElectricClaw={Id="ElectricClaw", Name="Lôi Trảo Cực Tốc (Storm Talon)", Element="Lightning"},
+	GlacialKarate={Id="GlacialKarate", Name="Băng Hà Quyền (Glacial Tide Fist)", Element="Frost"},
+	DragonTalon={Id="DragonTalon", Name="Long Trảo Hỏa (Blaze Talon)", Element="Sky"},
+	GodhumanSkyborn={Id="GodhumanSkyborn", Name="Thần Quyền (Ascendant Skyborn)", Element="Sky"},
 	SanguineVoidArt={Id="SanguineVoidArt", Name="Huyết Hư Không Quyền (Sanguine Void Art)", Element="Void"},
 }
 
@@ -189,7 +189,7 @@ S.FALLBACK_ENEMIES = {
 	PirateCaptainVance={Name="CAPTAIN VANCE • ĐÔ ĐỐC KHÔNG TẶC", VisualAsset="PirateCaptainVance", Element="Sky", HP=1800, ATK=28, Attack=28, DEF=14, Defense=14, XP=650, Gold=550, Range=14, Speed=12, Aggro=42, Leash=50, Boss=true, Drop="SunshardCore"},
 	OrderCyborg={Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", VisualAsset="OrderCyborg", Element="Frost", HP=3800, ATK=36, Attack=36, DEF=18, Defense=18, XP=1100, Gold=950, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
 	OrderCyborgBoss={Name="ORDER • LÕI LƯỢNG TỬ TỐI THƯỢNG", VisualAsset="OrderCyborgBoss", Element="Frost", HP=3800, ATK=36, Attack=36, DEF=18, Defense=18, XP=1100, Gold=950, Range=18, Speed=13, Aggro=50, Leash=60, Boss=true, Drop="CoreEssence"},
-	SoulReaperRift={Name="SOUL REAPER • TỬ THẦN HƯ KHÔNG", VisualAsset="SoulReaperRift", Element="Void", HP=5800, ATK=42, Attack=42, DEF=22, Defense=22, XP=2200, Gold=1600, Range=20, Speed=13, Aggro=55, Leash=65, Boss=true, Drop="CoreEssence"},
+	SoulReaperRift={Name="VOID HARBINGER • TỬ THẦN HƯ KHÔNG", VisualAsset="SoulReaperRift", Element="Void", HP=5800, ATK=42, Attack=42, DEF=22, Defense=22, XP=2200, Gold=1600, Range=20, Speed=13, Aggro=55, Leash=65, Boss=true, Drop="CoreEssence"},
 	SkySeaBeast={Name="THÚ TRỜI BIỂN MÂY (SKY BEAST)", VisualAsset="SkySeaBeast", Element="Frost", HP=5200, ATK=42, Attack=42, DEF=20, Defense=20, XP=1800, Gold=2500, Range=24, Speed=10, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
 	AbyssalLeviathan={Name="THỦY XÀ VỰC THẲM (ABYSS SERPENT)", VisualAsset="AbyssalLeviathan", Element="Void", HP=7500, ATK=50, Attack=50, DEF=25, Defense=25, XP=3200, Gold=4500, Range=28, Speed=11, Aggro=75, Leash=90, Boss=true, Drop="CoreEssence"},
 	AbyssalDragonHybrid={Name="ABYSSAL DRAGON HYBRID • LONG NHÂN HƯ KHÔNG", VisualAsset="AbyssalDragonHybrid", Element="Void", HP=6800, ATK=46, Attack=46, DEF=24, Defense=24, XP=2800, Gold=3500, Range=22, Speed=12, Aggro=65, Leash=80, Boss=true, Drop="CoreEssence"},
@@ -213,11 +213,14 @@ S.FALLBACK_ENEMIES = {
 }
 
 function S.SpawnAllInitialEnemies(G)
-	for i=1,3 do G.SpawnEnemy("TrainingDrone",Vector3.new(-328.9+(i-1)*15,49.5,222.4),false) end
-	for i=1,2 do G.SpawnEnemy("SkyPirate",Vector3.new(-323.9+(i-1)*20,49.5,198.4),false) end
-	G.SpawnEnemy("SkyHubWatchCommander",Vector3.new(-313.9,49.5,210.4),false)
-	G.SpawnEnemy("TrainingDrone",Vector3.new(-566,51.0,982),false)
-	G.SpawnEnemy("TrainingDrone",Vector3.new(-554,51.0,982),false)
+	-- San tap Q01 chi co Training Drone. Pirate (Lv75) va Commander (Lv100) dat o goc dao,
+	-- cach hang drone > Aggro + Leash, de nguoi choi Lv1 khong bi keo vao. 5 drone de nhieu nguoi choi cung lam Q01.
+	-- Drone cach nhau 25 stud: don M1 kiem Skyborn quet ~16 stud, cach 15 se danh trung 2 con cung luc.
+	for i=1,5 do G.SpawnEnemy("TrainingDrone",Vector3.new(-363.9+(i-1)*25,49.5,222.4),false) end
+	G.SpawnEnemy("SkyPirate",Vector3.new(-282,49.5,140),false)
+	G.SpawnEnemy("SkyPirate",Vector3.new(-262,50.0,150),false)
+	G.SpawnEnemy("SkyHubWatchCommander",Vector3.new(-375,49.5,150),false)
+	-- Dao Zioles Shrine qua nho de tach drone khoi boss Lv225: 2 drone o day da chuyen ve san tap.
 	G.SpawnEnemy("ShrineGuardianBoss",Vector3.new(-560,51.0,972),false)
 	G.SpawnEnemy("CorruptedGuard",Vector3.new(333,51.0,976),false)
 	G.SpawnEnemy("CorruptedGuard",Vector3.new(347,51.0,976),false)
@@ -227,7 +230,8 @@ function S.SpawnAllInitialEnemies(G)
 	G.SpawnEnemy("SkyPirate",Vector3.new(-3193.6,49.5,56.5),false)
 	G.SpawnEnemy("SkyPirate",Vector3.new(-2406.4,49.5,56.5),false)
 	G.SpawnEnemy("PirateCaptainVance",Vector3.new(-2800,49.5,-95),false)
-	for i=1,3 do G.SpawnEnemy("CorruptedGuard",Vector3.new(-36+(i-1)*36,49.5,25),false) end
+	-- Q02: Corrupted Guard dat xa Sunshard Royal Guard (Lv450, z=-18) de nguoi choi Lv120 khong keo nham.
+	for i=1,3 do G.SpawnEnemy("CorruptedGuard",Vector3.new(-36+(i-1)*36,49.5,70),false) end
 	G.SpawnEnemy("SunshardRoyalGuard",Vector3.new(-28,49.5,-18),false)
 	G.SpawnEnemy("SunshardRoyalGuard",Vector3.new(28,49.5,-18),false)
 	G.SpawnEnemy("GoldenKnight",Vector3.new(0,49.5,-52),false)

@@ -594,7 +594,7 @@ local function awardBounty(p, delta, reason)
 	syncLeaderstats(p, profile)
 	if prev < CombatData.SeaBeastSummonBounty and nextB >= CombatData.SeaBeastSummonBounty then
 		unlockTitle(p, profile, "seabeast_caller_10m", false)
-		G.Notify(p, "ĐẠT 10,000,000 BOUNTY! Đã mở khóa tuyệt kỹ Triệu Hồi SkySeaBeast Guardian!")
+		G.Notify(p, "ĐẠT 10,000,000 BOUNTY! Đã mở khóa tuyệt kỹ Triệu Hồi Thú Trời Hộ Vệ (Sky Beast Guardian)!")
 	end
 	evaluateAutoTitles(p, profile)
 	if reason and reason ~= "" and math.abs(nextB - prev) >= 25000 then
@@ -2927,7 +2927,7 @@ local function tickPlayerWaterAndFury(p, dt)
 				ch:SetAttribute("LeviathanShieldHP", 0)
 			end
 			local sAfter = G.Stats(p)
-			if sAfter then
+			if sAfter and hum.Health > 0 then
 				hum.MaxHealth = sAfter.HP
 				hum.Health = math.clamp(math.floor(sAfter.HP * prevPct), 1, sAfter.HP)
 			end
@@ -3565,6 +3565,46 @@ function Expansion.RefundAllStats(p, silent)
 	return refunded
 end
 
+-- Ngay publish: lan dau mot server that (khong phai Studio) chay, ghi os.time() vao DataStore.
+-- Loi DataStore thi tra nil va giftcode tam khong tinh han, de khong khoa nham nguoi choi.
+local launchUnixCache = nil
+local launchUnixRetryAt = 0
+local function getLaunchUnix()
+	if tonumber(CombatData.LaunchUnixOverride) then
+		return tonumber(CombatData.LaunchUnixOverride)
+	end
+	if launchUnixCache then
+		return launchUnixCache
+	end
+	if game:GetService("RunService"):IsStudio() then
+		return nil
+	end
+	if os.clock() < launchUnixRetryAt then
+		return nil
+	end
+	launchUnixRetryAt = os.clock() + 60
+	local ok, value = pcall(function()
+		local store = game:GetService("DataStoreService"):GetDataStore("SKYBREAK_META_v1")
+		return store:UpdateAsync("LaunchUnix", function(old)
+			if tonumber(old) then
+				return nil
+			end
+			return os.time()
+		end)
+	end)
+	if ok and tonumber(value) then
+		launchUnixCache = tonumber(value)
+	elseif ok then
+		local okGet, got = pcall(function()
+			return game:GetService("DataStoreService"):GetDataStore("SKYBREAK_META_v1"):GetAsync("LaunchUnix")
+		end)
+		if okGet and tonumber(got) then
+			launchUnixCache = tonumber(got)
+		end
+	end
+	return launchUnixCache
+end
+
 function Expansion.RedeemCode(p, rawCode)
 	local profile = D.Get(p)
 	local rt = G.Runtime[p]
@@ -3591,7 +3631,14 @@ function Expansion.RedeemCode(p, rawCode)
 		G.Notify(p, "Giftcode không hợp lệ hoặc đã hết hạn: [" .. cleaned .. "]!")
 		return false
 	end
-	if tonumber(spec.Expires) and os.time() > tonumber(spec.Expires) then
+	local expiresAt = tonumber(spec.Expires)
+	if not expiresAt and tonumber(spec.ExpiresDays) then
+		local launchUnix = getLaunchUnix()
+		if launchUnix then
+			expiresAt = launchUnix + tonumber(spec.ExpiresDays) * 86400
+		end
+	end
+	if expiresAt and os.time() > expiresAt then
 		G.Notify(p, "Giftcode [" .. cleaned .. "] đã hết hạn sử dụng!")
 		return false
 	end
@@ -3920,6 +3967,18 @@ end
 -- ============================================================================
 -- UNIFIED UIREQUEST / FRUITACTION ROUTERS
 -- ============================================================================
+-- Vong trai tu nhien o 3 Cay Aether (khop WILD_FRUIT_POOL trong Skybreak3DEquipment.lua phia client)
+local WILD_FRUIT_POOL_IDS = {
+	"SolarFlameCore",
+	"GlacierIceCore",
+	"CelestialLightCore",
+	"ThunderRumbleCore",
+	"DimensionalPortalCore",
+	"SolarTitanCore",
+	"AetherflowCore",
+	"AbyssalSovereignCore",
+}
+
 function Expansion.HandleFruitAction(p, actOrPayload, arg2)
 	if not consumeToken(p, 1) then
 		return
@@ -3976,6 +4035,16 @@ function Expansion.HandleFruitAction(p, actOrPayload, arg2)
 					if Vector3.new(hrp.Position.X - tp.X, 0, hrp.Position.Z - tp.Z).Magnitude <= 45 then
 						validSource = true
 						break
+					end
+				end
+				if validSource then
+					-- Trai tu nhien o cay: server tu quyet dinh theo vong WILD_FRUIT_POOL (cung thu tu client),
+					-- khong tin fid client gui len (truoc day chon thang Mythic moi 22s).
+					local idx = math.max(1, math.floor(tonumber(rt.WildFruitCycle) or 1))
+					cid = WILD_FRUIT_POOL_IDS[((idx - 1) % #WILD_FRUIT_POOL_IDS) + 1]
+					rt.WildFruitCycle = idx + 1
+					if not CombatData.FruitCatalog[cid] then
+						return
 					end
 				end
 			end
@@ -4510,6 +4579,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		ensureExpansionProfile(profile)
 		local key = string.upper(tostring(rawKey or "Z"))
 		local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
+		local masteryItemId, masteryXP = nil, 0
 
 		-- Slot 1: 5 Martial Arts Styles [Z][X][C] (#31-#33)
 		if slot == 1 and (key == "Z" or key == "X" or key == "C") then
@@ -4549,7 +4619,9 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 				if not checkMoveMasteryUnlock(p, profile, fid, key, 2) then
 					return
 				end
-				if key == "F" then
+				-- JumpPadUntil tat kiem tra dich chuyen/toc do cua server: chi gia han khi [F] het hoi chieu
+				-- (truoc day spam [F] qua AbilityRequest => JumpPad vinh vien => teleport/speed hack tu do).
+				if key == "F" and os.clock() >= (rt.Cooldowns.Slot_F or 0) then
 					local mLv = getMasteryLevel(profile, fid)
 					local boost = (mLv >= CombatData.MasteryConfig.FlightEnhancedLevel) and 1.35 or 1.0
 					rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 3.0 * boost)
@@ -4557,17 +4629,25 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 				if executeAwakenedFruitV2Move(p, fid, key, payload) then
 					return
 				end
-				addMasteryXP(p, fid, 16)
+				masteryItemId, masteryXP = fid, 16
 			end
 		else
 			local discId = getActiveDisciplineId(profile, slot)
 			if not checkMoveMasteryUnlock(p, profile, discId, key, slot) then
 				return
 			end
-			addMasteryXP(p, discId, 14)
+			masteryItemId, masteryXP = discId, 14
 		end
 
-		return origUseSlotMove(p, key)
+		-- Mastery XP chi cong khi chieu goc thuc su ra (cooldown Slot_ bi dat lai), khong cong khi dang hoi chieu
+		local baseKey = (key == "Z" or key == "X" or key == "C" or key == "V" or key == "F") and key or "Z"
+		local cdBefore = rt.Cooldowns["Slot_" .. baseKey]
+		local res = origUseSlotMove(p, key)
+		local rtAfter = G.Runtime[p]
+		if masteryItemId and rtAfter and rtAfter.Cooldowns and rtAfter.Cooldowns["Slot_" .. baseKey] ~= cdBefore then
+			addMasteryXP(p, masteryItemId, masteryXP)
+		end
+		return res
 	end
 
 	-- 8. Wrap G.Equipment & G.Interact so Wave 1/Wave 2 actions on EquipmentRequest & InteractRequest route cleanly

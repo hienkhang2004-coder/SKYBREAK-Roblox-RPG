@@ -646,8 +646,10 @@ function G.QuestEvent(p,kind,target)
 		end
 	end
 	for i,o in ipairs(q.Objectives) do if (profile.Progress[tostring(i)] or 0)<o.Count then return end end
-	if profile.CompletedQuests[q.Id] then return end
+	-- QuestIndex dang tro vao nhiem vu da xong (sau RepeatQuest): nhay toi nhiem vu chua xong thay vi ket im lang.
+	if profile.CompletedQuests[q.Id] then profile.Progress={} while C.Quests[profile.QuestIndex] and profile.CompletedQuests[C.Quests[profile.QuestIndex].Id] do profile.QuestIndex+=1 end G.Sync(p) return end
 	profile.CompletedQuests[q.Id]=true profile.Accepted=false profile.Progress={} profile.QuestIndex+=1
+	while C.Quests[profile.QuestIndex] and profile.CompletedQuests[C.Quests[profile.QuestIndex].Id] do profile.QuestIndex+=1 end
 	profile.LastCompletedQuest=q.Id
 	profile.Inventory.SkyIron=(profile.Inventory.SkyIron or 0)+4
 	profile.Inventory.SunshardCore=(profile.Inventory.SunshardCore or 0)+2
@@ -938,6 +940,12 @@ function G.Interact(p,id)
 	if id=='Lyra'or id=='Kael'then object:SetAttribute('NPCTalkAt',workspace:GetServerTimeNow())end
 	if id:sub(1,14)=="FruitPedestal_" then
 		if p:GetAttribute("InTrade")==true then return end
+		-- Khong co be da server-side: dung chung luong ClaimWildFruit (server tu chon trai, chung cooldown).
+		-- Truoc day client tu chon fid (ke ca Mythic) va duoc them 1 cooldown rieng => 2 trai/22s.
+		if not object and G.HandleFruitAction then
+			G.HandleFruitAction(p,"ClaimWildFruit",id:sub(15))
+			return
+		end
 		local rt=G.Runtime[p]
 		local now=os.clock()
 		if rt and now<(rt.Cooldowns.FruitPedestal or 0) then return end
@@ -1941,6 +1949,32 @@ function G.UseSlotMove(p,key)
 	G.Sync(p)
 end
 
+-- Cong thuc Lo Ren V2/Expansion (RarityConfig.Recipes, da gop ExpansionRecipes) quy ve dang C.ForgeRecipes.
+local rarityForgeIndex=nil
+local function findRarityForgeRecipe(itemId,recipeId)
+	if not rarityForgeIndex then
+		rarityForgeIndex={}
+		local okR,RC=pcall(function()
+			return require(game:GetService("ReplicatedStorage"):WaitForChild("SkybreakShared"):WaitForChild("Config"):WaitForChild("RarityConfig"))
+		end)
+		if okR and type(RC)=="table" and type(RC.Recipes)=="table" then
+			for _,rec in ipairs(RC.Recipes) do
+				if type(rec)=="table" and type(rec.OutputItemId)=="string" then
+					local mats={}
+					for _,m in ipairs(rec.Materials or {}) do
+						if type(m)=="table" and m.ItemId then mats[m.ItemId]=(mats[m.ItemId] or 0)+(tonumber(m.Count) or 1) end
+					end
+					local conv={Id=rec.Id,ItemId=rec.OutputItemId,Gold=tonumber(rec.GoldCost) or 0,CoreShards=tonumber(rec.CoreShardCost) or 0,LevelReq=tonumber(rec.LevelReq) or 1,Materials=mats}
+					rarityForgeIndex[rec.OutputItemId]=rarityForgeIndex[rec.OutputItemId] or conv
+					if type(rec.Id)=="string" then rarityForgeIndex["#"..rec.Id]=conv end
+				end
+			end
+		end
+	end
+	local byRecipe=type(recipeId)=="string" and rarityForgeIndex["#"..recipeId] or nil
+	if byRecipe and byRecipe.ItemId==itemId then return byRecipe end
+	return rarityForgeIndex[itemId]
+end
 function G.Equipment(p,payload)
 	if type(payload)~="table" then return end
 	local act=payload.action
@@ -1979,7 +2013,16 @@ function G.Equipment(p,payload)
 		local itemId=payload.itemId or payload.swordId
 		local item=itemId and C.Items[itemId]
 		if item and (profile.Inventory[itemId] or 0)>0 then
-			local slot=payload.slot or item.Slot or "Weapon"
+			-- Khong tin payload.slot: truoc day 1 vu khi deo duoc vao ca 8 o (Helmet/Ring/Artifact...) => cong ATK x8,
+			-- va slot = chuoi tuy y lam phinh profile.Equipped (>3.5MB => khong luu duoc).
+			local itemSlot=item.Slot or "Weapon"
+			local slot=payload.slot or itemSlot
+			if itemSlot=="Gun" or item.WeaponType=="Gun" then
+				slot="Gun"
+			elseif slot~=itemSlot and (EQUIP_SLOT_GROUP[slot]==nil or EQUIP_SLOT_GROUP[slot]~=EQUIP_SLOT_GROUP[itemSlot]) then
+				slot=itemSlot
+			end
+			if slot~="Gun" and not EQUIP_SLOT_GROUP[slot] then return end
 			if slot=="Weapon" then
 				profile.Weapon=itemId
 				profile.Equipped.Weapon=itemId
@@ -2004,8 +2047,23 @@ function G.Equipment(p,payload)
 	elseif act=="ForgeCraft" or act=="CraftWeapon" then
 		local itemId=payload.itemId or payload.recipeId
 		local item=itemId and C.Items[itemId]
-		local recipe=itemId and C.ForgeRecipes[itemId]
+		local recipe=itemId and (C.ForgeRecipes[itemId] or findRarityForgeRecipe(itemId,payload.recipeId))
 		if not item then return end
+		-- Truoc day item khong co cong thuc => mac dinh 300 Gold, 0 nguyen lieu: client goi ForgeCraft voi
+		-- bat ky itemId nao (vu khi Mythic, SunshardCore/CoreEssence/upgrade_material...) deu nhan duoc.
+		if not recipe then
+			G.Notify(p,item.Name.." không có công thức rèn tại Lò Rèn!")
+			return
+		end
+		if (tonumber(recipe.LevelReq) or 1)>(tonumber(profile.Level) or 1) then
+			G.Notify(p,"Cần đạt Lv. "..tostring(recipe.LevelReq).." để chế tác "..item.Name.."!")
+			return
+		end
+		local costShards=tonumber(recipe.CoreShards) or 0
+		if costShards>0 and (profile.CoreShards or 0)<costShards then
+			G.Notify(p,"Không đủ Core Shards để chế tác "..item.Name.." (Cần "..costShards..")!")
+			return
+		end
 		if item.Slot~="Material" and item.Slot~="Quest" and (profile.Inventory[itemId] or 0)>0 then
 			G.Notify(p,"Bạn đã sở hữu "..item.Name.."! Hãy dùng Cường Hóa (+1..+15) hoặc Nâng Sao (*1..*5).")
 			return
@@ -2028,6 +2086,7 @@ function G.Equipment(p,payload)
 			end
 		end
 		profile.Gold-=costGold
+		if costShards>0 then profile.CoreShards-=costShards end
 		profile.Inventory[itemId]=(profile.Inventory[itemId] or 0)+1
 		if item.Slot=="Weapon" then
 			if not item.ClassId or item.ClassId==profile.ClassId then
@@ -2157,6 +2216,10 @@ function G.Equipment(p,payload)
 	elseif act=="StartBossRush" then
 		local bossId=tostring(payload.bossId or "CryonPrime")
 		if not r then return end
+		if not G.Rate(p,"BossRushStart",6) then
+			G.Notify(p,"Boss Rush đang hồi, vui lòng chờ vài giây!")
+			return
+		end
 		if p:GetAttribute("InTrade")==true or p:GetAttribute("RaidActive")==true or p:GetAttribute("ColosseumActive")==true or (p:GetAttribute("SpireFloor") or 0)>0 then
 			G.Notify(p,"Không thể dịch chuyển Boss Rush khi đang Giao Dịch, Đấu Trường, Raid hoặc trong Sky Spire!")
 			return
@@ -2272,7 +2335,8 @@ function G.Equipment(p,payload)
 				G.Teleport(p,bArena.PlayerPos)
 			else
 				for _,e in ipairs(G.Enemies) do
-					if e.Id==bossId and e.Alive then
+					-- Chi Boss moi duoc Boss Rush toi (truoc day bossId = Id quai bat ky => dich chuyen toi moi quai/cõi)
+					if e.Id==bossId and e.Alive and e.Body and (SINGLETON_BOSSES[e.Id] or (e.Config and e.Config.Boss)) then
 						targetBoss=e
 						G.Teleport(p,e.Body.Position+_V3(0,2,16))
 						break
@@ -2280,7 +2344,19 @@ function G.Equipment(p,payload)
 				end
 			end
 		end
+		local othersEngaged=false
 		if targetBoss then
+			for plr,hit in pairs(targetBoss.Contributors or {}) do
+				if plr~=p and typeof(plr)=="Instance" and plr.Parent==Players and type(hit)=="table" and os.clock()-(tonumber(hit.Time) or 0)<45 then
+					othersEngaged=true
+					break
+				end
+			end
+		end
+		if targetBoss and othersEngaged then
+			-- Khong hoi day mau Boss khi nguoi khac dang danh (truoc day spam StartBossRush => Boss bat tu)
+			G.Notify(p,"BOSS RUSH: Đã tham chiến cùng đội đang đánh "..tostring(targetBoss.Config and targetBoss.Config.Name or targetBoss.Id).."!")
+		elseif targetBoss then
 			cleanupBossMinions(targetBoss)
 			local baseHP=C.Enemies[targetBoss.Id] and C.Enemies[targetBoss.Id].HP or targetBoss.MaxHP
 			targetBoss.MaxHP=math.floor(baseHP*1.5)
@@ -2599,7 +2675,7 @@ function G.Equipment(p,payload)
 			p.Character:SetAttribute("RaceV4Active",profile.RaceV4Active)
 			p.Character:SetAttribute("RaceV4",profile.RaceV4Active and raceName or "")
 		end
-		if h then
+		if h and h.Health>0 then -- nhan vat da chet thi khong keo HP len 1 (HP nhay 0<->1 khi cho hoi sinh)
 			local s=G.Stats(p)
 			if s then
 				h.MaxHealth=s.HP
@@ -2653,14 +2729,14 @@ function G.Equipment(p,payload)
 			G.Notify(p,"ĐỘT KÍCH THỨC TỈNH (ORDER CYBORG RAID) BẮT ĐẦU!")
 		end
 	elseif act=="SpawnSeaEvent" or act=="SummonLeviathan" then
-		if r then
+		if r and DevGate.IsAllowed(p) then
 			local seaId=(act=="SummonLeviathan" or payload.bossId=="AbyssalLeviathan") and "AbyssalLeviathan"
 				or ((payload.bossId=="SkySeaBeast") and "SkySeaBeast" or ((math.random()<0.5) and "SkySeaBeast" or "AbyssalLeviathan"))
 			G.SpawnEnemy(seaId,r.Position+_V3(0,2,-26),false,true)
 			G.Notify(p,"SỰ KIỆN BIỂN MÂY: "..(seaId=="AbyssalLeviathan" and "Thủy Xà Vực Thẳm ABYSS SERPENT" or "Thú Trời SKY BEAST").." đã trồi lên từ biển mây!")
 		end
 	end
-	if h then
+	if h and h.Health>0 then
 		local s=G.Stats(p)
 		if s then
 			local ratio=h.Health/math.max(1,h.MaxHealth)
@@ -3480,7 +3556,7 @@ function G.EnsureWorld()
 		local styleList=C.StyleOrder or {"SkybornCombat","ElectricClaw","GlacialKarate","DragonTalon","GodhumanSkyborn","SanguineVoidArt"}
 		local mprompt=_IN("ProximityPrompt")
 		mprompt.ActionText="Lĩnh Ngộ Võ Thuật / Đổi Thần Quyền"
-		mprompt.ObjectText="Đại Sư Cổ Tự • Godhuman Master"
+		mprompt.ObjectText="Đại Sư Cổ Tự • Ascendant Master"
 		mprompt.MaxActivationDistance=14
 		mprompt.HoldDuration=0
 		mprompt.Parent=mBody
@@ -3643,6 +3719,10 @@ function G.Character(p,ch)
 	local respawnRealm=p:GetAttribute("RespawnRealm") or "GoldenSky"
 	p:SetAttribute('CurrentRealm',typeof(respawnPos)=="Vector3" and respawnRealm or 'GoldenSky')
 	local h=ch:WaitForChild("Humanoid",10) local r=ch:WaitForChild("HumanoidRootPart",10)
+	-- Tat script "Health" mac dinh cua Roblox (hoi 1% MaxHP/s ca khi dang danh va ca khi da chet).
+	-- Game da co hoi mau rieng: 3 HP/s sau 7s khong bi danh (vong lap tick ben duoi).
+	local defaultRegen=ch:FindFirstChild("Health")
+	if defaultRegen and defaultRegen:IsA("Script") then defaultRegen:Destroy() end
 	local profile=D.Get(p)
 	if not h or not r or not profile then return end
 	ensureProfileFields(profile)
@@ -3658,6 +3738,8 @@ function G.Character(p,ch)
 	ch:SetAttribute("FruitTransform","")
 	ch:SetAttribute("DragonFormTier",0)
 	ch:SetAttribute("SkybreakFlightActive",false)
+	-- 3s khong nhan sat thuong sau khi hoi sinh (CombatRuntimeOverrides.PlayerDamage doc attribute nay).
+	ch:SetAttribute("SpawnShieldUntil",workspace:GetServerTimeNow()+3)
 	p:SetAttribute("HakiAura",auraOn)
 	p:SetAttribute("HakiInstinct",kenOn)
 	p:SetAttribute("InstinctDodges",kenDodges)
@@ -3944,7 +4026,7 @@ function G.Start()
 					end
 					rt.Stamina=math.min(100,rt.Stamina+17*dt)
 					if now-(rt.LastCastAt or 0)>=1.5 and now>=(rt.ActionUntil or 0) then rt.Energy=math.min(100,(rt.Energy or 100)+8*dt) end
-					if now-rt.LastHurt>7 then h.Health=math.min(h.MaxHealth,h.Health+3*dt) end
+					if h.Health>0 and now-rt.LastHurt>7 then h.Health=math.min(h.MaxHealth,h.Health+3*dt) end
 				end
 				if sync>=.3 then G.Sync(p) end
 				end)
