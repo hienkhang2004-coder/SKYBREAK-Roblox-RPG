@@ -60,6 +60,171 @@ def strip_luau_line_comments(text: str) -> str:
     return "\n".join(out)
 
 
+def slice_between(text: str, start: str, end: str) -> str:
+    i = text.index(start)
+    j = text.index(end, i)
+    return text[i:j]
+
+
+BEHAVIOR_HARNESS = r"""
+local now = 1000
+local unixNow = 1800000000
+local os = { clock = function() return now end, time = function() return unixNow end }
+local isStudio = false
+local storeValue = nil
+local storeCalls = 0
+local fakeStore = {
+    UpdateAsync = function(_, key, fn)
+        storeCalls += 1
+        local nv = fn(storeValue)
+        if nv ~= nil then storeValue = nv end
+        return nv
+    end,
+    GetAsync = function(_, key) return storeValue end,
+}
+local game = {
+    GetService = function(_, name)
+        if name == "RunService" then return { IsStudio = function() return isStudio end } end
+        if name == "DataStoreService" then return { GetDataStore = function() return fakeStore end } end
+        return {}
+    end,
+}
+local task = { spawn = function() end }
+local Color3 = { new = function(...) return { ... } end, fromRGB = function(...) return { ... } end, fromHex = function(...) return { ... } end }
+local Vector3 = { new = function(...) return { ... } end }
+local ColorSequence = { new = function(...) return { ... } end }
+local NumberSequence = { new = function(...) return { ... } end }
+
+local CombatData = (function()
+--@@COMBATDATA@@
+end)()
+
+local profiles, notes = {}, {}
+local D = { Get = function(p) return profiles[p] end, Save = function() end }
+local G = { Runtime = {}, Notify = function(p, msg) notes[#notes + 1] = msg end, Sync = function() end, Equipment = function() end }
+local C = { Items = { MatOre = { Name = "Ore", Slot = "Material" } } }
+local ArsenalExpansionConfig = {
+    Items = {
+        BasicBlade = { Name = "Basic Blade", Slot = "Weapon" },
+        EliteBlade = { Name = "Elite Blade", Slot = "Weapon" },
+        MatOre = { Name = "Ore", Category = "Materials" },
+    },
+    VendorCatalogs = {
+        SwordDealer = {
+            { ItemId = "BasicBlade", PriceGold = 1000, LevelReq = 1 },
+            { ItemId = "EliteBlade", PriceGold = 5000, LevelReq = 500 },
+        },
+        ArmorAndRelicVendor = { { ItemId = "MatOre", PriceGold = 100 } },
+        ShipwrightFleet = {},
+        MartialDojoStyles = {},
+    },
+}
+local RarityConfig = { Items = {} }
+local VendorService = { HandleEquipItem = function() end, SyncCharacterArmorAttributes = function() end }
+local Services = { FindFirstChild = function() return nil end }
+
+--@@VENDOR@@
+
+local function newPlayer(level, gold)
+    local p = { UserId = #notes + math.random(1, 1e6) }
+    profiles[p] = { Level = level, Gold = gold, CoreShards = 0, Inventory = {}, Equipped = {}, RedeemedCodes = {}, StoredFruits = {} }
+    return p, profiles[p]
+end
+
+-- Vendor: 20 materials cost 20x
+local p1, pr1 = newPlayer(10, 10000)
+assert(handleBuyVendorItem(p1, { itemId = "MatOre", quantity = 20 }) == true, "buy 20 ore")
+assert(pr1.Gold == 10000 - 2000, "20 ore must cost 2000, got " .. tostring(pr1.Gold))
+assert(pr1.Inventory.MatOre == 20, "20 ore delivered")
+-- quantity clamp 999 -> 20
+assert(handleBuyVendorItem(p1, { itemId = "MatOre", quantity = 999 }) == true, "buy clamp")
+assert(pr1.Inventory.MatOre == 40 and pr1.Gold == 6000, "quantity clamped to 20")
+-- Non-catalog item rejected
+local goldBefore = pr1.Gold
+assert(handleBuyVendorItem(p1, { itemId = "MYTHICFRUIT" }) == false, "unknown item rejected")
+assert(pr1.Gold == goldBefore and pr1.Inventory.MYTHICFRUIT == nil, "unknown item gives nothing")
+-- Not enough gold
+local p2, pr2 = newPlayer(10, 999)
+assert(handleBuyVendorItem(p2, { itemId = "BasicBlade" }) == false, "insufficient gold rejected")
+assert(pr2.Gold == 999 and pr2.Inventory.BasicBlade == nil, "no charge when poor")
+-- LevelReq enforced
+local p3, pr3 = newPlayer(100, 100000)
+assert(handleBuyVendorItem(p3, { itemId = "EliteBlade" }) == false, "LevelReq 500 blocks level 100")
+assert(pr3.Gold == 100000, "no charge when level blocked")
+pr3.Level = 500
+assert(handleBuyVendorItem(p3, { itemId = "EliteBlade" }) == true, "LevelReq met")
+assert(pr3.Gold == 95000 and pr3.Inventory.EliteBlade == 1, "elite blade bought once")
+-- Owned weapon re-equip is free
+assert(handleBuyVendorItem(p3, { itemId = "EliteBlade" }) == true and pr3.Gold == 95000, "re-equip free")
+print("PASS Luau VM vendor purchase behavior (qty x price, catalog only, gold, LevelReq)")
+
+-- Giftcode expiry relative to launch date
+local Expansion = {}
+local function ensureExpansionProfile(profile) profile.RedeemedCodes = profile.RedeemedCodes or {} end
+local function ensureRuntimeFields(p, rt) rt.RecentCodeDedup = rt.RecentCodeDedup or {} end
+function Expansion.RefundAllStats() return 0 end
+
+--@@REDEEM@@
+
+local code30, code14
+for k, spec in pairs(CombatData.Giftcodes) do
+    assert(spec.Expires == nil, "giftcode " .. k .. " must not use a fixed Expires date")
+    assert(tonumber(spec.ExpiresDays), "giftcode " .. k .. " needs ExpiresDays")
+end
+assert(CombatData.Giftcodes.SKYBREAK2026.ExpiresDays == 30 and CombatData.Giftcodes.AETHERV2.ExpiresDays == 30, "D7: launch codes 30 days")
+assert(CombatData.Giftcodes.SKYBREAKLAUNCH.ExpiresDays == 14, "D7: SKYBREAKLAUNCH 14 days")
+code30, code14 = "AETHERV2", "SKYBREAKLAUNCH"
+assert(CombatData.Giftcodes.MYTHICFRUIT == nil, "MYTHICFRUIT removed")
+assert(code30 and code14, "need a 30-day and a 14-day code without level gates")
+
+local function redeemer(level)
+    local p, pr = newPlayer(level, 0)
+    G.Runtime[p] = {}
+    return p, pr
+end
+-- First live run records launch date
+local a = redeemer(50)
+assert(Expansion.RedeemCode(a, code14) == true, "redeem on launch day")
+assert(storeValue == unixNow, "launch date written to SKYBREAK_META_v1")
+-- Launch date is not overwritten later
+unixNow += 86400
+launchUnixCache = nil
+launchUnixRetryAt = 0
+assert(getLaunchUnix() == 1800000000, "launch date read back after cache reset")
+assert(storeValue == 1800000000, "launch date stays the first value")
+-- Day 13: 14-day code still valid; day 15: expired
+unixNow = 1800000000 + 13 * 86400
+local b = redeemer(50)
+now += 5
+assert(Expansion.RedeemCode(b, code14) == true, "14-day code valid on day 13")
+unixNow = 1800000000 + 15 * 86400
+local c = redeemer(50)
+now += 5
+assert(Expansion.RedeemCode(c, code14) == false, "14-day code expired on day 15")
+assert(Expansion.RedeemCode(c, code30) == true, "30-day code still valid on day 15")
+unixNow = 1800000000 + 31 * 86400
+local d2 = redeemer(50)
+now += 5
+assert(Expansion.RedeemCode(d2, code30) == false, "30-day code expired on day 31")
+-- Same player cannot redeem twice
+unixNow = 1800000000 + 2 * 86400
+local e = redeemer(50)
+assert(Expansion.RedeemCode(e, code30) == true, "first redeem")
+now += 5
+assert(Expansion.RedeemCode(e, code30) == false, "second redeem rejected")
+-- DataStore down: no launch date -> codes do not expire (no false lockout)
+launchUnixCache = nil
+launchUnixRetryAt = 0
+fakeStore.UpdateAsync = function() error("DataStore down") end
+fakeStore.GetAsync = function() error("DataStore down") end
+unixNow = 1800000000 + 400 * 86400
+local f = redeemer(50)
+now += 5
+assert(Expansion.RedeemCode(f, code30) == true, "no launch date -> no expiry")
+print("PASS Luau VM giftcode behavior (launch-relative ExpiresDays, single use, DataStore outage)")
+"""
+
+
 def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     checks = 0
@@ -100,8 +265,8 @@ def main() -> int:
         "P0-03: SkybreakVendorAndArsenalService does NOT contain fallback 'return tier * 15000'",
     )
     check(
-        "isPlayerNearVendor(player, 20)" in vendor_text,
-        "P0-03: SkybreakVendorAndArsenalService enforces <= 20 stud vendor proximity",
+        "levelBlocked(catEntry, displayName)" in vendor_text and "isPlayerNearVendor" not in vendor_text,
+        "P0-03: Vendor enforces catalog LevelReq (no NPC proximity: HUD Shop opens anywhere)",
     )
 
     # 3. P0-04 Contract Assertions: DevGate.lua & EnableDevSandbox isolation
@@ -199,6 +364,29 @@ print("PASS Luau VM DevGate + RemoteGuard behavioral checks")
         if res.stderr:
             print(res.stderr.strip())
         check(res.returncode == 0, "Luau VM unit tests exited with 0")
+
+        # 7. Behavioral checks on the REAL vendor purchase + giftcode code (sliced from source, mocked deps)
+        expansion_text = resolve_luau_path("ServerScriptService/Services/SkybreakCombatExpansion.lua").read_text(encoding="utf-8")
+        combat_data_text = resolve_luau_path("ReplicatedStorage/Shared/SkybreakCombatData.lua").read_text(encoding="utf-8")
+        vendor_slice = slice_between(vendor_text, "local catalogPriceCache = nil", "local function getTradeItemValue")
+        redeem_slice = slice_between(expansion_text, "local launchUnixCache = nil", "function Expansion.AscendWeaponStar")
+        harness2 = (
+            BEHAVIOR_HARNESS.replace("--@@COMBATDATA@@", combat_data_text)
+            .replace("--@@VENDOR@@", vendor_slice)
+            .replace("--@@REDEEM@@", redeem_slice)
+        )
+        target2 = Path(tempfile.gettempdir()) / "skybreak_behavior_tests.luau"
+        target2.write_text(harness2, encoding="utf-8")
+        res2 = subprocess.run([luau_bin, str(target2)], capture_output=True, text=True, encoding="utf-8")
+        if res2.stdout:
+            print(res2.stdout.strip())
+        if res2.stderr:
+            print(res2.stderr.strip())
+        check(res2.returncode == 0, "Luau VM vendor + giftcode behavioral tests exited with 0")
+    elif os.environ.get("SKYBREAK_REQUIRE_LUAU") == "1":
+        check(False, "SKYBREAK_REQUIRE_LUAU=1 but luau CLI not found (set LUAU_CLI)")
+    else:
+        print("SKIP Luau VM tests: luau CLI not found (set LUAU_CLI or SKYBREAK_REQUIRE_LUAU=1 in CI)")
 
     print(f"TOTAL {checks} PASS")
     return 0

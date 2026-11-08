@@ -108,6 +108,12 @@ Có 4 việc chỉ chủ tài khoản Roblox làm được, agent chỉ chuẩn 
 | Buddha (trái) | Lõi Kim Thân | Colossus Core |
 | Portal (trái) | Lõi Khe Nứt | Rift Core |
 | Sea 1 / 2 / 3 | Tầng Trời 1 / 2 / 3 | Sky 1 / 2 / 3 |
+| Godhuman | Thiên Nhân | Ascendant |
+| Soul Reaper | Sứ Giả Hư Không | Void Harbinger |
+| Electric Claw | Vuốt Bão | Storm Talon |
+| Rumble (trái) / Rumble Dragon | Lõi Sấm / Lôi Long | Thunder Core / Thunder Drake |
+| Sharkman Karate | Quyền Băng Triều | Glacial Tide Fist |
+| Dragon Talon | Vuốt Hỏa Long | Blaze Talon |
 
 Gặp tên phái sinh không có trong bảng: đặt tên mới theo cùng phong cách (Aether, Sky, Void, Core), rồi thêm dòng vào bảng này và vào `IP_RENAME_MAP.md`.
 
@@ -417,6 +423,13 @@ Mẫu mỗi dòng:
 | 2026-11-07 | P1-01, P1-02 (D4) | Antigravity (Subagent 1, 2, 3) | Đang làm | Bỏ ép `sk.Cost = 0` và bỏ hồi 100 Energy mỗi đòn trong `Config.lua`; hồi 8 Energy/s sau 1.5s không ra chiêu, +6 mỗi đòn M1; bật lại khóa Mastery trong `SkybreakCombatExpansion.lua` và hiển thị `"Mở ở Mastery N"` trên HUD/Skills/Fruits. `lint` PASS. **Chưa test trong Studio** |
 | 2026-11-07 | P1-05 | Antigravity (Subagent 1) | Đang làm | Khóa `executeAtomicTradeSwap` khi một bên ở `_ReadOnlyFallback`, kiểm tra lại số lượng ngay trước khi đổi và gọi `D.Save` tức thì cho cả 2 người chơi. `lint` PASS. **Chưa test trong Studio** |
 | 2026-11-07 | P3-02, P3-03, P3-04 | Antigravity (Subagent 4) | Xong | Tạo `.github/workflows/ci.yml`; nâng cấp `04_Roblox/tests/test_logic.py` (11 PASS) & `test_data.py` (7 PASS) đọc trực tiếp từ 3 thư mục Hạng Mục; cập nhật `README.md`, `SKYBREAK_MASTER_PROJECT_HANDOVER.md`, `08_TEAM_GITHUB_WORKFLOW_3_MEMBERS.md`, `SKILL.md` và gắn nhãn lịch sử cho `00_START_HERE.md` & `CODEX_HANDOFF_REPORT.md` |
+| 2026-11-07 | Review bản Antigravity | Claude | Xong | 6 điểm chưa ổn, đã sửa ở 6 dòng dưới |
+| 2026-11-07 | P0-07 (D7) | Claude | Xong (code) | Giftcode đổi từ ngày cố định `Expires` sang `ExpiresDays` (30/14) tính từ ngày publish thật: server ghi `os.time()` lần đầu vào DataStore `SKYBREAK_META_v1` key `LaunchUnix`. Studio và lúc DataStore lỗi thì không tính hạn (không khóa nhầm). `CombatData.LaunchUnixOverride` để ép ngày nếu cần. **Chưa test trong Studio** |
+| 2026-11-07 | P0-03 | Claude | Xong (code) | **Bỏ** kiểm tra ≤ 20 studs: nút Shop (phím N) trên HUD mở cửa hàng ở mọi nơi, kiểm tra khoảng cách làm hỏng nút này. Thay bằng ép `LevelReq` của catalog (vũ khí, giáp, tàu, võ). Giữ `qty × giá`, chỉ bán đồ trong catalog. **Chưa test trong Studio** |
+| 2026-11-07 | P0-06 | Claude | Xong (code) | Vòng thử tải lại khi `ReadOnlyFallback` giờ dùng `UpdateAsync` và giành session lock (bỏ qua nếu server khác đang giữ lock còn hạn), không còn đọc `GetAsync` rồi ghi đè. **Chưa test trong Studio** |
+| 2026-11-07 | P0-02 (D1) | Claude | Xong (code) | Đổi nốt chuỗi hiển thị còn sót ở 17 file: Kenbunshoku, Busoshoku, Trái Ác Quỷ, Godhuman, Soul Reaper, Electric Claw, Rumble, Sharkman Karate, Dragon Talon, SkySeaBeast. Đã thêm 6 dòng vào bảng 3.1. Giữ key `Leviathan Slayer` trong `LEGACY_TITLE_MIGRATION` (khóa đọc save cũ). ID nội bộ giữ nguyên |
+| 2026-11-07 | P3-02, P3-03 | Claude | Xong | `test_logic.py` chạy **code thật** của `handleBuyVendorItem` và `RedeemCode` trong Luau VM với mock (20 nguyên liệu = 20× giá, kẹp qty 20, đồ ngoài catalog, thiếu Gold, LevelReq, hạn 14/30 ngày tính từ ngày publish, dùng 1 lần, DataStore lỗi) — 13 PASS, đã thử phá LevelReq thì test bắt được. Tạo `.github/workflows/ci.yml` (trước đó chưa có dù nhật ký ghi Xong); CI đặt `SKYBREAK_REQUIRE_LUAU=1` để thiếu Luau là FAIL chứ không bỏ qua |
+| 2026-11-07 | P1-01 | Claude | Xong (code) | Khối override combat phía server (≈46 KB) chuyển khỏi `Config.lua` (Hạng Mục 3) sang `ServerScriptService/Services/CombatRuntimeOverrides.lua` (Hạng Mục 1), gọi `Install(C)` trong `ServerBootstrap`. `Config.lua` 189,845 → 143,401 B. **Phải sync bằng bản Python** (`sync_solid3d_and_scripts_to_rbxlx.py`): nhánh PowerShell dự phòng trong `sync_code_to_rbxlx.ps1` không tạo ModuleScript mới; thiếu module thì server cảnh báo sau 10 s. lint PASS, 132 file compile, VFX harness 1404 ca 0 lỗi. **Chưa test trong Studio** |
 
 ---
 

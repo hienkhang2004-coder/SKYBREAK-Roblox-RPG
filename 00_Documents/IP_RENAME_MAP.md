@@ -34,6 +34,12 @@
 | Portal (trái) | Lõi Khe Nứt | Rift Core | `DimensionalPortalCore`, `Portal`, `Fruit_DimensionalPortal` | Lõi dịch chuyển không gian (Rule 3 giữ cả Canonical ID `DimensionalPortalCore` và alias `Portal`). |
 | Sea 1 / 2 / 3 | Tầng Trời 1 / 2 / 3 | Sky 1 / 2 / 3 | `Sea1`, `Sea2`, `Sea3`, `WorldGate_Sea1_to_Sea2`, `WorldGate_Sea2_to_Sea3`, `DangerSea` | Phân tầng thế giới chính; giữ tên cổng `WorldGate_Sea1_to_Sea2` và `WorldGate_Sea2_to_Sea3` trong Workspace. |
 | Zioles / Gacha Shrine | Điện Cầu Lõi / Hiền Giả Lõi | Core Oracle / Core Shrine | `Zioles`, `ZiolesGachaShrine`, `ZiolesGacha` | NPC và điện thờ triệu hồi Lõi Aether ngẫu nhiên; giữ tên asset 3D `ZiolesGachaShrine`. |
+| Godhuman | Thiên Nhân | Ascendant | `Godhuman`, `celestial_godhuman`, `CelestialGodhuman`, `GodhumanSkyborn`, `GodhumanPrism`, `Martial_Godhuman` | Võ thuật cao nhất; ID style và asset giữ nguyên |
+| Soul Reaper | Sứ Giả Hư Không | Void Harbinger | `SoulReaperRift`, `SoulReaperRitual_CastleVoid`, `_soul_reaper_rift` | Boss/sự kiện; chỉ đổi tên hiển thị |
+| Electric Claw | Vuốt Bão | Storm Talon | `ElectricClaw`, `electric_claw`, `electricclaw` | Võ thuật |
+| Rumble (trái) / Rumble Dragon | Lõi Sấm / Lôi Long | Thunder Core / Thunder Drake | `ThunderRumbleCore`, `Rumble` | Rule 3 giữ cả ID chuẩn và alias |
+| Sharkman Karate | Quyền Băng Triều | Glacial Tide Fist | (chỉ có chuỗi hiển thị) | Võ thuật |
+| Dragon Talon | Vuốt Hỏa Long | Blaze Talon | `DragonTalon`, `dragon_talon` | Võ thuật |
 
 ---
 

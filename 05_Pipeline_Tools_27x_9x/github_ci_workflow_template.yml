@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   luau-qa:
@@ -72,6 +73,9 @@ jobs:
         run: python 05_Pipeline_Tools_27x_9x/lint_luau_globals.py
 
       - name: Run Logic & Data Contract Tests
+        env:
+          LUAU_CLI: /usr/local/bin/luau
+          SKYBREAK_REQUIRE_LUAU: "1"
         run: |
           python 04_Roblox/tests/test_logic.py
           python 04_Roblox/tests/test_data.py
