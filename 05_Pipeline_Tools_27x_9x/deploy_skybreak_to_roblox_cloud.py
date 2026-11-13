@@ -23,9 +23,10 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-DEFAULT_RBXLX = Path(
-    r"C:\Users\khang\Documents\Codex\2026-10-22\new-chat\outputs\SKYBREAK_Antigravity_Handoff\04_Roblox\SKYBREAK_Playable_v12_PremiumUI.rbxlx"
+DEFAULT_RBXLX = (
+    Path(__file__).resolve().parents[1] / "04_Roblox" / "SKYBREAK_Playable_v12_PremiumUI.rbxlx"
 )
+OPEN_CLOUD_XML_MAX_BYTES = 100 * 1024 * 1024
 
 
 def build_cloud_rbxlx_bytes(rbxlx_path: Path, strip_v5_sources: bool) -> bytes:
@@ -104,7 +105,12 @@ def main() -> int:
     parser.add_argument(
         "--cloud-strip-v5-sources",
         action="store_true",
-        help="Strip ReplicatedStorage.DelegatedV5Sources so XML payload fits under Open Cloud 100 MB limit",
+        help="BLOCKED BY DEFAULT: stripping ReplicatedStorage.DelegatedV5Sources breaks all 98 EditableMesh 3D assets",
+    )
+    parser.add_argument(
+        "--i-have-migrated-cloud-assets",
+        action="store_true",
+        help="Explicit override only after all 98 DelegatedV5Sources assets are migrated to external cloud asset IDs",
     )
     parser.add_argument(
         "--version-type",
@@ -113,6 +119,21 @@ def main() -> int:
         help="Publish immediately (Published) or save version only (Saved)",
     )
     args = parser.parse_args()
+
+    if args.cloud_strip_v5_sources and not args.i_have_migrated_cloud_assets:
+        print(
+            "[BLOCKED] --cloud-strip-v5-sources is disabled to prevent broken live builds!\n"
+            "  Why: Stripping ReplicatedStorage.DelegatedV5Sources deletes all 98 Zstd-compressed 3D runtime payloads\n"
+            "       (13 worlds + enemies + bosses + weapons + shrines), leaving players in an empty invisible world.\n"
+            "  Required Publish Path:\n"
+            "    1. Open 04_Roblox/SKYBREAK_Playable_v12_PremiumUI.rbxlx in Roblox Studio.\n"
+            "    2. Ensure you are logged into a 13+ ID-Verified Roblox Creator/Group account (required for live EditableMesh).\n"
+            "    3. Use File -> Publish to Roblox (Studio automatically compresses the ~318 MB XML into binary format\n"
+            "       with 100% of DelegatedV5Sources intact).\n"
+            "    See CREATOR_HUB_PUBLISH_CHECKLIST.md for the complete publish checklist.",
+            file=sys.stderr,
+        )
+        return 5
 
     if not args.rbxlx.is_file():
         print(f"[ERROR] Place file not found: {args.rbxlx}", file=sys.stderr)
@@ -133,11 +154,10 @@ def main() -> int:
             file=sys.stderr,
         )
         print(
-            "\nHow to provide them (Creator Hub -> Open Cloud -> API Keys):\n"
-            "  $env:ROBLOX_OPEN_CLOUD_KEY = '<your_open_cloud_api_key>'\n"
-            "  $env:ROBLOX_UNIVERSE_ID    = '<universe_id>'\n"
-            "  $env:ROBLOX_PLACE_ID       = '<place_id>'\n"
-            "  python deploy_skybreak_to_roblox_cloud.py --cloud-strip-v5-sources",
+            "\nNOTE: Full SKYBREAK_Playable_v12_PremiumUI.rbxlx (~318 MB XML) exceeds Open Cloud's 100 MB XML limit.\n"
+            "Publish directly via Roblox Studio -> File -> Publish to Roblox (under a 13+ ID-Verified account/Group)\n"
+            "so binary compression preserves all 98 ReplicatedStorage.DelegatedV5Sources 3D EditableMesh payloads.\n"
+            "See CREATOR_HUB_PUBLISH_CHECKLIST.md for step-by-step instructions.",
             file=sys.stderr,
         )
         return 2
@@ -146,6 +166,14 @@ def main() -> int:
     payload = build_cloud_rbxlx_bytes(args.rbxlx, args.cloud_strip_v5_sources)
     mb = len(payload) / (1024 * 1024)
     print(f"      Payload size: {len(payload):,} bytes ({mb:.2f} MB)")
+    if len(payload) > OPEN_CLOUD_XML_MAX_BYTES:
+        print(
+            f"[BLOCKED] XML payload ({mb:.2f} MB) exceeds Roblox Open Cloud's 100 MB XML upload limit.\n"
+            "  Do NOT strip DelegatedV5Sources. Instead, open SKYBREAK_Playable_v12_PremiumUI.rbxlx in Roblox Studio\n"
+            "  (logged into a 13+ ID-Verified account/Group) and run File -> Publish to Roblox for binary upload.",
+            file=sys.stderr,
+        )
+        return 6
 
     print(
         f"[2/2] Uploading to Roblox Open Cloud (Universe={args.universe_id}, Place={args.place_id}, Type={args.version_type})..."

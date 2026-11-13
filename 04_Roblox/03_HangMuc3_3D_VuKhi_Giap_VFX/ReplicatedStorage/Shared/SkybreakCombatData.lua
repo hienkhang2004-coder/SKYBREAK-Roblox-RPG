@@ -11,18 +11,25 @@ local CombatData = {}
 -- ============================================================================
 CombatData.StyleOrder = {
 	"skyborn_combat",
+	"SkyStep",
 	"jade_dragon",
 	"thunder_talon",
 	"solar_ashura",
 	"celestial_godhuman",
+	"SanguineVoidArt",
+	"ChronoVoidPalm",
 }
 
 CombatData.StyleAliases = {
 	skyborn_combat = "skyborn_combat",
 	skyborncombat = "skyborn_combat",
 	SkybornCombat = "skyborn_combat",
-	skystep = "skyborn_combat",
-	SkyStep = "skyborn_combat",
+
+	SkyStep = "SkyStep",
+	sky_step = "SkyStep",
+	skystep = "SkyStep",
+	black_leg = "SkyStep",
+	flame_step = "SkyStep",
 
 	jade_dragon = "jade_dragon",
 	jadedragon = "jade_dragon",
@@ -52,6 +59,15 @@ CombatData.StyleAliases = {
 	CelestialGodhuman = "celestial_godhuman",
 	godhuman = "celestial_godhuman",
 	GodhumanSkyborn = "celestial_godhuman",
+
+	SanguineVoidArt = "SanguineVoidArt",
+	sanguine_void_art = "SanguineVoidArt",
+	sanguinevoidart = "SanguineVoidArt",
+	sanguine = "SanguineVoidArt",
+
+	ChronoVoidPalm = "ChronoVoidPalm",
+	chrono_void_palm = "ChronoVoidPalm",
+	chronovoidpalm = "ChronoVoidPalm",
 }
 
 CombatData.MartialStyles = {
@@ -119,6 +135,77 @@ CombatData.MartialStyles = {
 				Break = 35,
 				Dash = 12,
 				Element = "Sky",
+			},
+		},
+	},
+
+	SkyStep = {
+		Id = "SkyStep",
+		Name = "Thiên Cước Hỏa Vũ",
+		DisplayName = "Thiên Cước Hỏa Vũ - Sky Step",
+		MasterNPC = "MasterIgnis",
+		MasterName = "Cước Sư Hỏa Vũ - Sky Step Dojo",
+		IslandId = "SkyHub",
+		SecondaryIslandId = "WindmillIsle",
+		MasterOffset = Vector3.new(-40, 0, -26),
+		LevelReq = 150,
+		PriceGold = 150000,
+		PriceShards = 0,
+		Element = "Flame",
+		Color = Color3.fromRGB(249, 115, 22),
+		Desc = "Cước pháp lướt không rực lửa 4 thức tốc độ cao với đòn xoay gót chân không và khoan hỏa diệm.",
+		Kata = {
+			{ Step = 1, Name = "Blaze Snap Kick", Mult = 1.08, Reach = 14.8, Width = 9.0, Cadence = 0.22, Break = 6, Dash = 4.5 },
+			{ Step = 2, Name = "Cyclone Heel Whip", Mult = 1.16, Reach = 15.4, Width = 9.5, Cadence = 0.22, Break = 7, Dash = 5.0 },
+			{ Step = 3, Name = "Twin Somersault Slash", Mult = 1.26, Reach = 16.0, Width = 10.2, Cadence = 0.24, Break = 9, Dash = 5.5 },
+			{ Step = 4, Name = "Diable Vermilion Drop", Mult = 1.62, Reach = 18.0, Width = 12.5, Cadence = 0.34, Break = 16, Knockback = 26, AoE = true },
+		},
+		Moves = {
+			Z = {
+				Key = "Z",
+				Name = "Rocket Kick",
+				DisplayName = "Rocket Kick - Hỏa Tiễn Phi Cước",
+				Mastery = 1,
+				Cooldown = 4.6,
+				Cost = 10,
+				Range = 24,
+				Radius = 12,
+				Multiplier = 2.45,
+				Hits = 2,
+				Break = 24,
+				Dash = 20,
+				Element = "Flame",
+			},
+			X = {
+				Key = "X",
+				Name = "Wind Bullet",
+				DisplayName = "Wind Bullet - Phong Đạn Trảm Không",
+				Mastery = 45,
+				Cooldown = 7.2,
+				Cost = 14,
+				Range = 28,
+				Radius = 14,
+				Multiplier = 2.95,
+				Hits = 2,
+				Break = 30,
+				Knockup = 20,
+				Element = "Flame",
+			},
+			C = {
+				Key = "C",
+				Name = "Vermilion Drill",
+				DisplayName = "Vermilion Drill - Chu Tước Xoáy Khoan",
+				Mastery = 95,
+				Cooldown = 9.8,
+				Cost = 18,
+				Range = 26,
+				Radius = 16,
+				Multiplier = 3.70,
+				Hits = 4,
+				Break = 38,
+				Dash = 22,
+				StunDur = 0.85,
+				Element = "Flame",
 			},
 		},
 	},
@@ -400,6 +487,144 @@ CombatData.MartialStyles = {
 			},
 		},
 	},
+
+	SanguineVoidArt = {
+		Id = "SanguineVoidArt",
+		Name = "Huyết Hư Không Quyền",
+		DisplayName = "Huyết Hư Không Quyền - Sanguine Void Art",
+		MasterNPC = "GrandmasterAurelius",
+		MasterName = "Huyết Tổ Malakor - Sanguine Sanctuary",
+		IslandId = "TempleOfTheCore",
+		MasterOffset = Vector3.new(-24, 0, -20),
+		PriceGold = 5000000,
+		PriceShards = 5000,
+		Element = "Void",
+		Color = Color3.fromRGB(224, 42, 78),
+		Desc = "Cấm thuật cổ võ hút sinh lực từ vết nứt Hư Không, cào xé giáp và hồi phục theo sát thương.",
+		Kata = {
+			{ Step = 1, Name = "Bloodscar Claw", Mult = 1.26, Reach = 16.5, Width = 10.5, Cadence = 0.20, Break = 9, Dash = 6.5 },
+			{ Step = 2, Name = "Crimson Rift Sweep", Mult = 1.40, Reach = 17.5, Width = 11.5, Cadence = 0.20, Break = 11, Dash = 6.5 },
+			{ Step = 3, Name = "Sanguine Fang Pierce", Mult = 1.55, Reach = 18.2, Width = 12.2, Cadence = 0.22, Break = 15, StunDur = 0.42 },
+			{ Step = 4, Name = "Abyssal Blood Detonation", Mult = 2.22, Reach = 21.5, Width = 15.5, Cadence = 0.33, Break = 30, StunDur = 0.92, Knockback = 32, AoE = true },
+		},
+		Moves = {
+			Z = {
+				Key = "Z",
+				Name = "Bloodscar Drain",
+				DisplayName = "Bloodscar Drain - Huyết Trảo Hút Hồn",
+				Mastery = 1,
+				Cooldown = 4.8,
+				Cost = 12,
+				Range = 28,
+				Radius = 14,
+				Multiplier = 3.40,
+				Hits = 5,
+				Break = 36,
+				Dash = 26,
+				Element = "Void",
+			},
+			X = {
+				Key = "X",
+				Name = "Scarlet Rift Volley",
+				DisplayName = "Scarlet Rift Volley - Huyết Nguyệt Xung Kích",
+				Mastery = 75,
+				Cooldown = 8.4,
+				Cost = 18,
+				Range = 32,
+				Radius = 19,
+				Multiplier = 4.30,
+				Hits = 3,
+				Break = 48,
+				StunDur = 1.1,
+				Element = "Void",
+			},
+			C = {
+				Key = "C",
+				Name = "Devouring Void Maw",
+				DisplayName = "Devouring Void Maw - Thực Không Huyết Ngục",
+				Mastery = 150,
+				Cooldown = 11.8,
+				Cost = 24,
+				Range = 34,
+				Radius = 22,
+				Multiplier = 5.50,
+				Hits = 6,
+				Break = 62,
+				Dash = 28,
+				StunDur = 1.4,
+				Element = "Void",
+			},
+		},
+	},
+
+	ChronoVoidPalm = {
+		Id = "ChronoVoidPalm",
+		Name = "Chưởng Pháp Thời Không",
+		DisplayName = "Chưởng Pháp Thời Không - Chrono Void Palm",
+		MasterNPC = "GrandmasterAurelius",
+		MasterName = "Chưởng Môn Thời Không - Chronos Bastion",
+		IslandId = "ChronosBastion",
+		MasterOffset = Vector3.new(26, 0, -22),
+		PriceGold = 5000000,
+		PriceShards = 5000,
+		Element = "Void",
+		Color = Color3.fromRGB(192, 132, 252),
+		Desc = "Tuyệt kỹ chưởng pháp bẻ cong thời không của Pháp Vương Aion, ngưng đọng kẻ địch và nổ xung kỳ điểm.",
+		Kata = {
+			{ Step = 1, Name = "Chrono Palm Strike", Mult = 1.28, Reach = 17.0, Width = 11.0, Cadence = 0.20, Break = 10, Dash = 6.5 },
+			{ Step = 2, Name = "Temporal Arc Chop", Mult = 1.42, Reach = 17.8, Width = 11.5, Cadence = 0.20, Break = 12, Dash = 6.5 },
+			{ Step = 3, Name = "Void Rift Thrust", Mult = 1.58, Reach = 18.8, Width = 12.5, Cadence = 0.22, Break = 16, StunDur = 0.45 },
+			{ Step = 4, Name = "Singularity Collapse Palm", Mult = 2.28, Reach = 22.0, Width = 16.0, Cadence = 0.32, Break = 32, StunDur = 0.95, Knockback = 35, AoE = true },
+		},
+		Moves = {
+			Z = {
+				Key = "Z",
+				Name = "Chrono Ripple Palm",
+				DisplayName = "Chrono Ripple Palm - Chưởng Gợn Thời Gian",
+				Mastery = 1,
+				Cooldown = 4.6,
+				Cost = 12,
+				Range = 30,
+				Radius = 15,
+				Multiplier = 3.50,
+				Hits = 4,
+				Break = 38,
+				Dash = 26,
+				Element = "Void",
+			},
+			X = {
+				Key = "X",
+				Name = "Stasis Collapse",
+				DisplayName = "Stasis Collapse - Nhãn Ấn Ngưng Đọng",
+				Mastery = 75,
+				Cooldown = 8.2,
+				Cost = 18,
+				Range = 32,
+				Radius = 20,
+				Multiplier = 4.40,
+				Hits = 3,
+				Break = 50,
+				StunDur = 1.2,
+				Element = "Void",
+			},
+			C = {
+				Key = "C",
+				Name = "Genesis Singularity Strike",
+				DisplayName = "Genesis Singularity Strike - Vạn Kiếp Quy Không Chưởng",
+				Mastery = 150,
+				Cooldown = 11.5,
+				Cost = 24,
+				Range = 36,
+				Radius = 24,
+				Multiplier = 5.70,
+				Hits = 6,
+				Break = 65,
+				Dash = 30,
+				StunDur = 1.5,
+				Element = "Void",
+			},
+		},
+	},
 }
 
 function CombatData.ResolveStyleId(rawId)
@@ -648,6 +873,7 @@ CombatData.FruitAliases = {
 	gale_core = "GaleCore",
 	galecore = "GaleCore",
 	sand = "SandstoneCore",
+	smoke = "SandstoneCore",
 	sandstone = "SandstoneCore",
 	sandstone_core = "SandstoneCore",
 	sandstonecore = "SandstoneCore",
@@ -675,9 +901,14 @@ CombatData.FruitAliases = {
 	dimensional_portal = "DimensionalPortalCore",
 	dimensionalportalcore = "DimensionalPortalCore",
 	buddha = "SolarTitanCore",
+	quake = "SolarTitanCore",
+	starlight_quake = "SolarTitanCore",
+	starlightquakecore = "SolarTitanCore",
 	solar_titan = "SolarTitanCore",
 	solartitancore = "SolarTitanCore",
 	dough = "AetherflowCore",
+	sweetdoughcore = "AetherflowCore",
+	sweet_dough = "AetherflowCore",
 	mochi = "AetherflowCore",
 	aetherflow = "AetherflowCore",
 	aetherflowcore = "AetherflowCore",
@@ -701,18 +932,18 @@ function CombatData.ResolveFruitId(rawId)
 end
 
 CombatData.FruitCatalog = {
-	GaleCore = { Id = "GaleCore", Name = "Lõi Cuồng Phong - Gale Core", Rarity = "Common", Type = "Elemental", Logia = true, Element = "Sky", GoldValue = 75000, AwakenShards = 400 },
-	SandstoneCore = { Id = "SandstoneCore", Name = "Lõi Sa Thạch - Sandstone Core", Rarity = "Uncommon", Type = "Elemental", Logia = true, Element = "Sand", GoldValue = 240000, AwakenShards = 500 },
-	SolarFlameCore = { Id = "SolarFlameCore", Name = "Lõi Nhật Viêm - Solar Flame Core", Rarity = "Uncommon", Type = "Elemental", Logia = true, Element = "Flame", GoldValue = 380000, AwakenShards = 650 },
-	GlacierIceCore = { Id = "GlacierIceCore", Name = "Lõi Băng Hà - Glacier Ice Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Frost", GoldValue = 550000, AwakenShards = 800, WaterWalk = "Ice" },
-	CelestialLightCore = { Id = "CelestialLightCore", Name = "Lõi Thiên Quang - Celestial Light Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Light", GoldValue = 850000, AwakenShards = 950 },
-	StarforgedMagmaCore = { Id = "StarforgedMagmaCore", Name = "Lõi Tinh Nham - Starforged Magma Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Magma", GoldValue = 1150000, AwakenShards = 1100, WaterWalk = "Basalt" },
-	ThunderRumbleCore = { Id = "ThunderRumbleCore", Name = "Lõi Lôi Đình - Thunder Core", Rarity = "Legendary", Type = "Elemental", Logia = true, Element = "Lightning", GoldValue = 2100000, AwakenShards = 1500 },
-	AstralGravityCore = { Id = "AstralGravityCore", Name = "Lõi Tinh Cầu - Astral Gravity Core", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Gravity", GoldValue = 2500000, AwakenShards = 1650 },
-	DimensionalPortalCore = { Id = "DimensionalPortalCore", Name = "Lõi Khe Nứt - Rift Core", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Portal", GoldValue = 2900000, AwakenShards = 1800 },
-	SolarTitanCore = { Id = "SolarTitanCore", Name = "Lõi Kim Thân - Colossus Core", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, Element = "Light", GoldValue = 4200000, AwakenShards = 2200 },
-	AetherflowCore = { Id = "AetherflowCore", Name = "Lõi Tinh Lưu - Aetherflow Core", Rarity = "Mythic", Type = "Natural", Logia = false, Element = "Aether", GoldValue = 4800000, AwakenShards = 2400 },
-	AbyssalSovereignCore = { Id = "AbyssalSovereignCore", Name = "Lõi Long Đế Vực Thẳm - Abyssal Sovereign Core", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, DragonFury = true, Element = "Void", GoldValue = 6500000, AwakenShards = 2800 },
+	GaleCore = { Id = "GaleCore", Name = "Lõi Cuồng Phong - Gale Core", Rarity = "Common", Type = "Elemental", Logia = true, Element = "Sky", GoldValue = 50000, AwakenShards = 400 },
+	SandstoneCore = { Id = "SandstoneCore", Name = "Lõi Sa Thạch - Sandstone Core", Rarity = "Uncommon", Type = "Elemental", Logia = true, Element = "Sand", GoldValue = 120000, AwakenShards = 500 },
+	SolarFlameCore = { Id = "SolarFlameCore", Name = "Lõi Nhật Viêm - Solar Flame Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Flame", GoldValue = 350000, AwakenShards = 650 },
+	GlacierIceCore = { Id = "GlacierIceCore", Name = "Lõi Băng Hà - Glacier Ice Core", Rarity = "Rare", Type = "Elemental", Logia = true, Element = "Frost", GoldValue = 450000, AwakenShards = 800, WaterWalk = "Ice" },
+	CelestialLightCore = { Id = "CelestialLightCore", Name = "Lõi Thiên Quang - Celestial Light Core", Rarity = "Epic", Type = "Elemental", Logia = true, Element = "Light", GoldValue = 1100000, AwakenShards = 950 },
+	ThunderRumbleCore = { Id = "ThunderRumbleCore", Name = "Lõi Lôi Đình - Thunder Core", Rarity = "Epic", Type = "Elemental", Logia = true, Element = "Lightning", GoldValue = 1200000, AwakenShards = 1500 },
+	StarforgedMagmaCore = { Id = "StarforgedMagmaCore", Name = "Lõi Tinh Nham - Starforged Magma Core", Rarity = "Legendary", Type = "Elemental", Logia = true, Element = "Magma", GoldValue = 1800000, AwakenShards = 1100, WaterWalk = "Basalt" },
+	AstralGravityCore = { Id = "AstralGravityCore", Name = "Lõi Tinh Cầu - Astral Gravity Core", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Gravity", GoldValue = 2300000, AwakenShards = 1650 },
+	DimensionalPortalCore = { Id = "DimensionalPortalCore", Name = "Lõi Khe Nứt - Rift Core", Rarity = "Legendary", Type = "Natural", Logia = false, Element = "Portal", GoldValue = 2600000, AwakenShards = 1800 },
+	SolarTitanCore = { Id = "SolarTitanCore", Name = "Lõi Kim Thân - Colossus Core", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, Element = "Light", GoldValue = 3800000, AwakenShards = 2200 },
+	AetherflowCore = { Id = "AetherflowCore", Name = "Lõi Tinh Lưu - Aetherflow Core", Rarity = "Mythic", Type = "Elemental", Logia = true, Element = "Aether", GoldValue = 4600000, AwakenShards = 2400 },
+	AbyssalSovereignCore = { Id = "AbyssalSovereignCore", Name = "Lõi Long Đế Vực Thẳm - Abyssal Sovereign Core", Rarity = "Mythic", Type = "Beast", Logia = false, MythicalZoan = true, DragonFury = true, Element = "Void", GoldValue = 5500000, AwakenShards = 2800 },
 }
 
 -- Complete Awakened V2 Moveset for all 12 Aether Cores (#42)
@@ -1175,5 +1406,239 @@ CombatData.StarAscension = {
 	[4] = { Star = 4, Gold = 15000, Shards = 220, Rate = 0.45, CritRateBonus = 15, SkillDmgPct = 0.30, AtkPct = 0.33, PityGain = 50 },
 	[5] = { Star = 5, Gold = 30000, Shards = 400, Rate = 0.30, CritRateBonus = 22, SkillDmgPct = 0.45, AtkPct = 0.48, PityGain = 55 },
 }
+
+CombatData.FruitGachaWeights = {
+	GaleCore = 320,
+	SandstoneCore = 290,
+	SolarFlameCore = 90,
+	GlacierIceCore = 90,
+	CelestialLightCore = 60,
+	ThunderRumbleCore = 60,
+	StarforgedMagmaCore = 22,
+	AstralGravityCore = 22,
+	DimensionalPortalCore = 22,
+	SolarTitanCore = 8,
+	AetherflowCore = 8,
+	AbyssalSovereignCore = 8,
+}
+
+function CombatData.GetGachaGoldCost(level)
+	local lv = math.max(1, tonumber(level) or 1)
+	return math.clamp(25000 + math.floor((lv - 1) * 55), 25000, 165000)
+end
+
+function CombatData.RollWeightedFruit(rng)
+	local total = 0
+	for _, fid in ipairs(CombatData.FruitOrder) do
+		total = total + (CombatData.FruitGachaWeights[fid] or 0)
+	end
+	if total <= 0 then
+		return "GaleCore", CombatData.FruitCatalog.GaleCore
+	end
+	local unit = 0
+	if type(rng) == "function" then
+		unit = tonumber(rng()) or 0
+	elseif rng ~= nil then
+		local ok, val = pcall(function()
+			return rng:NextNumber()
+		end)
+		unit = (ok and tonumber(val)) or math.random()
+	elseif Random and Random.new then
+		unit = Random.new():NextNumber()
+	else
+		unit = math.random()
+	end
+	if unit >= 1 then
+		unit = (unit % total) / total
+	elseif unit < 0 then
+		unit = 0
+	end
+	local target = unit * total
+	local acc = 0
+	for _, fid in ipairs(CombatData.FruitOrder) do
+		acc = acc + (CombatData.FruitGachaWeights[fid] or 0)
+		if target < acc then
+			return fid, CombatData.FruitCatalog[fid]
+		end
+	end
+	local fallback = CombatData.FruitOrder[#CombatData.FruitOrder] or "GaleCore"
+	return fallback, CombatData.FruitCatalog[fallback]
+end
+
+local raceEvolutionTable = {
+	V1 = {
+		Tier = 1,
+		Id = "V1",
+		LevelReq = 1,
+		CostGold = 0,
+		CostShards = 0,
+		SpeedMult = 1.00,
+		DefenseMult = 1.00,
+		DamageMult = 1.00,
+		Desc = "Huyết Mạch Khởi Nguyên Bậc 1",
+	},
+	V2 = {
+		Tier = 2,
+		Id = "V2",
+		LevelReq = 350,
+		CostGold = 250000,
+		CostShards = 0,
+		SpeedMult = 1.08,
+		DefenseMult = 1.08,
+		DamageMult = 1.06,
+		Desc = "Thức Tỉnh Huyết Mạch Bậc 2 (+6% ATK, +8% DEF, +8% Tốc chạy)",
+	},
+	V3 = {
+		Tier = 3,
+		Id = "V3",
+		LevelReq = 850,
+		CostGold = 750000,
+		CostShards = 500,
+		SpeedMult = 1.14,
+		DefenseMult = 1.15,
+		DamageMult = 1.12,
+		Desc = "Thức Tỉnh Huyết Mạch Bậc 3 (+12% ATK, +15% DEF, +14% Tốc chạy)",
+	},
+	V4 = {
+		Tier = 4,
+		Id = "V4",
+		LevelReq = 1900,
+		CostGold = 0,
+		CostShards = 0,
+		RequiresRaceV4Unlocked = true,
+		RequiresTrial = true,
+		SpeedMult = 1.22,
+		DefenseMult = 1.22,
+		DamageMult = 1.20,
+		Desc = "Thăng Hoa Huyết Mạch Bậc 4 — Yêu cầu hoàn thành Khảo Nghiệm Đền Thăng Hoa (RaceV4Unlocked)",
+	},
+}
+CombatData.RaceEvolution = setmetatable(raceEvolutionTable, {
+	__index = function(tbl, k)
+		if type(k) == "number" then
+			return rawget(tbl, "V" .. tostring(math.floor(k)))
+		end
+		return nil
+	end,
+})
+
+CombatData.WarshipOrder = {
+	"SkySloop",
+	"AetherBrigantine",
+	"CyberEnforcerShip",
+	"CelestialAetherGalleon",
+}
+
+CombatData.Warships = {
+	SkySloop = {
+		Id = "SkySloop",
+		Name = "Thuyền Buồm Mây • Sky Sloop",
+		Tier = 1,
+		HP = 1500,
+		MaxHP = 1500,
+		Speed = 95,
+		AscendSpeed = 32,
+		Cannons = 0,
+		Price = 0,
+		PriceGold = 0,
+		Desc = "Thuyền buồm lướt mây cơ bản có thể nâng/hạ độ cao tự do trên biển mây.",
+	},
+	AetherBrigantine = {
+		Id = "AetherBrigantine",
+		Name = "Chiến Hạm Ánh Sáng • Aether Brigantine",
+		Tier = 2,
+		HP = 4200,
+		MaxHP = 4200,
+		Speed = 125,
+		AscendSpeed = 40,
+		Cannons = 2,
+		Price = 25000,
+		PriceGold = 25000,
+		Desc = "Chiến hạm hai cột buồm gắn động cơ tinh thể mặt trời và 2 pháo mạn tàu.",
+	},
+	CelestialBrigantine = {
+		Id = "CelestialBrigantine",
+		Name = "Chiến Hạm Ánh Sáng • Celestial Brigantine",
+		Tier = 2,
+		HP = 4200,
+		MaxHP = 4200,
+		Speed = 125,
+		AscendSpeed = 40,
+		Cannons = 2,
+		Price = 25000,
+		PriceGold = 25000,
+		Desc = "Chiến hạm hai cột buồm gắn động cơ tinh thể mặt trời và 2 pháo mạn tàu.",
+	},
+	CyberEnforcerShip = {
+		Id = "CyberEnforcerShip",
+		Name = "Tuần Dương Hạm Băng • Cyber Enforcer",
+		Tier = 3,
+		HP = 7200,
+		MaxHP = 7200,
+		Speed = 155,
+		AscendSpeed = 48,
+		Cannons = 4,
+		Price = 75000,
+		PriceGold = 75000,
+		Desc = "Tuần dương hạm bọc thép từ trường của Tầng Trời 2, trang bị 4 pháo từ trường.",
+	},
+	CyberEnforcer = {
+		Id = "CyberEnforcer",
+		Name = "Tuần Dương Hạm Băng • Cyber Enforcer",
+		Tier = 3,
+		HP = 7200,
+		MaxHP = 7200,
+		Speed = 155,
+		AscendSpeed = 48,
+		Cannons = 4,
+		Price = 75000,
+		PriceGold = 75000,
+		Desc = "Tuần dương hạm bọc thép từ trường của Tầng Trời 2, trang bị 4 pháo từ trường.",
+	},
+	CelestialAetherGalleon = {
+		Id = "CelestialAetherGalleon",
+		Name = "Đại Chiến Hạm Thánh Quang • Celestial Aether Galleon",
+		Tier = 4,
+		HP = 12500,
+		MaxHP = 12500,
+		Speed = 185,
+		AscendSpeed = 58,
+		Cannons = 6,
+		Price = 250000,
+		PriceGold = 250000,
+		Desc = "Đại chiến hạm hoàng kim tối thượng trang bị 6 đại pháo mạn tàu và động cơ Aether siêu tốc.",
+	},
+	LeviathanHunterShip = {
+		Id = "LeviathanHunterShip",
+		Name = "Thần Hạm Săn Thủy Xà • Void Dreadnought",
+		Tier = 4,
+		HP = 12500,
+		MaxHP = 12500,
+		Speed = 185,
+		AscendSpeed = 58,
+		Cannons = 6,
+		Price = 250000,
+		PriceGold = 250000,
+		Desc = "Đại chiến hạm tối thượng trang bị lao móc thần để săn Thủy Xà Vực Thẳm tại Vùng Nguy Hiểm Cấp 6.",
+	},
+}
+CombatData.SkyShips = CombatData.Warships
+
+do
+	local SkybreakSkillBlueprints = nil
+	local okBp, bpMod = pcall(function()
+		if typeof and script and script.Parent then
+			local target = script.Parent:FindFirstChild("SkybreakSkillBlueprints") or script.Parent:WaitForChild("SkybreakSkillBlueprints", 2)
+			if target then
+				return require(target)
+			end
+		end
+		return nil
+	end)
+	if okBp and type(bpMod) == "table" then
+		SkybreakSkillBlueprints = bpMod
+	end
+	CombatData.SkillBlueprints = SkybreakSkillBlueprints
+end
 
 return CombatData

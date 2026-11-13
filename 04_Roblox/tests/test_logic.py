@@ -317,6 +317,51 @@ def main() -> int:
         "P0-06: Config.lua sets C.StudioPersistence = false",
     )
 
+    # 5b. Phase 2 Economy, Security, LiveOps & WorldConfig Parity Assertions
+    world_cfg_a = (ROOT / "02_HangMuc2_UI_Shop_Config/ReplicatedStorage/SkybreakShared/Config/WorldConfig.lua").read_text(encoding="utf-8")
+    world_cfg_b = (ROOT / "02_HangMuc2_UI_Shop_Config/ReplicatedStorage/SkybreakShared/WorldConfig.lua").read_text(encoding="utf-8")
+    liveops_text = resolve_luau_path("ServerScriptService/Services/SkybreakLiveOpsService.lua").read_text(encoding="utf-8")
+    monetization_text = resolve_luau_path("ServerScriptService/Services/MonetizationService.lua").read_text(encoding="utf-8")
+    social_text = resolve_luau_path("ServerScriptService/Services/SkybreakSocialEconomyService.lua").read_text(encoding="utf-8")
+    game_text = game_service_path.read_text(encoding="utf-8")
+
+    check(world_cfg_a == world_cfg_b, "Phase 2 WorldConfig: Config/WorldConfig.lua and SkybreakShared/WorldConfig.lua are 1:1 synced")
+    check(
+        re.search(r'Id\s*=\s*"Q02"[^\n]*Level\s*=\s*20\b', config_text) is not None
+        and "C.GetForgeUpgradeCost" in config_text
+        and "C.FruitGachaOddsTable" in config_text
+        and "C.RuneOddsTable" in config_text,
+        "Phase 2 Config: Q02 Level=20, GetForgeUpgradeCost, FruitGachaOddsTable & RuneOddsTable present",
+    )
+    check(
+        "FilterStringAsync" in liveops_text
+        and "ArePaidRandomItemsRestricted" in liveops_text
+        and "GetOrderedDataStore" in liveops_text
+        and 'string.sub(s, 1, 2) == "vi"' in liveops_text,
+        "Phase 2 LiveOps: TextService filter, PolicyService check, OrderedDataStore & D6 vi->vi / default->en",
+    )
+    check(
+        "IsPaidRandomRestricted" in monetization_text
+        and "HasSovereignAura" in monetization_text
+        and "VIPChatTag" in monetization_text,
+        "Phase 2 Monetization: Regional PaidRandom guard + Sovereign Name Aura cosmetic wiring",
+    )
+    check(
+        "checkP2PEligibility" in vendor_text
+        and "GetMaxCoreStorage" in vendor_text
+        and "prof.BlueResonanceGearFound == true" in vendor_text
+        and "not hasBlueGear" in vendor_text,
+        "Phase 2 Vendor/Trade/V4: P2P Lv>=700 & <=28m table check, Core Storage cap, and Blue Gear V4 gate",
+    )
+    check(
+        "settleOpenWorldPvPKO" in social_text
+        and "OnBeforePlayerRelease" in social_text
+        and "MAX_BOSS_DPS_RECORDS = 50" in social_text
+        and 'act == "ForgeEnhance"' not in social_text
+        and "PvPCombatUntil" in game_text,
+        "Phase 2 Social/PvP: 30s PvPCombatUntil, Renown stake + combat-log penalty, BossDPS cap<=50 & single ForgeEnhance",
+    )
+
     # 6. Optional live Luau VM execution for DevGate, RemoteGuard, and P0-03 Vendor 4-case logic
     luau_bin = shutil.which(os.environ.get("LUAU_CLI", "luau"))
     if luau_bin:

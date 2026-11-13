@@ -18,10 +18,13 @@ function Overrides.Install(C)
 	        local services = sss and sss:FindFirstChild("Services")
 	        local gsMod = services and services:FindFirstChild("GameService")
 	        local pdMod = services and services:FindFirstChild("PlayerDataService")
+	        local hlMod = services and services:FindFirstChild("GameExperienceHelpers")
 	        if gsMod then
 	            local okG, G = pcall(require, gsMod)
 	            local okD, D = false, nil
 	            if pdMod then okD, D = pcall(require, pdMod) end
+	            local okH, Helpers = false, nil
+	            if hlMod then okH, Helpers = pcall(require, hlMod) end
 	            if okG and type(G) == "table" then
 	                local function applyBalCfg(dst, bal)
 	                    if type(dst) ~= "table" then return end
@@ -52,13 +55,13 @@ function Overrides.Install(C)
 	                if type(G.Runtime) == "table" then
 	                    for plr, rt in pairs(G.Runtime) do
 	                        if type(rt) == "table" then
-	                            rt.FuryMeter = 100
-	                            rt.MaxEnergy = 100
-	                        end
-	                        if plr and plr.Parent then
-	                            if (plr:GetAttribute("FuryMeter") or 0) < 100 then plr:SetAttribute("FuryMeter", 100) end
-	                            local prof = okD and D and type(D.Get) == "function" and D.Get(plr) or nil
-	                            if type(prof) == "table" and prof.PartySize ~= "Solo" then prof.PartySize = "Solo" end
+	                            if rt.FuryMeter == nil then rt.FuryMeter = 100 end
+	                            local st = (typeof(plr) == "Instance" and type(G.Stats) == "function") and G.Stats(plr) or nil
+	                            local maxE = math.max(100, (st and tonumber(st.MaxEnergy)) or tonumber(rt.MaxEnergy) or 100)
+	                            rt.MaxEnergy = maxE
+	                            if rt.Energy ~= nil and tonumber(rt.Energy) > maxE then
+	                                rt.Energy = maxE
+	                            end
 	                        end
 	                    end
 	                end
@@ -75,6 +78,9 @@ function Overrides.Install(C)
 	                    local combatFXRemote = remotesFolder and remotesFolder:FindFirstChild("CombatFX")
 
 	                    local function isDragonFruitId(fid)
+	                        if okH and Helpers and type(Helpers.ResolveFruitId) == "function" then
+	                            return Helpers.ResolveFruitId(fid) == "AbyssalSovereignCore"
+	                        end
 	                        local s = string.lower(tostring(fid or ""))
 	                        return s == "abyssalsovereigncore" or s == "dragon" or s == "abyssal_dragon" or s == "void_dragon" or s == "abyssal_sovereign"
 	                    end
@@ -86,70 +92,67 @@ function Overrides.Install(C)
 	                        elseif t == 1 or tf == "AbyssalDragonHybrid" then return 1 end
 	                        return 0
 	                    end
+	                    local function resolveMaxEnergy(p, rt, stats)
+	                        local st = stats or (type(G.Stats) == "function" and G.Stats(p) or nil)
+	                        local maxE = math.max(100, (st and tonumber(st.MaxEnergy)) or tonumber(rt and rt.MaxEnergy) or 100)
+	                        if rt then rt.MaxEnergy = maxE end
+	                        return maxE
+	                    end
+	                    local function resolve3DAim(hrp, payload)
+	                        if okH and Helpers and type(Helpers.Resolve3DAimDirection) == "function" then
+	                            return Helpers.Resolve3DAimDirection(hrp, payload)
+	                        end
+	                        return (hrp and hrp.CFrame.LookVector) or Vector3.new(0, 0, -1), (hrp and hrp.Position) or Vector3.zero
+	                    end
 
-	                    local SLOT_GROUP = { Weapon="Weapon", Helmet="Head", Helm="Head", Chest="Chest", Gloves="Hands", Gauntlets="Hands", Boots="Feet", Greaves="Feet", Ring="Ring", Necklace="Offhand", Offhand="Offhand", Artifact="Artifact" }
 	                    if type(prevStats) == "function" then
-	                        G.Stats = function(p)
-	                            local s = prevStats(p)
+	                        G.Stats = function(p, slotOverride)
+	                            G._StatSlotOverride = G._StatSlotOverride or {}
+	                            G._StatSlotOverride[p] = slotOverride
+	                            local s = prevStats(p, slotOverride)
+	                            G._StatSlotOverride[p] = nil
 	                            local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
 	                            if not s or not profile then return s end
-	                            local lv = math.clamp(tonumber(profile.Level) or 1, 1, C.MaxLevel)
-	                            local base = C.Stats(lv, profile.ClassId, profile.StatAlloc)
+
+	                            -- Add 8-Armor-Set 3D 2-Piece & 4-Piece Set Bonus cleanly without cross-slot weapon bleed
 	                            local eq = type(profile.Equipped) == "table" and profile.Equipped or {}
-	                            local seenGrp = {}
-	                            local gearHP, gearATK, gearDEF, gearCrit, gearCritDmg = 0, 0, 0, 0, 0
-	                            for _, slot in ipairs(C.EquipSlots or { "Weapon", "Helmet", "Chest", "Gloves", "Boots", "Ring", "Necklace", "Artifact" }) do
-	                                local grp = SLOT_GROUP[slot] or slot
-	                                if not seenGrp[grp] then
-	                                    local itemId = (slot == "Weapon") and ((profile.ActiveSlot == 4 and (eq.Gun or profile.EquippedGun)) or eq[slot] or profile.Weapon) or eq[slot]
-	                                    local item = itemId and C.Items[itemId]
-	                                    -- Chi tinh trang bi dung nhom o (chan profile cu da deo 1 vu khi vao nhieu o)
-	                                    if item and slot ~= "Weapon" and SLOT_GROUP[tostring(item.Slot or "")] ~= grp then
-	                                        item = nil
-	                                    end
-	                                    if item then
-	                                        seenGrp[grp] = true
-	                                        local isGunOffhand = (grp == "Offhand") and (item.Slot == "Gun" or item.WeaponType == "Gun")
-	                                        if not isGunOffhand then
-	                                            local reqLv = math.max(1, tonumber(item.LevelReq) or 1)
-	                                            local gearScale = (lv >= reqLv) and 1.0 or math.clamp(lv / reqLv, 0.12, 1.0)
-	                                            gearATK += math.floor((tonumber(item.ATK) or 0) * gearScale)
-	                                            gearDEF += math.floor((tonumber(item.DEF) or 0) * gearScale)
-	                                            gearHP += math.floor((tonumber(item.HP) or 0) * gearScale)
-	                                            gearCrit += math.floor((tonumber(item.CritRate) or 0) * gearScale)
-	                                            gearCritDmg += math.floor((tonumber(item.CritDmg) or 0) * gearScale)
-	                                        end
-	                                    end
+	                            local setHP, setATK, setDEF, setCrit, setSpeedPct = 0, 0, 0, 0, 0
+	                            if type(C.GetActiveArmorSetInfo) == "function" then
+	                                local uiEq = {
+	                                    Helm = eq.Helm or eq.Helmet,
+	                                    Chest = eq.Chest or eq.Armor,
+	                                    Gauntlets = eq.Gauntlets or eq.Gloves,
+	                                    Greaves = eq.Greaves or eq.Boots,
+	                                }
+	                                local okSet, setInfo = pcall(C.GetActiveArmorSetInfo, uiEq)
+	                                local bStats = okSet and type(setInfo) == "table" and setInfo.BonusStats or nil
+	                                if type(bStats) == "table" then
+	                                    setHP = tonumber(bStats.HP) or 0
+	                                    setATK = tonumber(bStats.ATK) or 0
+	                                    setDEF = tonumber(bStats.DEF) or 0
+	                                    setCrit = tonumber(bStats.CRIT) or 0
+	                                    setSpeedPct = (tonumber(bStats.SPEED) or 0) / 100
 	                                end
 	                            end
-	                            local atkBonusPct, defBonusPct, hpBonusPct = 0, 0, 0
-	                            local ch = p and p.Character
-	                            if (ch and ch:GetAttribute("HakiAura")) or (profile.Haki and profile.Haki.Aura) then
-	                                atkBonusPct += 0.10; defBonusPct += 0.10
-	                            end
-	                            local bounty = math.max(tonumber(profile.Bounty) or 0, tonumber(profile.Honor) or 0)
-	                            if bounty > 0 then
-	                                local bPct = math.clamp(bounty / 30000000, 0, 1) * 0.08
-	                                atkBonusPct += bPct; defBonusPct += bPct
-	                            end
-	                            local rv4 = ch and ch:GetAttribute("RaceV4")
-	                            if (rv4 and rv4 ~= "") or profile.RaceV4Active then
-	                                atkBonusPct += 0.14; defBonusPct += 0.14; hpBonusPct += 0.14
-	                            end
+	                            s.HP = math.max(100, math.floor((tonumber(s.HP) or 100) + setHP + 0.5))
+	                            s.ATK = math.max(10, math.floor((tonumber(s.ATK) or 20) + setATK + 0.5))
+	                            if s.MeleeATK then s.MeleeATK = math.floor(s.MeleeATK + setATK + 0.5) end
+	                            if s.FruitATK then s.FruitATK = math.floor(s.FruitATK + setATK + 0.5) end
+	                            if s.SwordATK then s.SwordATK = math.floor(s.SwordATK + setATK + 0.5) end
+	                            if s.GunATK then s.GunATK = math.floor(s.GunATK + setATK + 0.5) end
+	                            s.BestATK = math.max(s.MeleeATK or 0, s.FruitATK or 0, s.SwordATK or 0, s.GunATK or 0, s.ATK or 0)
+	                            s.DEF = math.max(4, math.floor((tonumber(s.DEF) or 10) + setDEF + 0.5))
+	                            s.CritRate = math.clamp(math.floor((tonumber(s.CritRate) or 5) + setCrit + 0.5), 4, 75)
+	                            s.CritDmg = math.clamp(math.floor((tonumber(s.CritDmg) or 50) + 0.5), 50, 180)
+	                            s.MaxEnergy = math.max(100, math.floor(tonumber(s.MaxEnergy) or 100))
 	                            local rt = G.Runtime and G.Runtime[p]
-	                            local dTier = resolveActiveDragonTier(p, rt)
-	                            local ft = tostring((ch and ch:GetAttribute("FruitTransform")) or (p and p:GetAttribute("FruitTransform")) or "")
-	                            if dTier >= 2 then
-	                                atkBonusPct += 0.16; defBonusPct += 0.20
-	                            elseif dTier == 1 or ft ~= "" then
-	                                atkBonusPct += 0.10; defBonusPct += 0.14
+	                            if rt then rt.MaxEnergy = s.MaxEnergy end
+	                            if setSpeedPct > 0 and p and p.Character then
+	                                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+	                                if hum then
+	                                    hum.WalkSpeed = math.clamp(hum.WalkSpeed * (1 + setSpeedPct), 16, 52)
+	                                end
 	                            end
-	                            s.HP = math.max(100, math.floor((base.HP + gearHP) * math.min(1.35, 1.0 + hpBonusPct)))
-	                            s.ATK = math.max(10, math.floor((base.ATK + gearATK) * math.min(1.55, 1.0 + atkBonusPct)))
-	                            s.DEF = math.max(4, math.floor((base.DEF + gearDEF) * math.min(1.55, 1.0 + defBonusPct)))
-	                            s.CritRate = math.clamp(base.CritRate + gearCrit, 4, 32)
-	                            s.CritDmg = math.clamp(base.CritDmg + gearCritDmg, 20, 42)
-	                            s.StarSkillDmgPct = math.min(tonumber(s.StarSkillDmgPct) or 0, 0.12)
 	                            return s
 	                        end
 	                    end
@@ -161,26 +164,50 @@ function Overrides.Install(C)
 	                            local stats = type(G.Stats) == "function" and G.Stats(p) or nil
 	                            local atk = math.max(12, (stats and tonumber(stats.ATK)) or 45)
 	                            local actStr = tostring(action or "")
+	                            local isShipWeapon = (actStr == "ShipCannon" or actStr == "WarshipCannon" or actStr == "FireShipCannon" or actStr == "Harpoon")
 	                            local isBasic = (actStr == "Attack" or actStr == "Light" or actStr == "M1" or actStr == "HybridDragonM1" or actStr == "SovereignDragonM1")
-	                            local isMultiTick = (string.find(actStr, "Form1_", 1, true) ~= nil or string.find(actStr, "Form2_", 1, true) ~= nil) and actStr ~= "Form1_HybridTalonRend_X" and actStr ~= "Form1_HybridWingDash_F" and actStr ~= "Form2_SupersonicSoar_F"
-	                            local scaledDmg = math.min((tonumber(damage) or atk) * 0.58, isBasic and (atk * 1.45) or (isMultiTick and (atk * 0.68) or (atk * 2.85)))
 	                            local isBoss = (e.Config and e.Config.Boss == true) or (e == G.Boss)
-	                            if isBoss and (e.MaxHP or 0) > 0 then
-	                                scaledDmg = math.min(scaledDmg, math.max(40, (e.MaxHP or 10000) * (isMultiTick and 0.014 or 0.038)))
+
+	                            -- Faithful skill damage with anti-exploit ceiling (atk * 14.0 & 25% Boss MaxHP per hit)
+	                            local rawDmg = math.max(1, tonumber(damage) or atk)
+	                            local scaledDmg
+	                            if isShipWeapon then
+	                                scaledDmg = rawDmg
+	                            else
+	                                scaledDmg = math.min(rawDmg, atk * 14.0)
+	                                if isBoss and (e.MaxHP or 0) > 0 then
+	                                    scaledDmg = math.min(scaledDmg, math.max(60, (e.MaxHP or 10000) * 0.25))
+	                                end
 	                            end
-	                            local scaledBreak = math.clamp(math.floor((tonumber(breakPower) or 6) * 0.30), 1, isBoss and 10 or 14)
+
+	                            local scaledBreak = isShipWeapon and math.clamp(math.floor(tonumber(breakPower) or 18), 1, 35)
+	                                or math.clamp(math.floor(tonumber(breakPower) or 8), 1, isBoss and 26 or 34)
 	                            if now < (e._BalStunImmuneUntil or 0) then
 	                                scaledBreak = 0; e.StunnedUntil = 0; e.FrozenUntil = 0
 	                            end
 	                            local rt = G.Runtime and G.Runtime[p]
+	                            local maxE = resolveMaxEnergy(p, rt, stats)
 	                            local preEnergy = rt and tonumber(rt.Energy) or nil
 	                            prevHit(p, e, math.max(1, scaledDmg), scaledBreak, action)
 	                            if rt then
-	                                rt.MaxEnergy = 100
+	                                rt.MaxEnergy = maxE
+	                                rt.LastCombatAt = now
+	                                -- Real Dragon Fury Meter: dealing combat hits restores +4 Fury!
+	                                rt.FuryMeter = math.clamp((tonumber(rt.FuryMeter) or 100) + 4, 0, 100)
+	                                if p then
+	                                    p:SetAttribute("FuryMeter", math.floor(rt.FuryMeter + 0.5))
+	                                    if p.Character then p.Character:SetAttribute("FuryMeter", math.floor(rt.FuryMeter + 0.5)) end
+	                                end
+	                                local postEnergy = tonumber(rt.Energy) or preEnergy or maxE
 	                                if isBasic then
-	                                    rt.Energy = math.clamp((preEnergy or 100) + 6, 0, 100)
+	                                    if now - (tonumber(rt._LastM1EnergyAt) or 0) >= 0.16 then
+	                                        rt._LastM1EnergyAt = now
+	                                        rt.Energy = math.clamp(math.max(preEnergy or maxE, postEnergy) + math.max(6, math.floor(maxE * 0.03)), 0, maxE)
+	                                    else
+	                                        rt.Energy = math.clamp(math.max(preEnergy or maxE, postEnergy), 0, maxE)
+	                                    end
 	                                elseif preEnergy ~= nil then
-	                                    rt.Energy = math.clamp(preEnergy, 0, 100)
+	                                    rt.Energy = math.clamp(math.max(preEnergy, postEnergy), 0, maxE)
 	                                end
 	                            end
 	                            local afterNow = os.clock()
@@ -189,62 +216,38 @@ function Overrides.Install(C)
 	                            else
 	                                local stunned, frozen, broken = (e.StunnedUntil or 0) > afterNow, (e.FrozenUntil or 0) > afterNow, (e.BossBrokenUntil or 0) > afterNow
 	                                if stunned or frozen or broken then
-	                                    local maxCC = isBoss and 1.35 or 1.05
+	                                    local maxCC = isBoss and 1.35 or 1.25
 	                                    if stunned then e.StunnedUntil = math.min(e.StunnedUntil, afterNow + maxCC) end
 	                                    if frozen then e.FrozenUntil = math.min(e.FrozenUntil, afterNow + maxCC) end
-	                                    if broken then e.BossBrokenUntil = math.min(e.BossBrokenUntil, afterNow + 1.8) end
+	                                    if broken then e.BossBrokenUntil = math.min(e.BossBrokenUntil, afterNow + 4.5) end
 	                                    e._BalStunImmuneUntil = afterNow + 6.5
 	                                end
 	                            end
 	                        end
 	                    end
 
-	                    -- Danh dau don "direct strike" ben duoi de PlayerDamage biet day khong phai don goc cua GameService.
-	                    local directStrikeActive = false
 	                    if type(prevPlayerDamage) == "function" then
 	                        G.PlayerDamage = function(p, amount, attackerEnemy)
-	                            if type(attackerEnemy) == "table" and not directStrikeActive then
-	                                attackerEnemy._LastNativeHitAt = os.clock()
-	                            end
 	                            local ch = p and p.Character
 	                            local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	                            local rt = G.Runtime and G.Runtime[p]
-	                            local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
 	                            local stats = type(G.Stats) == "function" and G.Stats(p) or nil
 	                            if not ch or not hum or hum.Health <= 0 or not rt or not stats then return end
 	                            if workspace:GetServerTimeNow() < (tonumber(ch:GetAttribute("SpawnShieldUntil")) or 0) then return end
 	                            local now = os.clock()
 	                            if (rt.InvincibleUntil or 0) > now + 0.42 then rt.InvincibleUntil = now + 0.42 end
 	                            if now < (rt.InvincibleUntil or 0) then return end
-	                            local isBoss = attackerEnemy and ((attackerEnemy.Config and attackerEnemy.Config.Boss) or attackerEnemy == G.Boss)
-	                            local isElite = attackerEnemy and (attackerEnemy.Config and attackerEnemy.Config.Elite)
-	                            if profile and type(profile.Haki) == "table" and (profile.Haki.InstinctDodges or 0) > 3 then
-	                                profile.Haki.InstinctDodges = 3; p:SetAttribute("InstinctDodges", 3); ch:SetAttribute("InstinctDodges", 3)
-	                            end
+	                            rt.LastCombatAt = now
 	                            local enemyCfg = attackerEnemy and attackerEnemy.Config
-	                            local enemyATK = math.max(tonumber(amount) or 18, (enemyCfg and tonumber(enemyCfg.ATK)) or 18)
+	                            local rawHit = math.max(1, tonumber(amount) or (enemyCfg and tonumber(enemyCfg.ATK)) or 18)
 	                            local enemyLv = (enemyCfg and tonumber(enemyCfg.Level)) or 10
-	                            local plrLv = (profile and tonumber(profile.Level)) or 1
 	                            local defVal = math.max(0, tonumber(stats.DEF) or 10)
-	                            local defMit = math.clamp(defVal / (defVal + 200 + enemyLv * 0.25), 0.04, 0.40)
+	                            -- Genuine Defense mitigation with ZERO unavoidable %MaxHP floor!
+	                            local defMit = math.clamp(defVal / (defVal + 180 + enemyLv * 0.35), 0.04, 0.72)
 	                            local dTier = resolveActiveDragonTier(p, rt)
 	                            local ft = tostring(ch:GetAttribute("FruitTransform") or "")
-	                            local tfMult = (dTier >= 2 and 0.84) or ((dTier == 1 or ft ~= "") and 0.90) or 1.0
-	                            local targetDmg = enemyATK * (1.0 - defMit) * tfMult
-	                            local maxHP = math.max(100, hum.MaxHealth)
-	                            if isBoss then targetDmg = math.max(targetDmg, maxHP * 0.14)
-	                            elseif isElite then targetDmg = math.max(targetDmg, maxHP * 0.10)
-	                            elseif enemyLv >= plrLv * 0.60 then targetDmg = math.max(targetDmg, maxHP * 0.065) end
-	                            local instinctOn = (ch:GetAttribute("HakiInstinct") == true or p:GetAttribute("HakiInstinct") == true)
-	                            local dodgesLeft = (profile and profile.Haki and tonumber(profile.Haki.InstinctDodges)) or 0
-	                            if (isBoss or isElite) and instinctOn and dodgesLeft > 0 then
-	                                profile.Haki.InstinctDodges = math.max(0, dodgesLeft - 1)
-	                                p:SetAttribute("InstinctDodges", profile.Haki.InstinctDodges)
-	                                ch:SetAttribute("InstinctDodges", profile.Haki.InstinctDodges)
-	                                hum:TakeDamage(math.max(1, math.floor(targetDmg * 0.65)))
-	                                rt.LastHurt = now
-	                                return
-	                            end
+	                            local tfMult = (dTier >= 2 and 0.72) or ((dTier == 1 or ft ~= "") and 0.82) or 1.0
+	                            local targetDmg = math.max(1, rawHit * (1.0 - defMit) * tfMult)
 	                            local gsDefFactor = (100 + defVal) / 100
 	                            local gsTfFactor = (ft ~= "") and (1.0 / 0.42) or 1.0
 	                            prevPlayerDamage(p, math.max(1, math.floor(targetDmg * gsDefFactor * gsTfFactor + 0.5)), attackerEnemy)
@@ -252,7 +255,6 @@ function Overrides.Install(C)
 	                    end
 
 	                    if type(prevTickEnemy) == "function" then
-	                        local PlayersService = game:GetService("Players")
 	                        G.TickEnemy = function(e, dt)
 	                            if not e or not e.Alive then return end
 	                            local now = os.clock()
@@ -263,47 +265,11 @@ function Overrides.Install(C)
 	                            local maxAtkCd = isBoss and 1.35 or 1.45
 	                            if (e.NextAttack or 0) > now + maxAtkCd then e.NextAttack = now + maxAtkCd end
 	                            if (e.RecoverUntil or 0) > now + 0.55 then e.RecoverUntil = now + 0.55 end
-	                            local eAtk = tonumber(e.Config.ATK or e.Config.Attack) or 0
-	                            -- Direct strike chi la du phong cho quai co don goc khong trung. Truoc day ca hai cung gay sat thuong
-	                            -- (moi quai ~2 don/giay), Lv120 + 357 diem chi so van chet trong 3s truoc Corrupted Guard cua Q02.
-	                            local nativeLanding = (now - (e._LastNativeHitAt or -99)) < 2.0
-	                            if eAtk > 0 and not nativeLanding and now >= (e.StunnedUntil or 0) and now >= (e.BossBrokenUntil or 0) and now >= (e._BalNextDirectStrike or 0) then
-	                                local reach = math.max(9.5, (tonumber(e.Config.Range) or 8) + (isBoss and 5.0 or 2.5))
-	                                local ePos = e.Body.Position
-	                                local bestPlr, bestDist = nil, reach
-	                                for _, plr in ipairs(PlayersService:GetPlayers()) do
-	                                    local ch = plr.Character
-	                                    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-	                                    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-	                                    if hrp and hum and hum.Health > 0 then
-	                                        local d = (hrp.Position - ePos).Magnitude
-	                                        if d <= bestDist then bestDist = d; bestPlr = plr end
-	                                    end
-	                                end
-	                                if bestPlr then
-	                                    e._BalNextDirectStrike = now + (isBoss and 1.45 or 1.65)
-	                                    if e.Model then
-	                                        e.Model:SetAttribute("EnemyAttackClip", isBoss and "HeroicKata" or "Attack")
-	                                        e.Model:SetAttribute("EnemyAttackDuration", 0.55)
-	                                        e.Model:SetAttribute("EnemyAttackAt", workspace:GetServerTimeNow())
-	                                    end
-	                                    task.delay(0.30, function()
-	                                        if not e or not e.Alive or not e.Body or os.clock() < (e.StunnedUntil or 0) then return end
-	                                        local ch = bestPlr and bestPlr.Character
-	                                        local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-	                                        if hrp and (hrp.Position - e.Body.Position).Magnitude <= (reach + 3.0) then
-	                                            directStrikeActive = true
-	                                            pcall(G.PlayerDamage, bestPlr, eAtk, e)
-	                                            directStrikeActive = false
-	                                        end
-	                                    end)
-	                                end
-	                            end
 	                        end
 	                    end
 
-	                    local function safeDashPlayer(p, rt, hrp, dist, invDur)
-	                        local lookVec = hrp.CFrame.LookVector
+	                    local function safeDashPlayer(p, rt, hrp, dist, invDur, aimDir)
+	                        local lookVec = (typeof(aimDir) == "Vector3" and aimDir.Magnitude > 0.05) and aimDir.Unit or hrp.CFrame.LookVector
 	                        local originPos = hrp.Position
 	                        local rp = RaycastParams.new()
 	                        rp.FilterType = Enum.RaycastFilterType.Exclude
@@ -317,13 +283,51 @@ function Overrides.Install(C)
 	                        return target
 	                    end
 
+	                    local cachedExpSvc = nil
+	                    local function getExpansionSvc()
+	                        if cachedExpSvc ~= nil then return cachedExpSvc end
+	                        local expMod = services and services:FindFirstChild("SkybreakCombatExpansion")
+	                        if expMod then
+	                            local okE, modE = pcall(require, expMod)
+	                            if okE and type(modE) == "table" then cachedExpSvc = modE end
+	                        end
+	                        return cachedExpSvc
+	                    end
+	                    local function dragonPvPHit(attacker, originPos, facing, reach, rawDmg, skillName)
+	                        local soc = G.SocialEconomy
+	                        if type(soc) == "table" and type(soc.ApplyPvPHitCheck) == "function" then
+	                            pcall(soc.ApplyPvPHitCheck, attacker, originPos, facing, reach, rawDmg, skillName)
+	                            return
+	                        end
+	                        local expSvc = getExpansionSvc()
+	                        if expSvc and type(expSvc.DamagePlayersInPvPArea) == "function" then
+	                            pcall(expSvc.DamagePlayersInPvPArea, attacker, originPos, reach, rawDmg, skillName)
+	                        end
+	                    end
+	                    local function grantDragonMasteryXP(p, xpAmount)
+	                        local expSvc = getExpansionSvc()
+	                        if expSvc and type(expSvc.AddMasteryXP) == "function" then
+	                            pcall(expSvc.AddMasteryXP, p, "AbyssalSovereignCore", xpAmount)
+	                        end
+	                    end
+	                    local function checkDragonMastery(p, profile, reqMastery, keyLabel)
+	                        local need = math.max(1, tonumber(reqMastery) or 1)
+	                        local mTbl = type(profile.Mastery) == "table" and profile.Mastery or {}
+	                        local curLv = math.max(tonumber(mTbl.AbyssalSovereignCore) or 1, tonumber(mTbl.Dragon) or 1)
+	                        if curLv < need then
+	                            if type(G.Notify) == "function" then
+	                                G.Notify(p, string.format("Kỹ năng [%s] yêu cầu Mastery Lv. %d (Hiện tại: Lv. %d)!", tostring(keyLabel), need, curLv))
+	                            end
+	                            return false
+	                        end
+	                        return true
+	                    end
+
 	                    G.Action = function(p, action, payload)
 	                        local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
 	                        local rt = G.Runtime and G.Runtime[p]
-	                        if rt then
-	                            rt.MaxEnergy = 100
-	                            if rt.Energy == nil then rt.Energy = 100 end
-	                        end
+	                        local maxE = resolveMaxEnergy(p, rt, nil)
+	                        if rt and rt.Energy == nil then rt.Energy = maxE end
 	                        local act = tostring(action or "")
 	                        if (act == "Attack" or act == "Light" or act == "M1") and profile and rt then
 	                            local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
@@ -333,41 +337,50 @@ function Overrides.Install(C)
 	                                local tier = resolveActiveDragonTier(p, rt)
 	                                if hrp and tier > 0 then
 	                                    local now = os.clock()
+	                                    if now < (tonumber(rt.StunnedUntil) or 0) then return end
 	                                    local cd = (tier == 2) and 0.52 or 0.40
 	                                    if now < (rt.Cooldowns and rt.Cooldowns.DragonM1 or 0) then return end
 	                                    rt.Cooldowns = rt.Cooldowns or {}
 	                                    rt.Cooldowns.DragonM1 = now + cd
-	                                    rt.FuryMeter = 100; p:SetAttribute("FuryMeter", 100)
-	                                    if ch then ch:SetAttribute("FuryMeter", 100) end
 	                                    local combo = ((tonumber(rt.DragonM1Combo) or 0) % 4) + 1
 	                                    rt.DragonM1Combo = combo
-	                                    local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
+	                                    local stats = type(G.Stats) == "function" and G.Stats(p, 2) or { ATK = 65 }
 	                                    local atk = (stats and stats.ATK) or 65
+	                                    local isV2Awk = type(profile.AwakenedFruits) == "table" and (profile.AwakenedFruits.AbyssalSovereignCore == true or profile.AwakenedFruits.Dragon == true)
+	                                    local v2Boost = isV2Awk and 1.28 or 1.0
 	                                    local reach = (tier == 2) and 24 or 16
-	                                    local mult = (tier == 2) and (combo == 4 and 1.65 or 1.30) or (combo == 4 and 1.35 or 1.05)
+	                                    local mult = ((tier == 2) and (combo == 4 and 1.65 or 1.30) or (combo == 4 and 1.35 or 1.05)) * v2Boost
 	                                    local brk = (tier == 2) and 12 or 8
-	                                    local center = hrp.Position + hrp.CFrame.LookVector * (reach * 0.45)
+	                                    local lookVec = resolve3DAim(hrp, payload)
+	                                    local center = hrp.Position + lookVec * (reach * 0.45)
+	                                    local m1Tag = tier == 2 and "SovereignDragonM1" or "HybridDragonM1"
+	                                    local hitCount = 0
 	                                    for _, e in ipairs(G.Enemies or {}) do
 	                                        if e.Alive and e.Body and ((e.Body.Position - center).Magnitude <= reach or (e.Body.Position - hrp.Position).Magnitude <= reach) then
-	                                            G.Hit(p, e, atk * mult, brk, tier == 2 and "SovereignDragonM1" or "HybridDragonM1")
+	                                            hitCount += 1
+	                                            G.Hit(p, e, atk * mult, brk, m1Tag)
 	                                        end
+	                                    end
+	                                    dragonPvPHit(p, center, lookVec, reach, atk * mult, m1Tag)
+	                                    if hitCount > 0 then
+	                                        grantDragonMasteryXP(p, 8 + math.min(hitCount, 4) * 2)
 	                                    end
 	                                    if combatFXRemote then
 	                                        combatFXRemote:FireAllClients({
 	                                            Kind = "Swing", Action = "Attack", FruitId = "AbyssalSovereignCore", DragonFormTier = tier,
 	                                            SubMode = (tier == 2) and "AbyssalSovereign" or "AbyssalDragonHybrid", Combo = combo, Element = "Void",
-	                                            Position = center, Origin = hrp.Position, Direction = hrp.CFrame.LookVector, Actor = p.UserId,
+	                                            Position = center, Origin = hrp.Position, Direction = lookVec, Actor = p.UserId,
 	                                        })
 	                                    end
 	                                    return
 	                                end
 	                            end
 	                        end
-	                        local preE = rt and tonumber(rt.Energy) or 100
+	                        local preE = rt and tonumber(rt.Energy) or maxE
 	                        local res = prevAction(p, action, payload)
 	                        if rt then
-	                            rt.MaxEnergy = 100
-	                            if (tonumber(rt.Energy) or 100) < preE or (act ~= "Attack" and act ~= "Light" and act ~= "M1" and act ~= "Block" and act ~= "Dash" and act ~= "Dodge") then
+	                            local postMaxE = resolveMaxEnergy(p, rt, nil)
+	                            if (tonumber(rt.Energy) or postMaxE) < preE or (act ~= "Attack" and act ~= "Light" and act ~= "M1" and act ~= "Block" and act ~= "Dash" and act ~= "Dodge") then
 	                                local now = os.clock()
 	                                rt.LastCastAt = now
 	                                rt._LastSkillAt = now
@@ -379,221 +392,302 @@ function Overrides.Install(C)
 	                    G.UseSlotMove = function(p, rawKey, payload)
 	                        local profile = okD and D and type(D.Get) == "function" and D.Get(p) or nil
 	                        local rt = G.Runtime and G.Runtime[p]
-	                        if rt then
-	                            rt.MaxEnergy = 100
-	                            if rt.Energy == nil then rt.Energy = 100 end
-	                        end
+	                        local maxE = resolveMaxEnergy(p, rt, nil)
+	                        if rt and rt.Energy == nil then rt.Energy = maxE end
 	                        if profile and rt then
 	                            local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
 	                            local key = string.upper(tostring(rawKey or "Z"))
 	                            if slot == 2 and isDragonFruitId(profile.EquippedFruit) then
 	                                profile.EquippedFruit = "AbyssalSovereignCore"
-	                                local ch = p.Character
-	                                local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-	                                if not hrp then return end
-	                                rt.FuryMeter = 100; p:SetAttribute("FuryMeter", 100)
-	                                if ch then ch:SetAttribute("FuryMeter", 100) end
 	                                local curTier = resolveActiveDragonTier(p, rt)
-	                                local now = os.clock()
-	                                rt.Cooldowns = rt.Cooldowns or {}
-	                                if key == "V" then
-	                                    if now < (rt.Cooldowns.Slot_V or 0) then return end
-	                                    local vCost = (curTier >= 2) and 0 or 15
-	                                    if (tonumber(rt.Energy) or 0) < vCost then
-	                                        G.Notify(p, "Không đủ Energy!")
+	                                -- O Dang Nguoi (curTier == 0) va phim khac V: roi xuong prevUseSlotMove de chay chieu Dang Nguoi, Mastery XP va PvP chuan!
+	                                if curTier > 0 or key == "V" then
+	                                    local ch = p.Character
+	                                    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+	                                    if not hrp then return end
+	                                    local now = os.clock()
+	                                    if now < (tonumber(rt.StunnedUntil) or 0) then return end
+	                                    rt.Cooldowns = rt.Cooldowns or {}
+	                                    local dFruitCfg = C.AetherFruits and C.AetherFruits.AbyssalSovereignCore
+	                                    if key == "V" then
+	                                        if now < (rt.Cooldowns.Slot_V or 0) then return end
+	                                        local curFury = tonumber(rt.FuryMeter) or tonumber(rt.DragonFury) or 100
+	                                        local nextTier = (curTier == 0 and 1) or (curTier == 1 and 2) or 0
+	                                        if curTier == 0 then
+	                                            local vReqMastery = dFruitCfg and dFruitCfg.Moves and dFruitCfg.Moves.V and dFruitCfg.Moves.V.Mastery
+	                                            if not checkDragonMastery(p, profile, vReqMastery, "V") then return end
+	                                            if curFury < 15 then
+	                                                G.Notify(p, string.format("Cần tối thiểu 15%% Nộ Khí (Fury) để hóa Bán Long Nhân (Hiện tại: %d%%)! / Need 15%% Fury for Hybrid Form 1!", math.floor(curFury)))
+	                                                return
+	                                            end
+	                                        elseif curTier == 1 then
+	                                            local vReqMastery = dFruitCfg and dFruitCfg.Moves and dFruitCfg.Moves.V and dFruitCfg.Moves.V.Mastery
+	                                            if not checkDragonMastery(p, profile, vReqMastery, "V") or curFury < 25 then
+	                                                nextTier = 0
+	                                            end
+	                                        end
+	                                        local vCost = (nextTier == 0) and 0 or 15
+	                                        if vCost > 0 and (tonumber(rt.Energy) or 0) < vCost then
+	                                            G.Notify(p, "Không đủ Năng Lượng (Energy)! / Not enough Energy!")
+	                                            return
+	                                        end
+	                                        rt.Energy = math.max(0, (tonumber(rt.Energy) or 0) - vCost)
+	                                        rt.LastCastAt = now
+	                                        rt._LastSkillAt = now
+	                                        rt.Cooldowns.Slot_V = now + ((nextTier == 0) and 1.5 or 3.0)
+	                                        local tfName = (nextTier == 2 and "AbyssalSovereign") or (nextTier == 1 and "AbyssalDragonHybrid") or ""
+	                                        rt.DragonFormTier = nextTier
+	                                        rt.FuryMeter = curFury
+	                                        rt.DragonFury = curFury
+	                                        p:SetAttribute("DragonFormTier", nextTier); p:SetAttribute("FruitTransform", tfName)
+	                                        if ch then ch:SetAttribute("DragonFormTier", nextTier); ch:SetAttribute("FruitTransform", tfName) end
+	                                        if nextTier < 2 then
+	                                            rt.FreeFlightActive = false
+	                                            rt.FreeFlightUntil = 0
+	                                            p:SetAttribute("SkybreakFlightActive", false)
+	                                            p:SetAttribute("FreeFlightUntil", 0)
+	                                            if ch then ch:SetAttribute("SkybreakFlightActive", false) end
+	                                        end
+	                                        local isV2Awk = type(profile.AwakenedFruits) == "table" and (profile.AwakenedFruits.AbyssalSovereignCore == true or profile.AwakenedFruits.Dragon == true)
+	                                        local v2Boost = isV2Awk and 1.28 or 1.0
+	                                        local stats = type(G.Stats) == "function" and G.Stats(p, 2) or { ATK = 65 }
+	                                        local atk = (stats and stats.ATK) or 65
+	                                        local canDealBurst = (nextTier > 0) and (now >= (rt.Cooldowns.DragonAscensionDmg or 0))
+	                                        if nextTier == 1 then
+	                                            G.Notify(p, "[DẠNG 1 • BÁN LONG NHÂN / HYBRID FORM 1] Mở Bộ Kỹ Năng 1 ([Z][X][C] + [F] Long Ảnh Bộ)! Nhấn [V] lần nữa để hóa Rồng Khổng Lồ Dạng 2!")
+	                                            if canDealBurst then
+	                                                rt.Cooldowns.DragonAscensionDmg = now + 14.0
+	                                                local hitCnt = 0
+	                                                for _, e in ipairs(G.Enemies or {}) do
+	                                                    if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 26 then
+	                                                        hitCnt += 1
+	                                                        G.Hit(p, e, atk * 2.0 * v2Boost, 16, "DragonHybridAscension_T1")
+	                                                    end
+	                                                end
+	                                                dragonPvPHit(p, hrp.Position, hrp.CFrame.LookVector, 26, atk * 2.0 * v2Boost, "DragonHybridAscension_T1")
+	                                                if hitCnt > 0 then grantDragonMasteryXP(p, 20) end
+	                                            end
+	                                        elseif nextTier == 2 then
+	                                            rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 60)
+	                                            profile.UnlockedTitles = type(profile.UnlockedTitles) == "table" and profile.UnlockedTitles or {}
+	                                            profile.UnlockedTitles["sovereign_dragon_king"] = true
+	                                            G.Notify(p, "[DẠNG 2 • THÁI CỔ LONG HOÀNG / SOVEREIGN FORM 2] Mở khóa Bay 3D [F] Long Vũ Cửu Thiên & Tuyệt Kỹ Long Đế! Nhấn [V] để thu hồi (0 Energy).")
+	                                            if canDealBurst then
+	                                                rt.Cooldowns.DragonAscensionDmg = now + 14.0
+	                                                local hitCnt = 0
+	                                                for _, e in ipairs(G.Enemies or {}) do
+	                                                    if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 36 then
+	                                                        hitCnt += 1
+	                                                        G.Hit(p, e, atk * 2.6 * v2Boost, 22, "DragonSovereignAscension_T2")
+	                                                    end
+	                                                end
+	                                                dragonPvPHit(p, hrp.Position, hrp.CFrame.LookVector, 36, atk * 2.6 * v2Boost, "DragonSovereignAscension_T2")
+	                                                if hitCnt > 0 then grantDragonMasteryXP(p, 30) end
+	                                            end
+	                                        else
+	                                            G.Notify(p, "Đã thu hồi Long Hồn, trở về nhân dạng (0 Energy). / Reverted to Human form (0 Energy).")
+	                                        end
+	                                        if combatFXRemote then
+	                                            combatFXRemote:FireAllClients({
+	                                                Kind = "DragonTransform", DragonFormTier = nextTier, TransformName = tfName, SubMode = tfName,
+	                                                Awakened = isV2Awk or (nextTier >= 2), FuryMeter = curFury, Radius = nextTier == 2 and 46 or (nextTier == 1 and 28 or 14),
+	                                                Position = hrp.Position, Actor = p.UserId,
+	                                            })
+	                                        end
+	                                        if type(G.Sync) == "function" then G.Sync(p) end
 	                                        return
 	                                    end
-	                                    rt.Energy = math.max(0, (tonumber(rt.Energy) or 0) - vCost)
-	                                    rt.LastCastAt = now
-	                                    rt._LastSkillAt = now
-	                                    rt.Cooldowns.Slot_V = now + 3.5
-	                                    local nextTier = (curTier == 0 and 1) or (curTier == 1 and 2) or 0
-	                                    local tfName = (nextTier == 2 and "AbyssalSovereign") or (nextTier == 1 and "AbyssalDragonHybrid") or ""
-	                                    rt.DragonFormTier = nextTier
-	                                    p:SetAttribute("DragonFormTier", nextTier); p:SetAttribute("FruitTransform", tfName)
-	                                    if ch then ch:SetAttribute("DragonFormTier", nextTier); ch:SetAttribute("FruitTransform", tfName) end
-	                                    local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
-	                                    local atk = (stats and stats.ATK) or 65
-	                                    local canDealBurst = now >= (rt.Cooldowns.DragonAscensionDmg or 0)
-	                                    if nextTier == 1 then
-	                                        G.Notify(p, "[DẠNG 1 • BÁN LONG NHÂN] Mở Bộ Kỹ Năng 1: [Z] Hỏa Long Đạn • [X] Bán Long Trảo • [C] Cuồng Long Xoáy • [F] Long Ảnh Bộ! (Nhấn [V] lần nữa để hóa Rồng Khổng Lồ Dạng 2)")
-	                                        if canDealBurst then
-	                                            rt.Cooldowns.DragonAscensionDmg = now + 14.0
-	                                            for _, e in ipairs(G.Enemies or {}) do
-	                                                if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 26 then
-	                                                    G.Hit(p, e, atk * 2.0, 16, "DragonHybridAscension_T1")
-	                                                end
-	                                            end
-	                                        end
-	                                    elseif nextTier == 2 then
-	                                        rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 60)
-	                                        G.Notify(p, "[DẠNG 2 • THÁI CỔ LONG HOÀNG] Mở Bộ Kỹ Năng 2: [Z] Thái Cổ Long Tức • [X] Long Hoàng Giáng Thế • [C] Vạn Long Hỏa Vũ • [F] Long Vũ Cửu Thiên!")
-	                                        if canDealBurst then
-	                                            rt.Cooldowns.DragonAscensionDmg = now + 14.0
-	                                            for _, e in ipairs(G.Enemies or {}) do
-	                                                if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= 36 then
-	                                                    G.Hit(p, e, atk * 2.6, 22, "DragonSovereignAscension_T2")
-	                                                end
-	                                            end
-	                                        end
-	                                    else
-	                                        G.Notify(p, "Đã thu hồi Long Hồn, trở về nhân dạng.")
-	                                    end
-	                                    if combatFXRemote then
-	                                        combatFXRemote:FireAllClients({
-	                                            Kind = "DragonTransform", DragonFormTier = nextTier, TransformName = tfName, SubMode = tfName,
-	                                            Awakened = true, FuryMeter = 100, Radius = nextTier == 2 and 46 or (nextTier == 1 and 28 or 14),
-	                                            Position = hrp.Position, Actor = p.UserId,
-	                                        })
-	                                    end
-	                                    if type(G.Sync) == "function" then G.Sync(p) end
-	                                    return
-	                                end
 
-	                                local moveSet = C.GetDragonFormMoves(curTier)
-	                                local moveSpec = moveSet and moveSet[key]
-	                                if moveSpec then
-	                                    local cdKey = "Slot_" .. key
-	                                    if now < (rt.Cooldowns[cdKey] or 0) then return end
-	                                    local mCost = math.max(0, tonumber(moveSpec.Cost or moveSpec.EnergyCost) or 0)
-	                                    if (tonumber(rt.Energy) or 0) < mCost then
-	                                        G.Notify(p, "Không đủ Energy!")
+	                                    local moveSet = C.GetDragonFormMoves(curTier)
+	                                    local moveSpec = moveSet and moveSet[key]
+	                                    if moveSpec then
+	                                        local reqM = moveSpec.Mastery or (dFruitCfg and dFruitCfg.Moves and dFruitCfg.Moves[key] and dFruitCfg.Moves[key].Mastery)
+	                                        if not checkDragonMastery(p, profile, reqM, key) then return end
+	                                        local cdKey = "Slot_" .. key
+	                                        if now < (rt.Cooldowns[cdKey] or 0) then return end
+	                                        local mCost = math.max(0, tonumber(moveSpec.Cost or moveSpec.EnergyCost) or 0)
+	                                        if (tonumber(rt.Energy) or 0) < mCost then
+	                                            G.Notify(p, "Không đủ Energy!")
+	                                            return
+	                                        end
+	                                        rt.Energy = math.max(0, (tonumber(rt.Energy) or 0) - mCost)
+	                                        rt.LastCastAt = now
+	                                        rt._LastSkillAt = now
+	                                        rt.Cooldowns[cdKey] = now + (tonumber(moveSpec.Cooldown) or 5.0)
+	                                        local stats = type(G.Stats) == "function" and G.Stats(p, 2) or { ATK = 65 }
+	                                        local atk = (stats and stats.ATK) or 65
+	                                        local lookVec, aimOrigin = resolve3DAim(hrp, payload)
+	                                        local originPos = aimOrigin or hrp.Position
+	                                        local isV2Awk = type(profile.AwakenedFruits) == "table" and (profile.AwakenedFruits.AbyssalSovereignCore == true or profile.AwakenedFruits.Dragon == true)
+	                                        local v2Boost = isV2Awk and 1.28 or 1.0
+	                                        local range = tonumber(moveSpec.Range) or 32
+	                                        local mult = (tonumber(moveSpec.Multiplier) or 2.5) * v2Boost
+	                                        local brk = tonumber(moveSpec.Break) or 20
+	                                        local hits = math.max(1, tonumber(moveSpec.Hits) or 1)
+	                                        local endPos = originPos + lookVec * range
+	                                        local subMode = (curTier >= 2) and "AbyssalSovereign" or "AbyssalDragonHybrid"
+	                                        local grantedSkillXP = false
+	                                        local function onDragonSkillHit(hitCount)
+	                                            if not grantedSkillXP and hitCount > 0 then
+	                                                grantedSkillXP = true
+	                                                grantDragonMasteryXP(p, 24 + math.min(hitCount, 5) * 4)
+	                                            end
+	                                        end
+
+	                                        if curTier >= 2 then
+	                                            if key == "Z" then
+	                                                endPos = originPos + lookVec * 46
+	                                                for pulse = 1, 5 do
+	                                                    task.delay((pulse - 1) * 0.10, function()
+	                                                        if not p or not p.Parent then return end
+	                                                        local hc = 0
+	                                                        for _, e in ipairs(G.Enemies or {}) do
+	                                                            if e.Alive and e.Body then
+	                                                                local eb = e.Body.Position
+	                                                                local proj = math.clamp((eb - originPos):Dot(lookVec), 0, 46)
+	                                                                if (eb - (originPos + lookVec * proj)).Magnitude <= 20 then
+	                                                                    hc += 1
+	                                                                    G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form2_SovereignBeam_Z")
+	                                                                end
+	                                                            end
+	                                                        end
+	                                                        dragonPvPHit(p, originPos + lookVec * 23, lookVec, 28, (atk * mult) / 5, "Form2_SovereignBeam_Z")
+	                                                        onDragonSkillHit(hc)
+	                                                    end)
+	                                                end
+	                                            elseif key == "X" then
+	                                                endPos = safeDashPlayer(p, rt, hrp, 30, 0.42, lookVec)
+	                                                for wave = 1, 4 do
+	                                                    task.delay((wave - 1) * 0.13, function()
+	                                                        if not p or not p.Parent then return end
+	                                                        local hc = 0
+	                                                        for _, e in ipairs(G.Enemies or {}) do
+	                                                            if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 34 then
+	                                                                hc += 1
+	                                                                G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form2_SovereignSkyfall_X")
+	                                                                e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 1.0)
+	                                                            end
+	                                                        end
+	                                                        dragonPvPHit(p, endPos, lookVec, 34, (atk * mult) / 4, "Form2_SovereignSkyfall_X")
+	                                                        onDragonSkillHit(hc)
+	                                                    end)
+	                                                end
+	                                            elseif key == "C" then
+	                                                endPos = originPos + lookVec * 20
+	                                                for wave = 1, 6 do
+	                                                    task.delay((wave - 1) * 0.14, function()
+	                                                        if not p or not p.Parent then return end
+	                                                        local hc = 0
+	                                                        for _, e in ipairs(G.Enemies or {}) do
+	                                                            if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 42 or (e.Body.Position - originPos).Magnitude <= 22) then
+	                                                                hc += 1
+	                                                                G.Hit(p, e, (atk * mult) / 6, math.ceil(brk / 6), "Form2_EclipseStarshower_C")
+	                                                            end
+	                                                        end
+	                                                        dragonPvPHit(p, endPos, lookVec, 42, (atk * mult) / 6, "Form2_EclipseStarshower_C")
+	                                                        onDragonSkillHit(hc)
+	                                                    end)
+	                                                end
+	                                            elseif key == "F" then
+	                                                endPos = safeDashPlayer(p, rt, hrp, 48, 0.42, lookVec)
+	                                                local mid = (originPos + endPos) * 0.5
+	                                                local hc = 0
+	                                                for _, e in ipairs(G.Enemies or {}) do
+	                                                    if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 22 or (e.Body.Position - mid).Magnitude <= 24) then
+	                                                        hc += 1
+	                                                        G.Hit(p, e, atk * mult, brk, "Form2_SupersonicSoar_F")
+	                                                    end
+	                                                end
+	                                                dragonPvPHit(p, mid, lookVec, 28, atk * mult, "Form2_SupersonicSoar_F")
+	                                                onDragonSkillHit(hc)
+	                                            end
+	                                        else
+	                                            if key == "Z" then
+	                                                endPos = originPos + lookVec * 32
+	                                                for shot = 1, 5 do
+	                                                    task.delay((shot - 1) * 0.08, function()
+	                                                        if not p or not p.Parent then return end
+	                                                        local impactPos = originPos + lookVec * (6.4 * shot)
+	                                                        local hc = 0
+	                                                        for _, e in ipairs(G.Enemies or {}) do
+	                                                            if e.Alive and e.Body and ((e.Body.Position - impactPos).Magnitude <= 16 or (e.Body.Position - endPos).Magnitude <= 16) then
+	                                                                hc += 1
+	                                                                G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form1_FireballVolley_Z")
+	                                                            end
+	                                                        end
+	                                                        dragonPvPHit(p, impactPos, lookVec, 16, (atk * mult) / 5, "Form1_FireballVolley_Z")
+	                                                        onDragonSkillHit(hc)
+	                                                    end)
+	                                                end
+	                                            elseif key == "X" then
+	                                                endPos = safeDashPlayer(p, rt, hrp, 20, 0.38, lookVec)
+	                                                local hc = 0
+	                                                for _, e in ipairs(G.Enemies or {}) do
+	                                                    if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 20 or (e.Body.Position - originPos).Magnitude <= 18) then
+	                                                        hc += 1
+	                                                        G.Hit(p, e, atk * mult, brk, "Form1_HybridTalonRend_X")
+	                                                        e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 0.9)
+	                                                    end
+	                                                end
+	                                                dragonPvPHit(p, endPos, lookVec, 20, atk * mult, "Form1_HybridTalonRend_X")
+	                                                onDragonSkillHit(hc)
+	                                            elseif key == "C" then
+	                                                endPos = originPos
+	                                                for pulse = 1, 4 do
+	                                                    task.delay((pulse - 1) * 0.12, function()
+	                                                        if not p or not p.Parent then return end
+	                                                        local curPos = (p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart.Position) or originPos
+	                                                        local hc = 0
+	                                                        for _, e in ipairs(G.Enemies or {}) do
+	                                                            if e.Alive and e.Body and (e.Body.Position - curPos).Magnitude <= 26 then
+	                                                                hc += 1
+	                                                                G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form1_InfernoCyclone_C")
+	                                                                if not (e.Config and e.Config.Boss) and (e.Config and (e.Config.Speed or 0) > 0) and e.Model then
+	                                                                    local pullPos = e.Body.Position:Lerp(Vector3.new(curPos.X, e.Body.Position.Y, curPos.Z), 0.35)
+	                                                                    local rot = e.Body.CFrame - e.Body.Position
+	                                                                    e.Model:PivotTo(CFrame.new(pullPos) * rot)
+	                                                                end
+	                                                            end
+	                                                        end
+	                                                        dragonPvPHit(p, curPos, lookVec, 26, (atk * mult) / 4, "Form1_InfernoCyclone_C")
+	                                                        onDragonSkillHit(hc)
+	                                                    end)
+	                                                end
+	                                            elseif key == "F" then
+	                                                local flatLook = Vector3.new(lookVec.X, 0, lookVec.Z)
+	                                                local groundDashDir = flatLook.Magnitude > 0.05 and flatLook.Unit or hrp.CFrame.LookVector
+	                                                endPos = safeDashPlayer(p, rt, hrp, 32, 0.38, groundDashDir)
+	                                                local hc = 0
+	                                                for _, e in ipairs(G.Enemies or {}) do
+	                                                    if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 16 then
+	                                                        hc += 1
+	                                                        G.Hit(p, e, atk * mult, brk, "Form1_HybridWingDash_F")
+	                                                    end
+	                                                end
+	                                                dragonPvPHit(p, endPos, groundDashDir, 18, atk * mult, "Form1_HybridWingDash_F")
+	                                                onDragonSkillHit(hc)
+	                                            end
+	                                        end
+
+	                                        if combatFXRemote then
+	                                            combatFXRemote:FireAllClients({
+	                                                Kind = "FruitMove", Action = "Fruit" .. key, Awakened = (curTier >= 2), FruitId = "AbyssalSovereignCore",
+	                                                activeId = "AbyssalSovereignCore", MoveKey = key, key = key, MoveName = moveSpec.Name, Mechanic = moveSpec.Mechanic,
+	                                                DragonFormTier = (curTier >= 2) and 2 or 1, SubMode = subMode, Hits = hits, Element = "Void",
+	                                                Origin = originPos, StartPos = originPos, Position = endPos, EndPos = endPos, Direction = lookVec, Radius = range, Actor = p.UserId,
+	                                            })
+	                                        end
+	                                        if type(G.Sync) == "function" then G.Sync(p) end
 	                                        return
 	                                    end
-	                                    rt.Energy = math.max(0, (tonumber(rt.Energy) or 0) - mCost)
-	                                    rt.LastCastAt = now
-	                                    rt._LastSkillAt = now
-	                                    rt.Cooldowns[cdKey] = now + (tonumber(moveSpec.Cooldown) or 5.0)
-	                                    local stats = type(G.Stats) == "function" and G.Stats(p) or { ATK = 65 }
-	                                    local atk = (stats and stats.ATK) or 65
-	                                    local originPos = hrp.Position
-	                                    local lookVec = hrp.CFrame.LookVector
-	                                    local range = tonumber(moveSpec.Range) or 32
-	                                    local mult = tonumber(moveSpec.Multiplier) or 2.5
-	                                    local brk = tonumber(moveSpec.Break) or 20
-	                                    local hits = math.max(1, tonumber(moveSpec.Hits) or 1)
-	                                    local endPos = originPos + lookVec * range
-	                                    local subMode = (curTier >= 2) and "AbyssalSovereign" or "AbyssalDragonHybrid"
-
-	                                    if curTier >= 2 then
-	                                        if key == "Z" then
-	                                            endPos = originPos + lookVec * 46
-	                                            for pulse = 1, 5 do
-	                                                task.delay((pulse - 1) * 0.10, function()
-	                                                    if not p or not p.Parent then return end
-	                                                    for _, e in ipairs(G.Enemies or {}) do
-	                                                        if e.Alive and e.Body then
-	                                                            local eb = e.Body.Position
-	                                                            local proj = math.clamp((eb - originPos):Dot(lookVec), 0, 46)
-	                                                            if (eb - (originPos + lookVec * proj)).Magnitude <= 20 then
-	                                                                G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form2_SovereignBeam_Z")
-	                                                            end
-	                                                        end
-	                                                    end
-	                                                end)
-	                                            end
-	                                        elseif key == "X" then
-	                                            endPos = safeDashPlayer(p, rt, hrp, 30, 0.42)
-	                                            for wave = 1, 4 do
-	                                                task.delay((wave - 1) * 0.13, function()
-	                                                    if not p or not p.Parent then return end
-	                                                    for _, e in ipairs(G.Enemies or {}) do
-	                                                        if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 34 then
-	                                                            G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form2_SovereignSkyfall_X")
-	                                                            e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 1.0)
-	                                                        end
-	                                                    end
-	                                                end)
-	                                            end
-	                                        elseif key == "C" then
-	                                            endPos = originPos + lookVec * 20
-	                                            for wave = 1, 6 do
-	                                                task.delay((wave - 1) * 0.14, function()
-	                                                    if not p or not p.Parent then return end
-	                                                    for _, e in ipairs(G.Enemies or {}) do
-	                                                        if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 42 then
-	                                                            G.Hit(p, e, (atk * mult) / 6, math.ceil(brk / 6), "Form2_EclipseStarshower_C")
-	                                                        end
-	                                                    end
-	                                                end)
-	                                            end
-	                                        elseif key == "F" then
-	                                            endPos = safeDashPlayer(p, rt, hrp, 48, 0.42)
-	                                            local mid = (originPos + endPos) * 0.5
-	                                            for _, e in ipairs(G.Enemies or {}) do
-	                                                if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 22 or (e.Body.Position - mid).Magnitude <= 24) then
-	                                                    G.Hit(p, e, atk * mult, brk, "Form2_SupersonicSoar_F")
-	                                                end
-	                                            end
-	                                        end
-	                                    else
-	                                        if key == "Z" then
-	                                            endPos = originPos + lookVec * 32
-	                                            for shot = 1, 5 do
-	                                                task.delay((shot - 1) * 0.08, function()
-	                                                    if not p or not p.Parent then return end
-	                                                    local impactPos = originPos + lookVec * (6.4 * shot)
-	                                                    for _, e in ipairs(G.Enemies or {}) do
-	                                                        if e.Alive and e.Body and ((e.Body.Position - impactPos).Magnitude <= 16 or (e.Body.Position - endPos).Magnitude <= 16) then
-	                                                            G.Hit(p, e, (atk * mult) / 5, math.ceil(brk / 5), "Form1_FireballVolley_Z")
-	                                                        end
-	                                                    end
-	                                                end)
-	                                            end
-	                                        elseif key == "X" then
-	                                            endPos = safeDashPlayer(p, rt, hrp, 20, 0.38)
-	                                            for _, e in ipairs(G.Enemies or {}) do
-	                                                if e.Alive and e.Body and ((e.Body.Position - endPos).Magnitude <= 20 or (e.Body.Position - originPos).Magnitude <= 18) then
-	                                                    G.Hit(p, e, atk * mult, brk, "Form1_HybridTalonRend_X")
-	                                                    e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + 0.9)
-	                                                end
-	                                            end
-	                                        elseif key == "C" then
-	                                            endPos = originPos
-	                                            for pulse = 1, 4 do
-	                                                task.delay((pulse - 1) * 0.12, function()
-	                                                    if not p or not p.Parent then return end
-	                                                    local curPos = (p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character.HumanoidRootPart.Position) or originPos
-	                                                    for _, e in ipairs(G.Enemies or {}) do
-	                                                        if e.Alive and e.Body and (e.Body.Position - curPos).Magnitude <= 26 then
-	                                                            G.Hit(p, e, (atk * mult) / 4, math.ceil(brk / 4), "Form1_InfernoCyclone_C")
-	                                                            if not (e.Config and e.Config.Boss) and (e.Config and (e.Config.Speed or 0) > 0) and e.Model then
-	                                                                local pullPos = e.Body.Position:Lerp(Vector3.new(curPos.X, e.Body.Position.Y, curPos.Z), 0.35)
-	                                                                local rot = e.Body.CFrame - e.Body.Position
-	                                                                e.Model:PivotTo(CFrame.new(pullPos) * rot)
-	                                                            end
-	                                                        end
-	                                                    end
-	                                                end)
-	                                            end
-	                                        elseif key == "F" then
-	                                            endPos = safeDashPlayer(p, rt, hrp, 32, 0.38)
-	                                            for _, e in ipairs(G.Enemies or {}) do
-	                                                if e.Alive and e.Body and (e.Body.Position - endPos).Magnitude <= 16 then
-	                                                    G.Hit(p, e, atk * mult, brk, "Form1_HybridWingDash_F")
-	                                                end
-	                                            end
-	                                        end
-	                                    end
-
-	                                    if combatFXRemote then
-	                                        combatFXRemote:FireAllClients({
-	                                            Kind = "FruitMove", Action = "Fruit" .. key, Awakened = (curTier >= 2), FruitId = "AbyssalSovereignCore",
-	                                            activeId = "AbyssalSovereignCore", MoveKey = key, key = key, MoveName = moveSpec.Name, Mechanic = moveSpec.Mechanic,
-	                                            DragonFormTier = (curTier >= 2) and 2 or 1, SubMode = subMode, Hits = hits, Element = "Void",
-	                                            Origin = originPos, StartPos = originPos, Position = endPos, EndPos = endPos, Direction = lookVec, Radius = range, Actor = p.UserId,
-	                                        })
-	                                    end
-	                                    if type(G.Sync) == "function" then G.Sync(p) end
-	                                    return
 	                                end
 	                            end
 	                        end
-	                        local preE = rt and tonumber(rt.Energy) or 100
+	                        local preE = rt and tonumber(rt.Energy) or maxE
 	                        local res = prevUseSlotMove(p, rawKey, payload)
 	                        if rt then
-	                            rt.MaxEnergy = 100
-	                            if (tonumber(rt.Energy) or 100) < preE then
+	                            local postMaxE = resolveMaxEnergy(p, rt, nil)
+	                            if (tonumber(rt.Energy) or postMaxE) < preE then
 	                                local now = os.clock()
 	                                rt.LastCastAt = now
 	                                rt._LastSkillAt = now
@@ -606,13 +700,11 @@ function Overrides.Install(C)
 	                        local prevUseSkill = G.UseSkill
 	                        G.UseSkill = function(p, skillId, ...)
 	                            local rt = G.Runtime and G.Runtime[p]
-	                            if rt then
-	                                rt.MaxEnergy = 100
-	                                if rt.Energy == nil then rt.Energy = 100 end
-	                            end
+	                            local maxE = resolveMaxEnergy(p, rt, nil)
+	                            if rt and rt.Energy == nil then rt.Energy = maxE end
 	                            local res = prevUseSkill(p, skillId, ...)
 	                            if rt then
-	                                rt.MaxEnergy = 100
+	                                resolveMaxEnergy(p, rt, nil)
 	                                local now = os.clock()
 	                                rt.LastCastAt = now
 	                                rt._LastSkillAt = now
@@ -631,19 +723,87 @@ function Overrides.Install(C)
 	                            if type(G.Runtime) == "table" then
 	                                for plr, rt in pairs(G.Runtime) do
 	                                    if type(rt) == "table" then
-	                                        rt.FuryMeter = 100
-	                                        rt.MaxEnergy = 100
-	                                        if rt.Energy == nil then rt.Energy = 100 end
+	                                        if rt.FuryMeter == nil then rt.FuryMeter = 100 end
+	                                        local maxE = resolveMaxEnergy(typeof(plr) == "Instance" and plr or nil, rt, nil)
+	                                        if rt.Energy == nil then rt.Energy = maxE end
+
+	                                        -- Out-of-combat dynamic MaxEnergy regen (maxE * 0.08 * dt)
 	                                        local lastSkill = math.max(tonumber(rt.LastCastAt) or 0, tonumber(rt._LastSkillAt) or 0)
 	                                        if now - lastSkill >= 1.5 and now >= (tonumber(rt.ActionUntil) or 0) then
-	                                            local curE = tonumber(rt.Energy) or 100
-	                                            if curE < 100 and math.abs(curE - (tonumber(rt._PrevLoopEnergy) or curE)) < 0.01 then
-	                                                rt.Energy = math.min(100, curE + 8 * dt)
+	                                            local curE = tonumber(rt.Energy) or maxE
+	                                            if curE < maxE and math.abs(curE - (tonumber(rt._PrevLoopEnergy) or curE)) < 0.01 then
+	                                                rt.Energy = math.min(maxE, curE + maxE * 0.08 * dt)
 	                                            end
 	                                        end
-	                                        rt._PrevLoopEnergy = tonumber(rt.Energy) or 100
-	                                        if plr and plr.Parent and (plr:GetAttribute("FuryMeter") or 0) < 100 then
-	                                            plr:SetAttribute("FuryMeter", 100)
+	                                        rt._PrevLoopEnergy = tonumber(rt.Energy) or maxE
+
+	                                        -- Real Dragon Fury Meter: +3/s out-of-combat regen, 1.8 Fury/s gentle combat drain in Form 2
+	                                        if typeof(plr) == "Instance" and plr.Parent then
+	                                            local dTier = resolveActiveDragonTier(plr, rt)
+	                                            local profChk = okD and D and type(D.Get) == "function" and D.Get(plr) or nil
+	                                            if dTier > 0 and profChk and not isDragonFruitId(profChk.EquippedFruit) then
+	                                                rt.DragonFormTier = 0
+	                                                rt.FreeFlightActive = false
+	                                                rt.FreeFlightUntil = 0
+	                                                plr:SetAttribute("DragonFormTier", 0)
+	                                                plr:SetAttribute("FruitTransform", "")
+	                                                plr:SetAttribute("SkybreakFlightActive", false)
+	                                                plr:SetAttribute("FreeFlightUntil", 0)
+	                                                if plr.Character then
+	                                                    plr.Character:SetAttribute("DragonFormTier", 0)
+	                                                    plr.Character:SetAttribute("FruitTransform", "")
+	                                                    plr.Character:SetAttribute("SkybreakFlightActive", false)
+	                                                end
+	                                                dTier = 0
+	                                            end
+	                                            local lastCombat = math.max(tonumber(rt.LastCombatAt) or 0, tonumber(rt.LastHurt) or 0)
+	                                            local inCombat = (now - lastCombat) < 5.0
+	                                            local curFury = tonumber(rt.FuryMeter) or tonumber(rt.DragonFury) or 100
+	                                            if dTier >= 2 and inCombat then
+	                                                curFury = math.max(0, curFury - 1.8 * dt)
+	                                                rt.FuryMeter = curFury
+	                                                rt.DragonFury = curFury
+	                                                if curFury <= 0 then
+	                                                    local ch = plr.Character
+	                                                    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+	                                                    rt.DragonFormTier = 0
+	                                                    rt.FreeFlightActive = false
+	                                                    rt.FreeFlightUntil = 0
+	                                                    plr:SetAttribute("DragonFormTier", 0)
+	                                                    plr:SetAttribute("FruitTransform", "")
+	                                                    plr:SetAttribute("SkybreakFlightActive", false)
+	                                                    plr:SetAttribute("FreeFlightUntil", 0)
+	                                                    if ch then
+	                                                        ch:SetAttribute("DragonFormTier", 0)
+	                                                        ch:SetAttribute("FruitTransform", "")
+	                                                        ch:SetAttribute("SkybreakFlightActive", false)
+	                                                    end
+	                                                    if combatFXRemote and hrp then
+	                                                        combatFXRemote:FireAllClients({
+	                                                            Kind = "DragonTransform", DragonFormTier = 0, TransformName = "", SubMode = "",
+	                                                            Awakened = true, FuryMeter = 0, Radius = 14, Position = hrp.Position, Actor = plr.UserId,
+	                                                        })
+	                                                    end
+	                                                    if type(G.Notify) == "function" then
+	                                                        G.Notify(plr, "Nộ Khí (Fury) đã cạn — Thu hồi Thái Cổ Long Hoàng, trở về nhân dạng! / Fury depleted — Reverted to Human form!")
+	                                                    end
+	                                                    if type(G.Sync) == "function" then G.Sync(plr) end
+	                                                end
+	                                            elseif not inCombat and curFury < 100 then
+	                                                curFury = math.min(100, curFury + 3.0 * dt)
+	                                                rt.FuryMeter = curFury
+	                                                rt.DragonFury = curFury
+	                                            else
+	                                                rt.FuryMeter = curFury
+	                                                rt.DragonFury = curFury
+	                                            end
+	                                            local roundedFury = math.floor((tonumber(rt.FuryMeter) or 100) + 0.5)
+	                                            plr:SetAttribute("FuryMeter", roundedFury)
+	                                            plr:SetAttribute("DragonFury", roundedFury)
+	                                            if plr.Character then
+	                                                plr.Character:SetAttribute("FuryMeter", roundedFury)
+	                                                plr.Character:SetAttribute("DragonFury", roundedFury)
+	                                            end
 	                                        end
 	                                    end
 	                                end

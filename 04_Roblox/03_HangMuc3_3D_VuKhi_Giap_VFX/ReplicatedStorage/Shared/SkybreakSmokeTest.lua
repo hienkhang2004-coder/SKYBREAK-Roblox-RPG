@@ -437,7 +437,7 @@ local function checkRemotesAndCombatDataAndWorld(ctx)
 
     if okCD and type(CombatData) == "table" then
         local styleCount = type(CombatData.StyleOrder) == "table" and #CombatData.StyleOrder or 0
-        local stylesValid = (styleCount == 5) and type(CombatData.MartialStyles) == "table"
+        local stylesValid = (styleCount >= 5) and type(CombatData.MartialStyles) == "table"
         if stylesValid then
             for _, sid in ipairs(CombatData.StyleOrder) do
                 if not CombatData.MartialStyles[sid] then

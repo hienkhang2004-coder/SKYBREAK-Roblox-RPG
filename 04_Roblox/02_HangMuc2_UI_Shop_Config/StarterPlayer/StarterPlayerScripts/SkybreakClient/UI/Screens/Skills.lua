@@ -4,6 +4,7 @@
 -- Stat Cards (+1 / +10 / +MAX), Top-Right Gold Unspent Points Pill, Bottom Crimson Stat Refund & Gold Rainbow Haki
 -- Buttons, 3-Slot Build Presets, and Right-Column 3-Class Switcher + Mastery Nodes.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -29,8 +30,8 @@ local STAT_CATEGORIES = {
         icon = "Fist",
         titleVi = "CẬN CHIẾN (MELEE)",
         titleEn = "MELEE COMBAT",
-        subVi = "Tăng Năng Lượng EN & Sát thương Võ Thuật",
-        subEn = "Boosts Max Energy & Martial Arts Damage",
+        subVi = "+Sát Thương Võ & +Max Energy",
+        subEn = "+Martial Damage & +Max Energy",
         gradTop = Color3.fromRGB(252, 211, 77),
         gradBottom = Color3.fromRGB(180, 83, 9),
         accent = Color3.fromRGB(252, 211, 77),
@@ -40,8 +41,8 @@ local STAT_CATEGORIES = {
         icon = "Shield",
         titleVi = "PHÒNG THỦ (DEFENSE)",
         titleEn = "DEFENSE & VITALITY",
-        subVi = "Tăng Sinh Lực Max HP & Giảm Sát Thương",
-        subEn = "Boosts Max HP & Damage Reduction",
+        subVi = "+Máu (HP) & +Giáp (DEF)",
+        subEn = "+Max HP & +Armor (DEF)",
         gradTop = Color3.fromRGB(251, 113, 133),
         gradBottom = Color3.fromRGB(225, 29, 72),
         accent = Color3.fromRGB(251, 113, 133),
@@ -51,8 +52,8 @@ local STAT_CATEGORIES = {
         icon = "Sword",
         titleVi = "KIẾM THUẬT (SWORD)",
         titleEn = "SWORD MASTERY",
-        subVi = "Tăng Sát thương Vũ Khí Cận Chiến Slot 3",
-        subEn = "Boosts Slot 3 3D Blade & Dual Sword Damage",
+        subVi = "+Sát Thương Kiếm (Slot 3)",
+        subEn = "+Sword Damage (Slot 3)",
         gradTop = Color3.fromRGB(96, 165, 250),
         gradBottom = Color3.fromRGB(29, 78, 216),
         accent = Color3.fromRGB(96, 165, 250),
@@ -62,8 +63,8 @@ local STAT_CATEGORIES = {
         icon = "Gun",
         titleVi = "PHÁP KHÍ SÚNG (GUN)",
         titleEn = "ARCANE GUNNERY",
-        subVi = "Tăng Sát thương Súng & Pháp Khí Slot 4",
-        subEn = "Boosts Slot 4 Arcane Firearms & Rifles",
+        subVi = "+Sát Thương Súng (Slot 4)",
+        subEn = "+Gun Damage (Slot 4)",
         gradTop = Color3.fromRGB(56, 189, 248),
         gradBottom = Color3.fromRGB(2, 132, 199),
         accent = Color3.fromRGB(56, 189, 248),
@@ -71,10 +72,10 @@ local STAT_CATEGORIES = {
     {
         key = "Fruit",
         icon = "Fruit",
-        titleVi = "LÕI AETHER (CORE)",
+        titleVi = "LÕI AETHER (FRUIT)",
         titleEn = "AETHER CORE",
-        subVi = "Tăng Sát thương toàn bộ 5 chiêu Lõi Aether",
-        subEn = "Boosts all 5 [Z][X][C][V][F] 3D Aether Core Skills",
+        subVi = "+Sát Thương Lõi Aether (Slot 2)",
+        subEn = "+Aether Core Damage (Slot 2)",
         gradTop = Color3.fromRGB(244, 63, 94),
         gradBottom = Color3.fromRGB(147, 51, 234),
         accent = Color3.fromRGB(232, 121, 249),
@@ -100,13 +101,68 @@ local PRESET_DEFS = {
 }
 
 local HAKI_COLORS = {
-    { Id = "Gold", Label = "GOLD", Color = Color3.fromRGB(244, 193, 78) },
-    { Id = "Crimson", Label = "RED", Color = Color3.fromRGB(244, 63, 94) },
-    { Id = "Cyan", Label = "CYAN", Color = Color3.fromRGB(56, 189, 248) },
-    { Id = "Violet", Label = "VOID", Color = Color3.fromRGB(168, 85, 247) },
-    { Id = "Emerald", Label = "JADE", Color = Color3.fromRGB(52, 211, 153) },
-    { Id = "Rose", Label = "ROSE", Color = Color3.fromRGB(251, 113, 133) },
+    { Id = "Gold", ServerIds = { "solar_gold" }, Label = "GOLD", Color = Color3.fromRGB(244, 193, 78) },
+    { Id = "Crimson", ServerIds = { "crimson_conqueror" }, Label = "RED", Color = Color3.fromRGB(244, 63, 94) },
+    { Id = "Cyan", ServerIds = { "glacial_cyan", "cryo_cyan" }, Label = "CYAN", Color = Color3.fromRGB(56, 189, 248) },
+    { Id = "Violet", ServerIds = { "abyssal_violet", "void_violet" }, Label = "VOID", Color = Color3.fromRGB(168, 85, 247) },
+    { Id = "Emerald", ServerIds = { "verdant_emerald", "emerald_jade" }, Label = "JADE", Color = Color3.fromRGB(52, 211, 153) },
+    { Id = "Rainbow", ServerIds = { "prismatic_aether", "pure_white", "sakura_pink" }, Label = "PRISM", Color = Color3.fromRGB(251, 113, 133) },
 }
+
+local HAKI_CANONICAL_FALLBACK = {
+    Gold = "solar_gold",
+    Crimson = "crimson_conqueror",
+    Cyan = "glacial_cyan",
+    Violet = "abyssal_violet",
+    Emerald = "verdant_emerald",
+    Rose = "prismatic_aether",
+    Rainbow = "prismatic_aether",
+}
+
+local SharedCombatData = nil
+local CoreSharedConfig = nil
+pcall(function()
+    local sh = ReplicatedStorage:FindFirstChild("Shared")
+    local mod = sh and sh:FindFirstChild("SkybreakCombatData")
+    if mod and mod:IsA("ModuleScript") then
+        SharedCombatData = require(mod)
+    end
+    local cfgMod = sh and sh:FindFirstChild("Config")
+    if cfgMod and cfgMod:IsA("ModuleScript") then
+        CoreSharedConfig = require(cfgMod)
+    end
+end)
+
+local function formatStatRefundButtonLabel(snap)
+    local fState = (snap and snap.fruits) or {}
+    local tokens = math.max(0, math.floor(tonumber((snap and snap.StatRefundTokens) or fState.statRefundTokens) or 0))
+    local costShards = math.max(1, math.floor(tonumber(CoreSharedConfig and CoreSharedConfig.StatRefundCostShards) or 150))
+    if tokens > 0 then
+        return I18n.Pick(
+            string.format("TẨY ĐIỂM (VÉ MIỄN PHÍ x%d)", tokens),
+            string.format("REFUND STATS (FREE TOKEN x%d)", tokens)
+        ), tokens, costShards
+    end
+    return I18n.Pick(
+        string.format("TẨY TOÀN BỘ ĐIỂM (%d SHARDS)", costShards),
+        string.format("REFUND ALL STATS (%d SHARDS)", costShards)
+    ), 0, costShards
+end
+
+local function resolveHakiServerColorId(hc)
+    if not hc then
+        return "crimson_conqueror"
+    end
+    local catalog = SharedCombatData and SharedCombatData.HakiColors
+    if type(catalog) == "table" and type(hc.ServerIds) == "table" then
+        for _, cand in ipairs(hc.ServerIds) do
+            if catalog[cand] ~= nil then
+                return cand
+            end
+        end
+    end
+    return HAKI_CANONICAL_FALLBACK[hc.Id] or (hc.ServerIds and hc.ServerIds[1]) or tostring(hc.Id)
+end
 
 local Skills = {
     Refs = {},
@@ -125,27 +181,141 @@ local function fireEquipRemote(payload)
 end
 
 local function fireUIRequest(actionName, payload)
+    local sharedRemotes = Shared:FindFirstChild("Remotes")
+    if sharedRemotes and sharedRemotes:FindFirstChild("UIRequest") then
+        sharedRemotes.UIRequest:FireServer(actionName, payload or {})
+        return
+    end
     local remotes = ReplicatedStorage:FindFirstChild("Remotes")
     if remotes and remotes:FindFirstChild("UIRequest") then
         remotes.UIRequest:FireServer(actionName, payload or {})
+    elseif sharedRemotes and sharedRemotes:FindFirstChild("UICommand") then
+        sharedRemotes.UICommand:FireServer(actionName, payload or {})
     end
+end
+
+local function computeLiveBranchStats(snap)
+    local s = (snap and snap.stats) or {}
+    local v = (snap and snap.vitals) or {}
+    local lv = math.max(1, tonumber(snap and snap.player and snap.player.level) or 1)
+    local alloc = (snap and snap.fruits and snap.fruits.statAlloc) or {}
+    local mPts = math.max(0, tonumber(alloc.Melee) or 1)
+    local dPts = math.max(0, tonumber(alloc.Defense) or 1)
+    local swPts = math.max(0, tonumber(alloc.Sword) or 1)
+    local gPts = math.max(0, tonumber(alloc.Gun) or 1)
+    local fPts = math.max(0, tonumber(alloc.Fruit) or 1)
+    local baseB = math.max(12, math.floor(12 + 0.07 * (lv - 1)))
+
+    local meleeAtk = math.max(1, math.floor(tonumber(s.meleeAtk) or (baseB + mPts * 0.22)))
+    local swordAtk = math.max(1, math.floor(tonumber(s.swordAtk) or (baseB + swPts * 0.22)))
+    local gunAtk = math.max(1, math.floor(tonumber(s.gunAtk) or (baseB + gPts * 0.22)))
+    local fruitAtk = math.max(1, math.floor(tonumber(s.fruitAtk) or (baseB + fPts * 0.22)))
+    local maxEn = math.max(100, math.floor(tonumber(s.maxEnergy or v.maxEnergy) or (100 + mPts * 0.45 + (lv - 1) * 0.04)))
+    local maxHp = math.max(100, math.floor(tonumber(s.hp or v.maxHp) or (100 + dPts * 4.5)))
+    local defVal = math.max(1, math.floor(tonumber(s.def) or (10 + dPts * 0.35)))
+    return {
+        MeleeATK = meleeAtk,
+        SwordATK = swordAtk,
+        GunATK = gunAtk,
+        FruitATK = fruitAtk,
+        MaxEnergy = maxEn,
+        HP = maxHp,
+        DEF = defVal,
+    }
+end
+
+local function formatBranchPreviewLabel(statKey, curVal, bStats)
+    local capSuffix = (curVal >= MAX_STAT) and " [MAX]" or ""
+    if statKey == "Melee" then
+        return string.format(
+            "LV. %d/%d%s • %s %s | EN %s",
+            curVal,
+            MAX_STAT,
+            capSuffix,
+            I18n.Pick("Võ", "Melee"),
+            UIFactory.FormatNumber(bStats.MeleeATK),
+            UIFactory.FormatNumber(bStats.MaxEnergy)
+        )
+    elseif statKey == "Defense" then
+        return string.format("LV. %d/%d%s • HP %s | DEF %s", curVal, MAX_STAT, capSuffix, UIFactory.FormatNumber(bStats.HP), UIFactory.FormatNumber(bStats.DEF))
+    elseif statKey == "Sword" then
+        return string.format("LV. %d/%d%s • %s %s", curVal, MAX_STAT, capSuffix, I18n.Pick("Kiếm", "Sword"), UIFactory.FormatNumber(bStats.SwordATK))
+    elseif statKey == "Gun" then
+        return string.format("LV. %d/%d%s • %s %s", curVal, MAX_STAT, capSuffix, I18n.Pick("Súng", "Gun"), UIFactory.FormatNumber(bStats.GunATK))
+    else
+        return string.format("LV. %d/%d%s • %s %s", curVal, MAX_STAT, capSuffix, I18n.Pick("Lõi", "Core"), UIFactory.FormatNumber(bStats.FruitATK))
+    end
+end
+
+local function formatRaceEvolutionInfo(snap)
+    local fState = (snap and snap.fruits) or {}
+    local raceName = tostring(fState.race or "Skyborn")
+    local v4Unlocked = (fState.raceV4Unlocked == true)
+    local rTier = math.clamp(math.floor(tonumber(fState.raceTier) or (v4Unlocked and 4 or 1)), 1, 4)
+    if v4Unlocked and rTier < 4 then
+        rTier = 4
+    end
+    local headerTxt = I18n.Pick(
+        string.format("HUYẾT MẠCH TỘC: %s • V%d", UIFactory.Upper(raceName), rTier),
+        string.format("LINEAGE: %s • V%d", UIFactory.Upper(raceName), rTier)
+    )
+    local reqTxt, btnTxt, canEvolve = "", "", false
+    local pLv = tonumber(snap and snap.player and snap.player.level) or 1
+    local curGold = tonumber((snap and snap.currency and snap.currency.gold) or 0) or 0
+    local curShards = tonumber((snap and snap.currency and snap.currency.coreShards) or 0) or 0
+
+    if rTier == 1 then
+        reqTxt = I18n.Pick(
+            "V1 -> V2: Yêu cầu Lv.350+ & 250,000 Gold (+6% ATK, +8% DEF, +8% Tốc Chạy)",
+            "V1 -> V2: Req Lv.350+ & 250,000 Gold (+6% ATK, +8% DEF, +8% Speed)"
+        )
+        btnTxt = I18n.Pick("TIẾN HÓA V1 -> V2", "EVOLVE V1 -> V2")
+        canEvolve = (pLv >= 350 and curGold >= 250000)
+    elseif rTier == 2 then
+        reqTxt = I18n.Pick(
+            "V2 -> V3: Yêu cầu Lv.850+, 750,000 Gold & 500 Shards (+12% ATK, +15% DEF, +14% Tốc Chạy)",
+            "V2 -> V3: Req Lv.850+, 750K Gold & 500 Shards (+12% ATK, +15% DEF, +14% Speed)"
+        )
+        btnTxt = I18n.Pick("TIẾN HÓA V2 -> V3", "EVOLVE V2 -> V3")
+        canEvolve = (pLv >= 850 and curGold >= 750000 and curShards >= 500)
+    elseif rTier == 3 then
+        reqTxt = I18n.Pick(
+            "Đã đạt Tộc V3! Đạt Lv.1900+ & đến Đền Thăng Hoa (Sea 3) để mở Khảo Thí Tộc V4.",
+            "Lineage V3 active! Reach Lv.1900+ & visit Temple of the Core (Sea 3) for V4 Trial."
+        )
+        btnTxt = I18n.Pick("ĐÃ ĐẠT TỘC V3", "V3 UNLOCKED")
+        canEvolve = false
+    else
+        reqTxt = I18n.Pick(
+            "Đã thức tỉnh Cảnh Giới Huyết Mạch Tộc V4 Tối Thượng (+30% Toàn Chỉ Số khi bật [Y])!",
+            "Supreme Lineage V4 Awakened (+30% All Stats while [Y] Ascension is active)!"
+        )
+        btnTxt = I18n.Pick("TỘC V4 TỐI THƯỢNG", "MAX TIER V4")
+        canEvolve = false
+    end
+    return headerTxt, reqTxt, btnTxt, rTier, canEvolve
 end
 
 local function applyHakiAuraColor(hc)
     if not hc then
         return
     end
+    local mappedId = resolveHakiServerColorId(hc)
     local remotes = ReplicatedStorage:FindFirstChild("Remotes")
     if remotes and remotes:FindFirstChild("UIRequest") then
-        remotes.UIRequest:FireServer("SetHakiColor", { colorId = hc.Id })
+        remotes.UIRequest:FireServer("EquipHakiColor", { colorId = mappedId })
     elseif remotes and remotes:FindFirstChild("AppearanceRequest") then
-        remotes.AppearanceRequest:FireServer({ action = "SetHakiColor", colorId = hc.Id })
+        remotes.AppearanceRequest:FireServer({ action = "EquipHakiColor", colorId = mappedId })
     end
-    Store.ShowToast(
-        I18n.Pick("Đã kích hoạt Sắc Màu Bá Ý: ", "Activated Sovereign Will Aura: ") .. hc.Id .. " (" .. hc.Label .. ")",
-        "success",
-        2.0
-    )
+    local snap = Store.GetSnapshot()
+    local unlockedMap = snap and snap.unlockedHakiColors
+    if snap and snap.isDemoMode or (type(unlockedMap) == "table" and unlockedMap[mappedId] == true) or mappedId == "crimson_conqueror" then
+        Store.ShowToast(
+            I18n.Pick("Đã kích hoạt Sắc Màu Bá Ý: ", "Activated Sovereign Will Aura: ") .. hc.Label,
+            "success",
+            2.0
+        )
+    end
 end
 
 local function allocateStatAmount(statKey, reqAmount)
@@ -300,6 +470,87 @@ local function saveStatPresetSlot(slotIdx)
     )
 end
 
+local ARSENAL_SLOT_SPECS = {
+    { slot = 1, icon = "Fist", keys = { "Z", "X", "C" }, accent = Color3.fromRGB(252, 211, 77) },
+    { slot = 2, icon = "Fruit", keys = { "Z", "X", "C", "V", "F" }, accent = Color3.fromRGB(232, 121, 249) },
+    { slot = 3, icon = "Sword", keys = { "Z", "X" }, accent = Color3.fromRGB(96, 165, 250) },
+    { slot = 4, icon = "Gun", keys = { "Z", "X" }, accent = Color3.fromRGB(56, 189, 248) },
+}
+
+local function buildArsenalSlotDisplay(slotIdx, snap)
+    local p = Players.LocalPlayer
+    local ch = p and p.Character
+    local fState = (snap and snap.fruits) or {}
+    local eqState = (snap and snap.equipped) or {}
+    local rawId = ""
+
+    if slotIdx == 1 then
+        rawId = tostring(
+            (p and (p:GetAttribute("FightingStyle") or p:GetAttribute("EquippedStyle")))
+            or fState.fightingStyle
+            or (snap and snap.equippedStyle)
+            or "skyborn_combat"
+        )
+        rawId = I18n.ResolveCanonicalStyleId(rawId)
+    elseif slotIdx == 2 then
+        rawId = tostring((p and p:GetAttribute("EquippedFruit")) or fState.equippedFruit or "")
+        rawId = I18n.ResolveCanonicalCoreId(rawId)
+    elseif slotIdx == 3 then
+        rawId = tostring((p and p:GetAttribute("EquippedSword")) or eqState.Weapon or "starter_sword")
+        if rawId == "" then
+            rawId = "starter_sword"
+        end
+    else
+        rawId = tostring(
+            (p and p:GetAttribute("EquippedGun"))
+            or fState.equippedGun
+            or eqState.EquippedGun
+            or eqState.Gun
+            or eqState.Offhand
+            or "aether_flintlock"
+        )
+        if rawId == "" then
+            rawId = "aether_flintlock"
+        end
+    end
+
+    local ctx = {
+        Awakened = (fState.awakened == true) or (p and p:GetAttribute("FruitAwakened") == true) or false,
+        DragonFormTier = tonumber((ch and ch:GetAttribute("DragonFormTier")) or (p and p:GetAttribute("DragonFormTier")) or (snap and snap.raw and snap.raw.DragonFormTier)) or 0,
+        FruitTransform = tostring((ch and ch:GetAttribute("FruitTransform")) or (p and p:GetAttribute("FruitTransform")) or ""),
+    }
+
+    local slotLabel = I18n.T("hud.slot." .. tostring(slotIdx))
+    if slotIdx == 2 and rawId == "" then
+        return {
+            title = string.format("[%d] %s: %s", slotIdx, slotLabel, I18n.Pick("Chưa Trang Bị", "Unequipped")),
+            badge = I18n.Pick("TRỐNG", "EMPTY"),
+            movesText = I18n.Pick("Quay hoặc ăn Lõi Aether [G] để mở khóa cơ chế [Z][X][C][V][F].", "Roll or equip an Aether Core [G] to unlock [Z][X][C][V][F] mechanics."),
+        }
+    end
+
+    local itemName = I18n.GetItemDisplayName(rawId, rawId)
+    local slotArch = I18n.GetSlotArchetypeMeta(slotIdx, rawId, ctx)
+    local specDef = ARSENAL_SLOT_SPECS[slotIdx]
+    local moveParts = {}
+
+    for _, k in ipairs(specDef.keys) do
+        local mMeta = I18n.GetSkillMechanicsMeta(slotIdx, rawId, k, ctx)
+        local tagList = {}
+        for tIdx = 1, math.min(2, #mMeta.tags) do
+            table.insert(tagList, "[" .. mMeta.tags[tIdx] .. "]")
+        end
+        local tagJoined = (#tagList > 0) and (" " .. table.concat(tagList, " ")) or ""
+        table.insert(moveParts, string.format("[%s] %s%s", k, mMeta.archetypeLabel, tagJoined))
+    end
+
+    return {
+        title = string.format("[%d] %s: %s", slotIdx, slotLabel, itemName),
+        badge = UIFactory.Upper(slotArch.archetypeLabel),
+        movesText = table.concat(moveParts, "  •  "),
+    }
+end
+
 function Skills.Build(parent)
     Skills.Cleanup()
     local colors = Theme.Colors
@@ -322,6 +573,7 @@ function Skills.Build(parent)
     local refs = {
         Root = root,
         StatRows = {},
+        ArsenalCards = {},
     }
     Skills.Refs = refs
 
@@ -393,13 +645,14 @@ function Skills.Build(parent)
     })
 
     -- 5 Horizontal Glossy Segmented Stat Cards
+    local liveBranchStats = computeLiveBranchStats(snap)
     local barsContainer = UIFactory.Create("Frame", statsPanel, {
         Name = "FiveStatCardsContainer",
-        Position = UDim2.fromOffset(14, 44),
-        Size = UDim2.new(1, -28, 0, 378),
+        Position = UDim2.fromOffset(14, 42),
+        Size = UDim2.new(1, -28, 0, 344),
         BackgroundTransparency = 1,
     })
-    UIFactory.ListLayout(barsContainer, Enum.FillDirection.Vertical, 7)
+    UIFactory.ListLayout(barsContainer, Enum.FillDirection.Vertical, 6)
 
     for idx, st in ipairs(STAT_CATEGORIES) do
         local curVal = math.clamp(tonumber(statAlloc[st.key]) or 1, 1, MAX_STAT)
@@ -407,7 +660,7 @@ function Skills.Build(parent)
 
         local sCard = UIFactory.Create("Frame", barsContainer, {
             Name = "StatCard_" .. st.key,
-            Size = UDim2.new(1, 0, 0, 70),
+            Size = UDim2.new(1, 0, 0, 64),
             BackgroundColor3 = Color3.fromRGB(11, 17, 32),
             BorderSizePixel = 0,
             LayoutOrder = idx,
@@ -418,7 +671,7 @@ function Skills.Build(parent)
         -- Left: Icon Crest + Bold Uppercase Title & Descriptive Subtitle
         local iconBox = UIFactory.Create("Frame", sCard, {
             Name = "StatCrest",
-            Position = UDim2.fromOffset(10, 15),
+            Position = UDim2.fromOffset(10, 12),
             Size = UDim2.fromOffset(40, 40),
             BackgroundColor3 = Color3.fromRGB(16, 24, 44),
             BorderSizePixel = 0,
@@ -430,9 +683,9 @@ function Skills.Build(parent)
         UIFactory.Label(sCard, {
             Name = "StatTitle",
             Text = I18n.GetLanguage() == "en" and st.titleEn or st.titleVi,
-            Position = UDim2.fromOffset(58, 12),
-            Size = UDim2.fromOffset(192, 22),
-            TextSize = 13,
+            Position = UDim2.fromOffset(58, 9),
+            Size = UDim2.fromOffset(192, 20),
+            TextSize = 12,
             TextColor = st.accent,
             Bold = true,
             Truncate = Enum.TextTruncate.AtEnd,
@@ -441,18 +694,18 @@ function Skills.Build(parent)
         UIFactory.Label(sCard, {
             Name = "StatSub",
             Text = I18n.GetLanguage() == "en" and st.subEn or st.subVi,
-            Position = UDim2.fromOffset(58, 34),
+            Position = UDim2.fromOffset(58, 30),
             Size = UDim2.fromOffset(192, 24),
             TextSize = 10,
             TextColor = colors.TEXT_SECONDARY,
             Wrapped = true,
         })
 
-        -- Center: Glossy Segmented Progress Bar with Centered Bold "LV. XXX / 2550"
+        -- Center: Glossy Segmented Progress Bar with Centered Bold Live Branch Preview
         local barTrack = UIFactory.Create("Frame", sCard, {
             Name = "SegmentedTrack",
-            Position = UDim2.fromOffset(256, 19),
-            Size = UDim2.new(1, -468, 0, 32),
+            Position = UDim2.fromOffset(256, 17),
+            Size = UDim2.new(1, -468, 0, 30),
             BackgroundColor3 = Color3.fromRGB(6, 10, 20),
             BorderSizePixel = 0,
             ClipsDescendants = true,
@@ -502,12 +755,14 @@ function Skills.Build(parent)
 
         local valLbl = UIFactory.Label(barTrack, {
             Name = "LevelValueText",
-            Text = string.format("LV. %d / %d%s", curVal, MAX_STAT, curVal >= MAX_STAT and " [MAX]" or ""),
+            Text = formatBranchPreviewLabel(st.key, curVal, liveBranchStats),
             Size = UDim2.fromScale(1, 1),
-            TextSize = 12,
+            TextSize = 11,
             TextColor = Color3.fromRGB(255, 255, 255),
             Bold = true,
             XAlign = Enum.TextXAlignment.Center,
+            Truncate = Enum.TextTruncate.AtEnd,
+            Wrapped = false,
             ZIndex = 6,
         })
         valLbl.TextStrokeColor3 = Color3.fromRGB(4, 8, 18)
@@ -567,14 +822,48 @@ function Skills.Build(parent)
         }
     end
 
+    -- Live Separated 5-Branch Combat Breakdown Strip (MeleeATK / SwordATK / GunATK / FruitATK / MaxEnergy)
+    local breakdownBox = UIFactory.Create("Frame", statsPanel, {
+        Name = "LiveBranchBreakdownBox",
+        Position = UDim2.fromOffset(14, 392),
+        Size = UDim2.new(1, -28, 0, 30),
+        BackgroundColor3 = Color3.fromRGB(9, 14, 27),
+        BorderSizePixel = 0,
+    })
+    UIFactory.Corner(breakdownBox, Theme.Radius.Small)
+    UIFactory.Stroke(breakdownBox, colors.ACCENT_SAPPHIRE, 1.1, 0.28)
+
+    refs.BranchBreakdownLabel = UIFactory.Label(breakdownBox, {
+        Name = "BreakdownText",
+        Text = string.format(
+            "MeleeATK: %s  |  SwordATK: %s  |  GunATK: %s  |  FruitATK: %s  |  MaxEnergy: %s  |  HP: %s • DEF: %s",
+            UIFactory.FormatNumber(liveBranchStats.MeleeATK),
+            UIFactory.FormatNumber(liveBranchStats.SwordATK),
+            UIFactory.FormatNumber(liveBranchStats.GunATK),
+            UIFactory.FormatNumber(liveBranchStats.FruitATK),
+            UIFactory.FormatNumber(liveBranchStats.MaxEnergy),
+            UIFactory.FormatNumber(liveBranchStats.HP),
+            UIFactory.FormatNumber(liveBranchStats.DEF)
+        ),
+        Position = UDim2.fromOffset(10, 0),
+        Size = UDim2.new(1, -20, 1, 0),
+        TextSize = 11,
+        TextColor = Color3.fromRGB(224, 242, 254),
+        Bold = true,
+        XAlign = Enum.TextXAlignment.Center,
+        Truncate = Enum.TextTruncate.AtEnd,
+        Wrapped = false,
+    })
+    UIFactory.TextSizeConstraint(refs.BranchBreakdownLabel, 8, 11)
+
     -- 3-Slot Build Presets Strip + 6-Color Haki Aura Swatches
     local presetStrip = UIFactory.Create("Frame", statsPanel, {
         Name = "StatPresetStrip",
-        Position = UDim2.fromOffset(14, 430),
-        Size = UDim2.new(1, -28, 0, 56),
+        Position = UDim2.fromOffset(14, 427),
+        Size = UDim2.new(1, -28, 0, 50),
         BackgroundTransparency = 1,
     })
-    UIFactory.GridLayout(presetStrip, UDim2.new(0.333, -6, 0, 54), UDim2.fromOffset(8, 4))
+    UIFactory.GridLayout(presetStrip, UDim2.new(0.333, -6, 0, 48), UDim2.fromOffset(8, 4))
 
     for pIdx = 1, 3 do
         local pDef = PRESET_DEFS[pIdx]
@@ -631,8 +920,8 @@ function Skills.Build(parent)
     -- 6-Color Haki Swatch Strip (plus Studio Level Boost mini-pills in Studio only)
     local swatchRow = UIFactory.Create("Frame", statsPanel, {
         Name = "HakiSwatchesAndTools",
-        Position = UDim2.fromOffset(14, 494),
-        Size = UDim2.new(1, -28, 0, 28),
+        Position = UDim2.fromOffset(14, 482),
+        Size = UDim2.new(1, -28, 0, 26),
         BackgroundTransparency = 1,
     })
     UIFactory.ListLayout(swatchRow, Enum.FillDirection.Horizontal, 6)
@@ -647,7 +936,7 @@ function Skills.Build(parent)
             BackgroundColor3 = hc.Color,
             BackgroundTransparency = 0.14,
             BorderSizePixel = 0,
-            Text = "Ý CHÍ: " .. hc.Label,
+            Text = I18n.Pick("Ý CHÍ: ", "WILL: ") .. hc.Label,
             Font = Theme.Fonts.Bold,
             TextSize = 9,
             TextColor3 = Color3.fromRGB(10, 14, 24),
@@ -682,19 +971,77 @@ function Skills.Build(parent)
         end
     end
 
-    -- Bottom Row: Crimson TẨY TOÀN BỘ ĐIỂM CHỈ SỐ + Gold ĐỔI MÀU BÁ Ý (RAINBOW SAVIOUR)
+    -- Race Lineage Evolution Card (V1 -> V2 -> V3 -> V4) firing UIRequest:FireServer("EvolveRace", {})
+    local initRaceHeader, initRaceReq, initRaceBtnTxt, initRaceTier, initCanEvolve = formatRaceEvolutionInfo(snap)
+    local raceEvoCard = UIFactory.Create("Frame", statsPanel, {
+        Name = "RaceEvolutionCard",
+        Position = UDim2.fromOffset(14, 514),
+        Size = UDim2.new(1, -28, 0, 56),
+        BackgroundColor3 = Color3.fromRGB(12, 18, 36),
+        BorderSizePixel = 0,
+    })
+    UIFactory.Corner(raceEvoCard, Theme.Radius.Medium)
+    local raceEvoStroke = UIFactory.Stroke(
+        raceEvoCard,
+        initRaceTier >= 3 and colors.ACCENT_GOLD_BRIGHT or Color3.fromRGB(192, 132, 252),
+        1.3,
+        0.18
+    )
+    refs.RaceEvoStroke = raceEvoStroke
+
+    UIFactory.Icon(raceEvoCard, "Wing", UDim2.fromOffset(12, 15), 26, colors.ACCENT_GOLD_BRIGHT)
+
+    refs.RaceHeaderLabel = UIFactory.Label(raceEvoCard, {
+        Name = "RaceHeaderText",
+        Text = initRaceHeader,
+        Position = UDim2.fromOffset(46, 6),
+        Size = UDim2.new(1, -242, 0, 20),
+        TextSize = 12,
+        TextColor = colors.ACCENT_GOLD_BRIGHT,
+        Bold = true,
+        Truncate = Enum.TextTruncate.AtEnd,
+    })
+
+    refs.RaceReqLabel = UIFactory.Label(raceEvoCard, {
+        Name = "RaceReqText",
+        Text = initRaceReq,
+        Position = UDim2.fromOffset(46, 26),
+        Size = UDim2.new(1, -242, 0, 24),
+        TextSize = 10,
+        TextColor = colors.TEXT_SECONDARY,
+        Wrapped = true,
+    })
+
+    local _, evolveRaceBtnApi = PremiumButton.Create(raceEvoCard, {
+        name = "EvolveRaceButton",
+        icon = "Sparkle",
+        label = initRaceBtnTxt,
+        variant = initCanEvolve and "gold" or "primary",
+        anchorPoint = Vector2.new(1, 0.5),
+        position = UDim2.new(1, -10, 0.5, 0),
+        size = UDim2.fromOffset(180, 36),
+        textSize = 11,
+        minTextSize = 8,
+        onActivated = function()
+            fireUIRequest("EvolveRace", {})
+        end,
+    })
+    refs.EvolveRaceBtnApi = evolveRaceBtnApi
+
+    -- Bottom Row: Crimson TẨY TOÀN BỘ ĐIỂM CHỈ SỐ + Gold ĐỔI MÀU BÁ Ý (HÀO QUANG THẤT SẮC)
     local bottomBar = UIFactory.Create("Frame", statsPanel, {
         Name = "BottomActionRow",
         AnchorPoint = Vector2.new(0, 1),
-        Position = UDim2.new(0, 14, 1, -12),
-        Size = UDim2.new(1, -28, 0, 46),
+        Position = UDim2.new(0, 14, 1, -10),
+        Size = UDim2.new(1, -28, 0, 42),
         BackgroundTransparency = 1,
     })
 
-    PremiumButton.Create(bottomBar, {
+    local initRefundLbl = formatStatRefundButtonLabel(snap)
+    local _, refundStatsBtnApi = PremiumButton.Create(bottomBar, {
         name = "RefundAllStatsBtn",
         icon = "Flame",
-        label = I18n.Pick("TẨY TOÀN BỘ ĐIỂM CHỈ SỐ", "REFUND ALL STAT POINTS"),
+        label = initRefundLbl,
         variant = "danger",
         position = UDim2.fromOffset(0, 0),
         size = UDim2.new(0.45, -5, 1, 0),
@@ -704,11 +1051,12 @@ function Skills.Build(parent)
             requestFullStatRefund()
         end,
     })
+    refs.RefundStatsBtnApi = refundStatsBtnApi
 
     PremiumButton.Create(bottomBar, {
         name = "CycleRainbowHakiBtn",
         icon = "Crown",
-        label = I18n.Pick("ĐỔI MÀU BÁ Ý (RAINBOW SAVIOUR)", "CYCLE SOVEREIGN WILL (RAINBOW SAVIOUR)"),
+        label = I18n.Pick("ĐỔI MÀU BÁ Ý (HÀO QUANG THẤT SẮC)", "CYCLE SOVEREIGN WILL (PRISMATIC AETHER)"),
         variant = "gold",
         position = UDim2.new(0.45, 5, 0, 0),
         size = UDim2.new(0.55, -5, 1, 0),
@@ -888,6 +1236,113 @@ function Skills.Build(parent)
     })
     UIFactory.ListLayout(scroll, Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top)
 
+    -- Stage 1: Equipped 4-Slot Arsenal Archetypes & Mechanical Tag Breakdown (Slots [1]-[4])
+    local arsenalHeaderBox = UIFactory.Create("Frame", scroll, {
+        Name = "ArsenalSectionHeader",
+        Size = UDim2.new(1, -6, 0, 24),
+        BackgroundColor3 = Color3.fromRGB(16, 26, 48),
+        BorderSizePixel = 0,
+        LayoutOrder = 1,
+    })
+    UIFactory.Corner(arsenalHeaderBox, 6)
+    UIFactory.Stroke(arsenalHeaderBox, colors.ACCENT_GOLD_BRIGHT, 1.1, 0.28)
+    UIFactory.Label(arsenalHeaderBox, {
+        Name = "ArsenalHeaderLabel",
+        Text = I18n.T("skills.arsenal_header"),
+        Position = UDim2.fromOffset(10, 0),
+        Size = UDim2.new(1, -20, 1, 0),
+        TextSize = 10,
+        TextColor = colors.ACCENT_GOLD_BRIGHT,
+        Bold = true,
+        Truncate = Enum.TextTruncate.AtEnd,
+    })
+
+    for _, sSpec in ipairs(ARSENAL_SLOT_SPECS) do
+        local info = buildArsenalSlotDisplay(sSpec.slot, snap)
+        local aCard = UIFactory.Create("Frame", scroll, {
+            Name = "ArsenalSlot_" .. tostring(sSpec.slot),
+            Size = UDim2.new(1, -6, 0, (sSpec.slot == 2) and 74 or 62),
+            BackgroundColor3 = Color3.fromRGB(12, 19, 36),
+            BackgroundTransparency = 0.05,
+            BorderSizePixel = 0,
+            LayoutOrder = 1 + sSpec.slot,
+        })
+        UIFactory.Corner(aCard, Theme.Radius.Medium)
+        UIFactory.Stroke(aCard, sSpec.accent, 1.2, 0.28)
+
+        UIFactory.Icon(aCard, sSpec.icon, UDim2.fromOffset(10, 10), 22, sSpec.accent)
+
+        local titleLbl = UIFactory.Label(aCard, {
+            Name = "SlotTitle",
+            Text = info.title,
+            Position = UDim2.fromOffset(38, 6),
+            Size = UDim2.new(1, -166, 0, 18),
+            TextSize = 11,
+            TextColor = colors.TEXT_PRIMARY,
+            Bold = true,
+            Truncate = Enum.TextTruncate.AtEnd,
+        })
+
+        local archPill = UIFactory.Create("Frame", aCard, {
+            Name = "ArchetypeBadgePill",
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -8, 0, 5),
+            Size = UDim2.fromOffset(120, 18),
+            BackgroundColor3 = Color3.fromRGB(18, 28, 52),
+            BorderSizePixel = 0,
+        })
+        UIFactory.PillCorner(archPill)
+        UIFactory.Stroke(archPill, sSpec.accent, 1.1, 0.2)
+
+        local archBadgeLbl = UIFactory.Label(archPill, {
+            Name = "ArchetypeText",
+            Text = info.badge,
+            Position = UDim2.fromOffset(6, 0),
+            Size = UDim2.new(1, -12, 1, 0),
+            TextSize = 8,
+            TextColor = sSpec.accent,
+            Bold = true,
+            XAlign = Enum.TextXAlignment.Center,
+            Truncate = Enum.TextTruncate.AtEnd,
+        })
+
+        local movesLbl = UIFactory.Label(aCard, {
+            Name = "MovesTagSummary",
+            Text = info.movesText,
+            Position = UDim2.fromOffset(38, 25),
+            Size = UDim2.new(1, -46, 1, -29),
+            TextSize = 9,
+            TextColor = colors.TEXT_SECONDARY,
+            YAlign = Enum.TextYAlignment.Top,
+            Wrapped = true,
+        })
+
+        refs.ArsenalCards[sSpec.slot] = {
+            TitleLabel = titleLbl,
+            BadgeLabel = archBadgeLbl,
+            MovesLabel = movesLbl,
+        }
+    end
+
+    local classTreeDivider = UIFactory.Create("Frame", scroll, {
+        Name = "ClassTreeSectionHeader",
+        Size = UDim2.new(1, -6, 0, 22),
+        BackgroundColor3 = Color3.fromRGB(14, 22, 42),
+        BorderSizePixel = 0,
+        LayoutOrder = 9,
+    })
+    UIFactory.Corner(classTreeDivider, 6)
+    UIFactory.Stroke(classTreeDivider, classCfg.AccentColor or colors.ACCENT_SAPPHIRE, 1, 0.35)
+    UIFactory.Label(classTreeDivider, {
+        Name = "ClassTreeHeaderLabel",
+        Text = I18n.Pick("KỸ NĂNG HỆ PHÁI THĂNG HOA ([Q] [E] [R])", "CLASS ASCENSION SKILLS ([Q] [E] [R])"),
+        Position = UDim2.fromOffset(10, 0),
+        Size = UDim2.new(1, -20, 1, 0),
+        TextSize = 10,
+        TextColor = classCfg.AccentColor or colors.ACCENT_SAPPHIRE,
+        Bold = true,
+    })
+
     local masByKey = { Z = 1, X = 50, C = 100, V = 200, F = 1, Q = 1, E = 50, R = 100 }
     local masTable = type(fState.mastery) == "table" and fState.mastery or {}
     local eqFruit = tostring(fState.equippedFruit or "SolarTitanCore")
@@ -903,7 +1358,7 @@ function Skills.Build(parent)
             BackgroundColor3 = unlocked and Color3.fromRGB(14, 22, 42) or colors.BG_900,
             BackgroundTransparency = 0.06,
             BorderSizePixel = 0,
-            LayoutOrder = idx,
+            LayoutOrder = 10 + idx,
         })
         UIFactory.Corner(row, Theme.Radius.Medium)
         UIFactory.Stroke(
@@ -991,6 +1446,7 @@ function Skills.Update(snap)
             I18n.Pick("ĐIỂM", "PTS")
         )
     end
+    local liveB = computeLiveBranchStats(snap)
     if refs.StatRows then
         for _, st in ipairs(STAT_CATEGORIES) do
             local rRef = refs.StatRows[st.key]
@@ -998,11 +1454,49 @@ function Skills.Update(snap)
                 local curVal = math.clamp(tonumber(statAlloc[st.key]) or 1, 1, MAX_STAT)
                 local ratio = math.clamp(curVal / MAX_STAT, 0, 1)
                 if rRef.ValueLabel then
-                    rRef.ValueLabel.Text = string.format("LV. %d / %d%s", curVal, MAX_STAT, curVal >= MAX_STAT and " [MAX]" or "")
+                    rRef.ValueLabel.Text = formatBranchPreviewLabel(st.key, curVal, liveB)
                 end
                 if rRef.BarFill then
                     rRef.BarFill.Size = UDim2.fromScale(math.max(0.03, ratio), 1)
                 end
+            end
+        end
+    end
+    if refs.BranchBreakdownLabel then
+        refs.BranchBreakdownLabel.Text = string.format(
+            "MeleeATK: %s  |  SwordATK: %s  |  GunATK: %s  |  FruitATK: %s  |  MaxEnergy: %s  |  HP: %s • DEF: %s",
+            UIFactory.FormatNumber(liveB.MeleeATK),
+            UIFactory.FormatNumber(liveB.SwordATK),
+            UIFactory.FormatNumber(liveB.GunATK),
+            UIFactory.FormatNumber(liveB.FruitATK),
+            UIFactory.FormatNumber(liveB.MaxEnergy),
+            UIFactory.FormatNumber(liveB.HP),
+            UIFactory.FormatNumber(liveB.DEF)
+        )
+    end
+    if refs.RaceHeaderLabel and refs.RaceReqLabel then
+        local rHead, rReq, rBtn, rTier = formatRaceEvolutionInfo(snap)
+        refs.RaceHeaderLabel.Text = rHead
+        refs.RaceReqLabel.Text = rReq
+        if refs.EvolveRaceBtnApi then
+            refs.EvolveRaceBtnApi:Update({ label = rBtn })
+        end
+        if refs.RaceEvoStroke then
+            refs.RaceEvoStroke.Color = (rTier >= 3) and Theme.Colors.ACCENT_GOLD_BRIGHT or Color3.fromRGB(192, 132, 252)
+        end
+    end
+    if refs.RefundStatsBtnApi then
+        local refundLbl = formatStatRefundButtonLabel(snap)
+        refs.RefundStatsBtnApi:Update({ label = refundLbl })
+    end
+    if refs.ArsenalCards then
+        for slotIdx = 1, 4 do
+            local cRef = refs.ArsenalCards[slotIdx]
+            if cRef then
+                local info = buildArsenalSlotDisplay(slotIdx, snap)
+                cRef.TitleLabel.Text = info.title
+                cRef.BadgeLabel.Text = info.badge
+                cRef.MovesLabel.Text = info.movesText
             end
         end
     end

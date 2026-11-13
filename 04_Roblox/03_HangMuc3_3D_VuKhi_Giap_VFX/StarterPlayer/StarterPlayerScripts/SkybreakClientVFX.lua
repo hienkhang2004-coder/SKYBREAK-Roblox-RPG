@@ -21,6 +21,11 @@ local Workspace = game:GetService("Workspace")
 local DragonSovereignVFX = require(script.Parent:WaitForChild("SkybreakClient"):WaitForChild("DragonSovereignVFX"))
 local VFXStudioLibrary = require(script.Parent:WaitForChild("SkybreakClient"):WaitForChild("VFXStudioLibrary"))
 local UniversalVFXOverhaul = require(script.Parent:WaitForChild("SkybreakClient"):WaitForChild("UniversalVFXOverhaul"))
+local SkillVFXEngine = require(script.Parent:WaitForChild("SkybreakClient"):WaitForChild("SkybreakSkillVFXEngine"))
+local CombatExt = nil
+pcall(function()
+	CombatExt = require(script.Parent:WaitForChild("SkybreakClient"):WaitForChild("ClientCombatAndHUDExt"))
+end)
 
 local SkybreakClientVFX = {}
 SkybreakClientVFX.__index = SkybreakClientVFX
@@ -116,6 +121,8 @@ local function makePart(name, shape, size, cf, color, transparency, material, pa
 	local nm = p.Name
 	if (p.Shape == Enum.PartType.Block or p.Shape == Enum.PartType.Wedge)
 		and mat == Enum.Material.Neon
+		and p:GetAttribute("PreserveGeometry") ~= true
+		and not (parent ~= nil and parent:GetAttribute("PreserveGeometry") == true)
 		and not nm:find("Shard")
 		and not nm:find("Boulder")
 		and not nm:find("Slab")
@@ -812,11 +819,12 @@ local FRUIT_PROFILES = {
 local FRUIT_ALIASES = {
 	gale_core = "GaleCore",
 	GaleCore = "GaleCore",
+	Gale = "GaleCore",
 	Wind = "GaleCore",
 	sandstone_quake = "SandstoneCore",
 	SandstoneCore = "SandstoneCore",
-	StarlightQuakeCore = "SandstoneCore",
-	Quake = "SandstoneCore",
+	Smoke = "SandstoneCore",
+	smoke = "SandstoneCore",
 	solar_flame = "SolarFlameCore",
 	SolarFlameCore = "SolarFlameCore",
 	CyberPhoenixCore = "SolarFlameCore",
@@ -849,8 +857,11 @@ local FRUIT_ALIASES = {
 	solar_titan = "SolarTitanCore",
 	SolarTitanCore = "SolarTitanCore",
 	Buddha = "SolarTitanCore",
+	StarlightQuakeCore = "SolarTitanCore",
+	Quake = "SolarTitanCore",
 	aetherflow_dough = "AetherflowCore",
 	AetherflowCore = "AetherflowCore",
+	SweetDoughCore = "AetherflowCore",
 	Dough = "AetherflowCore",
 	abyssal_dragon = "AbyssalSovereignCore",
 	AbyssalSovereignCore = "AbyssalSovereignCore",
@@ -862,7 +873,7 @@ local function resolveFruitKey(raw)
 	if FRUIT_ALIASES[s] then return FRUIT_ALIASES[s] end
 	local low = s:lower()
 	if low:find("gale") or low:find("wind") then return "GaleCore" end
-	if low:find("sand") or low:find("quake") then return "SandstoneCore" end
+	if low:find("sand") or low:find("smoke") then return "SandstoneCore" end
 	if low:find("flame") or low:find("fire") or low:find("phoenix") then return "SolarFlameCore" end
 	if low:find("ice") or low:find("glac") or low:find("frost") then return "GlacierIceCore" end
 	if low:find("light") or low:find("lumen") then return "CelestialLightCore" end
@@ -870,7 +881,7 @@ local function resolveFruitKey(raw)
 	if low:find("rumble") or low:find("thunder") or low:find("tempest") or low:find("volt") then return "ThunderRumbleCore" end
 	if low:find("grav") or low:find("meteor") then return "AstralGravityCore" end
 	if low:find("portal") or low:find("dimension") or low:find("rift") then return "DimensionalPortalCore" end
-	if low:find("titan") or low:find("buddha") then return "SolarTitanCore" end
+	if low:find("titan") or low:find("buddha") or low:find("quake") then return "SolarTitanCore" end
 	if low:find("aetherflow") or low:find("dough") or low:find("mochi") then return "AetherflowCore" end
 	if low:find("abyss") or low:find("sovereign") or low:find("dragon") then return "AbyssalSovereignCore" end
 	return nil
@@ -1004,15 +1015,48 @@ local function triggerEnemyHitFlash(enemyModel)
 	end)
 end
 
+local function isTelegraphInstance(inst)
+	if not inst then return false end
+	local n = inst.Name
+	return n == "TelegraphZone" or n == "Telegraph" or n == "TelegraphRing" or n == "AttackTelegraph" or n == "TelegraphTimingRing"
+end
+
+local function sweepEnemyTelegraphs(enemyPos, isBoss)
+	local function sweepContainer(container)
+		if not container then return end
+		for _, inst in ipairs(container:GetChildren()) do
+			if isTelegraphInstance(inst) and (inst:IsA("Model") or inst:IsA("BasePart")) then
+				if isBoss then
+					inst:Destroy()
+				else
+					local ok, p = pcall(function()
+						return inst:IsA("Model") and inst:GetPivot().Position or inst.Position
+					end)
+					if ok and typeof(p) == "Vector3" and (p - enemyPos).Magnitude <= 95 then
+						inst:Destroy()
+					end
+				end
+			end
+		end
+	end
+	sweepContainer(tempFX)
+	if tempFX then
+		sweepContainer(tempFX:FindFirstChild("UniversalVFX"))
+	end
+end
+
 local function triggerEnemyDissolveDeath(enemyModel)
 	if not enemyModel or not enemyModel.Parent or enemyModel:GetAttribute("_DissolvedVFX") then return end
 	enemyModel:SetAttribute("_DissolvedVFX", true)
 	for _, ch in ipairs(enemyModel:GetChildren()) do
-		if ch.Name == "Telegraph" or ch.Name == "TelegraphRing" or ch.Name == "AttackTelegraph" then
+		if isTelegraphInstance(ch) then
 			ch:Destroy()
 		end
 	end
 	local isBoss = (enemyModel.Parent and enemyModel.Parent.Name == "ActiveBosses") or (enemyModel:GetAttribute("IsBoss") == true)
+	local okPivot, pivotCF = pcall(function() return enemyModel:GetPivot() end)
+	local enemyPos = (okPivot and typeof(pivotCF) == "CFrame") and pivotCF.Position or Vector3.zero
+	sweepEnemyTelegraphs(enemyPos, isBoss)
 	UniversalVFXOverhaul.SpawnEnemyDeathDissolve(enemyModel, isBoss)
 end
 
@@ -1058,8 +1102,12 @@ local function bindEnemyModel(m)
 			end
 		end))
 	end
+	local wasBoss = (m.Parent and m.Parent.Name == "ActiveBosses") or (m:GetAttribute("IsBoss") == true)
 	table.insert(conns, m.AncestryChanged:Connect(function(_, parent)
 		if not parent then
+			if wasBoss or m:GetAttribute("IsBoss") == true then
+				sweepEnemyTelegraphs(Vector3.zero, true)
+			end
 			for _, c in ipairs(conns) do c:Disconnect() end
 			enemyConnections[m] = nil
 		end
@@ -2423,6 +2471,11 @@ function SkybreakClientVFX.SpawnSkillVFX(action, pos, actorChar, fxData)
 		return
 	end
 
+	-- Stage 2 Bespoke Skill-Matched 5-Layer VFX Engine (all 20 Archetypes + Choreography M1s + Hazards + Synergies)
+	if SkillVFXEngine and SkillVFXEngine.Dispatch(act, pos, actorChar, fx, isLocal) then
+		return
+	end
+
 	local actorRoot = actorChar and actorChar:FindFirstChild("HumanoidRootPart")
 	local startPos = (typeof(fx.StartPos) == "Vector3" and fx.StartPos)
 		or (typeof(fx.Origin) == "Vector3" and fx.Origin)
@@ -2452,6 +2505,13 @@ function SkybreakClientVFX.SpawnSkillVFX(action, pos, actorChar, fxData)
 	if isStyleM1 or ((kind == "Swing" or act == "Attack" or act == "Heavy") and not fx.key and kind ~= "SlotMove") then
 		local isHeavy = (act == "Heavy")
 		local combo = tonumber(fx.Combo) or 1
+		if CombatExt and not (isLocal and CombatExt.WasLocalWeaponSFXRecent(0.55)) then
+			local m1Slot = (isStyleM1 and 1)
+				or (dragonAnchors.Tier >= 1 and 2)
+				or tonumber(fx.Slot or fx.slot or (actorChar and actorChar:GetAttribute("ActiveSlot")) or (isLocal and localPlayer and localPlayer:GetAttribute("ActiveSlot")))
+				or 1
+			CombatExt.PlayWeaponSFX(m1Slot, isHeavy, combo, fx.element or fx.Element, startPos, isLocal and "local" or tostring(fx.Actor or actorChar or "vfx_m1"))
+		end
 		if dragonAnchors.Tier >= 1 then
 			DragonSovereignVFX.SpawnDragonM1(actorChar, startPos, lookDir, combo, isHeavy, isAwakened, isLocal)
 			return
@@ -2469,6 +2529,9 @@ function SkybreakClientVFX.SpawnSkillVFX(action, pos, actorChar, fxData)
 	-- Explicit Class Skills, Slot 3 Swords, Slot 4 Guns, PortalWarp & SeaBeastBeam
 	local activeSlot = tonumber(fx.Slot or fx.slot or (actorChar and actorChar:GetAttribute("ActiveSlot")) or (isLocal and localPlayer and localPlayer:GetAttribute("ActiveSlot"))) or 2
 	local explicitFruitKey = resolveFruitKey(fx.FruitId or fx.fruitId or ((activeSlot == 2 or kind == "FruitMove") and fx.activeId or nil))
+	if (kind == "GunShot" or kind == "ChargedSlash") and CombatExt and not (isLocal and CombatExt.WasLocalWeaponSFXRecent(0.55)) then
+		CombatExt.PlayWeaponSFX(kind == "GunShot" and 4 or 3, kind == "ChargedSlash", tonumber(fx.Combo) or 1, fx.element or fx.Element, startPos, isLocal and "local" or tostring(fx.Actor or actorChar or "vfx_wep"))
+	end
 	if (kind == "GunShot" or kind == "ChargedSlash" or kind == "PortalWarp" or kind == "SeaBeastBeam" or kind == "Shield"
 		or ((activeSlot == 3 or activeSlot == 4) and kind ~= "FruitMove" and kind ~= "StyleMove")
 		or act == "SkySlash" or act == "GuardianShield" or act == "JudgmentStrike" or act == "CelestialAegis"
@@ -2595,6 +2658,9 @@ function SkybreakClientVFX.Init(ctx)
 	initDamageNumberPool()
 	DragonSovereignVFX.EnsureDefaultPrefabs()
 	VFXStudioLibrary.EnsureAllPrefabs()
+	if SkillVFXEngine and type(SkillVFXEngine.Init) == "function" then
+		SkillVFXEngine.Init(ctx)
+	end
 	watchEnemyFolders()
 
 	if tempFX then
@@ -2604,6 +2670,14 @@ function SkybreakClientVFX.Init(ctx)
 				if n:find("Telegraph") or n:find("Danger") or n:find("AoE") then
 					UniversalVFXOverhaul.EnhanceBossTelegraph(child)
 				end
+			elseif child:IsA("Model") and (child.Name == "TelegraphZone" or child.Name:find("Telegraph")) then
+				task.defer(function()
+					if not child or not child.Parent then return end
+					local ring = child:FindFirstChild("OuterRing") or child:FindFirstChildWhichIsA("BasePart")
+					if ring and ring:IsA("BasePart") then
+						UniversalVFXOverhaul.EnhanceBossTelegraph(ring)
+					end
+				end)
 			end
 		end))
 	end
@@ -2616,6 +2690,9 @@ function SkybreakClientVFX.Init(ctx)
 		table.insert(activeConnections, localPlayer.CharacterRemoving:Connect(function()
 			clearCharConnections()
 			clearDragonRig()
+			if SkillVFXEngine and type(SkillVFXEngine.ResetUltimateImpactState) == "function" then
+				SkillVFXEngine.ResetUltimateImpactState()
+			end
 		end))
 		for _, attr in ipairs({ "HakiAura", "HakiStage", "HakiColor", "HakiAuraColor", "HakiColorRGB" }) do
 			table.insert(activeConnections, localPlayer:GetAttributeChangedSignal(attr):Connect(function()

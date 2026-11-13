@@ -36,6 +36,11 @@ pcall(function()
 	UI = require(script.Parent:WaitForChild("UI", 5):WaitForChild("Interface", 5))
 end)
 
+local CombatExt = nil
+pcall(function()
+	CombatExt = require(script.Parent:WaitForChild("SkybreakClient", 5):WaitForChild("ClientCombatAndHUDExt", 5))
+end)
+
 local tempFX = Workspace:FindFirstChild("TempFX")
 if not tempFX then
 	tempFX = Instance.new("Folder")
@@ -58,6 +63,16 @@ if not commandEvent then
 	commandEvent.Parent = tempFX
 end
 
+local flightToggleBindable = player:FindFirstChild("SkybreakToggleFlight")
+if not flightToggleBindable or not flightToggleBindable:IsA("BindableEvent") then
+	if flightToggleBindable then
+		flightToggleBindable:Destroy()
+	end
+	flightToggleBindable = Instance.new("BindableEvent")
+	flightToggleBindable.Name = "SkybreakToggleFlight"
+	flightToggleBindable.Parent = player
+end
+
 local function isLowFX()
 	return (player and player:GetAttribute("LowFXMode") == true) or (Workspace:GetAttribute("LowFXMode") == true) or (UI and UI.LowFX == true) or false
 end
@@ -78,6 +93,9 @@ end
 
 local function blocksCombat()
 	if player:GetAttribute("SkybreakPhotoMode") == true then return true end
+	if CombatExt and type(CombatExt.IsInspectModalOpen) == "function" and CombatExt.IsInspectModalOpen() then
+		return true
+	end
 	if UI and type(UI.BlocksCombat) == "function" then
 		local ok, res = pcall(UI.BlocksCombat)
 		if ok and res then return true end
@@ -147,24 +165,66 @@ local FRUIT_SPECS = {
 	SolarTitanCore = { Speed = 64, Primary = Color3.fromRGB(255, 208, 76), Secondary = Color3.fromRGB(255, 240, 164), Mode = "BuddhaLotus" },
 }
 
+local FRUIT_ALIAS_MAP = {
+	galecore = "GaleCore", gale = "GaleCore", wind = "GaleCore",
+	sandstonecore = "SandstoneCore", sandstone = "SandstoneCore", sand = "SandstoneCore", smoke = "SandstoneCore",
+	solarflamecore = "SolarFlameCore", solarflame = "SolarFlameCore", flame = "SolarFlameCore", fire = "SolarFlameCore",
+	glaciericecore = "GlacierIceCore", glacierice = "GlacierIceCore", ice = "GlacierIceCore", frost = "GlacierIceCore",
+	celestiallightcore = "CelestialLightCore", celestiallight = "CelestialLightCore", light = "CelestialLightCore",
+	starforgedmagmacore = "StarforgedMagmaCore", starforgedmagma = "StarforgedMagmaCore", magma = "StarforgedMagmaCore",
+	thunderrumblecore = "ThunderRumbleCore", thunderrumble = "ThunderRumbleCore", rumble = "ThunderRumbleCore", thunder = "ThunderRumbleCore",
+	astralgravitycore = "AstralGravityCore", astralgravity = "AstralGravityCore", gravity = "AstralGravityCore",
+	dimensionalportalcore = "DimensionalPortalCore", dimensionalportal = "DimensionalPortalCore", portal = "DimensionalPortalCore",
+	solartitancore = "SolarTitanCore", solartitan = "SolarTitanCore", buddha = "SolarTitanCore", quake = "SolarTitanCore", starlightquakecore = "SolarTitanCore",
+	aetherflowcore = "AetherflowCore", aetherflow = "AetherflowCore", sweetdoughcore = "AetherflowCore", dough = "AetherflowCore", mochi = "AetherflowCore",
+	abyssalsovereigncore = "AbyssalSovereignCore", dragon = "AbyssalSovereignCore", abyssal_dragon = "AbyssalSovereignCore",
+}
+
 local function resolveEquippedFruitKey()
 	local ch = player.Character
-	local raw = tostring((ch and ch:GetAttribute("EquippedFruit")) or player:GetAttribute("EquippedFruit") or (ch and ch:GetAttribute("HeldFruit")) or "")
+	local raw = tostring(
+		(ch and (ch:GetAttribute("EquippedFruit") or ch:GetAttribute("ActiveFruit")))
+		or player:GetAttribute("EquippedFruit")
+		or player:GetAttribute("FruitSlot1")
+		or (UI and UI.State and UI.State.EquippedFruit)
+		or ""
+	)
+	raw = raw:match("^([^|]+)") or raw
+	if raw == "" or raw == "None" then
+		return ""
+	end
 	if FRUIT_SPECS[raw] then return raw end
-	local low = raw:lower()
-	if low:find("light") or low:find("lumen") then return "CelestialLightCore" end
-	if low:find("gale") or low:find("wind") then return "GaleCore" end
-	if low:find("abyss") or low:find("dragon") or low:find("sovereign") then return "AbyssalSovereignCore" end
-	if low:find("rumble") or low:find("thunder") or low:find("tempest") then return "ThunderRumbleCore" end
-	if low:find("flame") or low:find("fire") or low:find("phoenix") then return "SolarFlameCore" end
-	if low:find("ice") or low:find("glac") or low:find("frost") then return "GlacierIceCore" end
-	if low:find("portal") or low:find("dimension") then return "DimensionalPortalCore" end
-	if low:find("aetherflow") or low:find("dough") then return "AetherflowCore" end
-	if low:find("magma") or low:find("crimson") then return "StarforgedMagmaCore" end
-	if low:find("grav") then return "AstralGravityCore" end
-	if low:find("sand") or low:find("quake") then return "SandstoneCore" end
-	if low:find("titan") or low:find("buddha") then return "SolarTitanCore" end
-	return "GaleCore"
+	local mapped = FRUIT_ALIAS_MAP[raw:lower()]
+	if mapped then return mapped end
+	if Config and type(Config.ResolveFruitId) == "function" then
+		local resolved = Config.ResolveFruitId(raw)
+		if resolved ~= "" then return resolved end
+	end
+	return ""
+end
+
+local flightActive = false
+
+local function isPlayerStunned(ch)
+	local c = ch or player.Character
+	local nowSrv = Workspace:GetServerTimeNow()
+	if (tonumber((c and c:GetAttribute("StunnedUntil")) or player:GetAttribute("StunnedUntil")) or 0) > nowSrv then
+		return true
+	end
+	if (c and c:GetAttribute("Stunned") == true) or player:GetAttribute("Stunned") == true then
+		return true
+	end
+	local hum = c and c:FindFirstChildOfClass("Humanoid")
+	if hum and hum.PlatformStand == true and not flightActive then
+		return true
+	end
+	return false
+end
+
+local function getClientEnergy(ch)
+	local c = ch or player.Character
+	local e = tonumber((c and c:GetAttribute("Energy")) or player:GetAttribute("ClientEnergy") or player:GetAttribute("Energy") or (UI and UI.State and UI.State.Energy))
+	return e or 100
 end
 
 -- Canonical set of Devil Fruits whose [F] move is a true 6-DOF Free Flight skill.
@@ -178,13 +238,22 @@ local TRUE_FLIGHT_FRUITS = {
 	CelestialLightCore = true,   -- Light Flight • Hóa Tia Sáng
 	StarforgedMagmaCore = true,  -- Magma Hound • Cưỡi Thú Dung Nham
 	AstralGravityCore = true,    -- Boulder Ride • Cưỡi Đá Không Trung
+	Gale = true,
+	Smoke = true,
+	Flame = true,
+	Light = true,
+	Magma = true,
+	Gravity = true,
 }
 
 local function canFruitUseFreeFlight(fruitKey, ch)
+	if fruitKey == "" then
+		return false
+	end
 	if TRUE_FLIGHT_FRUITS[fruitKey] then
 		return true
 	end
-	if fruitKey == "AbyssalSovereignCore" then
+	if fruitKey == "AbyssalSovereignCore" or fruitKey == "Dragon" then
 		local c = ch or player.Character
 		local tier = tonumber((c and c:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
 		local tf = tostring((c and c:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
@@ -193,8 +262,42 @@ local function canFruitUseFreeFlight(fruitKey, ch)
 	return false
 end
 
+local function hasUnlockedFlightFMasteryAndEnergy(fruitKey, ch)
+	if fruitKey == "" or isPlayerStunned(ch) then
+		return false
+	end
+	local fDef = Config and Config.AetherFruits and Config.AetherFruits[fruitKey]
+	local mv = fDef and type(fDef.Moves) == "table" and fDef.Moves.F or nil
+	if fruitKey == "AbyssalSovereignCore" then
+		local c = ch or player.Character
+		local tier = tonumber((c and c:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
+		local tf = tostring((c and c:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
+		if (tier >= 2 or tf == "AbyssalSovereign" or tf == "DragonFull") and fDef and type(fDef.Form2Moves) == "table" and fDef.Form2Moves.F then
+			mv = fDef.Form2Moves.F
+		end
+	end
+	local reqMastery = tonumber(mv and mv.Mastery) or 1
+	local reqCost = tonumber(mv and mv.Cost) or 8
+	local stMas = UI and UI.State and type(UI.State.Mastery) == "table" and tonumber(UI.State.Mastery[fruitKey]) or nil
+	local curMastery = tonumber(player:GetAttribute("FruitMastery_" .. tostring(fruitKey)))
+		or tonumber(player:GetAttribute("FruitMastery"))
+		or stMas
+		or 1
+	if curMastery < reqMastery then
+		return false
+	end
+	if getClientEnergy(ch) < math.max(1, reqCost) then
+		return false
+	end
+	return true
+end
+
 local function canUseFreeFlightNow()
 	local ch = player.Character
+	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	if hum and hum.Sit then
+		return false
+	end
 	local activeSlot = tonumber((ch and ch:GetAttribute("ActiveSlot")) or player:GetAttribute("ActiveSlot")) or 1
 	if activeSlot ~= 2 then
 		return false
@@ -310,7 +413,6 @@ local otsActive = false
 local currentOtsOffset = Vector3.zero
 local firstPersonNear = false
 local firstPersonHidden = {}
-local firstPersonSweepAt = 0
 
 -- Roblox tự làm mờ nhân vật khi zoom sát (TransparencyController). Cờ này báo cho
 -- Skybreak3DEquipment dừng ép LocalTransparencyModifier = 0 trong lúc đó.
@@ -320,19 +422,34 @@ local function setFirstPersonNear(active)
 	player:SetAttribute("SkybreakFirstPerson", active or nil)
 	if not active then
 		for part in pairs(firstPersonHidden) do
-			if part.Parent then part.LocalTransparencyModifier = 0 end
+			if part.Parent then
+				part.LocalTransparencyModifier = (part:GetAttribute("SkybreakHiddenBackAcc") == true) and 1 or 0
+			end
 		end
 		table.clear(firstPersonHidden)
 	end
 end
 
--- Quét định kỳ vì giáp, cánh, vũ khí có thể được gắn thêm trong lúc đang ở góc nhìn thứ nhất.
-local function sweepFirstPersonBody(ch)
+-- Quét và nội suy mượt LocalTransparencyModifier ở vùng zoom gần (< 2.2 studs):
+-- < 0.9 studs: ẩn hoàn toàn (1.0); 0.9..2.2 studs: khôi phục mượt thân người và làm mờ Giáp/Mũ 3D quanh đầu/vai.
+local function applyCloseCameraFade(ch, zoomDist)
 	if ch:GetAttribute("SkybreakBeastHidden") == true then return end
+	local bodyAlpha = (zoomDist < 0.9) and 1 or math.clamp((1.85 - zoomDist) / 0.95, 0, 0.85)
+	local armorAlpha = (zoomDist < 0.9) and 1 or math.clamp((2.2 - zoomDist) / 1.3, 0.18, 0.92)
+	local accFolder = ch:FindFirstChild("CharacterAccessories3D")
 	for _, d in ipairs(ch:GetDescendants()) do
-		if d:IsA("BasePart") and d.LocalTransparencyModifier ~= 1 and not d:FindFirstAncestorOfClass("Tool") then
-			d.LocalTransparencyModifier = 1
-			firstPersonHidden[d] = true
+		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and not d:FindFirstAncestorOfClass("Tool") then
+			if d:GetAttribute("SkybreakHiddenBackAcc") == true then
+				d.LocalTransparencyModifier = 1
+			else
+				local isCloseArmorOrHat = (accFolder ~= nil and d:IsDescendantOf(accFolder))
+					or d:FindFirstAncestorOfClass("Accessory") ~= nil
+				local goal = isCloseArmorOrHat and armorAlpha or bodyAlpha
+				if math.abs(d.LocalTransparencyModifier - goal) > 0.01 then
+					d.LocalTransparencyModifier = goal
+				end
+				firstPersonHidden[d] = true
+			end
 		end
 	end
 end
@@ -524,11 +641,14 @@ local function getTargetTransformPullback(ch)
 	local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
 	local tier = tonumber((ch and ch:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
 	if tier >= 2 or tf == "AbyssalSovereign" or tf == "DragonFull" then
-		return 18, Vector3.new(0, 5.2, 0)
-	elseif tf == "SolarTitan" then
-		return 14, Vector3.new(0, 4.8, 0)
+		-- 12 + 36 = 48 studs Giant Full Sovereign Camera
+		return 36, Vector3.new(0, 6.8, 0)
+	elseif tf == "SolarTitan" or tf == "Buddha" then
+		-- 12 + 26 = 38 studs Giant Solar Titan / Buddha Camera
+		return 26, Vector3.new(0, 5.6, 0)
 	elseif tier == 1 or tf == "AbyssalDragonHybrid" or tf == "DragonHybrid" then
-		return 9, Vector3.new(0, 2.2, 0)
+		-- 12 + 16 = 28 studs Hybrid Dragon Form 1 Camera
+		return 16, Vector3.new(0, 2.8, 0)
 	end
 	return 0, Vector3.zero
 end
@@ -536,7 +656,6 @@ end
 -- ============================================================================
 -- #81. 6-DOF 3D ELEMENTAL FREE FLIGHT [F] + 12 BESPOKE 3D FLIGHT CONSTRUCTS
 -- ============================================================================
-local flightActive = false
 local flightHoldStartedAt = 0
 local flightFKeyHeld = false
 local flightFolder = nil
@@ -751,6 +870,7 @@ local function stopFreeFlight(silent)
 	flightActive = false
 	flightFKeyHeld = false
 	player:SetAttribute("SkybreakFlightActive", false)
+	player:SetAttribute("MobileFlightVertical", 0)
 
 	if flightLV then flightLV:Destroy() flightLV = nil end
 	if flightAO then flightAO:Destroy() flightAO = nil end
@@ -759,6 +879,10 @@ local function stopFreeFlight(silent)
 	flightRigData = nil
 
 	local ch = player.Character
+	if ch then
+		ch:SetAttribute("SkybreakFlightActive", false)
+		ch:SetAttribute("MobileFlightVertical", 0)
+	end
 	restoreFlightTransparencies(ch)
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if hum then
@@ -776,6 +900,8 @@ end
 local function startFreeFlight()
 	if flightActive or blocksCombat() or not canUseFreeFlightNow() then return end
 	local ch = player.Character
+	local fruitKey = resolveEquippedFruitKey()
+	if fruitKey == "" or not hasUnlockedFlightFMasteryAndEnergy(fruitKey, ch) then return end
 	local root = ch and ch:FindFirstChild("HumanoidRootPart")
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if not root or not hum or hum.Health <= 0 then return end
@@ -784,7 +910,6 @@ local function startFreeFlight()
 	player:SetAttribute("SkybreakFlightActive", true)
 	ch:SetAttribute("SkybreakFlightActive", true)
 
-	local fruitKey = resolveEquippedFruitKey()
 	local spec = FRUIT_SPECS[fruitKey] or FRUIT_SPECS.GaleCore
 
 	flightAttachment = Instance.new("Attachment")
@@ -853,7 +978,7 @@ local function stepFreeFlight(dt)
 	end
 
 	if not flightActive then return end
-	if not root or not hum or hum.Health <= 0 or not flightLV or not flightAO or blocksCombat() or player:GetAttribute("SkybreakPhotoMode") == true or not canFruitUseFreeFlight(resolveEquippedFruitKey(), ch) then
+	if not root or not hum or hum.Health <= 0 or not flightLV or not flightAO or blocksCombat() or player:GetAttribute("SkybreakPhotoMode") == true or not canUseFreeFlightNow() then
 		stopFreeFlight(true)
 		return
 	end
@@ -863,7 +988,7 @@ local function stepFreeFlight(dt)
 	local fruitKey = resolveEquippedFruitKey()
 	local spec = FRUIT_SPECS[fruitKey] or FRUIT_SPECS.GaleCore
 
-	-- 6-DOF Camera-Steered Flight Vector (defaults to cruising forward along Camera LookVector!)
+	-- 6-DOF Camera-Steered Flight Vector (Keyboard WASD/EQ + Mobile Thumbstick + Mobile Up/Down Buttons)
 	local camCF = cam.CFrame
 	local fwd = 0
 	local right = 0
@@ -876,13 +1001,32 @@ local function stepFreeFlight(dt)
 		if UserInputService:IsKeyDown(Enum.KeyCode.E) then up += 0.75 end
 		if UserInputService:IsKeyDown(Enum.KeyCode.Q) then up -= 0.75 end
 	end
-	if fwd == 0 and right == 0 and up == 0 then
-		-- When holding [F] without WASD, cruise smoothly toward camera aim!
-		fwd = 1
+	local mobVert = math.clamp(tonumber((ch and ch:GetAttribute("MobileFlightVertical")) or player:GetAttribute("MobileFlightVertical")) or 0, -1, 1)
+	if mobVert ~= 0 then
+		up = math.clamp(up + mobVert * 0.85, -1, 1)
 	end
 
-	local wishVec = camCF.LookVector * fwd + camCF.RightVector * right + Vector3.new(0, up, 0)
-	local targetVel = (wishVec.Magnitude > 0.05) and (wishVec.Unit * spec.Speed) or Vector3.zero
+	local stickScale = 1
+	if fwd == 0 and right == 0 then
+		local moveDir = hum.MoveDirection
+		if moveDir.Magnitude > 0.05 then
+			local flatLook = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z)
+			flatLook = (flatLook.Magnitude > 0.001) and flatLook.Unit or Vector3.new(0, 0, -1)
+			local flatRight = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z)
+			flatRight = (flatRight.Magnitude > 0.001) and flatRight.Unit or Vector3.new(1, 0, 0)
+			fwd = moveDir:Dot(flatLook)
+			right = moveDir:Dot(flatRight)
+			stickScale = math.clamp(moveDir.Magnitude, 0.2, 1)
+		elseif math.abs(up) <= 0.05 and not (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled) then
+			-- On PC when holding/toggling [F] without WASD or E/Q, cruise smoothly toward camera aim!
+			fwd = 1
+		end
+	end
+
+	local horiz3D = (camCF.LookVector * fwd + camCF.RightVector * right) * stickScale
+	local wishVec = horiz3D + Vector3.new(0, up, 0)
+	local speedScale = (wishVec.Magnitude > 0.05) and math.clamp(wishVec.Magnitude, 0.35, 1) or 0
+	local targetVel = (wishVec.Magnitude > 0.05) and (wishVec.Unit * (spec.Speed * speedScale)) or Vector3.zero
 
 	-- Safe Void-Floor Clamping (prevents diving into server Y < 10 bottom abyss while allowing free descent from high islands)
 	local minSafeY = 14
@@ -891,8 +1035,9 @@ local function stepFreeFlight(dt)
 	end
 
 	flightLV.VectorVelocity = flightLV.VectorVelocity:Lerp(targetVel, math.clamp(dt * 10, 0, 1))
-	local lookDir = (flightLV.VectorVelocity.Magnitude > 4) and flightLV.VectorVelocity.Unit or camCF.LookVector
-	local bankAngle = -right * 0.34
+	local horizVel = Vector3.new(flightLV.VectorVelocity.X, 0, flightLV.VectorVelocity.Z)
+	local lookDir = (horizVel.Magnitude > 3) and flightLV.VectorVelocity.Unit or camCF.LookVector
+	local bankAngle = -math.clamp(right, -1, 1) * 0.34
 	flightAO.CFrame = safeLookAt(root.Position, root.Position + lookDir, camCF.LookVector) * CFrame.Angles(0, 0, bankAngle)
 
 	-- Animate 12 Bespoke 3D Elemental Flight Constructs
@@ -1052,7 +1197,7 @@ local function performFlashStep()
 	local now = os.clock()
 	local rem = FLASH_STEP_COOLDOWN - (now - lastFlashStepAt)
 	if rem > 0 then
-		toast(string.format("Flash Step [R]: %.1fs", rem))
+		toast(string.format("Flash Step [T]: %.1fs", rem))
 		return false
 	end
 
@@ -1061,6 +1206,7 @@ local function performFlashStep()
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	local cam = Workspace.CurrentCamera
 	if not root or not hum or hum.Health <= 0 or not cam then return false end
+	if isPlayerStunned(ch) or getClientEnergy(ch) < 10 then return false end
 
 	if flightActive then
 		stopFreeFlight(true)
@@ -1519,7 +1665,7 @@ local function setEmoteWheelVisible(vis)
 		hlbl.Font = Enum.Font.GothamBold
 		hlbl.TextSize = 12
 		hlbl.TextColor3 = Color3.fromRGB(228, 246, 255)
-		hlbl.Text = "EMOTES [B]\n1 - 6"
+		hlbl.Text = "EMOTES [.]\n1 - 6"
 		hlbl.Parent = hub
 
 		-- 6 Radial Slice Cards arranged at 60-degree intervals
@@ -1576,6 +1722,7 @@ local function setEmoteWheelVisible(vis)
 	end
 
 	emoteWheelOpen = vis
+	player:SetAttribute("SkybreakEmoteWheelOpen", vis == true)
 	emoteWheelGui.Enabled = vis
 	if vis then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
@@ -1832,14 +1979,129 @@ local function unlockAllViewAndMouseLocks(silent)
 	end
 end
 
+local cachedHudReticle = nil
+local nextHudReticleCheckAt = 0
+
+local function hasMainHudReticle()
+	if cachedHudReticle and cachedHudReticle.Parent then
+		return cachedHudReticle:IsA("GuiObject") and cachedHudReticle.Visible
+	end
+	local now = os.clock()
+	if now < nextHudReticleCheckAt then
+		return false
+	end
+	nextHudReticleCheckAt = now + 0.5
+	local pgui = player:FindFirstChild("PlayerGui")
+	local skyUI = pgui and pgui:FindFirstChild("SkybreakUI")
+	local ret = skyUI and skyUI:FindFirstChild("CenterAimReticle", true)
+	if ret and ret:IsA("GuiObject") then
+		cachedHudReticle = ret
+		return ret.Visible
+	end
+	return false
+end
+
+local function attachAim(payload)
+	if CombatExt and type(CombatExt.AttachAimPayload) == "function" then
+		return CombatExt.AttachAimPayload(payload)
+	end
+	return payload
+end
+
+local function fireGamepadM1(isHeavy)
+	if CombatExt and type(CombatExt.IsSeatedInSkyShip) == "function" and CombatExt.IsSeatedInSkyShip() then
+		CombatExt.FireSeatedShipCannon()
+		return
+	end
+	stopActiveEmote()
+	faceLockedTarget()
+	local ch = player.Character
+	local r = ch and ch:FindFirstChild("HumanoidRootPart")
+	if CombatExt and type(CombatExt.PlayWeaponSFX) == "function" then
+		local curSlot, _, _, elem = CombatExt.ResolveActiveCombatLoadout()
+		local cmb = CombatExt.NextLocalComboIndex()
+		CombatExt.PlayWeaponSFX(curSlot, isHeavy == true, cmb, elem, r and r.Position, "local")
+	end
+	CombatRequest:FireServer(attachAim({ action = isHeavy and "Heavy" or "Attack" }))
+end
+
+local pendingShiftOtsRevert = false
+local prevOtsBeforeShift = false
+local gamepadR2AttackToken = 0
+local savedBaseMaxZoom = nil
+local giantPopperParams = RaycastParams.new()
+giantPopperParams.FilterType = Enum.RaycastFilterType.Exclude
+giantPopperParams.IgnoreWater = true
+
+local function computePopperSafeDist(focusPos, camDir, desiredDist, ch)
+	local solidObstacles = Workspace:FindFirstChild("Solid3DObstacles")
+	local excl = {}
+	if ch then table.insert(excl, ch) end
+	if tempFX then table.insert(excl, tempFX) end
+	for _, fn in ipairs({
+		"TempFX", "SkybreakVFXDebris", "SkybreakSeaPlanes", "SkybreakLivingTownNPCs",
+		"ActiveEnemies", "ActiveBosses", "ActiveNPCs", "SkybreakWeaponAudioPool", "SkybreakAudioPool",
+	}) do
+		local f = Workspace:FindFirstChild(fn)
+		if f then table.insert(excl, f) end
+	end
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr ~= player and plr.Character then
+			table.insert(excl, plr.Character)
+		end
+	end
+
+	local maxRay = desiredDist + 1.5
+	local curOrigin = focusPos
+	local rem = maxRay
+	for _ = 1, 5 do
+		giantPopperParams.FilterDescendantsInstances = excl
+		local res = Workspace:Raycast(curOrigin, camDir * rem, giantPopperParams)
+		if not res then
+			break
+		end
+		local inst = res.Instance
+		local isSolidObstacle = solidObstacles ~= nil and inst ~= nil and inst:IsDescendantOf(solidObstacles)
+		if inst and (inst.CanCollide or isSolidObstacle) and inst.Transparency < 0.96 then
+			local totalHitDist = (res.Position - focusPos).Magnitude
+			return math.max(2.5, math.min(desiredDist, totalHitDist - 1.35))
+		elseif inst then
+			table.insert(excl, inst)
+			local step = (res.Position - curOrigin).Magnitude + 0.05
+			curOrigin = res.Position + camDir * 0.05
+			rem -= step
+			if rem <= 0.5 then
+				break
+			end
+		else
+			break
+		end
+	end
+	return desiredDist
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if UserInputService:GetFocusedTextBox() then return end
 	local kc = input.KeyCode
 	local ut = input.UserInputType
 
+	-- Revert provisional LeftShift OTS flip when LeftShift is used as a Shift+Key chord (Shift+J, Shift+F, Shift+R, Shift+Tab, Ctrl+Shift+F9)
+	if pendingShiftOtsRevert and (kc == Enum.KeyCode.J or kc == Enum.KeyCode.F or kc == Enum.KeyCode.R or kc == Enum.KeyCode.Tab or kc == Enum.KeyCode.F9 or kc == Enum.KeyCode.LeftControl) then
+		pendingShiftOtsRevert = false
+		otsActive = prevOtsBeforeShift
+		player:SetAttribute("SkybreakOTSActive", otsActive)
+		if crosshairFrame then crosshairFrame.Visible = otsActive and not hasMainHudReticle() end
+		if not otsActive then
+			forceReleaseRobloxShiftLock()
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+			UserInputService.MouseIconEnabled = true
+		end
+	end
+
 	-- Instant Universal Unlock ([LeftControl], [Shift + Tab], or [RightControl] when OTS/DisableCameraLock is active)
 	if kc == Enum.KeyCode.LeftControl then
-		unlockAllViewAndMouseLocks(false)
+		local hadLock = otsActive or (lockedTarget ~= nil) or photoModeActive
+		unlockAllViewAndMouseLocks(not hadLock)
 		return
 	end
 	if kc == Enum.KeyCode.RightControl and (player:GetAttribute("DisableCameraLock") == true or otsActive) then
@@ -1869,31 +2131,32 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		return
 	end
 
-	-- #77 Shift-Lock Over-The-Shoulder Action Cam ([LeftAlt] or [MouseButton3])
-	if kc == Enum.KeyCode.LeftAlt or ut == Enum.UserInputType.MouseButton3 then
+	-- #77 Shift-Lock Over-The-Shoulder Action Cam ([LeftShift] or [MouseButton3]; LeftAlt stays free for Alt+Click Player Inspect!)
+	local isShiftLockKey = (kc == Enum.KeyCode.LeftShift and not (UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)))
+		or (ut == Enum.UserInputType.MouseButton3)
+	if isShiftLockKey then
 		if player:GetAttribute("DisableCameraLock") == true and not otsActive then
 			unlockAllViewAndMouseLocks(true)
 			toast("[CAM] Đang bật 'Tắt Khóa Góc Nhìn' trong Cài Đặt [O]")
 			return
 		end
+		prevOtsBeforeShift = otsActive
+		pendingShiftOtsRevert = (kc == Enum.KeyCode.LeftShift)
 		otsActive = not otsActive
 		player:SetAttribute("SkybreakOTSActive", otsActive)
 		ensureOverlayGui()
-		local hasHudReticle = player:FindFirstChild("PlayerGui")
-			and player.PlayerGui:FindFirstChild("SkybreakUI")
-			and player.PlayerGui.SkybreakUI:FindFirstChild("CenterAimReticle", true) ~= nil
-		if crosshairFrame then crosshairFrame.Visible = otsActive and not hasHudReticle end
+		if crosshairFrame then crosshairFrame.Visible = otsActive and not hasMainHudReticle() end
 		if not otsActive then
 			forceReleaseRobloxShiftLock()
 			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 			UserInputService.MouseIconEnabled = true
 		end
-		toast(otsActive and "[CAM] Khóa Góc Nhìn Action Cam: BẬT (Nhấn LeftCtrl để mở khóa)" or "[CAM] Khóa Góc Nhìn Action Cam: TẮT")
+		toast(otsActive and "[CAM] Shift-Lock Action Cam: BẬT (LeftShift / LeftCtrl để tắt)" or "[CAM] Shift-Lock Action Cam: TẮT")
 		return
 	end
 
-	-- #89 Emotes & Meditation Wheel [B] (plus 1-6 quick-pick while open)
-	if kc == Enum.KeyCode.B and not processed then
+	-- #89 Emotes & Meditation Wheel [.] (Period — freeing [B] exclusively for SocialRewards!)
+	if kc == Enum.KeyCode.Period and not processed then
 		if not blocksCombat() or emoteWheelOpen then
 			setEmoteWheelVisible(not emoteWheelOpen)
 			return
@@ -1914,13 +2177,14 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 	end
 
-	-- Flight Clean Exit on Space or M1 Attack
-	if flightActive and (kc == Enum.KeyCode.Space or ut == Enum.UserInputType.MouseButton1 or kc == Enum.KeyCode.ButtonA or kc == Enum.KeyCode.ButtonX) then
+	-- Flight Clean Exit on Space or M1 Attack (skip if Alt+Click Inspect)
+	local isAltHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) or UserInputService:IsKeyDown(Enum.KeyCode.RightAlt)
+	if flightActive and (kc == Enum.KeyCode.Space or (ut == Enum.UserInputType.MouseButton1 and not isAltHeld) or kc == Enum.KeyCode.ButtonA or kc == Enum.KeyCode.ButtonX or kc == Enum.KeyCode.ButtonR2) then
 		stopFreeFlight(false)
 	end
 
 	-- Cancel Emote immediately on any attack key
-	if activeEmoteId and (ut == Enum.UserInputType.MouseButton1 or kc == Enum.KeyCode.Z or kc == Enum.KeyCode.X or kc == Enum.KeyCode.C or kc == Enum.KeyCode.V) then
+	if activeEmoteId and ((ut == Enum.UserInputType.MouseButton1 and not isAltHeld) or kc == Enum.KeyCode.Z or kc == Enum.KeyCode.X or kc == Enum.KeyCode.C or kc == Enum.KeyCode.V) then
 		stopActiveEmote()
 	end
 
@@ -1935,18 +2199,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 			flightHoldStartedAt = os.clock()
 			if canUseFreeFlightNow() then
 				local fruitKey = resolveEquippedFruitKey()
-				-- Check Mastery requirement for F move before engaging Slot 2 flight
-				local reqMastery = 10
-				local styles = Config and Config.CombatStyles
-				local styleDef = styles and styles[fruitKey]
-				if styleDef and type(styleDef.Moves) == "table" and type(styleDef.Moves.F) == "table" then
-					reqMastery = tonumber(styleDef.Moves.F.Mastery) or 10
-				end
-				local curMastery = tonumber(player:GetAttribute("FruitMastery_" .. tostring(fruitKey)))
-					or tonumber(player:GetAttribute("FruitMastery"))
-					or tonumber(player:GetAttribute("StyleMastery"))
-					or 1
-				if curMastery >= reqMastery then
+				if hasUnlockedFlightFMasteryAndEnergy(fruitKey, player.Character) then
 					task.delay(0.06, function()
 						if not flightActive and not blocksCombat() and canUseFreeFlightNow() then
 							startFreeFlight()
@@ -1957,9 +2210,28 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		end
 	end
 
-	-- #88 Gamepad Combat, Traversal & Skill Chord Bindings
+	-- #88 Gamepad Combat, Traversal & Skill Chord Bindings (Instant 0ms M1 on ButtonR2 / ButtonX + Hold-to-Combo)
 	if kc == Enum.KeyCode.ButtonR2 then
 		gamepadR2Held = true
+		if not blocksCombat() and not UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2) then
+			gamepadR2AttackToken += 1
+			local myTok = gamepadR2AttackToken
+			fireGamepadM1(false)
+			task.spawn(function()
+				task.wait(0.38)
+				if not gamepadR2Held or myTok ~= gamepadR2AttackToken then return end
+				if not blocksCombat() then
+					fireGamepadM1(true)
+				end
+				while gamepadR2Held and myTok == gamepadR2AttackToken do
+					task.wait(0.34)
+					if not gamepadR2Held or myTok ~= gamepadR2AttackToken then break end
+					if not blocksCombat() then
+						fireGamepadM1(false)
+					end
+				end
+			end)
+		end
 		return
 	end
 	if blocksCombat() then return end
@@ -1980,35 +2252,34 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		if flightActive then
 			stopFreeFlight(false)
 		elseif canUseFreeFlightNow() then
-			startFreeFlight()
-		else
+			if hasUnlockedFlightFMasteryAndEnergy(resolveEquippedFruitKey(), player.Character) then
+				startFreeFlight()
+			end
+		elseif not isPlayerStunned(player.Character) then
 			faceLockedTarget()
-			AbilityRequest:FireServer({ action = "SlotMove", key = "F" })
+			AbilityRequest:FireServer(attachAim({ action = "SlotMove", key = "F" }))
 		end
-	elseif gamepadR2Held then
-		-- R2 + Face Buttons = Skill Moves [Z] [X] [C] [V]
+	elseif gamepadR2Held or UserInputService:IsKeyDown(Enum.KeyCode.ButtonL2) then
+		-- L2 / R2 + Face Buttons = Skill Moves [Z] [X] [C] [V]
+		gamepadR2AttackToken += 1
 		if kc == Enum.KeyCode.ButtonX then
 			faceLockedTarget()
-			AbilityRequest:FireServer({ action = "SlotMove", key = "Z" })
+			AbilityRequest:FireServer(attachAim({ action = "SlotMove", key = "Z" }))
 		elseif kc == Enum.KeyCode.ButtonY then
 			faceLockedTarget()
-			AbilityRequest:FireServer({ action = "SlotMove", key = "X" })
+			AbilityRequest:FireServer(attachAim({ action = "SlotMove", key = "X" }))
 		elseif kc == Enum.KeyCode.ButtonB then
 			faceLockedTarget()
-			AbilityRequest:FireServer({ action = "SlotMove", key = "C" })
+			AbilityRequest:FireServer(attachAim({ action = "SlotMove", key = "C" }))
 		elseif kc == Enum.KeyCode.ButtonA then
 			faceLockedTarget()
-			AbilityRequest:FireServer({ action = "SlotMove", key = "V" })
+			AbilityRequest:FireServer(attachAim({ action = "SlotMove", key = "V" }))
 		end
 	else
 		if kc == Enum.KeyCode.ButtonX then
-			stopActiveEmote()
-			faceLockedTarget()
-			CombatRequest:FireServer({ action = "Attack" })
+			fireGamepadM1(false)
 		elseif kc == Enum.KeyCode.ButtonY then
-			stopActiveEmote()
-			faceLockedTarget()
-			CombatRequest:FireServer({ action = "Heavy" })
+			fireGamepadM1(true)
 		elseif kc == Enum.KeyCode.ButtonB and not processed then
 			stopActiveEmote()
 			local ch = player.Character
@@ -2021,8 +2292,11 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 UserInputService.InputEnded:Connect(function(input)
-	if input.KeyCode == Enum.KeyCode.ButtonR2 then
+	if input.KeyCode == Enum.KeyCode.LeftShift then
+		pendingShiftOtsRevert = false
+	elseif input.KeyCode == Enum.KeyCode.ButtonR2 then
 		gamepadR2Held = false
+		gamepadR2AttackToken += 1
 	elseif input.KeyCode == Enum.KeyCode.F then
 		local heldDur = os.clock() - flightHoldStartedAt
 		flightFKeyHeld = false
@@ -2057,6 +2331,21 @@ CombatFX.OnClientEvent:Connect(function(fx)
 		task.delay(0.11, function()
 			addCameraTrauma(0.55, 11.5)
 		end)
+	end
+end)
+
+-- Shared BindableEvent under LocalPlayer for HUD.lua & BloxSkillRow_F click
+flightToggleBindable.Event:Connect(function()
+	if blocksCombat() then return end
+	if flightActive then
+		stopFreeFlight(false)
+	elseif canUseFreeFlightNow() then
+		if hasUnlockedFlightFMasteryAndEnergy(resolveEquippedFruitKey(), player.Character) then
+			startFreeFlight()
+		end
+	elseif not isPlayerStunned(player.Character) then
+		faceLockedTarget()
+		AbilityRequest:FireServer(attachAim({ action = "SlotMove", key = "F" }))
 	end
 end)
 
@@ -2182,7 +2471,7 @@ RunService:BindToRenderStep("SkybreakCombatCamera", Enum.RenderPriority.Camera.V
 		UserInputService.MouseBehavior = allowOtsLock and Enum.MouseBehavior.LockCenter or Enum.MouseBehavior.Default
 	end
 	if crosshairFrame then
-		crosshairFrame.Visible = allowOtsLock
+		crosshairFrame.Visible = allowOtsLock and not hasMainHudReticle()
 	end
 
 	-- Yield CFrame/FOV control cleanly to Scriptable cameras (e.g. MainMenu orbital diorama)
@@ -2193,10 +2482,10 @@ RunService:BindToRenderStep("SkybreakCombatCamera", Enum.RenderPriority.Camera.V
 	-- Khoảng cách camera-tiêu điểm chính là mức zoom thật, không đổi theo CameraOffset.
 	local zoomDist = (cam.CFrame.Position - cam.Focus.Position).Magnitude
 	local inFirstPerson = zoomDist < 0.9
-	setFirstPersonNear(zoomDist < 2.2)
-	if inFirstPerson and os.clock() >= firstPersonSweepAt then
-		firstPersonSweepAt = os.clock() + 0.25
-		sweepFirstPersonBody(ch)
+	local nearCloseZoom = zoomDist < 2.2
+	setFirstPersonNear(nearCloseZoom)
+	if nearCloseZoom then
+		applyCloseCameraFade(ch, zoomDist)
 	end
 
 	-- Offset vai thu dần khi zoom vào và về 0 ở góc nhìn thứ nhất, nếu không camera nằm ngoài đầu.
@@ -2212,8 +2501,19 @@ RunService:BindToRenderStep("SkybreakCombatCamera", Enum.RenderPriority.Camera.V
 		end
 	end
 
-	-- 5. #76 Beast Transformation Smooth Pull-Back (+14 Buddha, +9 Hybrid Dragon, +18 Full Sovereign Dragon)
+	-- 5. #76 Giant Transformation Camera (28-48 studs proportional zoom + Popper Raycast against Solid3DObstacles & walls/ceilings)
 	local targetPull, targetHeight = getTargetTransformPullback(ch)
+	if targetPull > 0 then
+		if savedBaseMaxZoom == nil then
+			savedBaseMaxZoom = math.max(32, player.CameraMaxZoomDistance)
+		end
+		if player.CameraMaxZoomDistance < 80 then
+			player.CameraMaxZoomDistance = 80
+		end
+	elseif savedBaseMaxZoom ~= nil then
+		player.CameraMaxZoomDistance = savedBaseMaxZoom
+		savedBaseMaxZoom = nil
+	end
 	currentPullBack += (targetPull - currentPullBack) * math.clamp(dt * 7, 0, 1)
 	currentHeightOff = currentHeightOff:Lerp(targetHeight, math.clamp(dt * 7, 0, 1))
 	hum.CameraOffset = currentHeightOff + currentOtsOffset
@@ -2221,9 +2521,12 @@ RunService:BindToRenderStep("SkybreakCombatCamera", Enum.RenderPriority.Camera.V
 	if currentPullBack > 0.25 then
 		local focusPos = root.Position + currentHeightOff
 		local camVec = cam.CFrame.Position - focusPos
+		local camDir = (camVec.Magnitude > 0.05) and camVec.Unit or (-cam.CFrame.LookVector)
 		local minDist = 12 + currentPullBack
-		if camVec.Magnitude > 0.1 and camVec.Magnitude < minDist then
-			cam.CFrame = CFrame.new(focusPos + camVec.Unit * minDist) * cam.CFrame.Rotation
+		local desiredDist = math.max(camVec.Magnitude, minDist)
+		local safeDist = computePopperSafeDist(focusPos, camDir, desiredDist, ch)
+		if math.abs(safeDist - camVec.Magnitude) > 0.04 or camVec.Magnitude < minDist then
+			cam.CFrame = CFrame.new(focusPos + camDir * safeDist) * cam.CFrame.Rotation
 		end
 	end
 

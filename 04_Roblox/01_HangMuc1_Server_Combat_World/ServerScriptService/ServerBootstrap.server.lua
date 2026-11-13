@@ -55,6 +55,10 @@ local ok, err = xpcall(function()
 	if vendorMod then
 		require(vendorMod).Start()
 	end
+	local monetizationMod = ServerScriptService.Services:FindFirstChild("MonetizationService")
+	if monetizationMod then
+		require(monetizationMod).Start()
+	end
 end, debug.traceback)
 if not ok then
 	warn("[SKYBREAK SERVER BOOTSTRAP ERROR]", err)

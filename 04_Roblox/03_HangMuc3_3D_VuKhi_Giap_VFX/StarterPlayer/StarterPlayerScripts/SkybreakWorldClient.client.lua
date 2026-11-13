@@ -7,74 +7,79 @@ local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local LocalizationService = game:GetService("LocalizationService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- ============================================================================
--- 0. BALANCED HDR BLOOM & LIGHTING LOCK FOR VFX STUDIO NEON & PARTICLES
+-- 0. SOLE LIGHTING & ATMOSPHERE AUTHORITY (Rule 8 — No PostEffect Destruction)
 -- ============================================================================
-local lightingGuardBusy = false
+local function ensureWorldLightingBaseline()
+    Lighting.GlobalShadows = true
+    Lighting.ShadowSoftness = 0.18
+    Lighting.EnvironmentDiffuseScale = 1.0
+    Lighting.EnvironmentSpecularScale = 1.0
 
-local function enforceAntiGlareLock()
-    if lightingGuardBusy then
-        return
+    local bl = Lighting:FindFirstChild("SkybreakVFXBloom")
+    if not bl or not bl:IsA("BloomEffect") then
+        bl = Lighting:FindFirstChildOfClass("BloomEffect")
     end
-    lightingGuardBusy = true
-    if Lighting.Brightness > 2.25 then
-        Lighting.Brightness = 1.95
-    end
-    if Lighting.ExposureCompensation > 0.14 or Lighting.ExposureCompensation < -0.12 then
-        Lighting.ExposureCompensation = 0.04
-    end
-    local foundBloom = false
-    local foundGrade = false
-    for _, child in ipairs(Lighting:GetChildren()) do
-        if child:IsA("BloomEffect") then
-            foundBloom = true
-            child.Enabled = true
-            child.Intensity = math.clamp(child.Intensity, 0.48, 0.68)
-            child.Threshold = math.clamp(child.Threshold, 0.86, 0.96)
-            child.Size = math.clamp(child.Size, 26, 36)
-        elseif child:IsA("ColorCorrectionEffect") and (child.Name == "SkybreakGrade" or child.Name == "SkybreakColorGrade") then
-            foundGrade = true
-            child.Enabled = true
-            child.Saturation = math.clamp(math.max(child.Saturation, 0.26), 0.22, 0.34)
-            child.Contrast = math.clamp(math.max(child.Contrast, 0.14), 0.10, 0.22)
-        elseif child:IsA("Atmosphere") then
-            if child.Glare > 0.10 then
-                child.Glare = 0.08
-            end
-        end
-    end
-    if not foundBloom then
-        local bl = Instance.new("BloomEffect")
+    if not bl then
+        bl = Instance.new("BloomEffect")
         bl.Name = "SkybreakVFXBloom"
         bl.Enabled = true
-        bl.Intensity = 0.58
-        bl.Threshold = 0.88
+        bl.Intensity = 0.45
+        bl.Threshold = 1.15
         bl.Size = 28
         bl.Parent = Lighting
     end
-    if not foundGrade then
-        local gr = Instance.new("ColorCorrectionEffect")
+
+    local sr = Lighting:FindFirstChild("SkybreakSunRays") or Lighting:FindFirstChildOfClass("SunRaysEffect")
+    if not sr or not sr:IsA("SunRaysEffect") then
+        sr = Instance.new("SunRaysEffect")
+        sr.Name = "SkybreakSunRays"
+        sr.Enabled = true
+        sr.Intensity = 0.14
+        sr.Spread = 0.65
+        sr.Parent = Lighting
+    end
+
+    local gr = Lighting:FindFirstChild("SkybreakGrade") or Lighting:FindFirstChild("SkybreakColorGrade")
+    if not gr or not gr:IsA("ColorCorrectionEffect") then
+        gr = Instance.new("ColorCorrectionEffect")
         gr.Name = "SkybreakGrade"
         gr.Enabled = true
-        gr.Brightness = 0.03
-        gr.Contrast = 0.14
-        gr.Saturation = 0.26
+        gr.Brightness = 0.02
+        gr.Contrast = 0.15
+        gr.Saturation = 0.24
         gr.TintColor = Color3.fromRGB(255, 250, 242)
         gr.Parent = Lighting
     end
-    lightingGuardBusy = false
+
+    local atmo = Lighting:FindFirstChildOfClass("Atmosphere")
+    if not atmo then
+        atmo = Instance.new("Atmosphere")
+        atmo.Name = "SkybreakAtmosphere"
+        atmo.Density = 0.26
+        atmo.Offset = 0.16
+        atmo.Glare = 0.06
+        atmo.Haze = 0.14
+        atmo.Parent = Lighting
+    end
+
+    local dof = Lighting:FindFirstChild("SkybreakDistanceDOF")
+    if not dof or not dof:IsA("DepthOfFieldEffect") then
+        dof = Instance.new("DepthOfFieldEffect")
+        dof.Name = "SkybreakDistanceDOF"
+        dof.FarIntensity = 0.06
+        dof.InFocusRadius = 420
+        dof.FocusDistance = 260
+        dof.NearIntensity = 0
+        dof.Parent = Lighting
+    end
+    return bl, gr, atmo, sr
 end
 
-enforceAntiGlareLock()
-Lighting:GetPropertyChangedSignal("Brightness"):Connect(enforceAntiGlareLock)
-Lighting:GetPropertyChangedSignal("ExposureCompensation"):Connect(enforceAntiGlareLock)
-Lighting.ChildAdded:Connect(function(ch)
-    if ch:IsA("BloomEffect") or ch:IsA("Atmosphere") then
-        task.defer(enforceAntiGlareLock)
-    end
-end)
+ensureWorldLightingBaseline()
 
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -103,11 +108,28 @@ local function ensureTempFX()
     return f
 end
 
-local function isLowFX()
-    if localPlayer and localPlayer:GetAttribute("LowFXMode") == true then
-        return true
+local function getGraphicsTier()
+    if localPlayer then
+        local t = localPlayer:GetAttribute("GraphicsTier")
+        if t == "Ultra" or t == "Balanced" or t == "Smooth" then
+            return t
+        end
     end
-    return workspace:GetAttribute("LowFXMode") == true
+    local wt = workspace:GetAttribute("GraphicsTier")
+    if wt == "Ultra" or wt == "Balanced" or wt == "Smooth" then
+        return wt
+    end
+    if (localPlayer and localPlayer:GetAttribute("LowFXMode") == true) or workspace:GetAttribute("LowFXMode") == true then
+        return "Smooth"
+    end
+    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+        return "Smooth"
+    end
+    return "Ultra"
+end
+
+local function isLowFX()
+    return getGraphicsTier() == "Smooth"
 end
 
 -- Sanitize any stray baked astral-plane emojis (>= 0x1F300) if present in legacy place instances
@@ -179,11 +201,12 @@ task.spawn(function()
 end)
 
 -- ============================================================================
--- 1. #25 SMOOTH ANTI-GLARE DAY / SUNSET / NEBULA NIGHT CYCLE & WEATHER PARTICLES
--- ~12-minute synchronized server cycle:
--- Binh Minh -> Ban Ngay -> Hoang Hon Vang Kim -> Dem Tinh Van
+-- 1. #25 FUTURE PBR GOLDEN-HOUR / DAY / SUNSET / NEBULA NIGHT CYCLE & WEATHER
+-- Live 14-minute cycle starting at Golden Late-Afternoon (ClockTime ~ 16.1, ~28° sun)
 -- ============================================================================
-local DAY_CYCLE_SECONDS = 720.0
+local DAY_CYCLE_SECONDS = 840.0
+local START_CYCLE_U = 0.46
+local SESSION_START_CLOCK = os.clock()
 local devTimeOffsetSec = 0
 
 local TIME_KEYFRAMES = {
@@ -191,77 +214,98 @@ local TIME_KEYFRAMES = {
         U = 0.00,
         Tag = "[BÌNH MINH]",
         Name = "Bình Minh",
-        Clock = 7.20,
-        Brightness = 1.65,
-        Exposure = 0.02,
-        Ambient = Color3.fromRGB(128, 124, 148),
-        Outdoor = Color3.fromRGB(176, 164, 186),
-        ShiftTop = Color3.fromRGB(255, 212, 176),
-        AtmoColor = Color3.fromRGB(232, 212, 224),
-        AtmoDecay = Color3.fromRGB(218, 174, 162),
-        CloudUpper = Color3.fromRGB(242, 224, 228),
-        CloudMid = Color3.fromRGB(196, 186, 218),
-        CloudDeep = Color3.fromRGB(118, 146, 204),
+        Clock = 6.80,
+        Brightness = 2.15,
+        Exposure = 0.03,
+        Ambient = Color3.fromRGB(56, 60, 88),
+        Outdoor = Color3.fromRGB(138, 128, 164),
+        ShiftTop = Color3.fromRGB(255, 206, 164),
+        ShiftBottom = Color3.fromRGB(64, 62, 96),
+        AtmoColor = Color3.fromRGB(236, 206, 218),
+        AtmoDecay = Color3.fromRGB(214, 162, 148),
+        CloudUpper = Color3.fromRGB(246, 220, 224),
+        CloudMid = Color3.fromRGB(192, 178, 214),
+        CloudDeep = Color3.fromRGB(88, 114, 176),
     },
     {
-        U = 0.26,
+        U = 0.24,
         Tag = "[BAN NGÀY]",
         Name = "Ban Ngày",
-        Clock = 13.50,
-        Brightness = 1.95,
+        Clock = 13.40,
+        Brightness = 2.45,
         Exposure = 0.04,
-        Ambient = Color3.fromRGB(138, 148, 168),
-        Outdoor = Color3.fromRGB(182, 192, 214),
-        ShiftTop = Color3.fromRGB(255, 248, 232),
-        AtmoColor = Color3.fromRGB(185, 224, 255),
-        AtmoDecay = Color3.fromRGB(235, 215, 185),
-        CloudUpper = Color3.fromRGB(238, 246, 255),
-        CloudMid = Color3.fromRGB(168, 208, 248),
-        CloudDeep = Color3.fromRGB(78, 148, 224),
+        Ambient = Color3.fromRGB(54, 66, 92),
+        Outdoor = Color3.fromRGB(132, 148, 184),
+        ShiftTop = Color3.fromRGB(255, 246, 224),
+        ShiftBottom = Color3.fromRGB(62, 76, 108),
+        AtmoColor = Color3.fromRGB(182, 222, 255),
+        AtmoDecay = Color3.fromRGB(236, 212, 178),
+        CloudUpper = Color3.fromRGB(242, 248, 255),
+        CloudMid = Color3.fromRGB(164, 204, 246),
+        CloudDeep = Color3.fromRGB(68, 128, 204),
     },
     {
-        U = 0.56,
+        U = 0.46,
+        Tag = "[CHIỀU VÀNG KIM]",
+        Name = "Chiều Vàng Kim",
+        Clock = 16.10,
+        Brightness = 2.32,
+        Exposure = 0.05,
+        Ambient = Color3.fromRGB(58, 62, 88),
+        Outdoor = Color3.fromRGB(152, 138, 168),
+        ShiftTop = Color3.fromRGB(255, 214, 152),
+        ShiftBottom = Color3.fromRGB(68, 64, 98),
+        AtmoColor = Color3.fromRGB(246, 214, 182),
+        AtmoDecay = Color3.fromRGB(224, 158, 122),
+        CloudUpper = Color3.fromRGB(252, 226, 194),
+        CloudMid = Color3.fromRGB(204, 172, 182),
+        CloudDeep = Color3.fromRGB(86, 108, 168),
+    },
+    {
+        U = 0.64,
         Tag = "[HOÀNG HÔN]",
         Name = "Hoàng Hôn Vàng Kim",
-        Clock = 17.35,
-        Brightness = 1.68,
-        Exposure = 0.02,
-        Ambient = Color3.fromRGB(142, 114, 126),
-        Outdoor = Color3.fromRGB(192, 148, 132),
-        ShiftTop = Color3.fromRGB(255, 192, 128),
-        AtmoColor = Color3.fromRGB(242, 192, 158),
-        AtmoDecay = Color3.fromRGB(198, 128, 116),
-        CloudUpper = Color3.fromRGB(246, 204, 176),
-        CloudMid = Color3.fromRGB(198, 154, 164),
-        CloudDeep = Color3.fromRGB(112, 104, 158),
+        Clock = 17.65,
+        Brightness = 1.92,
+        Exposure = 0.03,
+        Ambient = Color3.fromRGB(64, 52, 82),
+        Outdoor = Color3.fromRGB(146, 112, 136),
+        ShiftTop = Color3.fromRGB(255, 178, 114),
+        ShiftBottom = Color3.fromRGB(72, 54, 88),
+        AtmoColor = Color3.fromRGB(244, 184, 148),
+        AtmoDecay = Color3.fromRGB(194, 116, 108),
+        CloudUpper = Color3.fromRGB(248, 196, 162),
+        CloudMid = Color3.fromRGB(188, 138, 158),
+        CloudDeep = Color3.fromRGB(84, 78, 136),
     },
     {
-        U = 0.78,
+        U = 0.82,
         Tag = "[ĐÊM TINH VÂN]",
         Name = "Đêm Tinh Vân",
         Clock = 21.50,
-        Brightness = 1.38,
-        Exposure = 0.00,
-        Ambient = Color3.fromRGB(96, 112, 156),
-        Outdoor = Color3.fromRGB(132, 152, 204),
-        ShiftTop = Color3.fromRGB(164, 188, 255),
-        AtmoColor = Color3.fromRGB(122, 148, 212),
-        AtmoDecay = Color3.fromRGB(82, 104, 168),
-        CloudUpper = Color3.fromRGB(134, 162, 224),
-        CloudMid = Color3.fromRGB(92, 124, 192),
-        CloudDeep = Color3.fromRGB(54, 84, 152),
+        Brightness = 1.48,
+        Exposure = 0.01,
+        Ambient = Color3.fromRGB(34, 42, 68),
+        Outdoor = Color3.fromRGB(78, 96, 142),
+        ShiftTop = Color3.fromRGB(148, 176, 248),
+        ShiftBottom = Color3.fromRGB(36, 46, 78),
+        AtmoColor = Color3.fromRGB(108, 136, 204),
+        AtmoDecay = Color3.fromRGB(68, 88, 152),
+        CloudUpper = Color3.fromRGB(122, 152, 216),
+        CloudMid = Color3.fromRGB(82, 112, 182),
+        CloudDeep = Color3.fromRGB(42, 66, 128),
     },
 }
 
 local REALM_ATMOSPHERE_BIAS = {
-    GoldenSky = { Tint = Color3.fromRGB(255, 242, 212), Sea = 1, Blend = 0.22 },
+    GoldenSky = { Tint = Color3.fromRGB(255, 238, 204), Sea = 1, Blend = 0.22 },
     VerdantCrown = { Tint = Color3.fromRGB(204, 248, 218), Sea = 1, Blend = 0.24 },
     ChronosBastion = { Tint = Color3.fromRGB(234, 224, 252), Sea = 1, Blend = 0.22 },
-    FrozenCyber = { Tint = Color3.fromRGB(176, 228, 255), Sea = 2, Blend = 0.32 },
-    AbyssalTides = { Tint = Color3.fromRGB(158, 222, 252), Sea = 2, Blend = 0.32 },
-    ShadowRealm = { Tint = Color3.fromRGB(204, 142, 238), Sea = 3, Blend = 0.34 },
-    EmberforgeWastes = { Tint = Color3.fromRGB(246, 164, 138), Sea = 3, Blend = 0.32 },
-    VeilsEnd = { Tint = Color3.fromRGB(194, 146, 244), Sea = 3, Blend = 0.34 },
+    FrozenCyber = { Tint = Color3.fromRGB(172, 228, 255), Sea = 2, Blend = 0.32 },
+    AbyssalTides = { Tint = Color3.fromRGB(154, 220, 252), Sea = 2, Blend = 0.32 },
+    ShadowRealm = { Tint = Color3.fromRGB(204, 138, 242), Sea = 3, Blend = 0.34 },
+    EmberforgeWastes = { Tint = Color3.fromRGB(246, 158, 132), Sea = 3, Blend = 0.32 },
+    VeilsEnd = { Tint = Color3.fromRGB(194, 142, 244), Sea = 3, Blend = 0.34 },
 }
 
 local function smoothAlpha(t)
@@ -279,19 +323,21 @@ local function lerpClockTime(c1, c2, alpha)
     return (c1 + diff * alpha) % 24
 end
 
-local currentPhaseTag = "[BAN NGÀY]"
+local currentPhaseTag = "[CHIỀU VÀNG KIM]"
+local currentActiveSea = 1
 local currentCloudColors = {
-    Upper = TIME_KEYFRAMES[2].CloudUpper,
-    Mid = TIME_KEYFRAMES[2].CloudMid,
-    Deep = TIME_KEYFRAMES[2].CloudDeep,
+    Upper = TIME_KEYFRAMES[3].CloudUpper,
+    Mid = TIME_KEYFRAMES[3].CloudMid,
+    Deep = TIME_KEYFRAMES[3].CloudDeep,
 }
+local ultBlendAlpha = 0
+local lastUltTint = Color3.fromRGB(120, 195, 255)
 
 local function sampleTimeCycle()
     local extraOffset = tonumber(workspace:GetAttribute("DevClockOffset")) or 0
-    local u = 0.26
-    if devTimeOffsetSec ~= 0 or extraOffset ~= 0 then
-        u = ((0.26 * DAY_CYCLE_SECONDS + devTimeOffsetSec + extraOffset) % DAY_CYCLE_SECONDS) / DAY_CYCLE_SECONDS
-    end
+    local liveElapsed = math.max(0, os.clock() - SESSION_START_CLOCK)
+    local totalSec = START_CYCLE_U * DAY_CYCLE_SECONDS + liveElapsed + devTimeOffsetSec + extraOffset
+    local u = (totalSec % DAY_CYCLE_SECONDS) / DAY_CYCLE_SECONDS
 
     local k1 = TIME_KEYFRAMES[#TIME_KEYFRAMES]
     local k2 = TIME_KEYFRAMES[1]
@@ -321,6 +367,7 @@ local function sampleTimeCycle()
         Ambient = k1.Ambient:Lerp(k2.Ambient, alpha),
         Outdoor = k1.Outdoor:Lerp(k2.Outdoor, alpha),
         ShiftTop = k1.ShiftTop:Lerp(k2.ShiftTop, alpha),
+        ShiftBottom = k1.ShiftBottom:Lerp(k2.ShiftBottom, alpha),
         AtmoColor = k1.AtmoColor:Lerp(k2.AtmoColor, alpha),
         AtmoDecay = k1.AtmoDecay:Lerp(k2.AtmoDecay, alpha),
         CloudUpper = k1.CloudUpper:Lerp(k2.CloudUpper, alpha),
@@ -416,7 +463,8 @@ local function ensureWeatherVolume()
     return weatherBox
 end
 
-local function stepAtmosphereAndWeather(camPos)
+local function stepAtmosphereAndWeather(camPos, stepDt)
+    local dt = math.clamp(tonumber(stepDt) or 0.08, 0.01, 0.5)
     local sample = sampleTimeCycle()
     local realm = tostring((localPlayer and localPlayer:GetAttribute("CurrentRealm")) or Lighting:GetAttribute("SkybreakEnvironment") or "GoldenSky")
     if realm == "SkyHub" or realm == "" then
@@ -424,44 +472,103 @@ local function stepAtmosphereAndWeather(camPos)
     end
     local rBias = REALM_ATMOSPHERE_BIAS[realm] or REALM_ATMOSPHERE_BIAS.GoldenSky
     local blend = rBias.Blend
+    local tier = getGraphicsTier()
 
-    lightingGuardBusy = true
-    Lighting.ClockTime = sample.Clock
-    -- Vibrant sunlit HDR lighting & ColorCorrection for 3D World & VFX Studio
-    Lighting.Brightness = math.clamp(sample.Brightness, 1.35, 2.15)
-    Lighting.ExposureCompensation = math.clamp(sample.Exposure, -0.02, 0.08)
-    Lighting.Ambient = sample.Ambient:Lerp(rBias.Tint, blend * 0.35)
-    Lighting.OutdoorAmbient = sample.Outdoor:Lerp(rBias.Tint, blend * 0.45)
-    Lighting.ColorShift_Top = sample.ShiftTop:Lerp(rBias.Tint, blend * 0.40)
-
-    local atmo = Lighting:FindFirstChildOfClass("Atmosphere")
-    if atmo then
-        atmo.Color = sample.AtmoColor:Lerp(rBias.Tint, blend * 0.55)
-        atmo.Decay = sample.AtmoDecay:Lerp(rBias.Tint, blend * 0.45)
-        atmo.Glare = math.min(atmo.Glare, 0.08)
-        atmo.Haze = math.min(atmo.Haze, 0.16)
-        Lighting.FogColor = atmo.Color
+    local rawUltTint = workspace:GetAttribute("SkybreakUltimateTint")
+    local rawUltUntil = tonumber(workspace:GetAttribute("SkybreakUltimateUntil")) or 0
+    if typeof(rawUltTint) == "Color3" then
+        lastUltTint = rawUltTint
     end
-
-    for _, child in ipairs(Lighting:GetChildren()) do
-        if child:IsA("BloomEffect") then
-            child.Enabled = true
-            child.Intensity = math.clamp(child.Intensity, 0.52, 0.68)
-            child.Threshold = math.clamp(child.Threshold, 0.86, 0.94)
-            child.Size = math.clamp(child.Size, 26, 34)
-        elseif child:IsA("ColorCorrectionEffect") and (child.Name == "SkybreakGrade" or child.Name == "SkybreakColorGrade") then
-            child.Enabled = true
-            child.Saturation = 0.26
-            child.Contrast = 0.14
-            child.Brightness = 0.03
+    local nowRef = (rawUltUntil > 1e8) and os.time() or os.clock()
+    local ultRem = rawUltUntil - nowRef
+    if ultRem > 0 and typeof(rawUltTint) == "Color3" then
+        local targetAlpha = math.clamp(ultRem / 0.45, 0.28, 0.72)
+        ultBlendAlpha = ultBlendAlpha + (targetAlpha - ultBlendAlpha) * math.clamp(dt * 14.0, 0, 1)
+    elseif ultBlendAlpha > 0 then
+        ultBlendAlpha = math.max(0, ultBlendAlpha - dt * 2.8)
+        if ultBlendAlpha < 0.005 then
+            ultBlendAlpha = 0
+        end
+        if rawUltUntil > 0 and ultRem <= -0.1 then
+            workspace:SetAttribute("SkybreakUltimateUntil", 0)
         end
     end
-    lightingGuardBusy = false
+
+    local bl, gr, atmo, sr = ensureWorldLightingBaseline()
+    Lighting.ClockTime = sample.Clock
+    Lighting.GlobalShadows = true
+    Lighting.ShadowSoftness = 0.18
+    Lighting.EnvironmentDiffuseScale = 1.0
+    Lighting.EnvironmentSpecularScale = 1.0
+
+    local baseBright = math.clamp(sample.Brightness, 1.38, 2.55) * (1.0 - ultBlendAlpha * 0.16)
+    Lighting.Brightness = baseBright
+    Lighting.ExposureCompensation = math.clamp(sample.Exposure, -0.02, 0.08)
+
+    local amb = sample.Ambient:Lerp(rBias.Tint, blend * 0.24)
+    local outAmb = sample.Outdoor:Lerp(rBias.Tint, blend * 0.36)
+    local shiftTop = sample.ShiftTop:Lerp(rBias.Tint, blend * 0.38)
+    local shiftBot = sample.ShiftBottom:Lerp(rBias.Tint, blend * 0.22)
+    local atmoCol = sample.AtmoColor:Lerp(rBias.Tint, blend * 0.50)
+    local atmoDec = sample.AtmoDecay:Lerp(rBias.Tint, blend * 0.42)
+    if ultBlendAlpha > 0 then
+        local uMix = ultBlendAlpha * 0.56
+        amb = amb:Lerp(lastUltTint, uMix * 0.75)
+        outAmb = outAmb:Lerp(lastUltTint, uMix * 0.70)
+        shiftTop = shiftTop:Lerp(lastUltTint, uMix)
+        atmoCol = atmoCol:Lerp(lastUltTint, uMix)
+        atmoDec = atmoDec:Lerp(lastUltTint, uMix * 0.85)
+    end
+
+    Lighting.Ambient = amb
+    Lighting.OutdoorAmbient = outAmb
+    Lighting.ColorShift_Top = shiftTop
+    Lighting.ColorShift_Bottom = shiftBot
+    Lighting.FogStart = (rBias.Sea == 3) and 520 or 720
+    Lighting.FogEnd = (rBias.Sea == 3) and 3800 or 5200
+
+    if atmo then
+        atmo.Density = (rBias.Sea == 3) and 0.29 or 0.25
+        atmo.Offset = 0.16
+        atmo.Color = atmoCol
+        atmo.Decay = atmoDec
+        atmo.Glare = 0.06
+        atmo.Haze = 0.14
+        Lighting.FogColor = atmoCol
+    end
+
+    if sr and sr.Parent then
+        sr.Enabled = (tier ~= "Smooth")
+        sr.Intensity = 0.14
+        sr.Spread = 0.65
+    end
+    if bl and bl.Parent then
+        bl.Enabled = true
+        bl.Intensity = 0.34
+        bl.Threshold = 1.42
+        bl.Size = 24
+    end
+    if gr and gr.Parent then
+        gr.Enabled = true
+        gr.Saturation = 0.24
+        gr.Contrast = 0.15 + ultBlendAlpha * 0.06
+        gr.Brightness = 0.02
+        local baseTint = Color3.fromRGB(255, 250, 242):Lerp(rBias.Tint, blend * 0.16)
+        gr.TintColor = (ultBlendAlpha > 0) and baseTint:Lerp(lastUltTint, ultBlendAlpha * 0.28) or baseTint
+    end
 
     currentPhaseTag = sample.Tag
-    currentCloudColors.Upper = sample.CloudUpper:Lerp(rBias.Tint, blend * 0.30)
-    currentCloudColors.Mid = sample.CloudMid:Lerp(rBias.Tint, blend * 0.32)
-    currentCloudColors.Deep = sample.CloudDeep:Lerp(rBias.Tint, blend * 0.25)
+    currentActiveSea = rBias.Sea or 1
+    local cUp = sample.CloudUpper:Lerp(rBias.Tint, blend * 0.28)
+    local cMid = sample.CloudMid:Lerp(rBias.Tint, blend * 0.30)
+    local cDeep = sample.CloudDeep:Lerp(rBias.Tint, blend * 0.24)
+    if ultBlendAlpha > 0 then
+        cUp = cUp:Lerp(lastUltTint, ultBlendAlpha * 0.52)
+        cMid = cMid:Lerp(lastUltTint, ultBlendAlpha * 0.45)
+    end
+    currentCloudColors.Upper = cUp
+    currentCloudColors.Mid = cMid
+    currentCloudColors.Deep = cDeep
 
     if Lighting:GetAttribute("SkybreakTimePhase") ~= sample.Tag then
         Lighting:SetAttribute("SkybreakTimePhase", sample.Tag)
@@ -471,50 +578,55 @@ local function stepAtmosphereAndWeather(camPos)
     if camPos then
         wVol.Position = camPos + Vector3.new(0, 10, 0)
     end
-    local low = isLowFX()
-    local activeSea = rBias.Sea or 1
+    local low = (tier == "Smooth")
+    local rateScale = (tier == "Balanced") and 0.65 or 1.0
+    local activeSea = currentActiveSea
     for seaIdx, key in ipairs({ "Sea1", "Sea2", "Sea3" }) do
         local pe = weatherEmitters[key]
         if pe then
             local shouldEnable = (not low) and (activeSea == seaIdx)
             pe.Enabled = shouldEnable
-            pe.Rate = shouldEnable and ((seaIdx == 2 and 26) or 20) or 0
+            pe.Rate = shouldEnable and math.floor(((seaIdx == 2 and 26) or 20) * rateScale + 0.5) or 0
         end
     end
 end
 
 -- ============================================================================
--- 2. #121 DYNAMIC MULTI-LAYER CLOUD SEA BLANKET (Y < -15) & SKY-GEYSER RESCUE VFX
+-- 2. #121 VOLUMETRIC TERRAIN.CLOUDS, MIST BANKS, SHATTERED SKY VISTA & GEYSER VFX
 -- ============================================================================
-local cloudSeaRoot = nil
-local cloudUpperPads = {}
-local cloudMidPads = {}
-local cloudHorizonBanks = {}
-local cloudMidSheets = {}
-local cloudDeepSheets = {}
-local CLOUD_TILE_OFFSETS = {
-    Vector3.new(-860, 0, -860),
-    Vector3.new(860, 0, -860),
-    Vector3.new(-860, 0, 860),
-    Vector3.new(860, 0, 860),
-}
+local volumetricClouds = nil
+local cloudMistRoot = nil
+local cloudMistBanks = {}
+local skyVistaRoot = nil
+local skyVistaBuiltTier = ""
+local vistaMonoliths = {}
+local vistaLeylines = {}
+local vistaWindBox = nil
+local vistaWindStreakEmitter = nil
+local vistaAetherMoteEmitter = nil
 
-local UPPER_OFFSETS = {
-    { x = -280, z = -240, r = 210, y = -18.0, t = 0.34, sx = 1.0, sz = 0.8 },
-    { x = 220, z = -290, r = 240, y = -19.2, t = 0.36, sx = 0.9, sz = 1.1 },
-    { x = -340, z = 190, r = 230, y = -18.6, t = 0.32, sx = 1.1, sz = 0.9 },
-    { x = 290, z = 230, r = 250, y = -19.8, t = 0.35, sx = 0.85, sz = 1.05 },
-    { x = -40, z = -30, r = 260, y = -20.4, t = 0.38, sx = 1.05, sz = 0.95 },
-    { x = -540, z = -40, r = 290, y = -21.0, t = 0.34, sx = 1.0, sz = 1.0 },
-    { x = 520, z = -20, r = 285, y = -21.2, t = 0.34, sx = 1.0, sz = 1.0 },
-    { x = 20, z = 510, r = 300, y = -21.5, t = 0.35, sx = 1.1, sz = 0.9 },
-}
-
-local MID_OFFSETS = {
-    { x = -420, z = -420, r = 380, y = -30.5, t = 0.24 },
-    { x = 440, z = -390, r = 410, y = -31.2, t = 0.24 },
-    { x = -410, z = 430, r = 395, y = -30.8, t = 0.22 },
-    { x = 430, z = 410, r = 420, y = -31.5, t = 0.25 },
+local SEA_LEYLINE_PALETTES = {
+    [1] = {
+        Core = Color3.fromRGB(255, 244, 196),
+        Mid = Color3.fromRGB(88, 232, 255),
+        Rim = Color3.fromRGB(255, 192, 82),
+        Stone = Color3.fromRGB(142, 128, 114),
+        Mat = Enum.Material.Sandstone,
+    },
+    [2] = {
+        Core = Color3.fromRGB(224, 252, 255),
+        Mid = Color3.fromRGB(54, 198, 255),
+        Rim = Color3.fromRGB(82, 118, 238),
+        Stone = Color3.fromRGB(76, 94, 122),
+        Mat = Enum.Material.Slate,
+    },
+    [3] = {
+        Core = Color3.fromRGB(248, 212, 255),
+        Mid = Color3.fromRGB(186, 68, 255),
+        Rim = Color3.fromRGB(238, 48, 108),
+        Stone = Color3.fromRGB(52, 44, 72),
+        Mat = Enum.Material.Slate,
+    },
 }
 
 local function makeCloudPart(parent, name, size, shape, transparency)
@@ -536,61 +648,317 @@ local function makeCloudPart(parent, name, size, shape, transparency)
     return p
 end
 
+local function ensureVolumetricClouds()
+    if volumetricClouds and volumetricClouds.Parent then
+        return volumetricClouds
+    end
+    pcall(function()
+        local terrain = workspace.Terrain
+        if not terrain then
+            return
+        end
+        local existing = terrain:FindFirstChildOfClass("Clouds")
+        if not existing then
+            existing = Instance.new("Clouds")
+            existing.Name = "SkybreakVolumetricClouds"
+            existing.Cover = 0.72
+            existing.Density = 0.78
+            existing.Color = currentCloudColors.Upper
+            existing.Parent = terrain
+        end
+        existing.Enabled = true
+        volumetricClouds = existing
+    end)
+    return volumetricClouds
+end
+
 local function ensureCloudSea()
-    if cloudSeaRoot and cloudSeaRoot.Parent then
-        return
-    end
     local tfx = ensureTempFX()
-    cloudSeaRoot = tfx:FindFirstChild("SkybreakCloudSeaBlanket")
-    if cloudSeaRoot then
-        cloudSeaRoot:Destroy()
-    end
-    cloudSeaRoot = Instance.new("Folder")
-    cloudSeaRoot.Name = "SkybreakCloudSeaBlanket"
-    cloudSeaRoot.Parent = tfx
-
-    table.clear(cloudUpperPads)
-    table.clear(cloudMidPads)
-    table.clear(cloudHorizonBanks)
-    table.clear(cloudMidSheets)
-    table.clear(cloudDeepSheets)
-
-    for idx, spec in ipairs(UPPER_OFFSETS) do
-        local cyl = makeCloudPart(
-            cloudSeaRoot,
-            "CloudStratum1_" .. idx,
-            Vector3.new(3.2, spec.r, spec.r),
-            Enum.PartType.Cylinder,
-            spec.t
-        )
-        cloudUpperPads[idx] = { Part = cyl, Spec = spec }
+    -- Clean up any legacy SmoothPlastic Cylinder CloudSea discs
+    local legacyBlanket = tfx:FindFirstChild("SkybreakCloudSeaBlanket")
+    if legacyBlanket then
+        legacyBlanket:Destroy()
     end
 
-    for idx, spec in ipairs(MID_OFFSETS) do
-        local cyl = makeCloudPart(
-            cloudSeaRoot,
-            "CloudStratum2_Ridge_" .. idx,
-            Vector3.new(4.4, spec.r, spec.r),
-            Enum.PartType.Cylinder,
-            spec.t
-        )
-        cloudMidPads[idx] = { Part = cyl, Spec = spec }
+    ensureVolumetricClouds()
+
+    if not cloudMistRoot or not cloudMistRoot.Parent then
+        cloudMistRoot = tfx:FindFirstChild("SkybreakCloudMistBanks")
+        if cloudMistRoot then
+            cloudMistRoot:Destroy()
+        end
+        cloudMistRoot = Instance.new("Folder")
+        cloudMistRoot.Name = "SkybreakCloudMistBanks"
+        cloudMistRoot.Parent = tfx
+        table.clear(cloudMistBanks)
+
+        for i = 1, 8 do
+            local isHorizon = (i > 4)
+            local anchor = Instance.new("Part")
+            anchor.Name = (isHorizon and "HorizonMistBank_" or "AbyssMistBank_") .. tostring(i)
+            anchor.Size = isHorizon and Vector3.new(260, 26, 90) or Vector3.new(340, 18, 340)
+            anchor.Transparency = 1
+            anchor.Anchored = true
+            anchor.CanCollide = false
+            anchor.CanQuery = false
+            anchor.CanTouch = false
+            anchor.CastShadow = false
+            anchor.Massless = true
+            anchor.Parent = cloudMistRoot
+
+            local pe = Instance.new("ParticleEmitter")
+            pe.Name = "CloudMistEmitter"
+            pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
+            pe.Color = ColorSequence.new(currentCloudColors.Upper, currentCloudColors.Mid)
+            pe.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, isHorizon and 34 or 42),
+                NumberSequenceKeypoint.new(0.5, isHorizon and 56 or 68),
+                NumberSequenceKeypoint.new(1, isHorizon and 72 or 84),
+            })
+            pe.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(0.25, isHorizon and 0.68 or 0.60),
+                NumberSequenceKeypoint.new(0.75, isHorizon and 0.74 or 0.66),
+                NumberSequenceKeypoint.new(1, 1),
+            })
+            pe.Lifetime = NumberRange.new(6.5, 9.5)
+            pe.Speed = NumberRange.new(3.5, 8.0)
+            pe.SpreadAngle = Vector2.new(180, 12)
+            pe.RotSpeed = NumberRange.new(-8, 8)
+            pe.Rotation = NumberRange.new(0, 360)
+            pe.LightEmission = 0.08
+            pe.LightInfluence = 0.88
+            pe.LockedToPart = false
+            pe.Rate = 6
+            pe.Parent = anchor
+
+            cloudMistBanks[i] = { Anchor = anchor, Emitter = pe, IsHorizon = isHorizon, Index = i }
+        end
     end
 
-    for tIdx = 1, #CLOUD_TILE_OFFSETS do
-        cloudMidSheets[tIdx] = makeCloudPart(cloudSeaRoot, "CloudStratum2_SeaSheet_" .. tIdx, Vector3.new(1720, 2.6, 1720), Enum.PartType.Block, 0.16)
-        cloudDeepSheets[tIdx] = makeCloudPart(cloudSeaRoot, "CloudStratum3_AbyssFloor_" .. tIdx, Vector3.new(1720, 4.0, 1720), Enum.PartType.Block, 0.02)
-    end
+    local tier = getGraphicsTier()
+    if not skyVistaRoot or not skyVistaRoot.Parent or skyVistaBuiltTier ~= tier then
+        local existingVista = tfx:FindFirstChild("SkybreakShatteredSkyVista")
+        if existingVista then
+            existingVista:Destroy()
+        end
+        skyVistaRoot = Instance.new("Folder")
+        skyVistaRoot.Name = "SkybreakShatteredSkyVista"
+        skyVistaRoot.Parent = tfx
+        skyVistaBuiltTier = tier
+        table.clear(vistaMonoliths)
+        table.clear(vistaLeylines)
 
-    for i = 1, 8 do
-        local bank = makeCloudPart(
-            cloudSeaRoot,
-            "HorizonCloudShelf_" .. i,
-            Vector3.new(28, 760, 220),
-            Enum.PartType.Cylinder,
-            0.22
-        )
-        cloudHorizonBanks[i] = bank
+        local monolithCount = (tier == "Ultra" and 12) or (tier == "Balanced" and 8) or 4
+        local pal = SEA_LEYLINE_PALETTES[currentActiveSea] or SEA_LEYLINE_PALETTES[1]
+        for i = 1, monolithCount do
+            local mFolder = Instance.new("Model")
+            mFolder.Name = "ShatteredSkyMonolith_" .. tostring(i)
+            mFolder.Parent = skyVistaRoot
+
+            local hScale = 75 + ((i * 37) % 95)
+            local wScale = 24 + ((i * 19) % 28)
+            local coreStone = Instance.new("WedgePart")
+            coreStone.Name = "MonolithSpire"
+            coreStone.Size = Vector3.new(wScale, hScale, wScale * 1.25)
+            coreStone.Material = pal.Mat
+            coreStone.Color = pal.Stone
+            coreStone.Reflectance = 0
+            coreStone.Anchored = true
+            coreStone.CanCollide = false
+            coreStone.CanQuery = false
+            coreStone.CanTouch = false
+            coreStone.CastShadow = false
+            coreStone.Massless = true
+            coreStone.Parent = mFolder
+
+            local crownShard = Instance.new("WedgePart")
+            crownShard.Name = "MonolithCrown"
+            crownShard.Size = Vector3.new(wScale * 0.72, hScale * 0.58, wScale * 0.85)
+            crownShard.Material = pal.Mat
+            crownShard.Color = pal.Stone
+            crownShard.Anchored = true
+            crownShard.CanCollide = false
+            crownShard.CanQuery = false
+            crownShard.CanTouch = false
+            crownShard.CastShadow = false
+            crownShard.Massless = true
+            crownShard.Parent = mFolder
+
+            local vein = Instance.new("Part")
+            vein.Name = "AetherLeylineVein"
+            vein.Size = Vector3.new(wScale * 0.22, hScale * 0.74, wScale * 0.26)
+            vein.Material = Enum.Material.Neon
+            vein.Color = pal.Mid
+            vein.Transparency = 0.14
+            vein.Anchored = true
+            vein.CanCollide = false
+            vein.CanQuery = false
+            vein.CanTouch = false
+            vein.CastShadow = false
+            vein.Massless = true
+            vein.Parent = mFolder
+
+            local satShard = nil
+            if tier ~= "Smooth" then
+                satShard = Instance.new("Part")
+                satShard.Name = "FloatingDebrisShard"
+                satShard.Size = Vector3.new(wScale * 0.34, hScale * 0.24, wScale * 0.30)
+                satShard.Material = pal.Mat
+                satShard.Color = pal.Stone
+                satShard.Anchored = true
+                satShard.CanCollide = false
+                satShard.CanQuery = false
+                satShard.CanTouch = false
+                satShard.CastShadow = false
+                satShard.Massless = true
+                satShard.Parent = mFolder
+            end
+
+            local baseAngle = (i - 1) * (math.pi * 2 / monolithCount) + ((i % 3) * 0.19)
+            local dist = 1680 + ((i * 211) % 880)
+            local baseY = (i % 4 == 0) and (85 + (i * 17) % 90) or (240 + ((i * 53) % 340))
+            local tiltX = math.rad(((i * 23) % 34) - 17)
+            local tiltZ = math.rad(((i * 31) % 38) - 19)
+            vistaMonoliths[i] = {
+                Spire = coreStone,
+                Crown = crownShard,
+                Vein = vein,
+                Shard = satShard,
+                Angle = baseAngle,
+                Dist = dist,
+                BaseY = baseY,
+                TiltX = tiltX,
+                TiltZ = tiltZ,
+                HScale = hScale,
+                WScale = wScale,
+            }
+        end
+
+        local ribbonCount = (tier == "Ultra" and 4) or (tier == "Balanced" and 3) or 2
+        for rIdx = 1, ribbonCount do
+            local rFolder = Instance.new("Folder")
+            rFolder.Name = "AetherSkyRiftArc_" .. tostring(rIdx)
+            rFolder.Parent = skyVistaRoot
+
+            local nodes = {}
+            local beams = {}
+            for nIdx = 1, 4 do
+                local np = Instance.new("Part")
+                np.Name = "RiftNode_" .. tostring(nIdx)
+                np.Size = Vector3.new(1, 1, 1)
+                np.Transparency = 1
+                np.Anchored = true
+                np.CanCollide = false
+                np.CanQuery = false
+                np.CanTouch = false
+                np.CastShadow = false
+                np.Massless = true
+                np.Parent = rFolder
+                local att = Instance.new("Attachment")
+                att.Parent = np
+                nodes[nIdx] = { Part = np, Att = att }
+            end
+            for bIdx = 1, 3 do
+                local bm = Instance.new("Beam")
+                bm.Name = "LeylineRibbon_" .. tostring(bIdx)
+                bm.Attachment0 = nodes[bIdx].Att
+                bm.Attachment1 = nodes[bIdx + 1].Att
+                bm.FaceCamera = true
+                bm.Segments = (tier == "Smooth") and 12 or 22
+                bm.Width0 = (bIdx == 1 and 16) or 30
+                bm.Width1 = (bIdx == 3 and 16) or 32
+                bm.CurveSize0 = 95
+                bm.CurveSize1 = -95
+                bm.LightEmission = 0.92
+                bm.LightInfluence = 0.12
+                bm.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, pal.Rim),
+                    ColorSequenceKeypoint.new(0.5, pal.Core),
+                    ColorSequenceKeypoint.new(1, pal.Mid),
+                })
+                bm.Transparency = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, (bIdx == 1) and 0.92 or 0.50),
+                    NumberSequenceKeypoint.new(0.5, 0.36),
+                    NumberSequenceKeypoint.new(1, (bIdx == 3) and 0.92 or 0.50),
+                })
+                bm.Parent = rFolder
+                beams[bIdx] = bm
+            end
+            vistaLeylines[rIdx] = {
+                Nodes = nodes,
+                Beams = beams,
+                BaseAngle = (rIdx - 1) * (math.pi * 2 / ribbonCount) + 0.38,
+                Dist = 1580 + (rIdx % 2) * 320,
+                ApexY = 460 + rIdx * 65,
+            }
+        end
+
+        vistaWindBox = Instance.new("Part")
+        vistaWindBox.Name = "SkybreakVistaWindMotes"
+        vistaWindBox.Size = Vector3.new(148, 56, 148)
+        vistaWindBox.Transparency = 1
+        vistaWindBox.Anchored = true
+        vistaWindBox.CanCollide = false
+        vistaWindBox.CanQuery = false
+        vistaWindBox.CanTouch = false
+        vistaWindBox.CastShadow = false
+        vistaWindBox.Massless = true
+        vistaWindBox.Parent = skyVistaRoot
+
+        vistaWindStreakEmitter = Instance.new("ParticleEmitter")
+        vistaWindStreakEmitter.Name = "HighAltitudeWindStreaks"
+        vistaWindStreakEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+        vistaWindStreakEmitter.Color = ColorSequence.new(pal.Core, pal.Mid)
+        vistaWindStreakEmitter.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(0.3, 0.22),
+            NumberSequenceKeypoint.new(0.8, 0.18),
+            NumberSequenceKeypoint.new(1, 0),
+        })
+        vistaWindStreakEmitter.Squash = NumberSequence.new(1.8)
+        vistaWindStreakEmitter.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.25, 0.55),
+            NumberSequenceKeypoint.new(0.8, 0.65),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        vistaWindStreakEmitter.Lifetime = NumberRange.new(2.2, 3.6)
+        vistaWindStreakEmitter.Speed = NumberRange.new(14, 24)
+        vistaWindStreakEmitter.SpreadAngle = Vector2.new(18, 8)
+        vistaWindStreakEmitter.EmissionDirection = Enum.NormalId.Right
+        vistaWindStreakEmitter.LightEmission = 0.65
+        vistaWindStreakEmitter.LightInfluence = 0.25
+        vistaWindStreakEmitter.LockedToPart = false
+        vistaWindStreakEmitter.Enabled = (tier ~= "Smooth")
+        vistaWindStreakEmitter.Rate = (tier == "Ultra" and 16) or (tier == "Balanced" and 9) or 0
+        vistaWindStreakEmitter.Parent = vistaWindBox
+
+        vistaAetherMoteEmitter = Instance.new("ParticleEmitter")
+        vistaAetherMoteEmitter.Name = "AmbientAetherSkyMotes"
+        vistaAetherMoteEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+        vistaAetherMoteEmitter.Color = ColorSequence.new(pal.Mid, pal.Rim)
+        vistaAetherMoteEmitter.Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(0.4, 0.28),
+            NumberSequenceKeypoint.new(1, 0),
+        })
+        vistaAetherMoteEmitter.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 1),
+            NumberSequenceKeypoint.new(0.3, 0.35),
+            NumberSequenceKeypoint.new(0.75, 0.45),
+            NumberSequenceKeypoint.new(1, 1),
+        })
+        vistaAetherMoteEmitter.Lifetime = NumberRange.new(4.0, 6.2)
+        vistaAetherMoteEmitter.Speed = NumberRange.new(1.4, 3.2)
+        vistaAetherMoteEmitter.SpreadAngle = Vector2.new(180, 45)
+        vistaAetherMoteEmitter.Acceleration = Vector3.new(0.6, 0.45, 0.25)
+        vistaAetherMoteEmitter.LightEmission = 0.78
+        vistaAetherMoteEmitter.LightInfluence = 0.20
+        vistaAetherMoteEmitter.LockedToPart = false
+        vistaAetherMoteEmitter.Enabled = (tier ~= "Smooth")
+        vistaAetherMoteEmitter.Rate = (tier == "Ultra" and 14) or (tier == "Balanced" and 8) or 0
+        vistaAetherMoteEmitter.Parent = vistaWindBox
     end
 end
 
@@ -600,49 +968,123 @@ local function stepCloudSea(camPos, now)
     end
     ensureCloudSea()
 
-    local snapX = math.floor(camPos.X / 720 + 0.5) * 720
-    local snapZ = math.floor(camPos.Z / 720 + 0.5) * 720
-    local drift1X = math.sin(now * 0.055) * 65 + ((now * 3.4) % 720) - 360
-    local drift1Z = math.cos(now * 0.042) * 48
-
-    for idx, entry in ipairs(cloudUpperPads) do
-        local sp = entry.Spec
-        local wx = snapX + sp.x + drift1X * sp.sx
-        local wz = snapZ + sp.z + drift1Z * sp.sz
-        local wy = sp.y + math.sin(now * 0.45 + idx) * 0.65
-        entry.Part.Color = currentCloudColors.Upper
-        entry.Part.CFrame = CFrame.new(wx, wy, wz) * CFrame.Angles(0, 0, math.pi * 0.5)
+    local tier = getGraphicsTier()
+    local pal = SEA_LEYLINE_PALETTES[currentActiveSea] or SEA_LEYLINE_PALETTES[1]
+    local clouds = ensureVolumetricClouds()
+    if clouds then
+        local seaBaseCover = (currentActiveSea == 3 and 0.75) or (currentActiveSea == 2 and 0.73) or 0.71
+        local seaBaseDensity = (currentActiveSea == 3 and 0.82) or (currentActiveSea == 2 and 0.80) or 0.76
+        clouds.Enabled = true
+        clouds.Cover = math.clamp(seaBaseCover + math.sin(now * 0.035) * 0.025, 0.68, 0.78)
+        clouds.Density = math.clamp(seaBaseDensity + math.cos(now * 0.028) * 0.025, 0.72, 0.85)
+        clouds.Color = currentCloudColors.Upper
     end
 
-    local drift2X = math.cos(now * 0.032) * 52
-    local drift2Z = math.sin(now * 0.028) * 52
-    for idx, entry in ipairs(cloudMidPads) do
-        local sp = entry.Spec
-        entry.Part.Color = currentCloudColors.Mid
-        entry.Part.CFrame = CFrame.new(snapX + sp.x + drift2X, sp.y, snapZ + sp.z + drift2Z) * CFrame.Angles(0, 0, math.pi * 0.5)
-    end
-
-    for tIdx, tileOff in ipairs(CLOUD_TILE_OFFSETS) do
-        local ms = cloudMidSheets[tIdx]
-        if ms then
-            ms.Color = currentCloudColors.Mid
-            ms.Position = Vector3.new(camPos.X + tileOff.X, -35.5, camPos.Z + tileOff.Z)
-        end
-        local ds = cloudDeepSheets[tIdx]
-        if ds then
-            ds.Color = currentCloudColors.Deep
-            ds.Position = Vector3.new(camPos.X + tileOff.X, -58.0, camPos.Z + tileOff.Z)
+    local mistRate = (tier == "Ultra" and 9) or (tier == "Balanced" and 5) or 2
+    local mistColSeq = ColorSequence.new(currentCloudColors.Upper, currentCloudColors.Mid)
+    for _, entry in ipairs(cloudMistBanks) do
+        local idx = entry.Index
+        entry.Emitter.Color = mistColSeq
+        entry.Emitter.Rate = mistRate
+        if entry.IsHorizon then
+            local hIdx = idx - 4
+            local ang = (hIdx - 1) * (math.pi * 0.5) + now * 0.006
+            local hx = camPos.X + math.cos(ang) * 760
+            local hz = camPos.Z + math.sin(ang) * 760
+            entry.Anchor.CFrame = CFrame.new(hx, -16.0, hz) * CFrame.Angles(0, -ang + math.pi * 0.5, 0)
+        else
+            local ox = ((idx == 1 or idx == 3) and -290 or 290) + math.sin(now * 0.04 + idx) * 45
+            local oz = ((idx <= 2) and -290 or 290) + math.cos(now * 0.035 + idx) * 45
+            entry.Anchor.Position = Vector3.new(camPos.X + ox, -28.0, camPos.Z + oz)
         end
     end
 
-    for i, bank in ipairs(cloudHorizonBanks) do
-        local ang = (i - 1) * (math.pi * 2 / 8) + now * 0.004
-        local bx = camPos.X + math.cos(ang) * 1280
-        local bz = camPos.Z + math.sin(ang) * 1280
-        bank.Color = currentCloudColors.Upper:Lerp(currentCloudColors.Mid, 0.35)
-        bank.CFrame = CFrame.new(bx, -24.0, bz) * CFrame.Angles(0, -ang + math.pi * 0.5, math.pi * 0.5)
+    local veinCol = (ultBlendAlpha > 0) and pal.Mid:Lerp(lastUltTint, ultBlendAlpha * 0.65) or pal.Mid
+    for idx, m in ipairs(vistaMonoliths) do
+        local ang = m.Angle + now * 0.0032
+        local bobY = math.sin(now * 0.32 + idx * 1.1) * 9.5
+        local mx = camPos.X + math.cos(ang) * m.Dist
+        local mz = camPos.Z + math.sin(ang) * m.Dist
+        local my = m.BaseY + bobY
+        local baseCF = CFrame.new(mx, my, mz) * CFrame.Angles(m.TiltX, -ang + 0.6, m.TiltZ)
+        m.Spire.Material = pal.Mat
+        m.Spire.Color = pal.Stone
+        m.Spire.CFrame = baseCF
+        m.Crown.Material = pal.Mat
+        m.Crown.Color = pal.Stone
+        m.Crown.CFrame = baseCF * CFrame.new(0, -m.HScale * 0.42, m.WScale * 0.12) * CFrame.Angles(math.pi, 0.4, 0)
+        m.Vein.Color = veinCol
+        m.Vein.CFrame = baseCF * CFrame.new(0, m.HScale * 0.04, -m.WScale * 0.32)
+        if m.Shard then
+            local orbit = now * 0.45 + idx
+            m.Shard.Material = pal.Mat
+            m.Shard.Color = pal.Stone
+            m.Shard.CFrame = baseCF
+                * CFrame.new(math.cos(orbit) * (m.WScale * 1.35), m.HScale * 0.22 + math.sin(orbit * 1.3) * 6, math.sin(orbit) * (m.WScale * 1.35))
+                * CFrame.Angles(orbit * 0.4, orbit * 0.7, 0.3)
+        end
+    end
+
+    local beamCore = (ultBlendAlpha > 0) and pal.Core:Lerp(lastUltTint, ultBlendAlpha * 0.60) or pal.Core
+    local beamSeq = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, pal.Rim),
+        ColorSequenceKeypoint.new(0.5, beamCore),
+        ColorSequenceKeypoint.new(1, veinCol),
+    })
+    for rIdx, arc in ipairs(vistaLeylines) do
+        local centerAng = arc.BaseAngle + now * 0.0045
+        for nIdx, node in ipairs(arc.Nodes) do
+            local u = (nIdx - 1) / 3
+            local spanAng = centerAng + (u - 0.5) * 0.68
+            local archH = math.sin(u * math.pi) * 145 + math.sin(now * 0.4 + rIdx + nIdx) * 12
+            local nx = camPos.X + math.cos(spanAng) * arc.Dist
+            local nz = camPos.Z + math.sin(spanAng) * arc.Dist
+            local ny = arc.ApexY + archH
+            node.Part.CFrame = CFrame.new(nx, ny, nz) * CFrame.Angles(0, -spanAng, math.rad(18))
+        end
+        for _, bm in ipairs(arc.Beams) do
+            bm.Color = beamSeq
+        end
+    end
+
+    if vistaWindBox and vistaWindBox.Parent then
+        vistaWindBox.Position = camPos + Vector3.new(0, 14, 0)
+        local motesOn = (tier ~= "Smooth")
+        if vistaWindStreakEmitter then
+            vistaWindStreakEmitter.Enabled = motesOn
+            vistaWindStreakEmitter.Color = ColorSequence.new(beamCore, veinCol)
+        end
+        if vistaAetherMoteEmitter then
+            vistaAetherMoteEmitter.Enabled = motesOn
+            vistaAetherMoteEmitter.Color = ColorSequence.new(veinCol, pal.Rim)
+        end
     end
 end
+
+local function refreshWorldShadowTier()
+    local allowShadows = (getGraphicsTier() ~= "Smooth")
+    task.spawn(function()
+        for idx, inst in ipairs(workspace:GetDescendants()) do
+            if inst:IsA("BasePart") and inst:GetAttribute("EquipmentRole") == "Environment" then
+                local sz = inst.Size
+                local maxDim = math.max(sz.X, sz.Y, sz.Z)
+                inst.CastShadow = allowShadows and (inst.Transparency < 0.25) and (inst.Material ~= Enum.Material.Neon) and (maxDim >= 4.0)
+            end
+            if idx % 350 == 0 then
+                task.wait()
+            end
+        end
+    end)
+end
+
+if localPlayer then
+    localPlayer:GetAttributeChangedSignal("GraphicsTier"):Connect(refreshWorldShadowTier)
+    localPlayer:GetAttributeChangedSignal("LowFXMode"):Connect(refreshWorldShadowTier)
+end
+workspace:GetAttributeChangedSignal("GraphicsTier"):Connect(refreshWorldShadowTier)
+workspace:GetAttributeChangedSignal("LowFXMode"):Connect(refreshWorldShadowTier)
+stepAtmosphereAndWeather(nil, 0.08)
+ensureVolumetricClouds()
 
 local lastGeyserVFXAt = -10
 local function spawnSkyGeyserVortex(originPos, targetRoot)
@@ -1350,11 +1792,17 @@ task.spawn(function()
             end
             local npcPos = e.Root.Position
             local dist = pPos and (pPos - npcPos).Magnitude or 999
-            if dist > 480 then
+            if dist > 280 then
                 if e.Billboard.Enabled then
                     e.Billboard.Enabled = false
                 end
                 continue
+            end
+            if dist > 130 then
+                if now < (e.NextMidRangeStepAt or 0) then
+                    continue
+                end
+                e.NextMidRangeStepAt = now + 0.08
             end
 
             if e.IsSpawnedRig and not e.GroundSnapped and e.SpecPos and dist <= 320 and now >= (e.NextGroundCheckAt or 0) then
@@ -1912,9 +2360,26 @@ local inspectNameLbl = inspectCard:FindFirstChild("PlayerNameLbl") or makeLabel(
     inspectCard, "PlayerNameLbl", UDim2.fromOffset(18, 36), UDim2.new(1, -36, 0, 20),
     "Skyborn", Enum.Font.GothamBold, 15, TEXT_LIGHT
 )
+local function isEnglishInspectLocale()
+    local lang = localPlayer and tostring(localPlayer:GetAttribute("Language") or "") or ""
+    if lang == "en" then
+        return true
+    elseif lang == "vi" then
+        return false
+    end
+    local okLoc, rbxLoc = pcall(function()
+        return LocalizationService.RobloxLocaleId
+    end)
+    return not (okLoc and type(rbxLoc) == "string" and rbxLoc:lower():sub(1, 2) == "vi")
+end
+
+local function getRenownLabel()
+    return isEnglishInspectLocale() and "Renown" or "Điểm Danh Vọng"
+end
+
 local inspectMetaLbl = inspectCard:FindFirstChild("PlayerMetaLbl") or makeLabel(
     inspectCard, "PlayerMetaLbl", UDim2.fromOffset(18, 56), UDim2.new(1, -36, 0, 18),
-    "Lv. 1  •  Bounty: 0  •  Crew: Solo", Enum.Font.GothamMedium, 12, CYAN_ACCENT
+    "Lv. 1  •  " .. getRenownLabel() .. ": 0  •  Crew: Solo", Enum.Font.GothamMedium, 12, CYAN_ACCENT
 )
 
 local inspectCloseBtn = inspectCard:FindFirstChild("CloseInspectBtn")
@@ -2078,7 +2543,7 @@ local function buildFallbackInspectFromPlayer(plr)
     end
     local st = (p == localPlayer and type(lastKnownSelfState) == "table") and lastKnownSelfState or {}
     local level = tonumber(p:GetAttribute("Level") or st.Level) or 1
-    local bounty = tonumber(p:GetAttribute("Bounty") or st.Bounty) or 0
+    local renown = tonumber(p:GetAttribute("Renown") or p:GetAttribute("Bounty") or st.Renown or st.Bounty) or 0
     local crew = tostring(p:GetAttribute("CrewName") or st.CrewName or "Solo Skyborn")
     local titleId = tostring(p:GetAttribute("Title") or p:GetAttribute("EquippedTitle") or st.Title or st.EquippedTitle or "sky_rookie")
     local titleName = resolveTitleDisplay(titleId)
@@ -2105,7 +2570,7 @@ local function buildFallbackInspectFromPlayer(plr)
     return {
         Name = p.DisplayName .. " (@" .. p.Name .. ")",
         Level = level,
-        Bounty = bounty,
+        Renown = renown,
         Crew = crew ~= "" and crew or "Solo Skyborn",
         Title = titleName,
         Race = race .. v4,
@@ -2132,10 +2597,10 @@ local function showInspectCard(data)
         or tostring(data.Name or data.DisplayName or "Skyborn")
     inspectNameLbl.Text = select(1, stripAstralEmojis(dispTitle))
     local lv = tonumber(data.Level) or 1
-    local bty = tonumber(data.Bounty) or 0
+    local ren = tonumber(data.Renown or data.Bounty) or 0
     local rawCrew = tostring(data.Crew or data.CrewName or "")
     local crew = select(1, stripAstralEmojis(rawCrew ~= "" and rawCrew or "Solo Skyborn"))
-    inspectMetaLbl.Text = string.format("Lv. %d  •  Bounty: %s  •  Crew: %s", lv, formatCommaInt(bty), crew)
+    inspectMetaLbl.Text = string.format("Lv. %d  •  %s: %s  •  Crew: %s", lv, getRenownLabel(), formatCommaInt(ren), crew)
 
     local titleStr = resolveTitleDisplay(data.Title)
     local raceStr = tostring(data.Race or "Skyborn")
@@ -2193,10 +2658,12 @@ local function showInspectCard(data)
     end
 
     inspectCard.Visible = true
+    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    UserInputService.MouseIconEnabled = true
     playSFX("ui_tab")
 end
 
--- Click another player in workspace with Alt+Click or Right-Click inspect support (non-intrusive to M1 combat)
+-- Click another player in workspace with Alt+Click inspect support (non-intrusive to M1 combat & OTS lock)
 local function fireUIRequest(actionName, payload)
     local remotes = ReplicatedStorage:FindFirstChild("Remotes")
     local uiReq = remotes and remotes:FindFirstChild("UIRequest")
@@ -2212,21 +2679,40 @@ local function fireUIRequest(actionName, payload)
     end
 end
 
+local inspectRayParams = RaycastParams.new()
+inspectRayParams.FilterType = Enum.RaycastFilterType.Exclude
+inspectRayParams.IgnoreWater = true
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if inspectCard and inspectCard.Visible and (input.KeyCode == Enum.KeyCode.Escape or input.KeyCode == Enum.KeyCode.Tab) then
+        inspectCard.Visible = false
+        playSFX("ui_click")
+        return
+    end
     if gameProcessed then
         return
     end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) then
+    local altHeld = UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) or UserInputService:IsKeyDown(Enum.KeyCode.RightAlt)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and altHeld then
         local cam = workspace.CurrentCamera
         if not cam then
             return
         end
+        local excl = {}
+        if localPlayer and localPlayer.Character then
+            table.insert(excl, localPlayer.Character)
+        end
+        local tfx = workspace:FindFirstChild("TempFX")
+        if tfx then
+            table.insert(excl, tfx)
+        end
+        inspectRayParams.FilterDescendantsInstances = excl
         local mPos = UserInputService:GetMouseLocation()
         local ray = cam:ViewportPointToRay(mPos.X, mPos.Y)
-        local hit = workspace:Raycast(ray.Origin, ray.Direction * 140)
+        local hit = workspace:Raycast(ray.Origin, ray.Direction * 140, inspectRayParams)
         if hit and hit.Instance then
             for _, plr in ipairs(Players:GetPlayers()) do
-                if plr.Character and hit.Instance:IsDescendantOf(plr.Character) then
+                if plr ~= localPlayer and plr.Character and hit.Instance:IsDescendantOf(plr.Character) then
                     showInspectCard(buildFallbackInspectFromPlayer(plr))
                     fireUIRequest("InspectPlayer", { targetUserId = plr.UserId, targetName = plr.Name })
                     break
@@ -2237,38 +2723,38 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ============================================================================
--- 6. #129 TOGGLEABLE STUDIO DEV SANDBOX BAR [F9] (Non-Overlapping Top-Left Lane)
--- PlayerHUD occupies (16,14) -> (368,140), so (382,14) is 100% clear of HP/Energy/EXP!
+-- 6. #129 TOGGLEABLE STUDIO DEV SANDBOX BAR [Ctrl+Shift+F9] (Hidden by default!)
+-- Hidden by default even in Studio Play Solo so it NEVER covers BossHUD or clashes with Roblox F9 Console!
 -- ============================================================================
 local devPhasePillLabel = nil
 if RunService:IsStudio() then
     local sandboxGui = playerGui:FindFirstChild("SkybreakDevSandboxGui") or Instance.new("ScreenGui")
     sandboxGui.Name = "SkybreakDevSandboxGui"
-    -- Duoi SkybreakUI (25) de nut DEV khong de len Shop/menu; chi hien trong Studio.
     sandboxGui.DisplayOrder = 20
     sandboxGui.ResetOnSpawn = false
     sandboxGui.IgnoreGuiInset = false
+    sandboxGui.Enabled = false
     sandboxGui.Parent = playerGui
 
     local togglePill = sandboxGui:FindFirstChild("DevSandboxToggleBtn") or Instance.new("TextButton")
     togglePill.Name = "DevSandboxToggleBtn"
-    togglePill.Position = UDim2.fromOffset(446, 14)
-    togglePill.Size = UDim2.fromOffset(172, 30)
+    togglePill.Position = UDim2.fromOffset(16, 154)
+    togglePill.Size = UDim2.fromOffset(224, 28)
     togglePill.BackgroundColor3 = PANEL_BG
     togglePill.BackgroundTransparency = 0.08
     togglePill.Font = Enum.Font.GothamBold
-    togglePill.TextSize = 11
+    togglePill.TextSize = 10
     togglePill.TextColor3 = GOLD_ACCENT
-    togglePill.Text = "DEV SANDBOX [F9]"
+    togglePill.Text = "DEV SANDBOX [Ctrl+Shift+F9]"
     togglePill.Parent = sandboxGui
     if not togglePill:FindFirstChildOfClass("UIStroke") then
-        styleCard(togglePill, 15, GOLD_ACCENT, 1.4)
+        styleCard(togglePill, 14, GOLD_ACCENT, 1.4)
     end
     devPhasePillLabel = togglePill
 
     local drawer = sandboxGui:FindFirstChild("DevSandboxDrawer") or Instance.new("Frame")
     drawer.Name = "DevSandboxDrawer"
-    drawer.Position = UDim2.fromOffset(446, 50)
+    drawer.Position = UDim2.fromOffset(16, 188)
     drawer.Size = UDim2.fromOffset(360, 316)
     drawer.BackgroundColor3 = PANEL_BG
     drawer.BackgroundTransparency = 0.05
@@ -2375,14 +2861,27 @@ if RunService:IsStudio() then
     statusHint.TextXAlignment = Enum.TextXAlignment.Center
 
     local function toggleSandbox()
-        drawer.Visible = not drawer.Visible
+        local nextOpen = not (sandboxGui.Enabled and drawer.Visible)
+        sandboxGui.Enabled = nextOpen
+        drawer.Visible = nextOpen
         playSFX("ui_tab")
     end
 
-    togglePill.MouseButton1Click:Connect(toggleSandbox)
-    UserInputService.InputBegan:Connect(function(input, gp)
-        if not gp and input.KeyCode == Enum.KeyCode.F9 then
-            toggleSandbox()
+    togglePill.MouseButton1Click:Connect(function()
+        drawer.Visible = false
+        sandboxGui.Enabled = false
+        playSFX("ui_click")
+    end)
+    UserInputService.InputBegan:Connect(function(input)
+        if UserInputService:GetFocusedTextBox() then
+            return
+        end
+        if input.KeyCode == Enum.KeyCode.F9 then
+            local ctrlDown = UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
+            local shiftDown = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
+            if ctrlDown and shiftDown then
+                toggleSandbox()
+            end
         end
     end)
 end
@@ -2479,6 +2978,7 @@ end)
 local lastPlayerPos = nil
 local lastCharacterRef = nil
 local atmoAccum = 0
+local cloudAccum = 0
 
 RunService.Heartbeat:Connect(function(dt)
     dt = math.clamp(dt, 1 / 240, 0.15)
@@ -2511,15 +3011,20 @@ RunService.Heartbeat:Connect(function(dt)
     end
 
     atmoAccum += dt
-    if atmoAccum >= 0.08 then
+    if atmoAccum >= 0.06 then
+        local stepDt = atmoAccum
         atmoAccum = 0
-        stepAtmosphereAndWeather(camPos or playerPos)
+        stepAtmosphereAndWeather(camPos or playerPos, stepDt)
         if devPhasePillLabel and devPhasePillLabel.Parent then
-            devPhasePillLabel.Text = "DEV [F9] " .. currentPhaseTag
+            devPhasePillLabel.Text = "DEV [Ctrl+Shift+F9] " .. currentPhaseTag
         end
     end
 
-    stepCloudSea(camPos or playerPos, now)
+    cloudAccum += dt
+    if cloudAccum >= 0.05 then
+        cloudAccum = 0
+        stepCloudSea(camPos or playerPos, now)
+    end
     stepQuestWaypoint(playerPos, now)
     stepChestsAndCoinBursts(dt, now, playerPos)
 end)

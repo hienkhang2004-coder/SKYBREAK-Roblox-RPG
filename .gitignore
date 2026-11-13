@@ -15,5 +15,6 @@ __pycache__/
 06_Antigravity_Work/
 02_Blender/
 02_Blender_Files/
-02_Concept_Art/
+02_Concept_Art/*
+!02_Concept_Art/UI_And_Storefront_Kit/
 07_Audio_SFX/

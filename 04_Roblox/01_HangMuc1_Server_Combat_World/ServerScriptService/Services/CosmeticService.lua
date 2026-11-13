@@ -27,6 +27,14 @@ function A.Weapon(ch,hand,equipped)
 end
 local Players=game:GetService("Players")
 local HIDDEN_SERVER_PARTS={HumanoidRootPart=true,SkybornBlade=true,GuardianBreastplate=true,GuardianCrest=true,CrimsonCape=true}
+local CORE_AVATAR_LIMBS={
+    Head=true,Torso=true,UpperTorso=true,LowerTorso=true,
+    ["Left Arm"]=true,["Right Arm"]=true,["Left Leg"]=true,["Right Leg"]=true,
+    LeftUpperArm=true,LeftLowerArm=true,LeftHand=true,
+    RightUpperArm=true,RightLowerArm=true,RightHand=true,
+    LeftUpperLeg=true,LeftLowerLeg=true,LeftFoot=true,
+    RightUpperLeg=true,RightLowerLeg=true,RightFoot=true,
+}
 local STUDIO_OUTFIT_PALETTES={
     {Torso=Color3.fromRGB(26,28,36),Leg=Color3.fromRGB(20,22,28)},
     {Torso=Color3.fromRGB(28,52,96),Leg=Color3.fromRGB(20,30,52)},
@@ -44,72 +52,17 @@ function A.Guardian(ch)
     local humanoid=ch and ch:FindFirstChildOfClass("Humanoid")
     if not root or not humanoid then return false end
     local plr=Players:GetPlayerFromCharacter(ch)
-    local isLocalUnpublished=(game.PlaceId==0)
+    local uid=plr and tonumber(plr.UserId) or 0
+    local isStudioDummy=(game.PlaceId==0 and uid<=0)
     local head=ch:FindFirstChild("Head")
-    if head and head:IsA("BasePart") and isLocalUnpublished then
-        local sm=head:FindFirstChildOfClass("SpecialMesh")
-        if sm and sm.MeshType==Enum.MeshType.FileMesh then
-            sm.MeshType=Enum.MeshType.Head
-            sm.MeshId=""
-            sm.TextureId=""
-            sm.Scale=Vector3.new(1.25,1.25,1.25)
-        end
-        local faceTarget=head
-        if head:IsA("MeshPart") then
-            local proxy=head:FindFirstChild("SkybreakStudioHeadProxy")
-            if not proxy then
-                proxy=Instance.new("Part")
-                proxy.Name="SkybreakStudioHeadProxy"
-                proxy.Size=Vector3.new(2,1,1)
-                proxy.Color=head.Color
-                proxy.Material=Enum.Material.SmoothPlastic
-                proxy.CanCollide=false
-                proxy.CanQuery=false
-                proxy.CanTouch=false
-                proxy.Massless=true
-                proxy.Anchored=false
-                proxy.CastShadow=false
-                proxy.CFrame=head.CFrame
-                local pMesh=Instance.new("SpecialMesh")
-                pMesh.MeshType=Enum.MeshType.Head
-                pMesh.Scale=Vector3.new(1.25,1.25,1.25)
-                pMesh.Parent=proxy
-                local w=Instance.new("WeldConstraint")
-                w.Part0=head
-                w.Part1=proxy
-                w.Parent=proxy
-                proxy.Parent=head
-            else
-                proxy.Color=head.Color
-            end
-            faceTarget=proxy
-        end
-        local face=faceTarget:FindFirstChild("face") or faceTarget:FindFirstChildOfClass("Decal")
-        if not face then
-            face=Instance.new("Decal")
-            face.Name="face"
-            face.Face=Enum.NormalId.Front
-            face.Texture="rbxasset://textures/face.png"
-            face.Parent=faceTarget
-        elseif face.Texture=="" or face.Texture:find("rbxassetid://") or face.Texture:find("roblox.com/asset") then
-            face.Texture="rbxasset://textures/face.png"
-        end
-        face.Transparency=0
-    end
-    if isLocalUnpublished then
-        for _,inst in ipairs(ch:GetChildren()) do
-            if inst:IsA("Shirt") or inst:IsA("Pants") then
-                inst:Destroy()
-            end
-        end
+    local hasShirtOrPants=(ch:FindFirstChildOfClass("Shirt")~=nil or ch:FindFirstChildOfClass("Pants")~=nil)
+    if isStudioDummy and not hasShirtOrPants then
         local bc=ch:FindFirstChildOfClass("BodyColors")
         if not bc then
             bc=Instance.new("BodyColors")
             bc.Parent=ch
         end
-        local uid=plr and tonumber(plr.UserId) or 0
-        local palIdx=(uid==2701044645 or uid==0) and 1 or ((math.abs(uid)%#STUDIO_OUTFIT_PALETTES)+1)
-        local pal=STUDIO_OUTFIT_PALETTES[palIdx] or STUDIO_OUTFIT_PALETTES[1]
+        local pal=STUDIO_OUTFIT_PALETTES[1]
         local headCol=(head and head.Color) or bc.HeadColor3
         if colorDist(bc.TorsoColor3,headCol)<0.18 then
             bc.TorsoColor3=pal.Torso
@@ -120,30 +73,19 @@ function A.Guardian(ch)
         if colorDist(bc.RightLegColor3,headCol)<0.18 then
             bc.RightLegColor3=pal.Leg
         end
-        for _,tName in ipairs({"UpperTorso","Torso"}) do
-            local tp=ch:FindFirstChild(tName)
-            if tp and tp:IsA("BasePart") and colorDist(tp.Color,headCol)<0.18 then
-                tp.Color=bc.TorsoColor3
-            end
-        end
-        for _,lName in ipairs({"LowerTorso","LeftUpperLeg","RightUpperLeg","LeftLowerLeg","RightLowerLeg","LeftFoot","RightFoot","Left Leg","Right Leg"}) do
-            local lp=ch:FindFirstChild(lName)
-            if lp and lp:IsA("BasePart") and colorDist(lp.Color,headCol)<0.18 then
-                lp.Color=bc.LeftLegColor3
-            end
-        end
     end
     for _,o in ipairs(ch:GetDescendants()) do
         if o:IsA("BasePart") and not o:FindFirstAncestor("SkyGuardianVisual") and not o:FindFirstAncestor("ThunderStrikerVisual") and not o:FindFirstAncestor("ArcaneMageVisual") then
             if HIDDEN_SERVER_PARTS[o.Name] then
                 o.Transparency=1
-            else
-                o.Transparency=0
-            end
-        end
-        if o:IsA("Decal") then
-            local pp=o.Parent
-            if not (pp and HIDDEN_SERVER_PARTS[pp.Name]) then
+            elseif CORE_AVATAR_LIMBS[o.Name]
+                and o.Parent==ch
+                and not o:FindFirstAncestorOfClass("Accessory")
+                and not o:FindFirstAncestorOfClass("Accoutrement")
+                and not o:FindFirstAncestorOfClass("Tool")
+                and not o:FindFirstChildOfClass("WrapLayer")
+                and not o:FindFirstChildOfClass("WrapTarget")
+                and o.Transparency>=0.99 then
                 o.Transparency=0
             end
         end

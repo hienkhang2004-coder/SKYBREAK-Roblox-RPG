@@ -18,6 +18,21 @@ if not R:FindFirstChild("CombatEvent") then
 end
 
 local StaticData=require(script.Parent.GameStaticData)
+local Helpers=require(script.Parent.GameExperienceHelpers)
+local LiveOps=require(script.Parent.SkybreakLiveOpsService)
+local Monetization=nil
+local function getMonetization()
+	if Monetization==nil then
+		local m=script.Parent:FindFirstChild("MonetizationService")
+		if m and m:IsA("ModuleScript") then
+			local ok,mod=pcall(require,m)
+			Monetization=(ok and type(mod)=="table") and mod or false
+		else
+			Monetization=false
+		end
+	end
+	return Monetization or nil
+end
 local BLENDER_ENEMIES=StaticData.BLENDER_ENEMIES
 local FALLBACK_FRUITS=StaticData.FALLBACK_FRUITS
 local FALLBACK_STYLES=StaticData.FALLBACK_STYLES
@@ -25,6 +40,8 @@ local FALLBACK_GUNS=StaticData.FALLBACK_GUNS
 local FALLBACK_FAST_TRAVEL=StaticData.FALLBACK_FAST_TRAVEL
 local FALLBACK_ENEMIES=StaticData.FALLBACK_ENEMIES
 G.StaticData=StaticData
+G.Helpers=Helpers
+G.LiveOps=LiveOps
 
 local RACE_ORDER={"Skyborn","Mink","Leviathan","Cyborg","Ghoul","Draco"}
 
@@ -97,46 +114,60 @@ local function ensureProfileFields(profile)
 	if spentStats+profile.StatPoints<expectedTotal then
 		profile.StatPoints=expectedTotal-spentStats
 	end
-	profile.ActiveSlot=math.clamp(tonumber(profile.ActiveSlot) or 3,1,4)
+	profile.ActiveSlot=math.clamp(tonumber(profile.ActiveSlot) or 1,1,4)
 	profile.FightingStyle=profile.FightingStyle or "SkybornCombat"
 	profile.UnlockedStyles=type(profile.UnlockedStyles)=="table" and profile.UnlockedStyles or {
-		SkybornCombat=true, SkyStep=true,
+		SkybornCombat=true,
 	}
-	profile.EquippedFruit=profile.EquippedFruit or "GaleCore"
-	profile.StoredFruits=type(profile.StoredFruits)=="table" and profile.StoredFruits or {
-		GaleCore=1, SolarFlameCore=1,
-	}
+	profile.UnlockedStyles.SkybornCombat=true
+	profile.EquippedFruit=type(profile.EquippedFruit)=="string" and profile.EquippedFruit or ""
+	profile.HeldFruit=type(profile.HeldFruit)=="string" and profile.HeldFruit or ""
+	profile.StoredFruits=type(profile.StoredFruits)=="table" and profile.StoredFruits or {}
 	profile.AwakenedFruits=type(profile.AwakenedFruits)=="table" and profile.AwakenedFruits or {}
 	profile.EquippedGun=profile.EquippedGun or "aether_flintlock"
 	profile.Mastery=type(profile.Mastery)=="table" and profile.Mastery or {
-		SkybornCombat=1, GaleCore=1, starter_sword=1, aether_flintlock=1,
+		SkybornCombat=1, starter_sword=1, aether_flintlock=1,
 	}
 	profile.Haki=type(profile.Haki)=="table" and profile.Haki or {
 		Aura=false, AuraStage=1, Instinct=false, InstinctDodges=8, ConquerorUnlocked=false,
 	}
 	if profile.Haki.InstinctDodges==nil then profile.Haki.InstinctDodges=8 end
 	profile.Race=profile.Race or "Skyborn"
-	profile.RaceTier=profile.RaceTier or 1
-	profile.RaceV4Active=profile.RaceV4Active==true
+	profile.RaceTier=math.clamp(math.floor(tonumber(profile.RaceTier) or (profile.RaceV4Unlocked and 4 or 1)),1,4)
+	profile.RaceV4Active=(profile.RaceV4Unlocked==true and profile.RaceV4Active==true)
 	if profile.AwakeningMeter==nil then
-		profile.AwakeningMeter=(profile.RaceV4Unlocked==true or (tonumber(profile.RaceTier) or 1)>=4) and 100 or 0
+		profile.AwakeningMeter=0
 	end
+	profile.ClassChosen=(profile.ClassChosen==true)
+	profile.RaidChipsCleared=math.max(0,math.floor(tonumber(profile.RaidChipsCleared) or 0))
+	profile.MicrochipRaidsCleared=type(profile.MicrochipRaidsCleared)=="table" and profile.MicrochipRaidsCleared or {}
+	profile.QuestProgress=profile.Progress
 	profile.Faction=profile.Faction or "Pirate"
 	profile.Bounty=profile.Bounty or 0
 	profile.Honor=profile.Honor or 0
-	profile.Title=profile.Title or "Skyborn Novice"
+	profile.Title=profile.Title or "sky_rookie"
+	profile.OwnedGamePasses=type(profile.OwnedGamePasses)=="table" and profile.OwnedGamePasses or {}
+	if profile.OwnedGamePasses.golden_sky_ship==true then
+		profile.UnlockedShips=type(profile.UnlockedShips)=="table" and profile.UnlockedShips or {SkySloop=true}
+		profile.UnlockedShips.GoldenSovereignSloop=true
+		profile.UnlockedShips.SkyGalleon=true
+	end
+	if profile.OwnedGamePasses.sovereign_name_aura==true then
+		profile.UnlockedTitles=type(profile.UnlockedTitles)=="table" and profile.UnlockedTitles or {sky_rookie=true}
+		profile.UnlockedTitles.celestial_vip=true
+	end
 	profile.UnlockedWorlds=type(profile.UnlockedWorlds)=="table" and profile.UnlockedWorlds or {}
 	profile.UnlockedWorlds.SkyHub=true
 	profile.UnlockedWorlds.GoldenSky=true
-	local lv=tonumber(profile.Level) or 1
 	profile.PartySize=profile.PartySize or "Solo"
-	if lv<15 then
-		profile.PartySize="Solo"
-	elseif lv<30 and (profile.PartySize=="Trio" or profile.PartySize=="Raid 4" or profile.PartySize=="Squad") then
-		profile.PartySize="Duo"
-	elseif lv<50 and profile.PartySize=="Squad" then
-		profile.PartySize="Trio"
-	end
+	profile.FruitPity=math.clamp(math.floor(tonumber(profile.FruitPity) or 0),0,C.FruitPityMax or 50)
+	profile.FreeFruitVouchers=math.max(0,math.floor(tonumber(profile.FreeFruitVouchers) or 0))
+	profile.StatRefundTokens=math.max(0,math.floor(tonumber(profile.StatRefundTokens) or 0))
+	profile.DoubleExpRemainingSec=math.max(0,math.floor(tonumber(profile.DoubleExpRemainingSec or profile.DoubleExpRemaining or profile.DoubleExpSeconds) or 0))
+	profile.UnlockedBadges=type(profile.UnlockedBadges)=="table" and profile.UnlockedBadges or {}
+	profile.HighestBossDPS=math.max(0,math.floor(tonumber(profile.HighestBossDPS) or 0))
+	Helpers.SyncDiscoveredIslands(profile,C)
+	Helpers.CheckAndAutoUnlockConqueror(nil,profile,nil,nil)
 end
 
 local COMPANION_LIST={
@@ -196,7 +227,7 @@ function G.FireCombatEvent(payload)
 end
 
 function G.Notify(p,text) R.StateUpdate:FireClient(p,{Message=text}) end
-function G.SendDialogue(p,speaker,role,text,actionLabel,actionCommand)
+function G.SendDialogue(p,speaker,role,text,actionLabel,actionCommand,choices)
 	R.StateUpdate:FireClient(p,{
 		Message=speaker..": "..text,
 		Dialogue={
@@ -205,6 +236,8 @@ function G.SendDialogue(p,speaker,role,text,actionLabel,actionCommand)
 			text=text,
 			actionLabel=actionLabel,
 			actionCommand=actionCommand,
+			choices=choices,
+			Choices=choices,
 		}
 	})
 end
@@ -236,6 +269,7 @@ local function inLockedEncounter(p)
 		or p:GetAttribute("InColosseum")==true
 		or p:GetAttribute("ColosseumActive")==true
 		or (tonumber(p:GetAttribute("SpireFloor")) or 0)>0
+		or (tonumber(p:GetAttribute("PvPCombatUntil")) or 0)>os.time()
 end
 
 function G.FindSafeRescuePos(p, rPos, rt, profile)
@@ -299,8 +333,16 @@ function G.FindSafeRescuePos(p, rPos, rt, profile)
 	return _V3(sp.X, gy + 3.5, sp.Z)
 end
 
-function G.Teleport(p,pos,moveCompanions)
+function G.Teleport(p,pos,moveCompanions,forceInternal)
 	local r,h=root(p) local rt=G.Runtime[p]
+	if not forceInternal and p and (tonumber(p:GetAttribute("PvPCombatUntil")) or 0)>os.time()
+		and p:GetAttribute("InColosseum")~=true and p:GetAttribute("ColosseumActive")~=true
+		and (tonumber(p:GetAttribute("SpireFloor")) or 0)<=0 and p:GetAttribute("RaidActive")~=true then
+		if not r or (pos-r.Position).Magnitude>115 then
+			LiveOps.Notify(G,p,"Đang trong trạng thái Giao Tranh PvP! Không thể dịch chuyển!","Cannot teleport while PvP combat-tagged!")
+			return false
+		end
+	end
 	if r then
 		if W.SnapToOpenGround then
 			pos=select(1,W.SnapToOpenGround(pos,pos.Y-3.0,3.5))
@@ -349,57 +391,11 @@ end
 local function clearLine(_a,_b)
 	return true
 end
-function G.Stats(p)
+function G.Stats(p,slotOverride)
 	local profile=D.Get(p) if not profile then return end
 	ensureProfileFields(profile)
-	local s=C.Stats(profile.Level,profile.ClassId,profile.StatAlloc)
-	s.CritRate=s.CritRate or 5
-	s.CritDmg=s.CritDmg or 50
-	s.Break=s.Break or 100
-	local eq=profile.Equipped or {}
-	local baseEnhance=tonumber(profile.WeaponEnhance) or 0
-	local seenGroups={}
-	for _,slot in ipairs(C.EquipSlots or {"Weapon","Helmet","Chest","Gloves","Boots","Ring","Necklace","Artifact"}) do
-		local grp=EQUIP_SLOT_GROUP[slot] or slot
-		if not seenGroups[grp] then
-			local itemId
-			if slot=="Weapon" then
-				itemId=(profile.ActiveSlot==4 and (eq.Gun or profile.EquippedGun)) or eq[slot] or profile.Weapon
-			else
-				itemId=eq[slot]
-			end
-			local item=itemId and C.Items[itemId]
-			if item then
-				seenGroups[grp]=true
-				if slot=="Weapon" then
-					local itemEnh=math.max(baseEnhance,(type(profile.Upgrades)=="table" and tonumber(profile.Upgrades[itemId])) or 0)
-					s.ATK+=math.floor((item.ATK or 0)*(1+0.06*itemEnh))
-				else
-					s.ATK+=(item.ATK or 0)
-				end
-				s.HP+=(item.HP or 0)
-				s.DEF+=(item.DEF or 0)
-				s.CritRate+=(item.CritRate or 0)
-				s.CritDmg+=(item.CritDmg or 0)
-				s.Break+=(item.Break or 0)
-			end
-		end
-	end
-	if p.Character and p.Character:GetAttribute("HakiAura") then
-		s.ATK=math.floor(s.ATK*1.20)
-		s.DEF=math.floor(s.DEF*1.15)
-	end
-	local rv4=p.Character and p.Character:GetAttribute("RaceV4")
-	if (rv4 and rv4~="") or profile.RaceV4Active then
-		s.ATK=math.floor(s.ATK*1.30)
-		s.HP=math.floor(s.HP*1.30)
-		s.DEF=math.floor(s.DEF*1.30)
-	end
-	local ft=p.Character and p.Character:GetAttribute("FruitTransform")
-	if ft~=nil and ft~="" then
-		s.DEF=math.floor(s.DEF*1.80)
-	end
-	return s
+	local effSlot=slotOverride or (G._StatSlotOverride and G._StatSlotOverride[p]) or profile.ActiveSlot
+	return Helpers.ComputeStats(C,profile,effSlot,p)
 end
 
 function G.SyncCompanions() end -- Giữ tên hàm cho các nơi gọi cũ; tính năng 3 AI đã bị gỡ
@@ -428,8 +424,8 @@ function G.Sync(p)
 	local profile=D.Get(p) local rt=G.Runtime[p] if not profile or not rt then return end
 	ensureProfileFields(profile)
 	local eq=type(profile.Equipped)=='table' and profile.Equipped or {}
-	local heldFruitId=profile.HeldFruit or (profile.ActiveSlot==2 and profile.EquippedFruit or '')
-	local slot=math.clamp(tonumber(profile.ActiveSlot) or 3,1,4)
+	local heldFruitId=(profile.HeldFruit~="" and profile.HeldFruit) or (profile.ActiveSlot==2 and profile.EquippedFruit or '')
+	local slot=math.clamp(tonumber(profile.ActiveSlot) or 1,1,4)
 	local wEnh=math.clamp(tonumber(profile.WeaponEnhance) or 0,0,15)
 	p:SetAttribute('ClassId',profile.ClassId)
 	p:SetAttribute('WeaponEquipped',profile.Weapon~=nil)
@@ -437,7 +433,7 @@ function G.Sync(p)
 	p:SetAttribute('WeaponEnhance',wEnh)
 	p:SetAttribute('EquippedSword',profile.Weapon or '')
 	p:SetAttribute('EquippedGun',profile.EquippedGun or '')
-	p:SetAttribute('HeldFruit',heldFruitId)
+	p:SetAttribute('HeldFruit',profile.HeldFruit or '')
 	p:SetAttribute('EquippedChest',tostring(eq.Chest or eq.Armor or ''))
 	p:SetAttribute('EquippedHelmet',tostring(eq.Helmet or eq.Helm or ''))
 	p:SetAttribute('EquippedHelm',tostring(eq.Helm or eq.Helmet or ''))
@@ -475,6 +471,24 @@ function G.Sync(p)
 		ch:SetAttribute('EquippedArmor',tostring(eq.Armor or profile.EquippedArmor or ''))
 	end
 	local _,h=root(p) local s=G.Stats(p) local q=C.Quests[profile.QuestIndex]
+	local maxE=math.max(100,tonumber(s and s.MaxEnergy) or tonumber(rt.MaxEnergy) or 100)
+	rt.MaxEnergy=maxE
+	rt.Energy=math.clamp(tonumber(rt.Energy) or maxE,0,maxE)
+	p:SetAttribute('MaxEnergy',maxE)
+	p:SetAttribute('RaceTier',profile.RaceTier or 1)
+	p:SetAttribute('MaxCoreStorage',Helpers.GetMaxCoreStorage(p,profile))
+	if profile.OwnedGamePasses and profile.OwnedGamePasses.sovereign_name_aura==true then
+		p:SetAttribute('SovereignNameAura',true)
+	end
+	if profile.OwnedGamePasses and profile.OwnedGamePasses.golden_sky_ship==true then
+		p:SetAttribute('GoldenShipSkin',true)
+	end
+	local socMod=G.SocialEconomy
+	if not socMod and script.Parent:FindFirstChild("SkybreakSocialEconomyService") then
+		local okS,m=pcall(require,script.Parent.SkybreakSocialEconomyService)
+		if okS and type(m)=="table" then socMod=m G.SocialEconomy=m end
+	end
+	local socSnap=(socMod and type(socMod.GetSnapshotForPlayer)=="function") and socMod.GetSnapshotForPlayer(p) or nil
 	local objectives={}
 	if q then for i,o in ipairs(q.Objectives) do table.insert(objectives,{Label=o.Label,Count=profile.Progress[tostring(i)] or 0,Goal=o.Count}) end end
 	local cooldowns={} for k,t in pairs(rt.Cooldowns) do cooldowns[k]=math.max(0,t-os.clock()) end
@@ -514,6 +528,7 @@ function G.Sync(p)
 	local statePayload={
 		Level=profile.Level,
 		ClassId=profile.ClassId,
+		ClassChosen=profile.ClassChosen==true,
 		Gender=profile.Gender or 'Male',
 		OutfitStage=p:GetAttribute('OutfitStage') or (profile.Level>=8 and 'SkyGuardian' or(profile.Level>=4 and 'Adventurer' or 'Novice')),
 		XP=profile.XP,
@@ -528,16 +543,24 @@ function G.Sync(p)
 		FightingStyle=profile.FightingStyle,
 		UnlockedStyles=profile.UnlockedStyles,
 		EquippedFruit=profile.EquippedFruit,
-		HeldFruit=profile.HeldFruit or (profile.ActiveSlot==2 and profile.EquippedFruit or ''),
+		HeldFruit=profile.HeldFruit or '',
 		StoredFruits=profile.StoredFruits,
+		OwnedGamePasses=profile.OwnedGamePasses or {},
+		MaxCoreStorage=Helpers.GetMaxCoreStorage(p,profile),
 		AwakenedFruits=profile.AwakenedFruits,
 		EquippedGun=profile.EquippedGun,
 		Mastery=profile.Mastery,
 		Haki=profile.Haki,
 		Race=profile.Race,
-		RaceTier=profile.RaceTier or 4,
+		RaceTier=profile.RaceTier or 1,
+		RaceV4Unlocked=profile.RaceV4Unlocked==true,
 		RaceV4Active=profile.RaceV4Active==true,
-		AwakeningMeter=profile.AwakeningMeter or 100,
+		AwakeningMeter=tonumber(rt.AwakeningMeter or profile.AwakeningMeter) or 0,
+		FuryMeter=tonumber(rt.FuryMeter) or 100,
+		RaidChipsCleared=profile.RaidChipsCleared or 0,
+		MicrochipRaidsCleared=profile.MicrochipRaidsCleared or {},
+		DiscoveredIslands=profile.DiscoveredIslands or {},
+		SocialEconomy=socSnap,
 		Faction=profile.Faction or "Pirate",
 		Bounty=profile.Bounty or 0,
 		Honor=profile.Honor or 0,
@@ -553,12 +576,18 @@ function G.Sync(p)
 		HP=h and h.Health or 0,
 		MaxHP=s.HP,
 		ATK=s.ATK,
+		MeleeATK=s.MeleeATK or s.ATK,
+		FruitATK=s.FruitATK or s.ATK,
+		SwordATK=s.SwordATK or s.ATK,
+		GunATK=s.GunATK or s.ATK,
+		BestATK=s.BestATK or s.ATK,
 		DEF=s.DEF,
 		CritRate=s.CritRate,
 		CritDmg=s.CritDmg,
 		Break=s.Break,
 		Stamina=rt.Stamina,
 		Energy=rt.Energy,
+		MaxEnergy=maxE,
 		Cooldowns=cooldowns,
 		Inventory=profile.Inventory,
 		Weapon=profile.Weapon,
@@ -570,64 +599,85 @@ function G.Sync(p)
 		Quest=q and {Name=q.Name,Id=q.Id,Text=q.Text,Realm=q.Realm or "GoldenSky",XP=q.XP,Gold=q.Gold,CoreShards=q.CoreShards or 100,Accepted=profile.Accepted,Level=q.Level,Objectives=objectives} or nil,
 		Complete=profile.QuestIndex>#C.Quests,
 		Boss=b,
-		Shield=math.max(0,rt.ShieldUntil-os.clock())
+		Shield=math.max(0,rt.ShieldUntil-os.clock()),
+		FruitPity=tonumber(profile.FruitPity) or 0,
+		FreeFruitVouchers=tonumber(profile.FreeFruitVouchers) or 0,
+		StatRefundTokens=tonumber(profile.StatRefundTokens) or 0,
+		DoubleExpRemainingSec=tonumber(profile.DoubleExpRemainingSec) or 0,
+		PaidRandomRestricted=(p:GetAttribute("PaidRandomRestricted")==true),
+		PlaytimeGifts=LiveOps.GetPlaytimeState(p),
+		FriendBoostPct=LiveOps.GetFriendBoostPct(p),
+		UnlockedBadges=profile.UnlockedBadges or {},
+		GlobalLeaderboards=LiveOps.GetGlobalLeaderboards(D,G.SocialEconomy),
+		PvPCombatUntil=tonumber(p:GetAttribute("PvPCombatUntil")) or 0,
 	}
 	if G.OnBeforeSync then G.OnBeforeSync(p,profile,rt,s,statePayload) end
 	R.StateUpdate:FireClient(p,{State=statePayload})
 end
-function G.Reward(p,xp,gold,shards,minTargetLevel)
+function G.Reward(p,xp,gold,shards)
 	local profile=D.Get(p) if not profile then return end
 	ensureProfileFields(profile)
+	if p and p:GetAttribute("RaidActive")==true and workspace:GetAttribute("RaidActive")==false then
+		profile.RaidChipsCleared=(tonumber(profile.RaidChipsCleared) or 0)+1
+		local eqF=Helpers.ResolveFruitId(profile.EquippedFruit)
+		if eqF~="" then
+			profile.MicrochipRaidsCleared=type(profile.MicrochipRaidsCleared)=="table" and profile.MicrochipRaidsCleared or {}
+			profile.MicrochipRaidsCleared[eqF]=true
+		end
+	end
 	xp=math.max(0,tonumber(xp) or 0)
 	gold=math.max(0,tonumber(gold) or 0)
-	local has2x=((tonumber(profile.DoubleExpUntil) or 0)>os.time()) or ((tonumber(profile.DoubleExpSeconds) or 0)>0) or (p and (tonumber(p:GetAttribute("DoubleExpSeconds")) or 0)>0)
+	local ownsExpPass=(profile.OwnedGamePasses and profile.OwnedGamePasses.x2_exp==true) or (p and p:GetAttribute("OwnedPass_x2_exp")==true)
+	local ownsGoldPass=(profile.OwnedGamePasses and profile.OwnedGamePasses.x2_gold==true) or (p and p:GetAttribute("OwnedPass_x2_gold")==true)
+	local has2x=(tonumber(profile.DoubleExpRemainingSec) or 0)>0
+	local fbMult=LiveOps.GetFriendBoostMultiplier(p)
+	if ownsExpPass then xp=xp*2 end
 	if has2x then xp=xp*2 end
+	if fbMult>1 then xp=math.floor(xp*fbMult+0.5) end
+	if ownsGoldPass then gold=gold*2 end
 	profile.XP+=xp profile.Gold+=gold
 	if shards and shards>0 then profile.CoreShards=(profile.CoreShards or 0)+shards end
 	local previous=profile.Level
 	while profile.Level<C.MaxLevel and profile.XP>=C.RequiredXP(profile.Level) do
 		profile.XP-=C.RequiredXP(profile.Level) profile.Level+=1
 	end
-	if type(minTargetLevel)=="number" and minTargetLevel>profile.Level then
-		profile.Level=math.clamp(math.floor(minTargetLevel),1,C.MaxLevel)
-	end
 	if profile.Level==C.MaxLevel then profile.XP=0 end
 	if previous~=profile.Level then
 		local gained=profile.Level-previous
+		local ptsPerLv=C.StatPointsPerLevel or 3
 		profile.SkillPoints=(profile.SkillPoints or 0)+gained
-		profile.StatPoints=(profile.StatPoints or 0)+gained*(C.StatPointsPerLevel or 3)
-		profile.CoreShards=(profile.CoreShards or 0)+gained*25
+		profile.StatPoints=(profile.StatPoints or 0)+gained*ptsPerLv
+		profile.CoreShards=(profile.CoreShards or 0)+gained*2
 		profile.Potions=math.max(profile.Potions or 0,4)
 		ensureProfileFields(profile)
-		local _,h=root(p) if h then h.MaxHealth=G.Stats(p).HP h.Health=h.MaxHealth end
-		local unlockMsg=""
-		if previous<50 and profile.Level>=50 then
-			profile.PartySize="Squad"
-			unlockMsg=" •  Mở khóa Đồng Hành [Nyx • Shadowblitz] (Đội hình Squad Lv.50)!"
-		elseif previous<30 and profile.Level>=30 then
-			if profile.PartySize=="Solo" or profile.PartySize=="Duo" then profile.PartySize="Trio" end
-			unlockMsg=" •  Mở khóa Đồng Hành [Lumen • Starweaver] (Đội hình Trio Lv.30)!"
-		elseif previous<15 and profile.Level>=15 then
-			if profile.PartySize=="Solo" then profile.PartySize="Duo" end
-			unlockMsg=" •  Mở khóa Đồng Hành [Kairo • Vanguard] (Đội hình Duo Lv.15)!"
-		end
-		G.SyncCompanions(p)
-		G.Notify(p,"ĐỘT PHÁ CẤP ĐỘ: Lv. "..profile.Level.." / "..C.MaxLevel.."! (+"..gained.." Levels, +"..(gained*3).." Stat Points)"..unlockMsg)
+		Helpers.CheckAndAutoUnlockConqueror(p,profile,G,nil)
+		LiveOps.EvaluateProgressionBadges(G,p,profile)
+		LiveOps.RecordLeaderboardScore(p,"Level",profile.Level,false)
+		local _,h=root(p)
+		local st=G.Stats(p)
+		if h and st then h.MaxHealth=st.HP h.Health=h.MaxHealth end
+		local rt=G.Runtime[p]
+		if rt and st then rt.MaxEnergy=st.MaxEnergy or 100 rt.Energy=rt.MaxEnergy end
+		LiveOps.Notify(G,p,"ĐỘT PHÁ CẤP ĐỘ: Lv. "..profile.Level.." / "..C.MaxLevel.."! (+"..gained.." Levels, +"..(gained*ptsPerLv).." Stat Points)","LEVEL BREAKTHROUGH: Lv. "..profile.Level.." / "..C.MaxLevel.."! (+"..gained.." Levels, +"..(gained*ptsPerLv).." Stat Points)")
 	end
 end
 local QUEST_TARGET_ALIASES={
-	SkyPirate={SkyPirate=true,PirateCaptainVance=true},
+	SkyPirate={SkyPirate=true,PirateCaptainVance=true,SkyHubWatchCommander=true},
 	CorruptedGuard={CorruptedGuard=true,SunshardRoyalGuard=true,SunshardTemplar=true,SkyHubWatchCommander=true,ShrineGuardianBoss=true,AetherArchonBoss=true},
 	LightArcher={LightArcher=true,SunshardRoyalGuard=true,SunshardTemplar=true},
-	GoldenKnight={GoldenKnight=true,SunshardTemplar=true,SolarHighPriestBoss=true,PirateCaptainVance=true},
+	GoldenKnight={GoldenKnight=true,SunshardTemplar=true,SolarHighPriestBoss=true,PirateCaptainVance=true,Ignivar=true},
 	FrostDrone={FrostDrone=true,FrostAutomaton=true,MechaDrone=true,CyberMercenary=true},
-	CryoGuard={CryoGuard=true,CryoVanguard=true,FrostAutomaton=true,ArcticCorsair=true},
+	CryoGuard={CryoGuard=true,CryoVanguard=true,FrostAutomaton=true,ArcticCorsair=true,Aion=true,Chronovex=true},
 	CyberArcher={CyberArcher=true,GlacialMarksman=true,GlacialSniper=true,CyberMercenary=true},
-	OrderCyborg={OrderCyborg=true,OrderCyborgBoss=true,SkySeaBeast=true,CyberSyndicateBoss=true,PermafrostWardenBoss=true},
-	VoidPirate={VoidPirate=true,VoidMarauder=true,VoidRaider=true,ShadowSpecter=true},
+	OrderCyborg={OrderCyborg=true,OrderCyborgBoss=true,SkySeaBeast=true,CyberSyndicateBoss=true,PermafrostWardenBoss=true,Aion=true,Chronovex=true},
+	VoidPirate={VoidPirate=true,VoidMarauder=true,VoidRaider=true,ShadowSpecter=true,Sylvaris=true},
 	AbyssalKnight={AbyssalKnight=true,AbyssalDreadknight=true,VoidCastellanBoss=true,UmbralArchfiendBoss=true},
-	ShadowArcher={ShadowArcher=true,UmbralBowman=true,UmbralRanger=true,ShadowSpecter=true},
-	AbyssalLeviathan={AbyssalLeviathan=true,SoulReaperRift=true,TerrorSkyShark=true,AbyssalDragonHybrid=true,AbyssalSovereignDragon=true},
+	ShadowArcher={ShadowArcher=true,UmbralBowman=true,UmbralRanger=true,ShadowSpecter=true,Sylvaris=true},
+	AbyssalLeviathan={AbyssalLeviathan=true,SoulReaperRift=true,TerrorSkyShark=true,AbyssalDragonHybrid=true,AbyssalSovereignDragon=true,Nerith=true},
+	ShadowSpecter={ShadowSpecter=true,Sylvaris=true},
+	SunshardTemplar={SunshardTemplar=true,Ignivar=true},
+	TerrorSkyShark={TerrorSkyShark=true,Nerith=true},
+	CryoVanguard={CryoVanguard=true,Aion=true,Chronovex=true},
 }
 local function matchesQuestTarget(objTarget,actualTarget)
 	if objTarget==actualTarget then return true end
@@ -645,80 +695,117 @@ function G.QuestEvent(p,kind,target)
 			profile.Progress[key]=math.min(o.Count,(profile.Progress[key] or 0)+1)
 		end
 	end
+	profile.QuestProgress=profile.Progress
 	for i,o in ipairs(q.Objectives) do if (profile.Progress[tostring(i)] or 0)<o.Count then return end end
-	-- QuestIndex dang tro vao nhiem vu da xong (sau RepeatQuest): nhay toi nhiem vu chua xong thay vi ket im lang.
-	if profile.CompletedQuests[q.Id] then profile.Progress={} while C.Quests[profile.QuestIndex] and profile.CompletedQuests[C.Quests[profile.QuestIndex].Id] do profile.QuestIndex+=1 end G.Sync(p) return end
-	profile.CompletedQuests[q.Id]=true profile.Accepted=false profile.Progress={} profile.QuestIndex+=1
-	while C.Quests[profile.QuestIndex] and profile.CompletedQuests[C.Quests[profile.QuestIndex].Id] do profile.QuestIndex+=1 end
-	profile.LastCompletedQuest=q.Id
-	profile.Inventory.SkyIron=(profile.Inventory.SkyIron or 0)+4
-	profile.Inventory.SunshardCore=(profile.Inventory.SunshardCore or 0)+2
-	profile.Equipped=profile.Equipped or {}
-	if q.Id=="Q02" then
-		profile.Inventory.skyward_boots=math.max(1,profile.Inventory.skyward_boots or 0)
-		if not profile.Equipped.Boots then profile.Equipped.Boots="skyward_boots" end
-	elseif q.Id=="Q03" then
-		profile.Inventory.upgrade_material=(profile.Inventory.upgrade_material or 0)+3
-		profile.Inventory.CelestialFeather=(profile.Inventory.CelestialFeather or 0)+2
-		profile.Inventory.skyward_helm=math.max(1,profile.Inventory.skyward_helm or 0)
-		if not profile.Equipped.Helmet then profile.Equipped.Helmet="skyward_helm" end
-	elseif q.Id=="Q04" then
-		profile.Inventory.BossKey=1
-		profile.Inventory.skyward_gloves=math.max(1,profile.Inventory.skyward_gloves or 0)
-		if not profile.Equipped.Gloves then profile.Equipped.Gloves="skyward_gloves" end
-	elseif q.Id=="Q05" then
-		profile.FirstClearBosses.AureonSentinel=true
-		profile.Inventory.CoreOfLight=1
-		profile.Inventory.DawnbringerBlueprint=1
-		profile.Inventory.saber_of_aureon=math.max(1,profile.Inventory.saber_of_aureon or 0)
-		profile.Inventory.CoreEssence=(profile.Inventory.CoreEssence or 0)+2
-		profile.Inventory.upgrade_material=(profile.Inventory.upgrade_material or 0)+5
-		profile.UnlockedWorlds.FrozenCyber=true
-	elseif q.Id=="Q06" then
-		profile.Inventory.skyward_chest=math.max(1,profile.Inventory.skyward_chest or 0)
-		if not profile.Equipped.Chest then profile.Equipped.Chest="skyward_chest" end
-	elseif q.Id=="Q07" then
-		profile.Inventory.aether_ring=math.max(1,profile.Inventory.aether_ring or 0)
-		if not profile.Equipped.Ring then profile.Equipped.Ring="aether_ring" end
-	elseif q.Id=="Q08" then
-		profile.FirstClearBosses.CryonPrime=true
-		profile.Inventory.cryon_frostblade=math.max(1,profile.Inventory.cryon_frostblade or 0)
-		profile.Inventory.CoreEssence=(profile.Inventory.CoreEssence or 0)+2
-		profile.UnlockedWorlds.ShadowRealm=true
-	elseif q.Id=="Q09" then
-		profile.Inventory.celestial_necklace=math.max(1,profile.Inventory.celestial_necklace or 0)
-		if not profile.Equipped.Necklace then profile.Equipped.Necklace="celestial_necklace" end
-	elseif q.Id=="Q10" then
-		profile.Inventory.leviathan_shield=math.max(1,profile.Inventory.leviathan_shield or 0)
-		if not profile.Equipped.Artifact then profile.Equipped.Artifact="leviathan_shield" end
-	elseif q.Id=="Q11" then
-		profile.FirstClearBosses.Noxar=true
-		profile.Inventory.cursed_dual_skyblades=math.max(1,profile.Inventory.cursed_dual_skyblades or 0)
-		profile.Inventory.CoreEssence=(profile.Inventory.CoreEssence or 0)+3
-		profile.UnlockedWorlds.VerdantCrown=true
-		profile.UnlockedWorlds.EmberforgeWastes=true
-	elseif q.Id=="Q12" then
-		profile.UnlockedWorlds.AbyssalTides=true
-		profile.UnlockedWorlds.ChronosBastion=true
-	elseif q.Id=="Q13" then
-		profile.UnlockedWorlds.VeilsEnd=true
-	elseif q.Id=="Q14" then
-		profile.FirstClearBosses.Veyr=true
-		profile.Inventory.noxar_abyssal_greatsword=math.max(1,profile.Inventory.noxar_abyssal_greatsword or 0)
-		profile.Inventory.sovereign_cloak=math.max(1,profile.Inventory.sovereign_cloak or 0)
+	local function hasTarget(tid)
+		for _,o in ipairs(q.Objectives or {}) do if o.Target==tid then return true end end
+		return false
 	end
-	G.Reward(p,q.XP,q.Gold,q.CoreShards or 100,q.TargetLevel)
-	local nextQ=C.Quests[profile.QuestIndex]
-	if nextQ then profile.Accepted=true end
-	G.Notify(p,q.Id=="Q05" and "Aureon: Khi các mảnh lõi hội tụ... Chương 1 hoàn tất! Đã mở khóa Frozen Cyber & nhiệm vụ Q06!" or ("Hoàn thành "..q.Id.." ("..q.Name..")! +"..q.Gold.." Gold, +"..(q.CoreShards or 100).." Core Shards"..(nextQ and (" • Tiếp theo: "..nextQ.Id.." "..nextQ.Name) or "")))
+	if not profile.CompletedQuests[q.Id] then
+		profile.CompletedQuests[q.Id]=true
+		profile.Inventory.SkyIron=(profile.Inventory.SkyIron or 0)+4
+		profile.Inventory.SunshardCore=(profile.Inventory.SunshardCore or 0)+2
+		profile.Equipped=profile.Equipped or {}
+		if q.Id=="Q01" and not profile.StarterCoreVoucherGranted then
+			profile.StarterCoreVoucherGranted=true
+			profile.FreeFruitVouchers=(tonumber(profile.FreeFruitVouchers) or 0)+1
+			LiveOps.AwardBadge(G,p,profile,"welcome_skyborn")
+			LiveOps.Notify(G,p,"Chào mừng Chiến Binh Bầu Trời! +1 Vé Quay Lõi Aether Miễn Phí tại Hiền Giả Zioles!","Welcome Skyborn! +1 Free Aether Core Spin Voucher at Oracle Zioles!")
+		elseif q.Id=="Q02" then
+			profile.Inventory.skyward_boots=math.max(1,profile.Inventory.skyward_boots or 0)
+			if not profile.Equipped.Boots then profile.Equipped.Boots="skyward_boots" end
+		elseif q.Id=="Q03" then
+			profile.Inventory.upgrade_material=(profile.Inventory.upgrade_material or 0)+3
+			profile.Inventory.CelestialFeather=(profile.Inventory.CelestialFeather or 0)+2
+			profile.Inventory.skyward_helm=math.max(1,profile.Inventory.skyward_helm or 0)
+			if not profile.Equipped.Helmet then profile.Equipped.Helmet="skyward_helm" end
+		elseif q.Id=="Q04" then
+			profile.Inventory.BossKey=1
+			profile.Inventory.skyward_gloves=math.max(1,profile.Inventory.skyward_gloves or 0)
+			if not profile.Equipped.Gloves then profile.Equipped.Gloves="skyward_gloves" end
+		elseif q.Id=="Q06" then
+			profile.Inventory.skyward_chest=math.max(1,profile.Inventory.skyward_chest or 0)
+			if not profile.Equipped.Chest then profile.Equipped.Chest="skyward_chest" end
+		elseif q.Id=="Q07" then
+			profile.Inventory.aether_ring=math.max(1,profile.Inventory.aether_ring or 0)
+			if not profile.Equipped.Ring then profile.Equipped.Ring="aether_ring" end
+		elseif q.Id=="Q09" then
+			profile.Inventory.celestial_necklace=math.max(1,profile.Inventory.celestial_necklace or 0)
+			if not profile.Equipped.Necklace then profile.Equipped.Necklace="celestial_necklace" end
+		end
+		if hasTarget("AureonSentinel") or q.Id=="Q10" then
+			profile.FirstClearBosses.AureonSentinel=true
+			profile.Inventory.CoreOfLight=1
+			profile.Inventory.DawnbringerBlueprint=1
+			profile.Inventory.saber_of_aureon=math.max(1,profile.Inventory.saber_of_aureon or 0)
+			profile.Inventory.CoreEssence=(profile.Inventory.CoreEssence or 0)+2
+			profile.Inventory.upgrade_material=(profile.Inventory.upgrade_material or 0)+5
+			profile.UnlockedWorlds.FrozenCyber=true
+			Helpers.CheckAndAutoUnlockConqueror(p,profile,G,"AureonSentinel")
+		elseif hasTarget("CryonPrime") or q.Id=="Q17" then
+			profile.FirstClearBosses.CryonPrime=true
+			profile.Inventory.cryon_frostblade=math.max(1,profile.Inventory.cryon_frostblade or 0)
+			profile.Inventory.CoreEssence=(profile.Inventory.CoreEssence or 0)+2
+			profile.UnlockedWorlds.ShadowRealm=true
+			Helpers.CheckAndAutoUnlockConqueror(p,profile,G,"CryonPrime")
+		elseif hasTarget("Noxar") or q.Id=="Q24" then
+			profile.FirstClearBosses.Noxar=true
+			profile.Inventory.cursed_dual_skyblades=math.max(1,profile.Inventory.cursed_dual_skyblades or 0)
+			profile.Inventory.CoreEssence=(profile.Inventory.CoreEssence or 0)+3
+			profile.UnlockedWorlds.VerdantCrown=true
+			profile.UnlockedWorlds.EmberforgeWastes=true
+			Helpers.CheckAndAutoUnlockConqueror(p,profile,G,"Noxar")
+		elseif hasTarget("Ignivar") or q.Id=="Q26" then
+			profile.UnlockedWorlds.AbyssalTides=true
+			profile.UnlockedWorlds.ChronosBastion=true
+		elseif hasTarget("Aion") or hasTarget("Chronovex") or q.Id=="Q28" then
+			profile.UnlockedWorlds.VeilsEnd=true
+		elseif hasTarget("Veyr") or hasTarget("VeyrTheArchitect") or q.Id=="Q30" then
+			profile.FirstClearBosses.Veyr=true
+			profile.Inventory.noxar_abyssal_greatsword=math.max(1,profile.Inventory.noxar_abyssal_greatsword or 0)
+			profile.Inventory.sovereign_cloak=math.max(1,profile.Inventory.sovereign_cloak or 0)
+		end
+	end
+	profile.LastCompletedQuest=q.Id
+	G.Reward(p,q.XP,q.Gold,q.CoreShards or 15)
+	LiveOps.EvaluateProgressionBadges(G,p,profile)
+	local nextQuest=C.Quests[profile.QuestIndex+1]
+	if nextQuest then
+		local reqLv=tonumber(nextQuest.Level or nextQuest.LevelReq) or 1
+		if (tonumber(profile.Level) or 1)>=reqLv then
+			profile.QuestIndex+=1
+			profile.Progress={}
+			profile.QuestProgress=profile.Progress
+			profile.Accepted=true
+			Helpers.SyncDiscoveredIslands(profile,C)
+			G.Notify(p,"Hoàn thành "..q.Id.." ("..q.Name..")! +"..q.Gold.." Gold • Tiếp theo: "..nextQuest.Id.." "..nextQuest.Name)
+		else
+			profile.Progress={}
+			profile.QuestProgress=profile.Progress
+			profile.Accepted=true
+			G.Notify(p,"Hoàn thành nhiệm vụ! Đạt Lv. "..tostring(reqLv).." để mở nhiệm vụ tiếp theo (Đã tự động nhận lại nhiệm vụ hiện tại).")
+		end
+	else
+		profile.QuestIndex=#C.Quests+1
+		profile.Progress={}
+		profile.QuestProgress=profile.Progress
+		profile.Accepted=false
+		G.Notify(p,"Hoàn thành "..q.Id.." ("..q.Name..")! Bạn đã hoàn tất toàn bộ chiến dịch!")
+	end
 	task.spawn(D.Save,p,false)
 end
 local function eligible(p)
 	local profile=D.Get(p)
 	if not profile then return false end
-	profile.Inventory.BossKey=1
-	if profile.QuestIndex==5 then profile.Accepted=true end
-	return true
+	if DevGate.IsAllowed(p) then return true end
+	local lv=tonumber(profile.Level) or 1
+	local hasKey=(tonumber(profile.Inventory and profile.Inventory.BossKey) or 0)>0
+	local qReady=(tonumber(profile.QuestIndex) or 1)>=5 or (profile.CompletedQuests and profile.CompletedQuests.Q04==true)
+	if lv>=560 or (lv>=420 and (hasKey or qReady)) then
+		if profile.QuestIndex==5 then profile.Accepted=true end
+		return true
+	end
+	return false
 end
 function G.Rate(p,channel,interval)
 	local rt=G.Runtime[p] if not rt or not D.Get(p) then return false end
@@ -735,7 +822,7 @@ function G.ActivateShrine(p,shrine)
 	p:SetAttribute("RespawnRealm",shrine.Realm)
 	h.Health=h.MaxHealth
 	rt.Stamina=100
-	rt.Energy=100
+	rt.Energy=rt.MaxEnergy or 100
 	profile.Potions=math.max(profile.Potions or 0,4)
 	G.FireCombatEvent({
 		kind="DamageNumber",
@@ -778,16 +865,21 @@ function G.EnterWorldPortal(p,gate)
 	end
 	ensureProfileFields(profile)
 	profile.UnlockedWorlds=profile.UnlockedWorlds or {}
+	if gate.Id=="WorldGate_SkyHub_Plaza" and (tonumber(profile.Level) or 1)<75 then
+		rt.PortalTouchCooldown=now+2.0
+		G.Notify(p,"Cổng Dịch Chuyển Sky Hub yêu cầu đạt Lv. 75+!")
+		return
+	end
 	local targetRealm=gate.TargetRealm or "GoldenSky"
 	local minLv=REALM_MIN_LV[targetRealm] or 1
-	if targetRealm~="GoldenSky" and not profile.UnlockedWorlds[targetRealm] and not DevGate.IsAllowed(p) and (tonumber(profile.Level) or 1)<minLv then
+	if targetRealm~="GoldenSky" and not profile.UnlockedWorlds[targetRealm] and (tonumber(profile.Level) or 1)<minLv then
 		rt.PortalTouchCooldown=now+2.0
 		G.Notify(p,"Cổng Không Gian ["..tostring(gate.StageLabel or targetRealm).."] yêu cầu đạt Level "..minLv.."!")
 		return
 	end
 	rt.PortalTouchCooldown=now+3.2
-	if gate.TargetRealm then profile.UnlockedWorlds[gate.TargetRealm]=true end
-	if gate.TargetWorldKey then profile.UnlockedWorlds[gate.TargetWorldKey]=true end
+	if gate.TargetRealm then profile.UnlockedWorlds[gate.TargetRealm]=true profile.DiscoveredIslands[gate.TargetRealm]=true end
+	if gate.TargetWorldKey then profile.UnlockedWorlds[gate.TargetWorldKey]=true profile.DiscoveredIslands[gate.TargetWorldKey]=true end
 	profile.DiscoveredPortals=type(profile.DiscoveredPortals)=="table" and profile.DiscoveredPortals or {}
 	local firstTime=not profile.DiscoveredPortals[gate.Id]
 	if firstTime then
@@ -823,42 +915,7 @@ function G.EnterWorldPortal(p,gate)
 	G.Sync(p)
 end
 
-function G.OpenChest(p,chestId)
-	local chest=G.Chests[chestId]
-	local r=root(p)
-	local profile=D.Get(p)
-	if not chest or not r or not profile then return end
-	if distance(r.Position,chest.Part.Position)>18 then return end
-	local now=os.clock()
-	if now<(chest.OpenedUntil or 0) then
-		G.Notify(p,"Rương Báu đang tích tụ Aether ("..math.ceil(chest.OpenedUntil-now).."s)!")
-		return
-	end
-	chest.OpenedUntil=now+60
-	chest.Part:SetAttribute("ChestOpened",true)
-	if chest.Lid then chest.Lid.Transparency=0.6 end
-	task.delay(60,function()
-		if chest.Part and chest.Part.Parent then
-			chest.Part:SetAttribute("ChestOpened",false)
-			if chest.Lid then chest.Lid.Transparency=0 end
-		end
-	end)
-	profile.Gold=(profile.Gold or 0)+400
-	profile.CoreShards=(profile.CoreShards or 0)+100
-	profile.Inventory.SunshardCore=(profile.Inventory.SunshardCore or 0)+2
-	profile.Inventory.SkyIron=(profile.Inventory.SkyIron or 0)+3
-	G.FireCombatEvent({
-		kind="DamageNumber",
-		pos=chest.Part.Position+_V3(0,2.5,0),
-		amount=400,
-		crit=true,
-		breakDmg=0,
-		element="Gold",
-		Text="+400 GOLD • +100 SHARDS",
-	})
-	G.Notify(p,"Kho Báu Skyborn: +400 Gold, +100 Core Shards, +2 Sunshard Core, +3 Sky Iron!")
-	G.Sync(p)
-end
+function G.OpenChest() end
 
 function G.LaunchPlayer(p,startPos,targetPos,arcHeight,duration)
 	local r,h=root(p)
@@ -925,8 +982,10 @@ function G.Interact(p,id)
 		end
 	end
 	local object=W.Interactions[id]
-	if not object and (id=="Zioles" or id=="ZiolesGachaNPC" or id=="AncientMonk" or id=="AncientMonkNPC") then
-		local prefix=(id=="Zioles" or id=="ZiolesGachaNPC") and "Zioles_" or "AncientMonk_"
+	if not object and (id=="Zioles" or id=="ZiolesGachaNPC" or id=="AncientMonk" or id=="AncientMonkNPC" or id=="Kael" or id=="Kael_WeaponMaster" or id=="DrVega" or id=="DrVega_Alchemist") then
+		local prefix=(id=="Zioles" or id=="ZiolesGachaNPC") and "Zioles_"
+			or ((id=="AncientMonk" or id=="AncientMonkNPC") and "AncientMonk_"
+			or ((id=="Kael" or id=="Kael_WeaponMaster") and "Kael" or "DrVega"))
 		local bestD=math.huge
 		for k,part in pairs(W.Interactions) do
 			if type(k)=="string" and k:sub(1,#prefix)==prefix and part and part.Parent then
@@ -937,11 +996,18 @@ function G.Interact(p,id)
 	end
 	if not object and id:sub(1,14)~="FruitPedestal_" then return end
 	if object and distance(r.Position,object.Position)>22 then return end
-	if id=='Lyra'or id=='Kael'then object:SetAttribute('NPCTalkAt',workspace:GetServerTimeNow())end
+	if id=='Lyra' or id=='Kael' or id=='Kael_WeaponMaster' or id=='DrVega' or id=='DrVega_Alchemist' then
+		if object.Parent and object.Parent:IsA("Model") then object.Parent:SetAttribute('NPCTalkAt',workspace:GetServerTimeNow()) end
+		object:SetAttribute('NPCTalkAt',workspace:GetServerTimeNow())
+	end
+	if id:sub(1,4)=="NPC_" then
+		if Helpers.InteractRegionalNPC(p,id,profile,G,C) then
+			G.Sync(p)
+			return
+		end
+	end
 	if id:sub(1,14)=="FruitPedestal_" then
 		if p:GetAttribute("InTrade")==true then return end
-		-- Khong co be da server-side: dung chung luong ClaimWildFruit (server tu chon trai, chung cooldown).
-		-- Truoc day client tu chon fid (ke ca Mythic) va duoc them 1 cooldown rieng => 2 trai/22s.
 		if not object and G.HandleFruitAction then
 			G.HandleFruitAction(p,"ClaimWildFruit",id:sub(15))
 			return
@@ -961,7 +1027,13 @@ function G.Interact(p,id)
 		local fcfg=getFruitCfg(fid)
 		if not ((C.AetherFruits and C.AetherFruits[fid]) or FALLBACK_FRUITS[fid]) then return end
 		local fname=fcfg and fcfg.Name or fid
-		profile.StoredFruits[fid]=(profile.StoredFruits[fid] or 0)+1
+		local maxCap=Helpers.GetMaxCoreStorage(p,profile)
+		if (tonumber(profile.StoredFruits[fid]) or 0)<maxCap then
+			profile.StoredFruits[fid]=(tonumber(profile.StoredFruits[fid]) or 0)+1
+			if rt then rt.HeldAlreadyStored=true end
+		elseif rt then
+			rt.HeldAlreadyStored=false
+		end
 		profile.EquippedFruit=fid
 		profile.ActiveSlot=2
 		profile.HeldFruit=fid
@@ -970,29 +1042,10 @@ function G.Interact(p,id)
 		G.Sync(p)
 		return
 	elseif id=="Zioles" or id=="ZiolesGachaNPC" then
-		local prevHeld=profile.HeldFruit
-		local prevCount=0
-		for _,cnt in pairs(profile.StoredFruits or {}) do prevCount+=(tonumber(cnt) or 0) end
-		G.Equipment(p,{action="RollFruit"})
-		local afterCount=0
-		for _,cnt in pairs(profile.StoredFruits or {}) do afterCount+=(tonumber(cnt) or 0) end
-		if afterCount>prevCount or profile.HeldFruit~=prevHeld then
-			G.SendDialogue(p,"Hiền Giả Lõi • Core Oracle","HIỀN GIẢ LÕI AETHER","Ta nắm giữ 12 Lõi Aether Thượng Cổ đã được tách riêng thành thực thể 3D! Ngươi vừa cầu lõi thành công — hãy mở bảng LÕI AETHER [G] để hấp thụ, cầm lõi 3D trên tay hoặc thức tỉnh V2!","Mở Bảng Lõi Aether [G]","OpenScreen:Fruits")
-		else
-			G.SendDialogue(p,"Hiền Giả Lõi • Core Oracle","HIỀN GIẢ LÕI AETHER","Mỗi lượt cầu Lõi Aether Thượng Cổ cần 25,000 Gold (hoặc 1 Vé Cầu Lõi Miễn Phí từ Quà Đăng Nhập / Giftcode)!","Mở Bảng Lõi Aether [G]","OpenScreen:Fruits")
-		end
+		Helpers.OpenZiolesDialogue(p,profile,G.Runtime[p],G,C)
 		return
 	elseif id=="AncientMonk" or id=="AncientMonkNPC" then
-		local styleList=C.StyleOrder or {"SkybornCombat","ElectricClaw","GlacialKarate","DragonTalon","GodhumanSkyborn","SanguineVoidArt"}
-		local aliasToIdx={skyborn_combat=1,thunder_talon=2,jade_dragon=3,solar_ashura=4,celestial_godhuman=5}
-		local curIdx=aliasToIdx[profile.FightingStyle] or 1
-		for i,sid in ipairs(styleList) do
-			if sid==profile.FightingStyle then curIdx=i break end
-		end
-		local nextStyle=styleList[(curIdx%#styleList)+1]
-		G.Equipment(p,{action="SwitchFightingStyle",styleId=nextStyle})
-		local stCfg=getStyleCfg(profile.FightingStyle)
-		G.SendDialogue(p,"Đại Sư Cổ Tự","THẦN QUYỀN SƯ TỔ","Bộ võ hiện tại của ngươi là ["..(stCfg and stCfg.Name or profile.FightingStyle).."]. Hãy tích lũy Gold & Core Shards để lĩnh ngộ toàn bộ 7 Tuyệt Kỹ Thần Quyền và bấm phím [1] để thi triển!","Mở Võ Đường 3D","OpenScreen:NPCShop:MartialDojo")
+		Helpers.OpenAncientMonkDialogue(p,profile,G)
 		return
 	elseif id=="Lyra" then
 		local q=C.Quests[profile.QuestIndex]
@@ -1002,27 +1055,33 @@ function G.Interact(p,id)
 		end
 		profile.Accepted=true
 		G.SendDialogue(p,"Lyra • Chỉ Huy Skyborn","NHIỆM VỤ ["..q.Id.."] "..q.Name,q.Text.." (Phần thưởng: +"..tostring(q.XP).." XP, +"..tostring(q.Gold).." Gold)","Xem Nhật Ký Nhiệm Vụ [L]","OpenScreen:Quests")
-	elseif id=="Kael" then
-		G.SendDialogue(p,"Kael • Đại Sư Rèn Thần Khí","LÒ RÈN HUYỀN THOẠI","Hãy dùng Sunshard Core và Sky Iron để chế tác Thần Khí Dawnbringer, Song Kiếm Nguyệt Thực (Eclipse Twinblades) và cường hóa vũ khí lên +15 phát sáng rực rỡ!","Mở Lò Rèn Thần Khí","OpenScreen:Forge")
+	elseif id=="Kael" or id=="Kael_WeaponMaster" then
+		Helpers.OpenKaelDialogue(p,profile,G,C)
+		return
+	elseif id=="DrVega" or id=="DrVega_Alchemist" then
+		Helpers.OpenDrVegaDialogue(p,profile,G)
+		return
 	elseif id=="FrozenPortal" then
 		if G.WorldPortals and G.WorldPortals.WorldGate_Sea1_to_Sea2 then
 			G.EnterWorldPortal(p,G.WorldPortals.WorldGate_Sea1_to_Sea2)
-		elseif not inLockedEncounter(p) and (profile.UnlockedWorlds.FrozenCyber or DevGate.IsAllowed(p) or (tonumber(profile.Level) or 1)>=700) then
+		elseif not inLockedEncounter(p) and (profile.UnlockedWorlds.FrozenCyber or (tonumber(profile.Level) or 1)>=700) then
 			profile.UnlockedWorlds.FrozenCyber=true
+			profile.DiscoveredIslands.FrozenCyber=true
 			if not workspace:FindFirstChild('FrozenCyber') then G.Notify(p,'Frozen Cyber đang được chuẩn bị.')
 			else
 				p:SetAttribute('CurrentRealm','FrozenCyber')
 				G.Teleport(p,require(game.ReplicatedStorage.Shared.RealmConfig).FrozenCyber.Spawn)
 			end
 		else
-			G.Notify(p,"Cổng Tầng Trời 2 (Frozen Cyber) yêu cầu đạt Level 700 hoặc hoàn thành Q05!")
+			G.Notify(p,"Cổng Tầng Trời 2 (Frozen Cyber) yêu cầu đạt Level 700!")
 		end
 	elseif id=='FrozenReturnHub' then if not inLockedEncounter(p) then p:SetAttribute('CurrentRealm','GoldenSky');G.Teleport(p,C.Spawn) end
 	elseif id=='ShadowPortal'then
 		if G.WorldPortals and G.WorldPortals.WorldGate_Sea2_to_Sea3 then
 			G.EnterWorldPortal(p,G.WorldPortals.WorldGate_Sea2_to_Sea3)
-		elseif not inLockedEncounter(p) and (profile.UnlockedWorlds.ShadowRealm or DevGate.IsAllowed(p) or (tonumber(profile.Level) or 1)>=1500) then
+		elseif not inLockedEncounter(p) and (profile.UnlockedWorlds.ShadowRealm or (tonumber(profile.Level) or 1)>=1500) then
 			profile.UnlockedWorlds.ShadowRealm=true
+			profile.DiscoveredIslands.ShadowRealm=true
 			if not workspace:FindFirstChild('ShadowRealm')then return end
 			p:SetAttribute('CurrentRealm','ShadowRealm')
 			G.Teleport(p,require(game.ReplicatedStorage.Shared.RealmConfig).ShadowRealm.Spawn)
@@ -1034,9 +1093,10 @@ function G.Interact(p,id)
 		if id=="LeaveArena" and G.Boss and G.Boss.Party then G.Boss.Party[p]=nil end
 		if not inLockedEncounter(p) then p:SetAttribute("CurrentRealm","GoldenSky");G.Teleport(p,C.Spawn) end
 	elseif id=="ArenaGate" then
-		if not eligible(p) then G.Notify(p,"Cần nhận Q05, đạt cấp 10 và có chìa khóa tháp.") return end
+		if inLockedEncounter(p) then LiveOps.Notify(G,p,"Không thể tiến vào Đấu Trường khi đang giao tranh!","Cannot enter Arena while in combat!") return end
+		if not eligible(p) then G.Notify(p,"Cần hoàn thành Q04 (Chìa Khóa Tháp Ánh Sáng) hoặc đạt Lv.560 để tiến vào Đấu Trường Aureon!") return end
 		if G.Boss or os.clock()<G.ResetAt then G.Notify(p,"Đấu trường đang có trận / đang hồi. Vui lòng chờ.") return end
-		G.Teleport(p,C.ArenaEntry)
+		G.Teleport(p,C.ArenaEntry,nil,true)
 		if not G.Preparing then
 			G.Preparing=true
 			for _,other in ipairs(Players:GetPlayers()) do G.Notify(other,"Aureon bắt đầu sau 4 giây. Hãy tiến vào đấu trường!") end
@@ -1204,8 +1264,26 @@ local function cleanupBossMinions(bossEnemy)
 		end
 	end
 end
+local function cleanupEnemyTelegraphs(e)
+	if not e then return end
+	if type(e._ActiveTelegraphs)=="table" then
+		for _,tz in ipairs(e._ActiveTelegraphs) do
+			if tz and tz.Parent then tz:Destroy() end
+		end
+		table.clear(e._ActiveTelegraphs)
+	end
+	local tf=workspace:FindFirstChild("TempFX")
+	if tf and e.Id then
+		for _,ch in ipairs(tf:GetChildren()) do
+			if ch.Name=="TelegraphZone" and ch:GetAttribute("OwnerEnemyId")==e.Id then
+				ch:Destroy()
+			end
+		end
+	end
+end
 function G.Kill(e)
 	if not e.Alive then return end e.Alive=false e.State="Dead"
+	cleanupEnemyTelegraphs(e)
 	if W.UpdateEnemyBar then W.UpdateEnemyBar(e) end
 	if BLENDER_ENEMIES[e.Id] then
 		e.Model:SetAttribute('EnemyDead',true)
@@ -1233,16 +1311,21 @@ function G.Kill(e)
 			if isBossOrElite then
 				prof.Bounty=(prof.Bounty or 2500000)+15000
 				prof.Honor=(prof.Honor or 2500000)+15000
-				if e.Id=="Noxar" then
+				if e.Id=="AureonSentinel" or e.Id=="CryonPrime" or e.Id=="Noxar" then
 					prof.FirstClearBosses=type(prof.FirstClearBosses)=="table" and prof.FirstClearBosses or {}
-					prof.FirstClearBosses.Noxar=true
+					prof.FirstClearBosses[e.Id]=true
+					Helpers.CheckAndAutoUnlockConqueror(p,prof,G,e.Id)
+				end
+				if e.Id=="Noxar" then
 					prof.UnlockedHakiColors=type(prof.UnlockedHakiColors)=="table" and prof.UnlockedHakiColors or {}
 					if not prof.UnlockedHakiColors.crimson_conqueror then
 						prof.UnlockedHakiColors.crimson_conqueror=true
 						G.Notify(p,"Chiến công hạ gục Noxar lần đầu: Mở khóa sắc Ý Chí [Hồng Liên Bá Ý]!")
 					end
 				end
-				G.Notify(p,"Chiến công hạ gục "..e.Config.Name..": +15,000 Bounty / Honor!")
+				LiveOps.Notify(G,p,"Chiến công hạ gục "..e.Config.Name..": +15,000 Điểm Danh Vọng / Vinh Dự!","Defeated "..e.Config.Name..": +15,000 Renown / Honor!")
+				LiveOps.EvaluateProgressionBadges(G,p,prof)
+				LiveOps.RecordLeaderboardScore(p,"Renown",prof.Bounty,false)
 			end
 			G.Reward(p,e.Config.XP or 0,e.Config.Gold or 0,shards) G.QuestEvent(p,"Kill",e.Id)
 		end
@@ -1266,8 +1349,10 @@ function G.Hit(p,e,damage,breakPower,action)
 				break
 			end
 		end
-		if not hasAlivePylons and e==G.Boss then
+		if not hasAlivePylons and (e==G.Boss or e.Id=="AureonSentinel") then
 			e.Shield=false
+			e.SolarAegis70=false
+			if e.Model then e.Model:SetAttribute("Shielded",false) end
 		else
 			damage=math.max(1,damage*0.25)
 		end
@@ -1287,12 +1372,17 @@ function G.Hit(p,e,damage,breakPower,action)
 	if profile and profile.Weapon=="dawnbringer_sword" and math.random()<0.15 then
 		actual=math.floor(actual*1.35)
 	end
-	if e==G.Boss then
+	if e==G.Boss and not G.WorldEvents then
 		if e.Phase==1 then actual=math.min(actual,e.HP-math.floor(e.MaxHP*.65))
 		elseif e.Phase==2 then actual=math.min(actual,e.HP-math.floor(e.MaxHP*.30)) end
 	end
 	actual=math.max(0,actual) e.HP=math.max(0,e.HP-actual)
-	if rt then rt.Energy=math.min(100,rt.Energy+6) end
+	if rt then
+		local maxE=tonumber(rt.MaxEnergy) or 100
+		rt.Energy=math.min(maxE,(rt.Energy or 0)+6)
+		rt.AwakeningMeter=math.min(100,(tonumber(rt.AwakeningMeter or (profile and profile.AwakeningMeter)) or 0)+4)
+		if profile then profile.AwakeningMeter=rt.AwakeningMeter end
+	end
 	local hit=e.Contributors[p] or {Damage=0} hit.Damage+=actual hit.Time=os.clock() e.Contributors[p]=hit
 	if os.clock()>e.ImmuneUntil and os.clock()>e.StunnedUntil then
 		e.Break+=breakPower
@@ -1311,9 +1401,12 @@ function G.Hit(p,e,damage,breakPower,action)
 		element=elem,
 	})
 	if e==G.Boss and e.Phase==1 and e.HP<=e.MaxHP*.65 then
-		e.Phase=2 e.State="Phase2" e.Shield=true
-		for _,x in ipairs({-24,24}) do
-			local pillar=G.SpawnEnemy("EnergyPylon",C.Arena+_V3(x,2,0),true,true) pillar.BossOwner=e
+		e.Phase=2 e.State="Phase2"
+		if not G.WorldEvents then
+			e.Shield=true
+			for _,x in ipairs({-24,24}) do
+				local pillar=G.SpawnEnemy("EnergyPylon",C.Arena+_V3(x,2,0),true,true) pillar.BossOwner=e
+			end
 		end
 	elseif e==G.Boss and e.Phase==2 and e.HP<=e.MaxHP*.3 and not e.Shield then e.Phase=3 e.State="Phase3" end
 	if e.HP<=0 then e.BodyPosition=e.Body.Position G.Kill(e) end
@@ -1360,7 +1453,7 @@ function G.PlayerDamage(p,amount,attackerEnemy)
 				amount=0,
 				crit=false,
 				element=fruitCfg.Element or "Sky",
-				Text="LOGIA IMMUNE!",
+				Text="MIỄN NHIỄM AETHER!",
 			})
 			return
 		end
@@ -1375,9 +1468,11 @@ function G.PlayerDamage(p,amount,attackerEnemy)
 		end
 	end
 	h:TakeDamage(math.max(1,math.floor(amount*100/(100+stats.DEF)*multiplier))) rt.LastHurt=os.clock()
+	rt.AwakeningMeter=math.min(100,(tonumber(rt.AwakeningMeter or (profile and profile.AwakeningMeter)) or 0)+5)
+	if profile then profile.AwakeningMeter=rt.AwakeningMeter end
 end
 
-function G.SpawnTelegraph(centerPos,radius,duration,label,onDetonate)
+function G.SpawnTelegraph(centerPos,radius,duration,label,onDetonate,_,_,_,ownerEnemy)
 	local tempFolder=workspace:FindFirstChild("TempFX")
 	if not tempFolder then
 		tempFolder=_IN("Folder")
@@ -1387,6 +1482,11 @@ function G.SpawnTelegraph(centerPos,radius,duration,label,onDetonate)
 	local gy=safeGroundY(centerPos)+0.48
 	local m=_IN("Model")
 	m.Name="TelegraphZone"
+	if type(ownerEnemy)=="table" then
+		m:SetAttribute("OwnerEnemyId",tostring(ownerEnemy.Id or ""))
+		ownerEnemy._ActiveTelegraphs=ownerEnemy._ActiveTelegraphs or {}
+		table.insert(ownerEnemy._ActiveTelegraphs,m)
+	end
 	m.Parent=tempFolder
 
 	local ring=_IN("Part")
@@ -1446,28 +1546,34 @@ function G.SpawnTelegraph(centerPos,radius,duration,label,onDetonate)
 	end)
 end
 
-function G.Telegraph(e,pos,radius,delayTime,damage,label)
+function G.Telegraph(e,pos,radius,delayTime,damage,label,checkLiveMelee)
 	G.SpawnTelegraph(pos,radius,delayTime,label or " DANGER",function()
 		if not e.Alive or not e.Model.Parent or os.clock()<e.StunnedUntil then return end
+		local liveOrigin=checkLiveMelee and e.Body and e.Body.Position or pos
 		for _,p in ipairs(Players:GetPlayers()) do
 			local r=root(p)
-			if r and participant(e,p) and distance(_V3(r.Position.X,pos.Y,r.Position.Z),pos)<=radius and clearLine(e.Body.Position,r.Position) then
-				G.PlayerDamage(p,damage,e)
+			if r and participant(e,p) and math.abs(r.Position.Y-pos.Y)<=14 then
+				local dFlat=distance(_V3(r.Position.X,pos.Y,r.Position.Z),pos)
+				local dLive=checkLiveMelee and distance(r.Position,liveOrigin) or dFlat
+				if dFlat<=radius and dLive<=(radius+2.5) and clearLine(e.Body.Position,r.Position) then
+					G.PlayerDamage(p,damage,e)
+				end
 			end
 		end
-	end)
+	end,nil,nil,nil,e)
 end
-function G.Action(p,action)
+function G.Action(p,action,payload)
 	if type(action)~="string" or not C.Actions[action] or not G.Rate(p,"Action",.08) then return end
 	local r=root(p) local rt=G.Runtime[p] local profile=D.Get(p) local cfg=C.Actions[action]
 	if not r or not rt or not profile or not C.Classes[profile.ClassId] or (cfg.ClassId and cfg.ClassId~=profile.ClassId) then return end
 	cfg=table.clone(cfg)
+	local effSlot=math.clamp(tonumber(profile.ActiveSlot) or 1,1,4)
 	local skillLv=(profile.SkillLevels and profile.SkillLevels[action]) or 1
 	local skillScale=(1+0.12*skillLv-0.12)
 	if cfg.Multiplier and action~="Attack" and action~="Heavy" then
 		cfg.Multiplier=cfg.Multiplier*skillScale
 	end
-	local mage=profile.ClassId=='ArcaneMage'
+	local mage=(profile.ClassId=='ArcaneMage' and effSlot~=3)
 	if mage and action=='Attack'then cfg.Range=34;cfg.Cooldown=.7 end
 	if mage and action=='Heavy'then cfg.Range=16 end
 	local striker=profile.ClassId=='ThunderStriker'
@@ -1487,17 +1593,18 @@ function G.Action(p,action)
 		cfg.Multiplier=(cfg.Multiplier or 1)*1.35
 	end
 	rt.Cooldowns[action]=now+cfg.Cooldown rt.Stamina-=cfg.Cost or 0
+	local aimDir3D=Helpers.Resolve3DAimDirection(r,payload)
 	if evade then
 		local _,h=root(p)
 		local duration=action=='FlashStep' and .34 or (action=="Dash" and .38 or .34)
 		local travel=action=='FlashStep' and 58 or (action=="Dash" and 44 or 38)
 		local move=h.MoveDirection
 		local direction=_V3(move.X,0,move.Z)
-		if action=='FlashStep' then direction=r.CFrame.LookVector end
+		if action=='FlashStep' then direction=aimDir3D end
 		if direction.Magnitude<.1 then
-			direction=(action=="Dodge") and -r.CFrame.LookVector or r.CFrame.LookVector
+			direction=(action=="Dodge") and -r.CFrame.LookVector or aimDir3D
 		end
-		direction=_V3(direction.X,0,direction.Z)
+		if action~='FlashStep' then direction=_V3(direction.X,0,direction.Z) end
 		if direction.Magnitude<.05 then direction=_V3(0,0,-1) else direction=direction.Unit end
 		rt.InvincibleUntil=now+.38 rt.ActionUntil=now+duration*.65 rt.EvadeUntil=now+(action=='FlashStep'and .45 or math.min(cfg.Cooldown or .9,.85))
 		rt.JumpPadUntil=math.max(rt.JumpPadUntil or 0, now+duration+1.45)
@@ -1514,7 +1621,7 @@ function G.Action(p,action)
 			local character=p.Character
 			task.delay(duration,function()
 				if p.Character==character then
-					local rr=root(p) local stats=G.Stats(p)
+					local rr=root(p) local stats=G.Stats(p,effSlot)
 					if rr and stats then
 						for _,e in ipairs(G.Enemies) do
 							if e.Alive and e.Model and e.Model.Parent and e.Body and distance(rr.Position,e.Body.Position)<=16 then
@@ -1556,19 +1663,20 @@ function G.Action(p,action)
 	if mage then duration=action=='Heavy'and 1.3 or 1.0 end
 	local windup=duration*.45
 	rt.ActionUntil=now+duration*.72
-	local origin=r.Position local facing=r.CFrame.LookVector
-	R.CombatFX:FireAllClients({Kind="Swing",Position=origin+facing*4,Actor=p.UserId,Action=action,Combo=combo})
+	local origin=r.Position local facing=aimDir3D
+	R.CombatFX:FireAllClients({Kind="Swing",Position=origin+facing*4,Look=facing,Actor=p.UserId,Action=action,Combo=combo})
 	local character=p.Character
 	local radialAoE=(action=="CelestialAegis" or action=="StormBlitz" or action=="ThunderJudgement" or action=="AstralCataclysm" or action=="ArcaneComet" or action=="JudgmentStrike")
 	local function strike()
-		local rr=root(p) local stats=G.Stats(p)
+		local rr=root(p) local stats=G.Stats(p,effSlot)
 		if not rr or not stats or p.Character~=character or distance(rr.Position,origin)>85 then return end
-		local curFacing=rr.CFrame.LookVector
+		local curFacing=Helpers.Resolve3DAimDirection(rr,payload)
 		for _,e in ipairs(G.Enemies) do
 			if e.Alive and e.Model and e.Model.Parent and e.Body then
 				local delta=e.Body.Position-rr.Position
 				local flatDist=_V3(delta.X,0,delta.Z).Magnitude
-				if (delta.Magnitude<=cfg.Range or (flatDist<=cfg.Range and math.abs(delta.Y)<=22)) and (radialAoE or (mage and action=='Heavy') or delta.Magnitude<14 or facing:Dot(delta.Unit)>-0.45 or curFacing:Dot(delta.Unit)>-0.45) then
+				local dUnit=delta.Magnitude>0.01 and delta.Unit or curFacing
+				if (delta.Magnitude<=cfg.Range or (flatDist<=cfg.Range and math.abs(delta.Y)<=24)) and (radialAoE or (mage and action=='Heavy') or delta.Magnitude<14 or facing:Dot(dUnit)>-0.45 or curFacing:Dot(dUnit)>-0.45) then
 					G.Hit(p,e,stats.ATK*(cfg.Multiplier or 1)*(combo==3 and 1.45 or 1),(cfg.Break or 10)*(combo==3 and 1.5 or 1),action)
 				end
 			end
@@ -1689,6 +1797,10 @@ function G.BuildSkyShip(pOrShipId,spawnPos,customShipId)
 	prompt.Triggered:Connect(function(plr)
 		local pr=root(plr)
 		if not pr then return end
+		if inLockedEncounter(plr) then
+			LiveOps.Notify(G,plr,"Không thể lái tàu vượt đảo khi đang giao tranh PvP!","Cannot warp ship while in PvP combat!")
+			return
+		end
 		local dest=islandTargets[routeIdx]
 		routeIdx=(routeIdx%#islandTargets)+1
 		plr:SetAttribute("CurrentRealm",dest.Realm)
@@ -1703,7 +1815,7 @@ function G.BuildSkyShip(pOrShipId,spawnPos,customShipId)
 	return ship
 end
 
-function G.UseSlotMove(p,key)
+function G.UseSlotMove(p,key,payload)
 	if not G.Rate(p,"SlotMove",.12) then return end
 	local r,h=root(p) local rt=G.Runtime[p] local profile=D.Get(p)
 	if not r or not h or not rt or not profile then return end
@@ -1720,7 +1832,8 @@ function G.UseSlotMove(p,key)
 		activeCfg=getStyleCfg(activeId)
 		element=(activeCfg and activeCfg.Element) or "Sky"
 	elseif slot==2 then
-		activeId=profile.EquippedFruit or "SolarTitanCore"
+		local rawF=profile.EquippedFruit or "SolarTitanCore"
+		activeId=Helpers.ResolveFruitId(rawF)~="" and Helpers.ResolveFruitId(rawF) or rawF
 		activeCfg=getFruitCfg(activeId)
 		element=(activeCfg and activeCfg.Element) or "Sky"
 	elseif slot==3 then
@@ -1757,8 +1870,9 @@ function G.UseSlotMove(p,key)
 	local now=os.clock()
 	local cdKey="Slot_"..key
 	if now<(rt.Cooldowns[cdKey] or 0) then return end
+	local maxE=tonumber(rt.MaxEnergy) or 100
 	local cost=math.max(0,tonumber(moveSpec and moveSpec.Cost) or 10)
-	if cost>0 and (rt.Energy or 100)<cost then
+	if cost>0 and (rt.Energy or maxE)<cost then
 		G.Notify(p,"Không đủ Aether Energy!")
 		return
 	end
@@ -1769,7 +1883,7 @@ function G.UseSlotMove(p,key)
 	rt.Cooldowns[cdKey]=now+cd
 	rt.Cooldowns[key]=now+cd
 	if cost>0 then
-		rt.Energy=math.max(0,(rt.Energy or 100)-cost)
+		rt.Energy=math.max(0,(rt.Energy or maxE)-cost)
 		rt.LastCastAt=now
 	end
 
@@ -1783,7 +1897,7 @@ function G.UseSlotMove(p,key)
 	end
 
 	local originPos=r.Position
-	local lookVec=r.CFrame.LookVector
+	local lookVec=Helpers.Resolve3DAimDirection(r,payload)
 	local endPos=originPos
 
 	local function safeDashTo(dist)
@@ -1792,7 +1906,8 @@ function G.UseSlotMove(p,key)
 		local hit=workspace:Raycast(originPos,dir,rp)
 		local target=hit and (hit.Position-lookVec*2.8) or (originPos+dir)
 		local gy=safeGroundY(target,originPos.Y-3.2)
-		target=_V3(target.X,math.clamp(gy+3.0,originPos.Y-14,originPos.Y+18),target.Z)
+		local desiredY=math.abs(lookVec.Y)>0.22 and math.clamp(target.Y,gy+2.8,originPos.Y+36) or math.clamp(gy+3.0,originPos.Y-14,originPos.Y+18)
+		target=_V3(target.X,desiredY,target.Z)
 		rt.JumpPadUntil=math.max(rt.JumpPadUntil or 0,now+1.45)
 		G.Teleport(p,target)
 		return target
@@ -1874,7 +1989,7 @@ function G.UseSlotMove(p,key)
 	local isDoTFruit=(slot==2 and (activeId=="SolarFlameCore" or activeId=="StarforgedMagmaCore"))
 	local isMultiWave=(slot==2 and (key=="C" or key=="V"))
 
-	local stats=G.Stats(p)
+	local stats=G.Stats(p,slot)
 	if stats then
 		local midPos=(originPos+endPos)*0.5
 		local breakAmt=(moveSpec and moveSpec.Break) or 24
@@ -1906,7 +2021,7 @@ function G.UseSlotMove(p,key)
 			for tIdx=1,extraTicks do
 				task.delay(tIdx*0.28,function()
 					if p.Character~=character then return end
-					local curStats=G.Stats(p)
+					local curStats=G.Stats(p,slot)
 					if not curStats then return end
 					for _,e in ipairs(G.Enemies) do
 						if e.Alive and e.Model and e.Model.Parent and e.Body then
@@ -1922,9 +2037,13 @@ function G.UseSlotMove(p,key)
 	end
 
 	if not G.CombatExpansion then
-		profile.Mastery[activeId]=math.min(600,(profile.Mastery[activeId] or 1)+12)
+		local mMult=LiveOps.GetFriendBoostMultiplier(p)
+		if (profile.OwnedGamePasses and profile.OwnedGamePasses.x2_mastery==true) or p:GetAttribute("OwnedPass_x2_mastery")==true then mMult*=2 end
+		if (tonumber(profile.DoubleExpRemainingSec) or 0)>0 then mMult*=2 end
+		profile.Mastery[activeId]=math.min(600,(profile.Mastery[activeId] or 1)+math.max(1,math.floor(12*mMult+0.5)))
 	end
-	profile.AwakeningMeter=math.min(100,(profile.AwakeningMeter or 0)+10)
+	rt.AwakeningMeter=math.min(100,(tonumber(rt.AwakeningMeter or profile.AwakeningMeter) or 0)+10)
+	profile.AwakeningMeter=rt.AwakeningMeter
 
 	local clipAct=(slot==2 and ("Fruit"..key)) or ("Skill"..key)
 	R.CombatFX:FireAllClients({
@@ -1978,6 +2097,13 @@ end
 function G.Equipment(p,payload)
 	if type(payload)~="table" then return end
 	local act=payload.action
+	if act=="SetLocale" or act=="SyncLocale" or act=="SetLanguage" then
+		if not G.Rate(p,"Equipment_Locale",0.05) then return end
+		local raw=payload.Language or payload.lang or payload.locale or payload.Locale or payload.RobloxLocaleId or payload.id
+		LiveOps.SetPlayerLocale(p,raw)
+		if D.Get(p) then G.Sync(p) end
+		return
+	end
 	local rateWindow=(act=="AddStat" or act=="RefundStats" or act=="BoostLevel") and 0.01 or 0.08
 	if not G.Rate(p,"Equipment_"..tostring(act or "General"),rateWindow) then return end
 	local profile=D.Get(p) local rt=G.Runtime[p] local r,h=root(p)
@@ -2111,32 +2237,7 @@ function G.Equipment(p,payload)
 		end
 		G.Notify(p,"Rèn thành công: "..item.Name.."!")
 	elseif act=="ForgeEnhance" or act=="Upgrade" then
-		local targetId=tostring(payload.itemId or profile.Weapon or "")
-		if targetId~="" and (profile.Inventory[targetId] or 0)<=0 and profile.Weapon~=targetId and profile.EquippedGun~=targetId then
-			G.Notify(p,"Hãy rèn sở hữu vũ khí trước khi Cường Hóa!")
-			return
-		end
-		local cur=profile.WeaponEnhance or 0
-		if cur>=15 then
-			G.Notify(p,"Vũ khí đã đạt cấp cường hóa tối đa (+15)!")
-			return
-		end
-		if (profile.Gold or 0)<100 then
-			G.Notify(p,"Cần 100 Gold để cường hóa vũ khí!")
-			return
-		end
-		local hasUpgMat=(profile.Inventory.upgrade_material or 0)>0
-		local hasIron=(profile.Inventory.SkyIron or 0)>0
-		if not hasUpgMat and not hasIron then
-			G.Notify(p,"Cần 1 Vật liệu ánh sáng hoặc Sky Iron để cường hóa vũ khí!")
-			return
-		end
-		profile.Gold-=100
-		if hasUpgMat then profile.Inventory.upgrade_material-=1 else profile.Inventory.SkyIron-=1 end
-		profile.WeaponEnhance=math.min(15,cur+1)
-		profile.Upgrades=type(profile.Upgrades)=="table" and profile.Upgrades or {}
-		if targetId~="" then profile.Upgrades[targetId]=profile.WeaponEnhance end
-		G.Notify(p,"Cường hóa vũ khí thành công: +"..profile.WeaponEnhance.." (+"..(profile.WeaponEnhance*6).."% Weapon ATK)!")
+		if not Helpers.ExecuteForgeEnhance(p,profile,payload,G,C,LiveOps) then return end
 	elseif act=="UpgradeSkill" then
 		local skillId=payload.skillId
 		if not skillId or not C.Actions[skillId] then return end
@@ -2170,14 +2271,12 @@ function G.Equipment(p,payload)
 			G.Notify(p,"Không thể dịch chuyển khi đang trong giao tranh, Raid, Tháp hoặc Giao Dịch!")
 			return
 		end
+		local okFT,canonIsl=Helpers.CheckIslandTeleportGate(p,profile,C,nodeId,G)
+		if not okFT then return end
 		local realm=node.Realm or "GoldenSky"
 		profile.UnlockedWorlds=profile.UnlockedWorlds or {}
-		local minLv=REALM_MIN_LV[realm] or 1
-		if realm~="GoldenSky" and realm~="SkyHub" and not profile.UnlockedWorlds[realm] and not profile.UnlockedWorlds[tostring(nodeId)] and not DevGate.IsAllowed(p) and (tonumber(profile.Level) or 1)<minLv then
-			G.Notify(p,"Cần đạt Level "..minLv.." để mở khóa dịch chuyển tới "..(node.Name or realm).."!")
-			return
-		end
 		profile.UnlockedWorlds[realm]=true
+		if canonIsl then profile.DiscoveredIslands[canonIsl]=true end
 		if type(nodeId)=="string" and not tonumber(nodeId) then profile.UnlockedWorlds[nodeId]=true end
 		p:SetAttribute("CurrentRealm",realm)
 		G.Teleport(p,node.Pos)
@@ -2220,17 +2319,18 @@ function G.Equipment(p,payload)
 			G.Notify(p,"Boss Rush đang hồi, vui lòng chờ vài giây!")
 			return
 		end
-		if p:GetAttribute("InTrade")==true or p:GetAttribute("RaidActive")==true or p:GetAttribute("ColosseumActive")==true or (p:GetAttribute("SpireFloor") or 0)>0 then
-			G.Notify(p,"Không thể dịch chuyển Boss Rush khi đang Giao Dịch, Đấu Trường, Raid hoặc trong Sky Spire!")
+		if inLockedEncounter(p) then
+			LiveOps.Notify(G,p,"Không thể dịch chuyển Boss Rush khi đang Giao Tranh PvP, Giao Dịch, Đấu Trường, Raid hoặc Sky Spire!","Cannot Boss Rush teleport while in PvP combat, Trading, Colosseum, Raid, or Sky Spire!")
 			return
 		end
 		local bossReqLvMap={
-			AureonSentinel=10, PirateCaptainVance=15,
-			OrderCyborgBoss=20, CryonPrime=20, SkySeaBeast=20,
-			Noxar=25, SoulReaperRift=35, AbyssalLeviathan=45,
-			Sylvaris=50, Ignivar=60, Nerith=68, Aion=75, Veyr=81, AbyssalSovereignDragon=81,
+			PirateCaptainVance=300, SolarHighPriestBoss=550, AureonSentinel=560,
+			OrderCyborgBoss=960, SkySeaBeast=1100, FrostSeaBeast=1100, CryonPrime=1240,
+			SoulReaperRift=1750, AbyssalLeviathan=1750, Noxar=1980, AbyssalSovereignDragon=2150,
+			Sylvaris=2200, Ignivar=2270, Nerith=2340, Aion=2410, Chronovex=2410, Veyr=2480, VeyrTheArchitect=2480,
 		}
-		local reqLv=bossReqLvMap[bossId] or 10
+		local cfgBoss=C.Enemies and C.Enemies[bossId]
+		local reqLv=bossReqLvMap[bossId] or (cfgBoss and math.max(1,math.floor((cfgBoss.Level or 1)*0.85))) or 560
 		local pLv=profile.Level or 1
 		if pLv<reqLv then
 			G.Notify(p,string.format("Cần đạt Lv. %d để khiêu chiến Boss [%s]!",reqLv,bossId))
@@ -2364,6 +2464,9 @@ function G.Equipment(p,payload)
 			targetBoss.Break=0
 			targetBoss.Phase=1
 			targetBoss.Shield=false
+			targetBoss.TwinSolarPylonsSpawned=false
+			targetBoss.SolarAegis70=false
+			targetBoss.CryonShieldActive=false
 			targetBoss.Phase2Triggered=false
 			targetBoss.Phase3Triggered=false
 			if targetBoss.Model then
@@ -2429,15 +2532,17 @@ function G.Equipment(p,payload)
 		end
 	elseif act=="SelectSlot" then
 		profile.ActiveSlot=math.clamp(tonumber(payload.slot) or 1,1,4)
-		if profile.ActiveSlot==2 then
-			profile.HeldFruit=profile.EquippedFruit or "GaleCore"
-		elseif payload.clearHeldFruit then
+		if payload.clearHeldFruit then
 			profile.HeldFruit=""
+			if rt then rt.HeldAlreadyStored=false end
 		end
 	elseif act=="HoldFruit" then
-		local fid=tostring(payload.fruitId or profile.EquippedFruit or "GaleCore")
+		local rawFid=tostring(payload.fruitId or profile.HeldFruit or profile.EquippedFruit or "")
+		local fid=(D.NormalizeFruitId and D.NormalizeFruitId(rawFid)) or rawFid
+		if fid=="" then return end
 		if profile.HeldFruit==fid and not payload.forceHold then
 			profile.HeldFruit=""
+			if rt then rt.HeldAlreadyStored=false end
 			G.Notify(p,"Đã cất Lõi Aether 3D vào túi.")
 		else
 			local owned=(tonumber(profile.StoredFruits and profile.StoredFruits[fid]) or 0)>0 or profile.EquippedFruit==fid
@@ -2448,87 +2553,123 @@ function G.Equipment(p,payload)
 				return
 			end
 			profile.HeldFruit=fid
+			if rt then rt.HeldAlreadyStored=true end
 			local fcfg=getFruitCfg(fid)
 			G.Notify(p,"Đang cầm mô hình 3D ["..(fcfg and fcfg.Name or fid).."] trên tay!")
 		end
-	elseif act=="RollFruit" then
-		local rt=G.Runtime[p]
-		local now=os.clock()
-		if rt then
-			if now<(rt.Cooldowns.RollFruit or 0) then return end
-			rt.Cooldowns.RollFruit=now+1.2
-		end
-		local vouchers=tonumber(profile.FreeFruitVouchers) or 0
-		if vouchers>0 then
-			profile.FreeFruitVouchers=vouchers-1
-		elseif (profile.Gold or 0)>=25000 then
-			profile.Gold-=25000
-		else
-			G.Notify(p,"Cần 25,000 Gold (hoặc 1 Vé Cầu Lõi Miễn Phí) để cầu Lõi Aether tại Hiền Giả Lõi!")
+	elseif act=="StoreFruit" then
+		if profile._ReadOnlyFallback==true or p:GetAttribute("InTrade")==true then
+			G.Notify(p,"Không thể cất Lõi Aether khi đang Giao Dịch hoặc ở chế độ Bảo Vệ Dữ Liệu!")
 			return
 		end
-		local canonicalIds={
-			"GaleCore","SandstoneCore","SolarFlameCore","GlacierIceCore","CelestialLightCore","StarforgedMagmaCore",
-			"ThunderRumbleCore","AstralGravityCore","DimensionalPortalCore","SolarTitanCore","AetherflowCore","AbyssalSovereignCore"
-		}
-		local fruitId=canonicalIds[math.random(1,#canonicalIds)]
-		local fruit=getFruitCfg(fruitId)
-		profile.StoredFruits[fruitId]=(profile.StoredFruits[fruitId] or 0)+1
-		profile.HeldFruit=fruitId
-		G.Notify(p,"ĐIỆN CẦU LÕI AETHER: Bạn cầu trúng ["..(fruit.Rarity or "Legendary").."] "..(fruit.Name or fruitId).." (Đã cầm trên tay 3D)!")
+		local rawHeld=tostring(profile.HeldFruit or "")
+		local canonId=(D.NormalizeFruitId and D.NormalizeFruitId(rawHeld)) or rawHeld
+		if canonId=="" then
+			G.Notify(p,"Bạn hiện không cầm Lõi Aether nào trên tay để cất vào Kho!")
+			return
+		end
+		profile.StoredFruits=type(profile.StoredFruits)=="table" and profile.StoredFruits or {}
+		local maxCap=Helpers.GetMaxCoreStorage(p,profile)
+		local curStored=tonumber(profile.StoredFruits[canonId]) or 0
+		if not (rt and rt.HeldAlreadyStored==true) then
+			if curStored>=maxCap then
+				local fcfgFull=getFruitCfg(canonId)
+				G.Notify(p,string.format("Kho Lõi [%s] đã đầy (%d/%d)! Mở rộng Kho Lõi (+3 Ô) tại tab Đặc Quyền Robux [N]!",fcfgFull and fcfgFull.Name or canonId,curStored,maxCap))
+				return
+			end
+			profile.StoredFruits[canonId]=curStored+1
+		end
+		if rt then rt.HeldAlreadyStored=false end
+		profile.HeldFruit=""
+		p:SetAttribute("HeldFruit","")
+		if p.Character then p.Character:SetAttribute("HeldFruit","") end
+		local fcfg=getFruitCfg(canonId)
+		task.spawn(D.Save,p,false)
+		G.Notify(p,"Đã cất Lõi Aether ["..(fcfg and fcfg.Name or canonId).."] vào Kho Lưu Trữ!")
+	elseif act=="RollFruit" then
+		Helpers.ExecuteRollFruit(p,profile,rt,G,C,payload.currency)
+		return
+	elseif act=="SelectClass" then
+		G.ChooseAppearance(p,{ClassId=payload.classId or payload.id})
+		return
+	elseif act=="EvolveRace" then
+		Helpers.EvolveRace(p,profile,G,C)
+		return
 	elseif act=="EatFruit" then
 		if p:GetAttribute("InTrade")==true then
 			G.Notify(p,"Không thể hấp thụ Lõi Aether khi đang ngồi Bàn Giao Dịch!")
 			return
 		end
-		local fid=tostring(payload.fruitId or profile.EquippedFruit or "SolarTitanCore")
+		local rawFid=tostring(payload.fruitId or (profile.HeldFruit~="" and profile.HeldFruit) or profile.EquippedFruit or "")
+		local fid=(D.NormalizeFruitId and D.NormalizeFruitId(rawFid)) or rawFid
+		if fid=="" then
+			G.Notify(p,"Hãy chọn một Lõi Aether hợp lệ để hấp thụ!")
+			return
+		end
 		local fruit=getFruitCfg(fid)
 		local storedCnt=tonumber(profile.StoredFruits and profile.StoredFruits[fid]) or 0
+		local heldCanon=(D.NormalizeFruitId and D.NormalizeFruitId(profile.HeldFruit or "")) or tostring(profile.HeldFruit or "")
 		if profile.EquippedFruit~=fid then
-			if storedCnt<=0 then
+			if storedCnt>0 then
+				profile.StoredFruits[fid]=storedCnt-1
+				if profile.StoredFruits[fid]<=0 then
+					profile.StoredFruits[fid]=nil
+				end
+			elseif heldCanon==fid and not (rt and rt.HeldAlreadyStored==true) then
+				-- Consuming unstored fruit directly from hand
+			else
 				G.Notify(p,"Bạn chưa có ["..(fruit and fruit.Name or fid).."] trong kho! Hãy cầu lõi tại Hiền Giả Lõi, mua tại Thương Nhân Hư Quang hoặc nhặt Lõi Tự Nhiên.")
 				return
-			end
-			profile.StoredFruits[fid]=storedCnt-1
-			if profile.StoredFruits[fid]<=0 then
-				profile.StoredFruits[fid]=nil
 			end
 		end
 		profile.EquippedFruit=fid
 		profile.ActiveSlot=2
-		profile.HeldFruit=fid
+		if heldCanon==fid then
+			profile.HeldFruit=""
+			if rt then rt.HeldAlreadyStored=false end
+		end
 		if p.Character then p.Character:SetAttribute("FruitTransform","") end
 		p:SetAttribute("DragonFormTier",0)
 		if p.Character then p.Character:SetAttribute("DragonFormTier",0) end
 		G.Notify(p,"Đã hấp thụ & trang bị "..(fruit and fruit.Name or fid).."! Bấm [2] và dùng chiêu [Z][X][C][V][F]!")
 	elseif act=="AwakenFruit" then
-		local fid=tostring(payload.fruitId or profile.EquippedFruit or "SolarTitanCore")
+		local rawFid=tostring(payload.fruitId or profile.EquippedFruit or "SolarTitanCore")
+		local fid=Helpers.ResolveFruitId(rawFid)~="" and Helpers.ResolveFruitId(rawFid) or rawFid
 		local fruit=getFruitCfg(fid)
 		if not profile.AwakenedFruits[fid] then
-			if (profile.CoreShards or 0)<500 then
-				G.Notify(p,"Cần 500 Core Shards (hoặc hoàn thành Raid Thức Tỉnh) để mở khóa V2 cho "..(fruit and fruit.Name or fid).."!")
+			if not Helpers.CanAwakenFruit(p,profile,fid,G) then
 				return
 			end
-			profile.CoreShards-=500
+			profile.CoreShards-=1000
 			profile.AwakenedFruits[fid]=true
 		end
 		G.Notify(p,"THỨC TỈNH V2: Đã mở khóa kỹ năng Awakened V2 (+25% Sát Thương, +20% Tầm Đánh) cho "..(fruit and fruit.Name or fid).."!")
 	elseif act=="SwitchFightingStyle" then
 		local sid=tostring(payload.styleId or "SkybornCombat")
-		if G.CombatExpansion and G.CombatExpansion.SelectOrLearnStyle and sid~="SanguineVoidArt" then
+		if G.CombatExpansion and G.CombatExpansion.SelectOrLearnStyle then
 			G.CombatExpansion.SelectOrLearnStyle(p,sid)
 			return
 		end
+		local req=Helpers.GetMartialReq(sid)
 		local style=getStyleCfg(sid)
-		if not profile.UnlockedStyles[sid] and sid~="SkybornCombat" and sid~="skyborn_combat" then
-			local costG,costS=50000,350
-			if (profile.Gold or 0)<costG or (profile.CoreShards or 0)<costS then
-				G.Notify(p,"Cần "..tostring(costG).." Gold & "..tostring(costS).." Core Shards để lĩnh ngộ ["..(style and style.Name or sid).."]!")
+		if req and not profile.UnlockedStyles[req.Id] and not profile.UnlockedStyles[req.Alias] and req.Id~="skyborn_combat" then
+			if (tonumber(profile.Level) or 1)<req.MinLevel then
+				G.Notify(p,string.format("Cần đạt Lv. %d để lĩnh ngộ [%s]!",req.MinLevel,req.Name))
 				return
 			end
-			profile.Gold-=costG
-			profile.CoreShards-=costS
-			profile.UnlockedStyles[sid]=true
+			local bestMas=Helpers.GetBestMartialMastery(profile)
+			if req.ReqMastery>0 and bestMas<req.ReqMastery then
+				G.Notify(p,string.format("Cần đạt Mastery Quyền Pháp %d+ (hiện tại %d) để lĩnh ngộ [%s]!",req.ReqMastery,bestMas,req.Name))
+				return
+			end
+			if (profile.Gold or 0)<req.Gold or (profile.CoreShards or 0)<req.Shards then
+				G.Notify(p,string.format("Cần %d Gold & %d Core Shards để lĩnh ngộ [%s]!",req.Gold,req.Shards,req.Name))
+				return
+			end
+			profile.Gold-=req.Gold
+			profile.CoreShards-=req.Shards
+			profile.UnlockedStyles[req.Id]=true
+			profile.UnlockedStyles[req.Alias]=true
 		end
 		profile.FightingStyle=sid
 		profile.UnlockedStyles[sid]=true
@@ -2584,16 +2725,7 @@ function G.Equipment(p,payload)
 		G.SyncCompanions(p)
 		G.Notify(p,"ĐỘT PHÁ CẤP ĐỘ SKYBREAK: Đạt Lv. "..tostring(profile.Level).." / "..tostring(maxLv).." (Còn "..tostring(profile.StatPoints).." Stat Points)!")
 	elseif act=="RefundStats" then
-		local refund=0
-		for k,v in pairs(profile.StatAlloc) do
-			if type(v)=="number" and v>1 then
-				refund+=(v-1)
-				profile.StatAlloc[k]=1
-			end
-		end
-		profile.StatPoints=(profile.StatPoints or 0)+refund
-		ensureProfileFields(profile)
-		G.Notify(p,"Đã hoàn trả "..tostring(profile.StatPoints).." Điểm Chỉ Số (Stat Points)!")
+		if not Helpers.ExecuteRefundStats(p,profile,ensureProfileFields,G,C,LiveOps) then return end
 	elseif act=="ToggleAura" then
 		profile.Haki.Aura=not profile.Haki.Aura
 		p:SetAttribute("HakiAura",profile.Haki.Aura)
@@ -2623,6 +2755,11 @@ function G.Equipment(p,payload)
 		end
 		G.Notify(p,"Thấu Ý (Will Sense"..(profile.KenV2Unlocked and " V2" or "").."): "..(profile.Haki.Instinct and string.format("BẬT (%d/8 Né)",dodges) or "TẮT"))
 	elseif act=="ConquerorBurst" then
+		Helpers.CheckAndAutoUnlockConqueror(p,profile,G,nil)
+		if not (profile.Haki and profile.Haki.ConquerorUnlocked==true) then
+			G.Notify(p,"Bạn cần hạ gục Boss chính (Aureon / Cryon Prime / Noxar) hoặc đạt Giáp Ý Chí Cấp 3 & Lv. 700+ để mở khóa Bá Ý [H]!")
+			return
+		end
 		if r and rt then
 			local now=os.clock()
 			local rem=(rt.Cooldowns.ConquerorBurst or 0)-now
@@ -2630,15 +2767,15 @@ function G.Equipment(p,payload)
 				G.Notify(p,string.format("Bá Ý đang hồi chiêu (%.1fs)!",rem))
 				return
 			end
-			if (rt.Energy or 100)<20 then
+			local maxE=tonumber(rt.MaxEnergy) or 100
+			if (rt.Energy or maxE)<20 then
 				G.Notify(p,"Cần 20 Aether Energy để phát động Bá Ý!")
 				return
 			end
 			rt.Cooldowns.ConquerorBurst=now+18
 			rt.Cooldowns.ConquerorHaki=now+18
-			rt.Energy=math.max(0,(rt.Energy or 100)-20)
+			rt.Energy=math.max(0,(rt.Energy or maxE)-20)
 			rt.LastCastAt=now
-			profile.Haki.ConquerorUnlocked=true
 			local stats=G.Stats(p)
 			local dmg=((stats and stats.ATK) or 50)*3.5
 			for _,e in ipairs(G.Enemies) do
@@ -2666,6 +2803,19 @@ function G.Equipment(p,payload)
 			if now<(rt.Cooldowns.RaceV4Toggle or 0) then return end
 			rt.Cooldowns.RaceV4Toggle=now+1.2
 		end
+		if not profile.RaceV4Active then
+			if profile.RaceV4Unlocked~=true then
+				G.Notify(p,"Bạn cần hoàn thành Khảo Thí Đền Thăng Hoa (Sea 3 • Lv. 1900+) để mở khóa Tộc V4!")
+				return
+			end
+			local curMeter=tonumber((rt and rt.AwakeningMeter) or profile.AwakeningMeter) or 0
+			if curMeter<100 then
+				G.Notify(p,string.format("Thanh Nộ Thăng Hoa chưa đầy (%d/100)! Hãy chiến đấu tích nộ để kích hoạt Tộc V4 [Y]!",math.floor(curMeter)))
+				return
+			end
+			if rt then rt.AwakeningMeter=0 end
+			profile.AwakeningMeter=0
+		end
 		local prevPct=(h and h.MaxHealth>0) and math.clamp(h.Health/h.MaxHealth,0.01,1) or 1
 		profile.RaceV4Active=not profile.RaceV4Active
 		local raceName=profile.Race or "Skyborn"
@@ -2675,7 +2825,7 @@ function G.Equipment(p,payload)
 			p.Character:SetAttribute("RaceV4Active",profile.RaceV4Active)
 			p.Character:SetAttribute("RaceV4",profile.RaceV4Active and raceName or "")
 		end
-		if h and h.Health>0 then -- nhan vat da chet thi khong keo HP len 1 (HP nhay 0<->1 khi cho hoi sinh)
+		if h and h.Health>0 then
 			local s=G.Stats(p)
 			if s then
 				h.MaxHealth=s.HP
@@ -2698,6 +2848,16 @@ function G.Equipment(p,payload)
 			G.Notify(p,"Đã thu hồi trạng thái Thăng Hoa ["..raceName.."].")
 		end
 	elseif act=="RerollRace" then
+		if G.CombatExpansion and type(G.CombatExpansion.RerollRace)=="function" then
+			G.CombatExpansion.RerollRace(p)
+			return
+		end
+		local rrCost=tonumber(C.RaceRerollCostShards) or 50
+		if (profile.CoreShards or 0)<rrCost then
+			G.Notify(p,"Cần "..tostring(rrCost).." Core Shards để đổi Chủng Tộc mới!")
+			return
+		end
+		profile.CoreShards-=rrCost
 		local curIdx=1
 		for i,rname in ipairs(RACE_ORDER) do
 			if rname==profile.Race then curIdx=i break end
@@ -2706,7 +2866,7 @@ function G.Equipment(p,payload)
 		if p.Character and profile.RaceV4Active then
 			p.Character:SetAttribute("RaceV4",profile.Race)
 		end
-		G.Notify(p,"Đã thức tỉnh dòng máu mới: Chủng tộc "..profile.Race.." (Thăng Hoa)!")
+		G.Notify(p,"Đã thức tỉnh dòng máu mới: Chủng tộc "..profile.Race.."!")
 	elseif act=="SetFaction" then
 		profile.Faction=(payload.faction=="Marine") and "Marine" or "Pirate"
 		G.Notify(p,"Đã chọn phe: "..(profile.Faction=="Marine" and "Hải Quân Thiên Không (Sky Marines)" or "Hải Tặc Bầu Trời (Sky Pirates)").."!")
@@ -2715,18 +2875,9 @@ function G.Equipment(p,payload)
 			G.BuildSkyShip(p,payload.dockPos or (r.Position+r.CFrame.LookVector*14),payload.shipId)
 			G.Notify(p,"Đã triệu hồi Chiến Hạm Bay 3D (Sky Ship)!")
 		end
-	elseif act=="StartAwakeningRaid" then
-		if r then
-			p:SetAttribute("CurrentRealm","FrozenCyber")
-			G.Teleport(p,_V3(14600,50.9,1785))
-			G.SpawnEnemy("FrostDrone",_V3(14586,50.5,1805),false,true)
-			G.SpawnEnemy("CryoGuard",_V3(14600,50.5,1815),false,true)
-			G.SpawnEnemy("CyberArcher",_V3(14614,50.5,1805),false,true)
-			G.SpawnEnemy("OrderCyborgBoss",_V3(14600,50.5,1825),false,true)
-			profile.CoreShards=(profile.CoreShards or 0)+500
-			local fid=profile.EquippedFruit or "SolarTitanCore"
-			profile.AwakenedFruits[fid]=true
-			G.Notify(p,"ĐỘT KÍCH THỨC TỈNH (ORDER CYBORG RAID) BẮT ĐẦU!")
+	elseif act=="StartAwakeningRaid" or act=="StartMicrochipRaid" then
+		if G.WorldEvents and G.WorldEvents.StartMicrochipRaid then
+			G.WorldEvents.StartMicrochipRaid(p,payload.difficulty)
 		end
 	elseif act=="SpawnSeaEvent" or act=="SummonLeviathan" then
 		if r and DevGate.IsAllowed(p) then
@@ -2772,16 +2923,15 @@ function G.ChooseAppearance(p,payload)
 		profile.Weapon=weapon
 		profile.Equipped.Weapon=weapon
 	end
-	profile.ClassId=class;profile.Gender=gender
-	h.MaxHealth=G.Stats(p).HP;h.Health=math.max(1,h.MaxHealth*hp);h.WalkSpeed=C.Classes[class].Speed
+	profile.ClassId=class;profile.Gender=gender;profile.ClassChosen=true
+	local st=G.Stats(p)
+	h.MaxHealth=st.HP;h.Health=math.max(1,h.MaxHealth*hp);h.WalkSpeed=(C.Classes[class].Speed or 16)*(st.RaceWalkSpeedMult or 1)
 	local blade=p.Character and p.Character:FindFirstChild("SkybornBlade") if blade then blade.Transparency=1 end
 	if p.Character then Cosmetics.Equip(p.Character,profile.Weapon~=nil) end
 	G.Notify(p,"Đã chọn: "..C.Classes[class].Name.." • "..(gender=="Female" and "Nữ" or "Nam"))
 	G.Sync(p)
 end
 G.Appearance=G.ChooseAppearance
-local cachedSolidFolder=nil
-local cachedSolidOverlap=nil
 local function setEnemyMoving(e,isMoving)
 	if e.LastMoving~=isMoving then
 		e.LastMoving=isMoving
@@ -2792,36 +2942,12 @@ local function setEnemyMoving(e,isMoving)
 end
 local function move(e,destination,dt,speedOverride)
 	local spd=speedOverride or e.Config.Speed or 0
-	if spd<=0 then setEnemyMoving(e,false) return false end
-	local delta=_V3(destination.X-e.Body.Position.X,0,destination.Z-e.Body.Position.Z)
-	if delta.Magnitude<.15 then setEnemyMoving(e,false) return false end
-	local step=delta.Unit*math.min(delta.Magnitude,spd*dt)
-	if not clearLine(e.Body.Position,e.Body.Position+step*2) then setEnemyMoving(e,false) return false end
-	local rawPos=e.Body.Position+step
-	local refY=e.HomeFloorY or (e.Home.Y - math.max(2.2, e.Body.Size.Y * 0.5))
-	local fy=e.CachedGroundY
+	if spd<=0 or not e.Body or not e.Model then setEnemyMoving(e,false) return false end
 	local isSeaSwimmer=e.IsSeaEventMonster or e.Id=="AbyssalLeviathan" or e.Id=="SkySeaBeast" or e.Id=="TerrorSkyShark"
-	if not fy or not e.LastGroundCheckPos or (_V3(rawPos.X,0,rawPos.Z)-_V3(e.LastGroundCheckPos.X,0,e.LastGroundCheckPos.Z)).Magnitude>0.75 then
-		local hit=W.RaycastGround and W.RaycastGround(rawPos, refY) or nil
-		if W.RaycastGround and not hit and not isSeaSwimmer then setEnemyMoving(e,false) return false end
-		fy=hit and hit.Position.Y or (isSeaSwimmer and refY or safeGroundY(rawPos, refY))
-		fy=math.clamp(fy, refY - 2.8, refY + 2.8)
-		e.CachedGroundY=fy
-		e.LastGroundCheckPos=rawPos
-	end
-	local position=_V3(rawPos.X,fy+math.max(2.2,e.Body.Size.Y*0.5),rawPos.Z)
-	local solidFolder=workspace:FindFirstChild("Solid3DObstacles")
-	if solidFolder then
-		if cachedSolidFolder~=solidFolder or not cachedSolidOverlap then
-			cachedSolidFolder=solidFolder
-			cachedSolidOverlap=OverlapParams.new()
-			cachedSolidOverlap.FilterType=Enum.RaycastFilterType.Include
-			cachedSolidOverlap.FilterDescendantsInstances={solidFolder}
-		end
-		local hits=workspace:GetPartBoundsInRadius(position,1.8,cachedSolidOverlap)
-		if #hits>0 then setEnemyMoving(e,false) return false end
-	end
-	e.Model:PivotTo(CFrame.lookAt(position,position+delta.Unit))
+	local cf=Helpers.ComputeSafeEnemyTransform(e,destination,spd,dt,G.Enemies,isSeaSwimmer and {IsBlockedByObstacle=W.IsBlockedByObstacle} or W)
+	if not cf then setEnemyMoving(e,false) return false end
+	e.Model:PivotTo(cf)
+	local fy=cf.Position.Y-math.max(2.2,e.Body.Size.Y*0.5)
 	if e.LastAttrFloorY~=fy then
 		e.LastAttrFloorY=fy
 		e.Model:SetAttribute('EnemyFloorY',fy)
@@ -2936,13 +3062,20 @@ function G.TickEnemy(e,dt)
 			e.EmptySince=e.EmptySince or now
 			if now-e.EmptySince>8 then
 				e.Alive=false e.Model:Destroy() G.Boss=nil G.ResetAt=now+8
+				cleanupEnemyTelegraphs(e)
 				cleanupBossMinions(e)
 			end
 			return
 		else e.EmptySince=nil end
-		if e.Shield then
-			local remaining=0 for _,pillar in ipairs(G.Enemies) do if pillar.BossOwner==e and pillar.Alive then remaining+=1 end end
-			if remaining==0 then e.Shield=false e.StunnedUntil=now+3 e.ImmuneUntil=now+9 end
+	end
+	if (e==G.Boss or e.Id=="AureonSentinel") and e.Shield then
+		local remaining=0 for _,pillar in ipairs(G.Enemies) do if pillar.BossOwner==e and pillar.Alive then remaining+=1 end end
+		if remaining==0 then
+			e.Shield=false
+			e.SolarAegis70=false
+			if e.Model then e.Model:SetAttribute("Shielded",false) end
+			e.StunnedUntil=math.max(e.StunnedUntil or 0,now+3)
+			e.ImmuneUntil=math.max(e.ImmuneUntil or 0,now+9)
 		end
 	end
 	if now<e.StunnedUntil then e.State="Stunned" setEnemyMoving(e,false) return end
@@ -3053,7 +3186,9 @@ function G.TickEnemy(e,dt)
 	e.State="Attack"
 	setEnemyMoving(e,false)
 	local isBoss=e==G.Boss local phase=isBoss and e.Phase or 1
-	local windup=isBoss and (phase==3 and .6 or .95) or((e.Id=='CryonPrime'or e.Id=='Noxar')and 1.2 or .8)
+	local isAnyBoss=isBoss or SINGLETON_BOSSES[e.Id] or (e.Config and e.Config.Boss==true)
+	local isRanged=(e.Id=="LightArcher" or e.Id=="CyberArcher" or e.Id=="ShadowArcher" or e.Config.Ranged)
+	local windup=isBoss and (phase==3 and .6 or .95) or ((e.Id=='CryonPrime' or e.Id=='Noxar') and 1.1 or (isAnyBoss and .82 or (isRanged and .68 or .42)))
 	e.AttackNumber=(e.AttackNumber or 0)+1
 	local cycleClip="Attack"
 	if e.AttackNumber%5==0 then
@@ -3065,16 +3200,21 @@ function G.TickEnemy(e,dt)
 	elseif e.AttackNumber%2==0 then
 		cycleClip="ElementalSurge"
 	end
+	if e.Model then
+		local faceFlat=_V3(r.Position.X,e.Body.Position.Y,r.Position.Z)
+		if (faceFlat-e.Body.Position).Magnitude>0.15 then
+			e.Model:PivotTo(CFrame.lookAt(e.Body.Position,faceFlat))
+		end
+	end
 	e.Model:SetAttribute('EnemyAttackClip',cycleClip)
-	e.Model:SetAttribute('EnemyAttackDuration',windup+.45)
+	e.Model:SetAttribute('EnemyAttackDuration',windup+.35)
 	e.Model:SetAttribute('EnemyAttackAt',workspace:GetServerTimeNow())
-	e.NextAttack=now+(isBoss and (phase==3 and 1.7 or 2.7) or 2.2) e.RecoverUntil=now+windup+.45
-	local isRanged=(e.Id=="LightArcher" or e.Id=="CyberArcher" or e.Id=="ShadowArcher" or e.Config.Ranged)
+	e.NextAttack=now+(isBoss and (phase==3 and 1.7 or 2.7) or (isAnyBoss and 2.1 or 1.65)) e.RecoverUntil=now+windup+.35
 	local attackPos=isRanged and r.Position or e.Body.Position
 	local radius=isBoss and 15 or (isRanged and 5.5 or e.Config.Range)
 	if e.Id=='CryonPrime' or e.Id=='Noxar' then radius=14 end
 	if e.Id~="TrainingDrone" and e.Id~="FrostDrone" then pcall(Cosmetics.BossSwing,e.Model,windup) end
-	G.Telegraph(e,_V3(attackPos.X,safeGroundY(attackPos)+.1,attackPos.Z),radius,windup,e.Config.ATK or e.Config.Attack or 15,isBoss and " SOLAR CLEAVE" or " DANGER")
+	G.Telegraph(e,_V3(attackPos.X,safeGroundY(attackPos)+.1,attackPos.Z),radius,windup,e.Config.ATK or e.Config.Attack or 15,isBoss and " SOLAR CLEAVE" or " DANGER",not isRanged)
 	if isBoss then
 		e.AttackNumber=(e.AttackNumber or 0)+1
 		if phase>=2 or e.AttackNumber%3==0 then
@@ -3085,6 +3225,14 @@ function G.TickEnemy(e,dt)
 end
 
 function G.EnsureWorld()
+	local hubModel=workspace:FindFirstChild("SkyHub")
+	local spawnLoc=(hubModel and hubModel:FindFirstChild("SkybornSpawn")) or workspace:FindFirstChild("SkybornSpawn",true)
+	if spawnLoc and spawnLoc:IsA("BasePart") then
+		spawnLoc.Anchored=true
+		spawnLoc.CanCollide=true
+		if spawnLoc:IsA("SpawnLocation") then spawnLoc.Neutral=true end
+		spawnLoc.CFrame=_CF((C.Spawn or _V3(-317.4,50.5,527.8))-_V3(0,2.5,0))
+	end
 	if not workspace:FindFirstChild("ActiveCompanions") then
 		local f=_IN("Folder")
 		f.Name="ActiveCompanions"
@@ -3120,94 +3268,15 @@ function G.EnsureWorld()
 		worldObjects.Parent=workspace
 	end
 
-	-- 12 Skyborn Treasure Chests (Invisible trigger parts; zero blocky yellow/neon bricks)
-	local chestCoords={
-		-- Golden Sky (4)
-		_V3(-335,47.5,538), _V3(-302,47.5,220), _V3(38,47.5,55), _V3(-38,47.5,-305),
-		-- Frozen Cyber (4)
-		_V3(11638,47.9,548), _V3(11690,47.9,235), _V3(12036,47.9,62), _V3(12038,47.9,-305),
-		-- Shadow Realm (4)
-		_V3(-12612,47.9,428), _V3(-12258,47.9,444), _V3(-11956,47.9,132), _V3(-11698,47.9,-135),
-	}
 	G.Chests={}
-	for idx,cpos in ipairs(chestCoords) do
-		local cid=string.format("Chest_%02d",idx)
-		local base=W.Part(worldObjects,cid,_V3(3.6,2.2,2.4),cpos,_RGB(235,182,62),Enum.Material.SmoothPlastic)
-		base.Transparency=1
-		base.CanCollide=false
-		base:SetAttribute("Interactable","Chest")
-		base:SetAttribute("InteractableId",cid)
-		base:SetAttribute("ChestId",cid)
-		local lid=W.Part(worldObjects,cid.."_Glow",_V3(3.8,0.45,2.6),cpos+_V3(0,1.25,0),_RGB(255,225,110),Enum.Material.SmoothPlastic)
-		lid.Transparency=1
-		lid.CanCollide=false
-		local prompt=_IN("ProximityPrompt")
-		prompt.ActionText="Mở Rương"
-		prompt.ObjectText="Rương Báu Skyborn ("..cid..")"
-		prompt.MaxActivationDistance=12
-		prompt.HoldDuration=0
-		prompt.Parent=base
-		prompt.Triggered:Connect(function(p) G.Interact(p,cid) end)
-		W.Interactions[cid]=base
-		G.Chests[cid]={Id=cid,Part=base,Lid=lid,OpenedUntil=0}
-	end
-
-	-- 3 Regional Home Point Aether Shrines (Clean Interactive Triggers — 3D geometry is built natively via DelegatedV5Renderer)
-	local shrineSpecs={
-		{Id="Shrine_GoldenSky", Realm="GoldenSky", Pos=_V3(-284,46.5,532), Glow=_RGB(88,238,255)},
-		{Id="Shrine_FrozenCyber", Realm="FrozenCyber", Pos=_V3(11634,46.9,552), Glow=_RGB(72,242,255)},
-		{Id="Shrine_ShadowRealm", Realm="ShadowRealm", Pos=_V3(-12578,46.9,432), Glow=_RGB(245,48,118)},
-	}
 	G.Shrines={}
-	for _,sh in ipairs(shrineSpecs) do
-		local spos=sh.Pos
-		local pillar=W.Part(worldObjects,sh.Id,_V3(2.6,5.2,2.6),spos+_V3(0,2.6,0),sh.Glow,Enum.Material.SmoothPlastic)
-		pillar.Transparency=1
-		pillar.CanCollide=false
-		pillar:SetAttribute("Interactable","AetherShrine")
-		pillar:SetAttribute("InteractableId",sh.Id)
-		pillar:SetAttribute("ShrineRealm",sh.Realm)
 
-		local bill=_IN("BillboardGui")
-		bill.Size=_UD2S(3.6,0.68)
-		bill.StudsOffset=_V3(0,4.5,0)
-		bill.AlwaysOnTop=false bill.MaxDistance=45
-		bill.Parent=pillar
-		local tl=_IN("TextLabel")
-		tl.Size=_UD2S(1,1)
-		tl.BackgroundTransparency=1
-		tl.Font=Enum.Font.GothamBold
-		tl.TextScaled=true
-		tl.TextColor3=sh.Glow
-		tl.TextStrokeTransparency=0.2
-		tl.Text="Aether Shrine • "..sh.Realm.." [E]"
-		tl.Parent=bill
-		local prompt=_IN("ProximityPrompt")
-		prompt.ActionText="Hồi Phục & Lưu Điểm Hồi Sinh"
-		prompt.ObjectText="Điện Thờ Aether • "..sh.Realm
-		prompt.MaxActivationDistance=13
-		prompt.HoldDuration=0
-		prompt.Parent=pillar
-		prompt.Triggered:Connect(function(p) G.Interact(p,sh.Id) end)
-		W.Interactions[sh.Id]=pillar
-		G.Shrines[sh.Id]={Id=sh.Id,Realm=sh.Realm,Pos=sh.Pos,Part=pillar}
-	end
-
-	-- 6 Aether Jump Pads
-	-- Interactive Shrine & Raid Console Triggers at the 12 Grand Sky Islands + 5 Expansion Realms (invisible Part triggers so 100% of Models in SkybreakWorldObjects are rigged 3D characters)
+	-- Interactive Shrine & Raid Console Triggers ONLY on islands without a HomePointCrystal (avoiding duplicate HomePoint pillars)
 	local islandSpecs={
-		{Id="ZiolesGachaShrine", Title=" CORE SHRINE • ĐIỆN CẦU LÕI AETHER", Realm="GoldenSky", Pos=_V3(-560,48.5,988), GlowCol=_RGB(110,235,255)},
 		{Id="AetherShrines", Title=" AETHER HOME SHRINE • ĐÀI ĐIỆN THỜ LƯU ĐIỂM HỒI SINH", Realm="GoldenSky", Pos=_V3(340,48.5,988), GlowCol=_RGB(88,238,255)},
-		{Id="WestGardenPirateBastion", Title=" WEST GARDEN PIRATE BASTION • PHÁO ĐÀI VƯỜN TÂY", Realm="GoldenSky", Pos=_V3(-2800,46.5,-50), GlowCol=_RGB(255,205,82)},
-		{Id="SunshardSanctuary", Title=" SUNSHARD SANCTUARY • THÁNH ĐỊA THÁI DƯƠNG", Realm="GoldenSky", Pos=_V3(2800,46.5,-42), GlowCol=_RGB(255,218,95)},
-		{Id="CyberportCafe", Title=" TRADE STATION • TRẠM GIAO THƯƠNG TẦNG TRỜI 2", Realm="FrozenCyber", Pos=_V3(9400,46.9,1798), GlowCol=_RGB(88,238,255)},
-		{Id="PermafrostGarrison", Title=" PERMAFROST GARRISON • PHÁO ĐÀI TUYẾT BĂNG", Realm="FrozenCyber", Pos=_V3(9400,46.9,-2040), GlowCol=_RGB(115,242,255)},
 		{Id="MicrochipRaidLab", Title=" MICROCHIP RAID LAB • PHÒNG THÍ NGHIỆM THỨC TỈNH", Realm="FrozenCyber", Pos=_V3(14600,46.9,1765), GlowCol=_RGB(95,240,255), IsRaidLab=true},
 		{Id="GlacialWreckage", Title=" GLACIAL WRECKAGE • XÁC TÀU BĂNG CỔ ĐẠI", Realm="FrozenCyber", Pos=_V3(14600,46.9,-1796), GlowCol=_RGB(145,242,255)},
-		{Id="CastleOnTheVoid", Title=" VOID BASTION • PHÁO ĐÀI HƯ KHÔNG", Realm="ShadowRealm", Pos=_V3(-14600,46.9,2158), GlowCol=_RGB(225,110,255)},
 		{Id="UmbralSanctum", Title=" UMBRAL CRYSTAL SANCTUM • RỪNG TINH THỂ ĐEN", Realm="ShadowRealm", Pos=_V3(-9400,46.9,1802), GlowCol=_RGB(245,95,255)},
-		{Id="TempleOfTheCore", Title=" ASCENSION SHRINE • ĐỀN THĂNG HOA", Realm="ShadowRealm", Pos=_V3(-14600,46.9,-1772), GlowCol=_RGB(210,120,255)},
-		{Id="LeviathanAbyss", Title=" PHANTOM ISLE • VỰC THẲM THỦY XÀ", Realm="ShadowRealm", Pos=_V3(-12000,46.9,-3350), GlowCol=_RGB(78,238,255)},
 		{Id="VerdantCrown", Title=" THE VERDANT CROWN • VƯƠNG MIỆN CỔ THỤ (REALM 4)", Realm="VerdantCrown", Pos=_V3(0,166.9,-8970), GlowCol=_RGB(95,242,155)},
 		{Id="EmberforgeWastes", Title=" EMBERFORGE WASTES • HOANG MẠC LÒ RÈN LỬA (REALM 5)", Realm="EmberforgeWastes", Pos=_V3(12000,166.5,-9250), GlowCol=_RGB(255,145,78)},
 		{Id="AbyssalTides", Title=" ABYSSAL TIDES • THỦY TRIỀU VỰC SÂU (REALM 6)", Realm="AbyssalTides", Pos=_V3(-12000,166.9,-8950), GlowCol=_RGB(68,215,245)},
@@ -3217,45 +3286,39 @@ function G.EnsureWorld()
 	for _,isl in ipairs(islandSpecs) do
 		local ipos=W.SnapToOpenGround and select(1,W.SnapToOpenGround(isl.Pos,isl.Pos.Y,0)) or isl.Pos
 		isl.Pos=ipos
-		local consolePos=ipos+_V3(0,3.5,0)
-		local consolePillar=W.Part(worldObjects,isl.Id.."_Console",_V3(2.8,5.5,2.8),consolePos,isl.GlowCol,Enum.Material.SmoothPlastic)
-		consolePillar.Transparency=1
-		consolePillar.CanCollide=false
-
-		local cBill=_IN("BillboardGui")
-		cBill.Size=_UD2S(4.4,0.82)
-		cBill.StudsOffset=_V3(0,5.5,0)
-		cBill.AlwaysOnTop=false cBill.MaxDistance=48
-		cBill.Parent=consolePillar
-		local cLbl=_IN("TextLabel")
-		cLbl.Size=_UD2S(1,1)
-		cLbl.BackgroundTransparency=1
-		cLbl.Font=Enum.Font.GothamBlack
-		cLbl.TextScaled=true
-		cLbl.TextColor3=isl.GlowCol
-		cLbl.TextStrokeTransparency=0.2
-		cLbl.Text=isl.Title
-		cLbl.Parent=cBill
-
-		local cPrompt=_IN("ProximityPrompt")
-		cPrompt.MaxActivationDistance=15
-		cPrompt.HoldDuration=0
-		cPrompt.Parent=consolePillar
 		if isl.IsRaidLab then
+			local consolePos=ipos+_V3(0,3.5,0)
+			local consolePillar=W.Part(worldObjects,isl.Id.."_Console",_V3(2.8,5.5,2.8),consolePos,isl.GlowCol,Enum.Material.SmoothPlastic)
+			consolePillar.Transparency=1
+			consolePillar.CanCollide=false
+
+			local cBill=_IN("BillboardGui")
+			cBill.Size=_UD2S(4.4,0.82)
+			cBill.StudsOffset=_V3(0,5.5,0)
+			cBill.AlwaysOnTop=false cBill.MaxDistance=48
+			cBill.Parent=consolePillar
+			local cLbl=_IN("TextLabel")
+			cLbl.Size=_UD2S(1,1)
+			cLbl.BackgroundTransparency=1
+			cLbl.Font=Enum.Font.GothamBlack
+			cLbl.TextScaled=true
+			cLbl.TextColor3=isl.GlowCol
+			cLbl.TextStrokeTransparency=0.2
+			cLbl.Text=isl.Title
+			cLbl.Parent=cBill
+
+			local cPrompt=_IN("ProximityPrompt")
+			cPrompt.MaxActivationDistance=15
+			cPrompt.HoldDuration=0
 			cPrompt.ActionText="Khởi Động Awakening Raid (5-Chip Console)"
 			cPrompt.ObjectText="Microchip Raid Console • Frozen Cyber"
+			cPrompt.Parent=consolePillar
 			cPrompt.Triggered:Connect(function(p)
 				G.Equipment(p,{action="StartAwakeningRaid"})
 			end)
 		else
 			local shId="Shrine_"..isl.Id
-			cPrompt.ActionText="Hồi Phục & Lưu Điểm Hồi Sinh"
-			cPrompt.ObjectText="Điện Thờ • "..isl.Id
-			local shSpec={Id=shId,Realm=isl.Realm,Pos=ipos,Part=consolePillar}
-			G.Shrines[shId]=shSpec
-			cPrompt.Triggered:Connect(function(p)
-				G.ActivateShrine(p,shSpec)
-			end)
+			G.Shrines[shId]={Id=shId,Realm=isl.Realm,Pos=ipos}
 		end
 	end
 
@@ -3368,349 +3431,96 @@ function G.EnsureWorld()
 			Model=gm,
 		}
 		G.WorldPortals[wp.Id]=gateSpec
+		core:SetAttribute("PromptBound",true)
 		W.Interactions[wp.Id]=core
 		pPrompt.Triggered:Connect(function(p)
 			G.EnterWorldPortal(p,gateSpec)
 		end)
 	end
 
-	-- 3 Sky Shipwright Docks + Rigged 3D SkyShipwrightNPC + Rigged 3D Flagships
-	local dockSpecs={
-		{Id="Dock_GoldenSky", Realm="GoldenSky", Pos=_V3(-372,48.7,550), FloorY=46.5, ShipPos=_V3(-428,44.0,565), Col=_RGB(238,190,72), ShipId="CelestialBrigantine"},
-		{Id="Dock_FrozenCyber", Realm="FrozenCyber", Pos=_V3(11566,49.1,562), FloorY=46.9, ShipPos=_V3(11512,44.0,585), Col=_RGB(92,228,255), ShipId="CyberEnforcer"},
-		{Id="Dock_ShadowRealm", Realm="ShadowRealm", Pos=_V3(-12664,49.1,448), FloorY=46.9, ShipPos=_V3(-12722,44.0,478), Col=_RGB(192,98,255), ShipId="LeviathanHunterShip"},
-	}
-	for _,dk in ipairs(dockSpecs) do
-		local dm=_IN("Model")
-		dm.Name=dk.Id
-		dm.Parent=worldObjects
-		local dpos=dk.Pos
-		local npcBody=W.Part(dm,"Body",_V3(2.2,4.6,1.8),dpos,dk.Col,Enum.Material.Metal)
-		npcBody.Transparency=1
-		npcBody.CanCollide=false
-		dm.PrimaryPart=npcBody
-		dm:SetAttribute("NPCId","SkyShipwrightNPC")
-		dm:SetAttribute("VisualAsset","SkyShipwrightNPC")
-		dm:SetAttribute("NPCFloorY",dk.FloorY)
-
-		local dbill=_IN("BillboardGui")
-		dbill.Size=_UD2S(3.6,0.68)
-		dbill.StudsOffset=_V3(0,4.8,0)
-		dbill.AlwaysOnTop=false dbill.MaxDistance=44
-		dbill.Parent=npcBody
-		local dtl=_IN("TextLabel")
-		dtl.Size=_UD2S(1,1)
-		dtl.BackgroundTransparency=1
-		dtl.Font=Enum.Font.GothamBlack
-		dtl.TextScaled=true
-		dtl.TextColor3=dk.Col
-		dtl.TextStrokeTransparency=0.2
-		dtl.Text="Sky Shipwright • Bến Tàu Bay"
-		dtl.Parent=dbill
-
-		local dprompt=_IN("ProximityPrompt")
-		dprompt.ActionText="Triệu Hồi Tàu Bay 3D"
-		dprompt.ObjectText="Sky Shipwright • Bến Tàu Bay"
-		dprompt.MaxActivationDistance=15
-		dprompt.HoldDuration=0
-		dprompt.Parent=npcBody
-		dprompt.RequiresLineOfSight=false
-		dprompt.Style=Enum.ProximityPromptStyle.Default
-		npcBody:SetAttribute("InteractableId",dk.Id)
-		dprompt.Triggered:Connect(function(p)
-			dm:SetAttribute("NPCTalkAt",workspace:GetServerTimeNow())
-			G.Equipment(p,{action="SpawnSkyShip",dockPos=dk.ShipPos,shipId=dk.ShipId})
-			G.SendDialogue(p,"Sky Shipwright • Bến Tàu Bay","ĐẠI CÔNG TRÌNH SƯ TÀU BAY","Chiến hạm 3D ["..dk.ShipId.."] đã được triệu hồi tại bến cảng! Hãy bước lên ghế lái để điều khiển tàu bay vượt biển mây!","Mở Bản Đồ Dịch Chuyển [M]","OpenScreen:Map")
-		end)
-
-		-- Spawn Static Interactive Display Flagship (Rigged 3D Blender Ship)
-		G.BuildSkyShip(dk.ShipId,dk.ShipPos,dk.ShipId)
-	end
-
-	-- Rigged 3D Lyra Commander NPC at Sky Hub
-	do
-		local lpos=_V3(-298,49.0,506)
-		local lm=_IN("Model")
-		lm.Name="Lyra_SkyHubCommander"
-		lm.Parent=worldObjects
-		local lBody=W.Part(lm,"Body",_V3(2.2,4.6,1.8),lpos,_RGB(110,225,255),Enum.Material.Metal)
-		lBody.Transparency=1
-		lBody.CanCollide=false
-		lm.PrimaryPart=lBody
-		lm:SetAttribute("NPCId","Lyra")
-		lm:SetAttribute("VisualAsset","Lyra")
-		lm:SetAttribute("NPCFloorY",46.5)
-
-		local lbill=_IN("BillboardGui")
-		lbill.Size=_UD2S(3.7,0.68)
-		lbill.StudsOffset=_V3(0,4.8,0)
-		lbill.AlwaysOnTop=false lbill.MaxDistance=44
-		lbill.Parent=lBody
-		local ltl=_IN("TextLabel")
-		ltl.Size=_UD2S(1,1)
-		ltl.BackgroundTransparency=1
-		ltl.Font=Enum.Font.GothamBlack
-		ltl.TextScaled=true
-		ltl.TextColor3=_RGB(115,235,255)
-		ltl.TextStrokeTransparency=0.2
-		ltl.Text="Lyra • Chỉ Huy Skyborn [E]"
-		ltl.Parent=lbill
-
-		local lprompt=_IN("ProximityPrompt")
-		lprompt.ActionText="Nhận Nhiệm Vụ Cốt Truyện"
-		lprompt.ObjectText="Lyra • Chỉ Huy Skyborn"
-		lprompt.MaxActivationDistance=14
-		lprompt.HoldDuration=0
-		lprompt.Parent=lBody
-		lprompt.RequiresLineOfSight=false
-		lprompt.Style=Enum.ProximityPromptStyle.Default
-		lBody:SetAttribute("InteractableId","Lyra")
-		W.Interactions["Lyra"]=lBody
-		lprompt.Triggered:Connect(function(p)
-			lm:SetAttribute("NPCTalkAt",workspace:GetServerTimeNow())
-			G.Interact(p,"Lyra")
-		end)
-	end
-
-	-- Rigged 3D Zioles Gacha Dealer NPC (both at Sky Hub & at ZiolesGachaShrine Island)
-	for _,zSpec in ipairs({
-		{Name="Zioles_AetherGachaShrine", Pos=_V3(-338,48.7,506), FloorY=46.5},
-		{Name="Zioles_IslandShrine", Pos=_V3(-560,50.7,978), FloorY=48.5},
-	}) do
-		local zpos=zSpec.Pos
-		local zm=_IN("Model")
-		zm.Name=zSpec.Name
-		zm.Parent=worldObjects
-		local zBody=W.Part(zm,"Body",_V3(2.2,4.6,1.8),zpos,_RGB(185,95,255),Enum.Material.Metal)
-		zBody.Transparency=1
-		zBody.CanCollide=false
-		zm.PrimaryPart=zBody
-		zm:SetAttribute("NPCId","ZiolesGachaNPC")
-		zm:SetAttribute("VisualAsset","ZiolesGachaNPC")
-		zm:SetAttribute("NPCFloorY",zSpec.FloorY)
-
-		local zbill=_IN("BillboardGui")
-		zbill.Size=_UD2S(3.8,0.70)
-		zbill.StudsOffset=_V3(0,4.8,0)
-		zbill.AlwaysOnTop=false zbill.MaxDistance=44
-		zbill.Parent=zBody
-		local ztl=_IN("TextLabel")
-		ztl.Size=_UD2S(1,1)
-		ztl.BackgroundTransparency=1
-		ztl.Font=Enum.Font.GothamBlack
-		ztl.TextScaled=true
-		ztl.TextColor3=_RGB(255,218,92)
-		ztl.TextStrokeTransparency=0.2
-		ztl.Text="Hiền Giả Lõi • Core Oracle"
-		ztl.Parent=zbill
-
-		local zprompt=_IN("ProximityPrompt")
-		zprompt.ActionText="Cầu Lõi Aether (Core Shrine)"
-		zprompt.ObjectText="Hiền Giả Lõi • Core Oracle (25,000 Gold)"
-		zprompt.MaxActivationDistance=14
-		zprompt.HoldDuration=0
-		zprompt.Parent=zBody
-		zprompt.RequiresLineOfSight=false
-		zprompt.Style=Enum.ProximityPromptStyle.Default
-		zBody:SetAttribute("InteractableId","Zioles")
-		W.Interactions[zSpec.Name]=zBody
-		zprompt.Triggered:Connect(function(p)
-			zm:SetAttribute("NPCTalkAt",workspace:GetServerTimeNow())
-			G.Interact(p,"Zioles")
-		end)
-	end
-
-	-- Rigged 3D Ancient Monk • Celestial Godhuman Martial Arts Master (Sky Hub, Sunshard Sanctuary, Temple of the Core)
-	for _,mSpec in ipairs({
-		{Name="AncientMonk_GodhumanShrine", Pos=_V3(-350,48.7,520), FloorY=46.5},
-		{Name="AncientMonk_SunshardSanctuary", Pos=_V3(2774,49.0,-55), FloorY=46.5},
-		{Name="AncientMonk_TempleOfTheCore", Pos=_V3(-14616,49.1,-1776), FloorY=46.9},
-	}) do
-		local mpos=mSpec.Pos
-		local mm=_IN("Model")
-		mm.Name=mSpec.Name
-		mm.Parent=worldObjects
-		local mBody=W.Part(mm,"Body",_V3(2.2,4.6,1.8),mpos,_RGB(255,218,88),Enum.Material.Metal)
-		mBody.Transparency=1
-		mBody.CanCollide=false
-		mm.PrimaryPart=mBody
-		mm:SetAttribute("NPCId","AncientMonkNPC")
-		mm:SetAttribute("VisualAsset","AncientMonkNPC")
-		mm:SetAttribute("NPCFloorY",mSpec.FloorY)
-
-		local mbill=_IN("BillboardGui")
-		mbill.Size=_UD2S(3.8,0.70)
-		mbill.StudsOffset=_V3(0,4.8,0)
-		mbill.AlwaysOnTop=false mbill.MaxDistance=44
-		mbill.Parent=mBody
-		local mtl=_IN("TextLabel")
-		mtl.Size=_UD2S(1,1)
-		mtl.BackgroundTransparency=1
-		mtl.Font=Enum.Font.GothamBlack
-		mtl.TextScaled=true
-		mtl.TextColor3=_RGB(255,222,95)
-		mtl.TextStrokeTransparency=0.2
-		mtl.Text="Đại Sư Cổ Tự • Thần Quyền Sư Tổ"
-		mtl.Parent=mbill
-
-		local styleList=C.StyleOrder or {"SkybornCombat","ElectricClaw","GlacialKarate","DragonTalon","GodhumanSkyborn","SanguineVoidArt"}
-		local mprompt=_IN("ProximityPrompt")
-		mprompt.ActionText="Lĩnh Ngộ Võ Thuật / Đổi Thần Quyền"
-		mprompt.ObjectText="Đại Sư Cổ Tự • Ascendant Master"
-		mprompt.MaxActivationDistance=14
-		mprompt.HoldDuration=0
-		mprompt.Parent=mBody
-		mprompt.RequiresLineOfSight=false
-		mprompt.Style=Enum.ProximityPromptStyle.Default
-		mBody:SetAttribute("InteractableId","AncientMonk")
-		W.Interactions[mSpec.Name]=mBody
-		mprompt.Triggered:Connect(function(p)
-			mm:SetAttribute("NPCTalkAt",workspace:GetServerTimeNow())
-			G.Interact(p,"AncientMonk")
-		end)
-	end
-
-	-- Rigged 3D Regional & Expansion World NPCs (Ensuring EVERY World Has Its Own Interactive 3D Rigged NPC)
-	local regionalNPCs={
-		{Name="NPC_AetherShrineKeeper", Asset="DrVega", Title=" Dr. Vega • Học Giả Điện Thờ Aether", Pos=_V3(340,50.7,977), FloorY=48.5, Col=_RGB(95,235,255)},
-		{Name="NPC_WestGardenScout", Asset="SkyShipwrightNPC", Title=" Thợ Săn Tiền Thưởng • West Garden Scout", Pos=_V3(-2772,49.0,-55), FloorY=46.5, Col=_RGB(255,205,82)},
-		{Name="NPC_FrozenOutpostCommander", Asset="DrVega", Title=" Dr. Vega • Chỉ Huy Tiền Đồn Băng", Pos=_V3(11675.7,49.1,238), FloorY=46.9, Col=_RGB(105,240,255)},
-		{Name="NPC_CyberportBroker", Asset="ZiolesGachaNPC", Title=" Thương Nhân Cyberport • Giao Dịch Aether", Pos=_V3(9418,49.1,1780), FloorY=46.9, Col=_RGB(88,238,255)},
-		{Name="NPC_PermafrostQuartermaster", Asset="Kael", Title=" Thiết Giáp Quân Nhu • Permafrost Warden", Pos=_V3(9378,49.1,-2042), FloorY=46.9, Col=_RGB(125,242,255)},
-		{Name="NPC_RaidLabScientist", Asset="DrVega", Title=" Tiến Sĩ Dr. Vega • Chuyên Gia Thức Tỉnh Lõi", Pos=_V3(14578,49.1,1772), FloorY=46.9, Col=_RGB(95,245,255)},
-		{Name="NPC_GlacialExplorer", Asset="SkyShipwrightNPC", Title=" Thuyền Trưởng Thám Hiểm • Glacial Navigator", Pos=_V3(14578,49.1,-1800), FloorY=46.9, Col=_RGB(145,242,255)},
-		{Name="NPC_ShadowVanguard", Asset="Chronos", Title=" Chronos • Giám Hộ Hư Ảnh (Shadow Outpost)", Pos=_V3(-12574,49.5,432), FloorY=46.9, Col=_RGB(215,115,255)},
-		{Name="NPC_CastleVoidSteward", Asset="Lyra", Title=" Tổng Quản Hư Không • Void Citadel Steward", Pos=_V3(-14618,49.1,2160), FloorY=46.9, Col=_RGB(225,110,255)},
-		{Name="NPC_UmbralSwordmaster", Asset="Kael", Title=" Kiếm Thánh Hắc Tinh • Eclipse Twinblades Smith", Pos=_V3(-9420,49.1,1805), FloorY=46.9, Col=_RGB(245,95,255)},
-		{Name="NPC_MirageHunter", Asset="SkyShipwrightNPC", Title=" Thợ Săn Thủy Xà • Serpent Hunter", Pos=_V3(-12020,49.1,-3352), FloorY=46.9, Col=_RGB(78,238,255)},
-		{Name="NPC_VerdantKeeper", Asset="AncientMonkNPC", Title=" Đại Sư Cổ Thụ • Verdant Crown Keeper", Pos=_V3(-18,169.1,-8972), FloorY=166.9, Col=_RGB(95,242,155)},
-		{Name="NPC_EmberforgeSmith", Asset="Kael", Title=" Thợ Rèn Hỏa Tinh • Star-Forge Master", Pos=_V3(11982,168.7,-9252), FloorY=166.5, Col=_RGB(255,145,78)},
-		{Name="NPC_AbyssalNavigator", Asset="SkyShipwrightNPC", Title=" Hoa Tiêu Vực Thẳm • Abyssal Navigator", Pos=_V3(-12020,169.1,-8952), FloorY=166.9, Col=_RGB(68,215,245)},
-		{Name="NPC_ChronosArchivist", Asset="Chronos", Title=" Chronos • Đại Giám Hộ Thời Gian", Pos=_V3(-16,229.1,-13472), FloorY=226.9, Col=_RGB(255,215,92)},
-		{Name="NPC_AstraelVanguard", Asset="Male_SkyGuardian", Title=" Astrael • Thủ Vệ Tận Cùng Bức Màn", Pos=_V3(-16,309.1,-17615), FloorY=306.9, Col=_RGB(215,115,255)},
-		{Name="NPC_CryonCitadelSentinel", Asset="Lyra", Title=" Chỉ Huy Tiền Tuyến • Cryon Citadel Vanguard", Pos=_V3(11972,49.5,-278), FloorY=46.9, Col=_RGB(115,240,255)},
-		{Name="NPC_NoxarThroneKeeper", Asset="Chronos", Title=" Chronos • Hộ Pháp Ngai Vàng Hư Không", Pos=_V3(-11698,49.5,-102), FloorY=46.9, Col=_RGB(215,115,255)},
-	}
-	for _,rn in ipairs(regionalNPCs) do
-		if W.SnapToOpenGround then
-			local snappedPos,snappedFY=W.SnapToOpenGround(rn.Pos,rn.FloorY,2.2)
-			rn.Pos=snappedPos
-			rn.FloorY=snappedFY
+	-- Strip any leftover invisible marker prompts on Lyra/Kael before rebuilding rigged 3D NPCs
+	for _,mk in ipairs({"Kael","Lyra"}) do
+		local oldM=W.Interactions[mk]
+		if oldM and typeof(oldM)=="Instance" then
+			for _,ch in ipairs(oldM:GetChildren()) do
+				if ch:IsA("ProximityPrompt") or ch:IsA("BillboardGui") then ch:Destroy() end
+			end
 		end
-		local rm=_IN("Model")
-		rm.Name=rn.Name
-		rm.Parent=worldObjects
-		local rBody=W.Part(rm,"Body",_V3(2.2,4.6,1.8),rn.Pos,rn.Col,Enum.Material.Metal)
-		rBody.Transparency=1
-		rBody.CanCollide=false
-		rm.PrimaryPart=rBody
-		rm:SetAttribute("NPCId",rn.Asset)
-		rm:SetAttribute("VisualAsset",rn.Asset)
-		rm:SetAttribute("NPCFloorY",rn.FloorY)
-
-		local rbill=_IN("BillboardGui")
-		rbill.Size=_UD2S(3.8,0.68)
-		rbill.StudsOffset=_V3(0,4.8,0)
-		rbill.AlwaysOnTop=false rbill.MaxDistance=44
-		rbill.Parent=rBody
-		local rtl=_IN("TextLabel")
-		rtl.Size=_UD2S(1,1)
-		rtl.BackgroundTransparency=1
-		rtl.Font=Enum.Font.GothamBlack
-		rtl.TextScaled=true
-		rtl.TextColor3=rn.Col
-		rtl.TextStrokeTransparency=0.2
-		rtl.Text=rn.Title
-		rtl.Parent=rbill
-
-		local rprompt=_IN("ProximityPrompt")
-		rprompt.ActionText="Trò Chuyện & Nhận Tiếp Tế"
-		rprompt.ObjectText=rn.Title
-		rprompt.MaxActivationDistance=14
-		rprompt.HoldDuration=0
-		rprompt.Parent=rBody
-		rprompt.RequiresLineOfSight=false
-		rprompt.Style=Enum.ProximityPromptStyle.Default
-		rBody:SetAttribute("InteractableId",rn.Name)
-		W.Interactions[rn.Name]=rBody
-		rprompt.Triggered:Connect(function(p)
-			rm:SetAttribute("NPCTalkAt",workspace:GetServerTimeNow())
-			local profile=D.Get(p)
-			local rt=G.Runtime[p]
-			if profile then
-				local now=os.clock()
-				local cdKey="Supply_"..rn.Name
-				if rt and now>=(rt.Cooldowns[cdKey] or 0) then
-					rt.Cooldowns[cdKey]=now+60
-					profile.Gold=(profile.Gold or 0)+500
-					profile.CoreShards=(profile.CoreShards or 0)+50
-					G.SendDialogue(p,rn.Title,"ĐỒNG MINH VIỄN CHINH","Chào chiến binh Skyborn! Ta đã tiếp tế cho ngươi +500 Gold và +50 Core Shards. Hãy kiểm tra Lõi Aether [G] hoặc Lò Rèn trước khi khiêu chiến Boss đảo này!","Mở Lõi Aether [G]","OpenScreen:Fruits")
-					G.Sync(p)
-				else
-					local rem=rt and math.max(1,math.ceil((rt.Cooldowns[cdKey] or 0)-now)) or 60
-					G.SendDialogue(p,rn.Title,"ĐỒNG MINH VIỄN CHINH","Hòm tiếp tế chiến trường đang tái nạp ("..tostring(rem).."s). Hãy kiểm tra Lõi Aether [G] hoặc Lò Rèn trước khi khiêu chiến Boss đảo này!","Mở Lõi Aether [G]","OpenScreen:Fruits")
-				end
-			end
-		end)
 	end
 
-	-- Zone 1: Sky Hub Nexus — Clean Plaza (Hero Class & Fruit selection handled via UI [K] / [G] and Zioles Gacha NPC)
-	local naturalFolder=_IN("Folder")
-	naturalFolder.Name="NaturalFruits"
-	naturalFolder.Parent=worldObjects
-	local fruitTrees={}
-	for idx,ft in ipairs(fruitTrees) do
-		local tm=_IN("Model")
-		tm.Name="AncientAetherTree_"..idx
-		tm.Parent=worldObjects
-		local tpos=ft.Pos
-		local treeAnchor=W.Part(tm,"Body",_V3(4,8,4),tpos,ft.Color,Enum.Material.Neon)
-		treeAnchor.Transparency=1
-		treeAnchor.CanCollide=true
-		tm.PrimaryPart=treeAnchor
-		tm:SetAttribute("NPCId","AncientAetherFruitTrees")
-		tm:SetAttribute("VisualAsset","AncientAetherFruitTrees")
-		tm:SetAttribute("ShowcaseScale",1.8)
-		tm:SetAttribute("NPCFloorY",ft.FloorY)
-
-		local fruitCfg=getFruitCfg(ft.FruitId)
-		local fName=fruitCfg and fruitCfg.Name or ft.FruitId
-		local fbill=_IN("BillboardGui")
-		fbill.Size=_UD2S(3.6,0.68)
-		fbill.StudsOffset=_V3(0,7.5,0)
-		fbill.AlwaysOnTop=false fbill.MaxDistance=44
-		fbill.Parent=treeAnchor
-		local ftl=_IN("TextLabel")
-		ftl.Size=_UD2S(1,1)
-		ftl.BackgroundTransparency=1
-		ftl.Font=Enum.Font.GothamBlack
-		ftl.TextScaled=true
-		ftl.TextColor3=ft.Color
-		ftl.TextStrokeTransparency=0.2
-		ftl.Text="Cổ Thụ Trái Aether • "..fName
-		ftl.Parent=fbill
-
-		local collectedUntil=0
-		local fprompt=_IN("ProximityPrompt")
-		fprompt.ActionText="Nhặt Trái Aether"
-		fprompt.ObjectText=fName
-		fprompt.MaxActivationDistance=15
-		fprompt.HoldDuration=0
-		fprompt.Parent=treeAnchor
-		fprompt.Triggered:Connect(function(p)
-			local now=os.clock()
-			if now<collectedUntil then
-				G.Notify(p,"Cây Cổ Thụ đang kết tinh Trái Aether mới ("..math.ceil(collectedUntil-now).."s)!")
-				return
-			end
-			local profile=D.Get(p)
-			if not profile then return end
-			ensureProfileFields(profile)
-			collectedUntil=now+45
-			profile.StoredFruits[ft.FruitId]=(profile.StoredFruits[ft.FruitId] or 0)+1
-			G.Notify(p,"Bạn đã nhặt được Trái Năng Lượng: "..fName.."!")
-			G.Sync(p)
+	local function spawnRiggedNPC(modelName,interactId,assetId,titleTxt,actTxt,objTxt,pos,floorY,lookPos,col,regKey)
+		if W.SnapToOpenGround then
+			local sp,sfy=W.SnapToOpenGround(pos,floorY,2.2)
+			pos,floorY=sp,sfy
+		end
+		local existing=worldObjects:FindFirstChild(modelName)
+		if existing then existing:Destroy() end
+		local nm=_IN("Model")
+		nm.Name=modelName
+		nm.Parent=worldObjects
+		local body=W.Part(nm,"Body",_V3(2.2,4.6,1.8),pos,col,Enum.Material.Metal)
+		body.Transparency=1
+		body.CanCollide=false
+		local flatLook=_V3(lookPos.X,pos.Y,lookPos.Z)
+		if (flatLook-pos).Magnitude>0.15 then
+			body.CFrame=CFrame.lookAt(pos,flatLook)
+		end
+		nm.PrimaryPart=body
+		nm:SetAttribute("NPCId",assetId)
+		nm:SetAttribute("VisualAsset",assetId)
+		nm:SetAttribute("NPCFloorY",floorY)
+		local bill=_IN("BillboardGui")
+		bill.Size=_UD2S(3.8,0.68)
+		bill.StudsOffset=_V3(0,4.8,0)
+		bill.AlwaysOnTop=false bill.MaxDistance=44
+		bill.Parent=body
+		local tl=_IN("TextLabel")
+		tl.Size=_UD2S(1,1)
+		tl.BackgroundTransparency=1
+		tl.Font=Enum.Font.GothamBlack
+		tl.TextScaled=true
+		tl.TextColor3=col
+		tl.TextStrokeTransparency=0.2
+		tl.Text=titleTxt
+		tl.Parent=bill
+		local prompt=_IN("ProximityPrompt")
+		prompt.ActionText=actTxt
+		prompt.ObjectText=objTxt
+		prompt.MaxActivationDistance=14
+		prompt.HoldDuration=0
+		prompt.RequiresLineOfSight=false
+		prompt.Style=Enum.ProximityPromptStyle.Default
+		prompt.Parent=body
+		body:SetAttribute("InteractableId",interactId)
+		body:SetAttribute("PromptBound",true)
+		W.Interactions[regKey or modelName]=body
+		prompt.Triggered:Connect(function(p)
+			nm:SetAttribute("NPCTalkAt",workspace:GetServerTimeNow())
+			G.Interact(p,interactId)
 		end)
+		return nm,body
+	end
+
+	-- Sky Hub Plaza NPCs (>= 15 studs apart, CFrame.lookAt facing Sky Hub Spawn (-317.4, 50.5, 527.8))
+	local hubPlaza=_V3(-317.4,50.5,527.8)
+	spawnRiggedNPC("Lyra_SkyHubCommander","Lyra","Lyra","Lyra • Chỉ Huy Skyborn [E]","Nhận Nhiệm Vụ Cốt Truyện","Lyra • Chỉ Huy Skyborn",_V3(-298,49.0,506),46.5,hubPlaza,_RGB(115,235,255),"Lyra")
+	spawnRiggedNPC("Kael_WeaponMaster","Kael","Kael","Kael • Đại Sư Rèn Thần Khí [E]","Mở Lò Rèn / Đổi Hệ Phái","Kael • Master Weaponsmith",_V3(-280,49.0,506),46.5,hubPlaza,_RGB(255,192,85),"Kael")
+	spawnRiggedNPC("Zioles_AetherGachaShrine","Zioles","ZiolesGachaNPC","Hiền Giả Zioles • Gacha Lõi [E]","Cầu Lõi Aether (Xác Nhận Giá)","Hiền Giả Zioles • Core Oracle",_V3(-338,49.0,500),46.5,hubPlaza,_RGB(255,218,92),"Zioles_AetherGachaShrine")
+	spawnRiggedNPC("Zioles_IslandShrine","Zioles","ZiolesGachaNPC","Hiền Giả Zioles • Gacha Lõi [E]","Cầu Lõi Aether (Xác Nhận Giá)","Hiền Giả Zioles • Core Oracle",_V3(-560,50.7,978),48.5,_V3(-560,50.7,1005),_RGB(255,218,92),"Zioles_IslandShrine")
+	spawnRiggedNPC("AncientMonk_GodhumanShrine","AncientMonk","AncientMonkNPC","Đại Sư Cổ Tự • Thần Quyền [E]","Bái Sư Lĩnh Ngộ Võ Thuật","Đại Sư Cổ Tự • Ascendant Master",_V3(-358,49.0,518),46.5,hubPlaza,_RGB(255,222,95),"AncientMonk_GodhumanShrine")
+	spawnRiggedNPC("AncientMonk_SunshardSanctuary","AncientMonk","AncientMonkNPC","Đại Sư Cổ Tự • Thần Quyền [E]","Bái Sư Lĩnh Ngộ Võ Thuật","Đại Sư Cổ Tự • Ascendant Master",_V3(2774.0,49.0,-49.0),46.5,_V3(2800,49.0,-55),_RGB(255,222,95),"AncientMonk_SunshardSanctuary")
+	spawnRiggedNPC("AncientMonk_TempleOfTheCore","AncientMonk","AncientMonkNPC","Đại Sư Cổ Tự • Thần Quyền [E]","Bái Sư Lĩnh Ngộ Võ Thuật","Đại Sư Cổ Tự • Ascendant Master",_V3(-14609.0,49.1,-1788.1),46.9,_V3(-14600,49.1,-1785),_RGB(255,222,95),"AncientMonk_TempleOfTheCore")
+
+	-- All 18 Regional & Expansion World NPCs with Plaza CFrame.lookAt & Authentic Role Dialogues
+	for _,rn in ipairs(Helpers.REGIONAL_NPCS) do
+		spawnRiggedNPC(rn.Id,rn.Id,rn.Visual,rn.Name.." [E]","Trò Chuyện & Tương Tác",rn.Role,rn.Pos,rn.FloorY,rn.LookAt,rn.Col,rn.Id)
+	end
+
+	local naturalFolder=worldObjects:FindFirstChild("NaturalFruits")
+	if not naturalFolder then
+		naturalFolder=_IN("Folder")
+		naturalFolder.Name="NaturalFruits"
+		naturalFolder.Parent=worldObjects
 	end
 end
 
@@ -3749,12 +3559,16 @@ function G.Character(p,ch)
 	p:SetAttribute("DragonFormTier",0)
 	p:SetAttribute("SkybreakFlightActive",false)
 	p:SetAttribute("FreeFlightUntil",0)
-	h.MaxHealth=G.Stats(p).HP h.Health=h.MaxHealth h.WalkSpeed=C.Classes[profile.ClassId].Speed h.BreakJointsOnDeath=false
+	p:SetAttribute("PvPCombatUntil",0)
+	local charStats=G.Stats(p)
+	h.MaxHealth=charStats.HP h.Health=h.MaxHealth h.WalkSpeed=(C.Classes[profile.ClassId].Speed or 16)*(charStats.RaceWalkSpeedMult or 1) h.BreakJointsOnDeath=false
 	ch:SetAttribute("GuardianShieldUntil",0)
 	local rt=G.Runtime[p] if not rt then return end
+	rt.MaxEnergy=charStats.MaxEnergy or 100
+	rt.Energy=rt.MaxEnergy
 	rt.Stamina=100 rt.ShieldUntil=0 rt.InvincibleUntil=os.clock()+2
 	local spawnTarget=typeof(respawnPos)=="Vector3" and (respawnPos+_V3(0,3,0)) or C.Spawn
-	G.Teleport(p,spawnTarget)
+	G.Teleport(p,spawnTarget,nil,true)
 	G.SyncCompanions(p)
 	Cosmetics.Guardian(ch)
 	G.Sync(p)
@@ -3791,7 +3605,19 @@ function G.Join(p)
 	if not p or p.Parent~=Players or G.Runtime[p] or G.Joining[p] then return end
 	G.Joining[p]=true
 	p:SetAttribute('CurrentRealm','GoldenSky')
+	local safeSpawnPos=(C.Spawn or _V3(-317.4,50.5,527.8))+_V3(0,3,0)
+	local function snapPreLoadChar(ch)
+		local hrp=ch and (ch:FindFirstChild("HumanoidRootPart") or ch:WaitForChild("HumanoidRootPart",5))
+		if hrp and not G.Runtime[p] then
+			hrp.Anchored=false
+			hrp.CFrame=_CF(safeSpawnPos)
+			hrp.AssemblyLinearVelocity=Vector3.zero
+		end
+	end
+	if p.Character then task.spawn(snapPreLoadChar,p.Character) end
+	local preLoadConn=p.CharacterAdded:Connect(function(ch) task.spawn(snapPreLoadChar,ch) end)
 	local profile=D.Load(p)
+	if preLoadConn then preLoadConn:Disconnect() preLoadConn=nil end
 	G.Joining[p]=nil
 	if not profile or p.Parent~=Players then
 		if profile then D.Release(p) end
@@ -3799,7 +3625,12 @@ function G.Join(p)
 	end
 	if G.Runtime[p] then return end
 	ensureProfileFields(profile)
-	local rt={Stamina=100,Energy=100,LastCastAt=0,ShieldUntil=0,InvincibleUntil=0,ActionUntil=0,LastAttack=0,Combo=0,LastHurt=0,NextInstinctRegen=os.clock()+5,Requests={},Cooldowns={},Companions={},Safe=C.Spawn,MoveAt=os.clock()}
+	p:SetAttribute("DoubleExpSeconds",tonumber(profile.DoubleExpRemainingSec) or 0)
+	LiveOps.EvaluateProgressionBadges(G,p,profile)
+	LiveOps.SyncPlayerScoresOnSave(p,profile,false)
+	local initStats=Helpers.ComputeStats(C,profile,profile.ActiveSlot,p)
+	local initMaxE=math.max(100,tonumber(initStats and initStats.MaxEnergy) or 100)
+	local rt={Stamina=100,Energy=initMaxE,MaxEnergy=initMaxE,AwakeningMeter=tonumber(profile.AwakeningMeter) or 0,FuryMeter=100,LastCastAt=0,ShieldUntil=0,InvincibleUntil=0,ActionUntil=0,LastAttack=0,Combo=0,LastHurt=0,NextInstinctRegen=os.clock()+5,NextOneSecTick=os.clock()+1,Requests={},Cooldowns={},Companions={},Safe=C.Spawn,MoveAt=os.clock()}
 	G.Runtime[p]=rt
 	G.UpdatePlayerPortalCompass(p,profile.CurrentWorldOrder or 1)
 	rt.CharConn=p.CharacterAdded:Connect(function(ch) G.Character(p,ch) end)
@@ -3809,8 +3640,9 @@ function G.Start()
 	W.Build()
 	G.EnsureWorld()
 	D.Start()
+	LiveOps.Start(G,D)
 	for _,obj in pairs(W.Interactions) do
-		if obj:FindFirstChildOfClass("ProximityPrompt") and not G.Chests[obj.Name] and not G.Shrines[obj.Name] then
+		if obj:FindFirstChildOfClass("ProximityPrompt") and not obj:GetAttribute("PromptBound") and not G.Chests[obj.Name] and not G.Shrines[obj.Name] then
 			obj.ProximityPrompt.Triggered:Connect(function(p) G.Interact(p,obj.Name) end)
 		end
 	end
@@ -3858,7 +3690,8 @@ function G.Start()
 		end
 	end)
 	R.EquipmentRequest.OnServerEvent:Connect(function(p,payload)
-		if not RemoteGuard.Allow(p,"Equipment") then return end
+		local ch=(type(payload)=="table" and payload.action=="AddStat") and "StatAllocate" or "Equipment"
+		if not RemoteGuard.Allow(p,ch) then return end
 		G.Equipment(p,payload)
 	end)
 	R.AppearanceRequest.OnServerEvent:Connect(function(p,payload)
@@ -3866,8 +3699,64 @@ function G.Start()
 		G.ChooseAppearance(p,payload)
 	end)
 
+	local baseRanFlag=false
+	local baseHandleUI=function(p,cmd,payload)
+		baseRanFlag=true
+		local cmdStr=tostring(cmd or "")
+		if cmdStr=="StoreFruit" then
+			G.Equipment(p,{action="StoreFruit",fruitId=type(payload)=="table" and (payload.fruitId or payload.id) or nil})
+			return true
+		elseif cmdStr=="ConfirmNPCAction" or cmdStr:sub(1,17)=="ConfirmNPCAction:" then
+			return Helpers.HandleConfirmNPCAction(p,cmdStr=="ConfirmNPCAction" and nil or cmdStr,payload,G,D,C,G.CombatExpansion)
+		elseif cmdStr=="EvolveRace" then
+			local prof=D.Get(p)
+			if prof then Helpers.EvolveRace(p,prof,G,C) end
+			return true
+		elseif cmdStr=="RollFruitGold" or cmdStr=="RollFruit" then
+			G.Equipment(p,{action="RollFruit",currency=(type(payload)=="table" and payload.currency) or "Gold"})
+			return true
+		elseif cmdStr=="RollFruitShards" then
+			G.Equipment(p,{action="RollFruit",currency="Shards"})
+			return true
+		elseif cmdStr=="SelectClass" then
+			G.ChooseAppearance(p,{ClassId=type(payload)=="table" and (payload.classId or payload.id) or payload})
+			return true
+		elseif cmdStr=="TeleportIsland" then
+			if (tonumber(p:GetAttribute("PvPCombatUntil")) or 0)>os.time() then
+				LiveOps.Notify(G,p,"Đang trong trạng thái Giao Tranh PvP! Không thể dịch chuyển!","Cannot teleport while PvP combat-tagged!")
+				return true
+			end
+			local islId=type(payload)=="table" and (payload.islandId or payload.nodeId or payload.id) or payload
+			if G.CombatExpansion and type(G.CombatExpansion.TeleportToIsland)=="function" then
+				G.CombatExpansion.TeleportToIsland(p,islId)
+			else
+				G.Equipment(p,{action="FastTravel",nodeId=islId})
+			end
+			return true
+		elseif cmdStr=="ClaimPlaytimeGift" then
+			LiveOps.ClaimPlaytimeGift(G,D,Helpers,getMonetization(),p,payload)
+			return true
+		elseif cmdStr=="RequestGlobalLeaderboard" then
+			LiveOps.HandleRequestGlobalLeaderboard(G,D,G.SocialEconomy,p,payload)
+			return true
+		elseif cmdStr=="SetLocale" or cmdStr=="SyncLocale" or cmdStr=="SetLanguage" then
+			local raw=type(payload)=="table" and (payload.Language or payload.lang or payload.locale or payload.Locale or payload.RobloxLocaleId or payload.id) or payload
+			LiveOps.SetPlayerLocale(p,raw)
+			G.Sync(p)
+			return true
+		end
+		return false
+	end
+	G.HandleUIRequest=baseHandleUI
 	G.EnsureProfileFields=ensureProfileFields
 	StaticData.SpawnAllInitialEnemies(G)
+	for _,sp in ipairs({
+		{"SkyPirate",_V3(-632,49.5,146)},{"SkyPirate",_V3(-558,49.5,146)},{"SkyPirate",_V3(-595,49.5,182)},
+		{"CorruptedGuard",_V3(-476,48.85,756)},{"CorruptedGuard",_V3(-428,48.85,756)},{"CorruptedGuard",_V3(-476,48.85,788)},{"CorruptedGuard",_V3(-428,48.85,788)},
+		{"CorruptedGuard",_V3(132,48.85,716)},{"CorruptedGuard",_V3(200,48.85,716)},
+	}) do
+		G.SpawnEnemy(sp[1],sp[2],true,false)
+	end
 	for _,extName in ipairs({"SkybreakCombatExpansion","SkybreakWorldEventsService","SkybreakSocialEconomyService"}) do
 		local extMod=script.Parent:FindFirstChild(extName)
 		if extMod and extMod:IsA("ModuleScript") then
@@ -3880,11 +3769,23 @@ function G.Start()
 			end
 		end
 	end
+	local chainedHandleUI=G.HandleUIRequest
+	if chainedHandleUI~=baseHandleUI then
+		G.HandleUIRequest=function(p,cmd,payload)
+			baseRanFlag=false
+			if chainedHandleUI and chainedHandleUI(p,cmd,payload) then return true end
+			if not baseRanFlag then return baseHandleUI(p,cmd,payload) end
+			return false
+		end
+	end
 
 	Players.PlayerAdded:Connect(function(p) G.Join(p) end)
 	Players.PlayerRemoving:Connect(function(p)
 		G.Joining[p]=nil
 		local rt=G.Runtime[p]
+		if G.SocialEconomy and G.SocialEconomy.OnBeforePlayerRelease then
+			pcall(G.SocialEconomy.OnBeforePlayerRelease,p,rt)
+		end
 		if rt then
 			if rt.CharConn then rt.CharConn:Disconnect() rt.CharConn=nil end
 			if rt.ReviveBeacon and rt.ReviveBeacon.Parent then rt.ReviveBeacon:Destroy() end
@@ -3952,6 +3853,21 @@ function G.Start()
 				local r,h=root(p) local profile=D.Get(p)
 				if r and profile then
 					ensureProfileFields(profile)
+					if now>=(rt.NextOneSecTick or 0) then
+						rt.NextOneSecTick=now+1
+						local rem=math.max(0,math.floor(tonumber(profile.DoubleExpRemainingSec) or 0))
+						if rem>0 then
+							rem-=1
+							profile.DoubleExpRemainingSec=rem
+							profile.DoubleExpRemaining=rem
+							profile.DoubleExpSeconds=rem
+							profile.DoubleExpUntil=rem>0 and (os.time()+rem) or 0
+							p:SetAttribute("DoubleExpSeconds",rem)
+						elseif (tonumber(p:GetAttribute("DoubleExpSeconds")) or 0)>0 then
+							p:SetAttribute("DoubleExpSeconds",0)
+							profile.DoubleExpUntil=0
+						end
+					end
 					if now>=(rt.NextInstinctRegen or 0) then
 						rt.NextInstinctRegen=now+5
 						if profile.Haki then
@@ -3966,7 +3882,7 @@ function G.Start()
 					if now>=(rt.JumpPadUntil or 0) then
 						local elapsed=now-rt.MoveAt local delta=r.Position-rt.Safe
 						local horizontal=_V3(delta.X,0,delta.Z).Magnitude
-						if not finiteVector(r.Position) or horizontal>math.max(48,elapsed*140) then G.Teleport(p,rt.Safe)
+						if not finiteVector(r.Position) or horizontal>math.max(48,elapsed*140) then G.Teleport(p,rt.Safe,nil,true)
 						else rt.Safe=r.Position rt.MoveAt=now end
 						if now>=(rt.NextVoidCheck or 0) then
 							rt.NextVoidCheck=now+.2
@@ -3992,11 +3908,11 @@ function G.Start()
 							elseif hit and (not h or h.FloorMaterial~=Enum.Material.Air) and math.abs(r.AssemblyLinearVelocity.Y)<4 and (r.Position.Y-3.0-hit.Position.Y)>7.5 and (W.IsBlockedByObstacle and W.IsBlockedByObstacle(r.Position.X,hit.Position.Y,r.Position.Z,2.5)) then
 								-- Player is standing on the invisible roof of a Solid3DObstacles box above the deck
 								local rescue=G.FindSafeRescuePos(p,r.Position,rt,profile)
-								G.Teleport(p,rescue)
+								G.Teleport(p,rescue,nil,true)
 							elseif not (h and h.SeatPart) and not rt.SeatedInShip and (r.Position.Y<10 or (p:GetAttribute("SkybreakFlightActive")~=true and rt.LastGroundedPos and r.Position.Y<(rt.LastGroundedPos.Y-32) and not hit)) then
 								if not (G.OnVoidRescue and G.OnVoidRescue(p,r,rt,profile)) then
 									local rescue=G.FindSafeRescuePos(p,r.Position,rt,profile)
-									G.Teleport(p,rescue)
+									G.Teleport(p,rescue,nil,true)
 									if now>=(rt.NextVoidNotify or 0) then
 										rt.NextVoidNotify=now+2.5
 										G.Notify(p,"Void Rescue: Đã đưa bạn trở lại mặt sàn đảo mây an toàn!")
@@ -4025,7 +3941,8 @@ function G.Start()
 						end
 					end
 					rt.Stamina=math.min(100,rt.Stamina+17*dt)
-					if now-(rt.LastCastAt or 0)>=1.5 and now>=(rt.ActionUntil or 0) then rt.Energy=math.min(100,(rt.Energy or 100)+8*dt) end
+					local maxE=tonumber(rt.MaxEnergy) or 100
+					if now-(rt.LastCastAt or 0)>=1.5 and now>=(rt.ActionUntil or 0) then rt.Energy=math.min(maxE,(rt.Energy or maxE)+maxE*0.08*dt) end
 					if h.Health>0 and now-rt.LastHurt>7 then h.Health=math.min(h.MaxHealth,h.Health+3*dt) end
 				end
 				if sync>=.3 then G.Sync(p) end

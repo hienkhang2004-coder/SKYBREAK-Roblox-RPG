@@ -1,4 +1,4 @@
--- SKYBREAK: Fragments of the Core — Server Realm Fast Travel Validation Service
+-- SKYBREAK: Fragments of the Core — Server Realm & Island Fast Travel Validation Service
 -- Location: ServerScriptService/SkybreakServer/TravelService.lua
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,19 +14,38 @@ local DevGate = require(Services:WaitForChild("DevGate"))
 
 local TravelService = {}
 
-function TravelService.HandleFastTravel(player, payload)
-    if type(payload) ~= "table" or type(payload.realmId) ~= "string" then
-        return false, "Invalid travel request."
-    end
-    if not GameService.Rate(player, "UI_Travel", 1.0) then
-        return false, "Please wait before traveling again."
-    end
+local DEST_ALIASES = {
+    QuestCheckpoint = "GoldenSky",
+    GlacialDangerSea = "GlacialWreckage",
+    UmbralCrystalForest = "UmbralSanctum",
+    EmberforgeWestFoundry = "EmberWestFoundry",
+    EmberforgeEastCaldera = "EmberEastCaldera",
+    EmberforgeNorthCitadel = "EmberNorthCitadel",
+}
 
+local function extractDestinationId(payload)
+    if type(payload) == "string" then
+        return DEST_ALIASES[payload] or payload
+    end
+    if type(payload) ~= "table" then
+        return nil
+    end
+    local raw = payload.islandId or payload.nodeId or payload.realmId or payload.id or payload.value
+    if type(raw) ~= "string" or raw == "" or #raw > 48 then
+        return nil
+    end
+    return DEST_ALIASES[raw] or raw
+end
+
+function TravelService.CanFastTravel(player, payload)
+    local destId = extractDestinationId(payload)
+    if not destId then
+        return false, "Yêu cầu dịch chuyển không hợp lệ."
+    end
     local profile = PlayerDataService.Get(player)
     if not profile then
-        return false, "Profile not loaded."
+        return false, "Dữ liệu nhân vật chưa sẵn sàng."
     end
-
     if (GameService.Boss and GameService.Boss.Party and GameService.Boss.Party[player])
         or player:GetAttribute("InTrade") == true
         or player:GetAttribute("InRaceTrial") == true
@@ -35,55 +54,116 @@ function TravelService.HandleFastTravel(player, payload)
         or player:GetAttribute("ColosseumActive") == true
         or (tonumber(player:GetAttribute("SpireFloor")) or 0) > 0
     then
-        return false, "Cannot Fast Travel during an active encounter or trade."
+        return false, "Không thể Dịch Chuyển Nhanh khi đang giao tranh Boss, Đột Kích, Tháp hoặc Giao Dịch!"
     end
 
-    local realmId = payload.realmId
-    if #realmId > 48 then
-        return false, "Invalid destination ID."
-    end
-    if realmId == "SkyHub" or realmId == "GoldenSky" then
-        player:SetAttribute("CurrentRealm", "GoldenSky")
-        GameService.Teleport(player, CoreConfig.Spawn)
-        GameService.Sync(player)
-        return true, "Traveled to Golden Sky Hub."
+    profile.DiscoveredIslands = type(profile.DiscoveredIslands) == "table" and profile.DiscoveredIslands or { SkyHub = true, GoldenSky = true }
+    profile.DiscoveredIslands.SkyHub = true
+    profile.DiscoveredIslands.GoldenSky = true
+
+    if destId == "SkyHub" or destId == "GoldenSky" then
+        return true, nil, destId
     end
 
-    local islandMeta = WorldConfig.IslandById and WorldConfig.IslandById[realmId]
-    local realmMeta = WorldConfig.RealmById[realmId] or islandMeta
-    if not realmMeta then
-        return false, "Unknown realm."
+    local coreIsl = (CoreConfig.FastTravel and CoreConfig.FastTravel[destId]) or (CoreConfig.Islands and CoreConfig.Islands[destId])
+    local islandMeta = WorldConfig.IslandById and WorldConfig.IslandById[destId]
+    local realmMeta = WorldConfig.RealmById and WorldConfig.RealmById[destId]
+    if not coreIsl and not islandMeta and not realmMeta then
+        return false, "Không tìm thấy đảo hoặc cõi đích."
     end
 
-    local parentRealmId = (islandMeta and islandMeta.RealmId) or realmId
-    local parentRealmMeta = WorldConfig.RealmById and WorldConfig.RealmById[parentRealmId]
-    profile.UnlockedWorlds = profile.UnlockedWorlds or {}
-    local minLv = tonumber(
-        realmMeta.MinLevel
-        or realmMeta.LevelReq
+    local parentRealmId = (coreIsl and coreIsl.Realm)
+        or (islandMeta and islandMeta.RealmId)
+        or (realmMeta and realmMeta.Id)
+        or "GoldenSky"
+    local sea = tonumber(coreIsl and coreIsl.Sea)
+        or (parentRealmId == "GoldenSky" and 1)
+        or (parentRealmId == "FrozenCyber" and 2)
+        or (parentRealmId == "ShadowRealm" and 3)
+        or 4
+    local islMinLv = tonumber(
+        (coreIsl and coreIsl.MinLevel)
         or (islandMeta and (islandMeta.MinLevel or islandMeta.LevelReq))
-        or (parentRealmMeta and (parentRealmMeta.MinLevel or parentRealmMeta.LevelReq))
+        or (realmMeta and (realmMeta.MinLevel or realmMeta.LevelReq))
     ) or 1
-    local alreadyUnlocked = (profile.UnlockedWorlds[realmId] == true)
-        or (profile.UnlockedWorlds[parentRealmId] == true)
-        or DevGate.IsAllowed(player)
-    if not alreadyUnlocked and (tonumber(profile.Level) or 1) < minLv then
-        return false, string.format("Requires Level %d to unlock %s.", minLv, tostring(realmMeta.Name or realmId))
-    end
-    profile.UnlockedWorlds[realmId] = true
-    profile.UnlockedWorlds[parentRealmId] = true
 
-    local ftNode = CoreConfig.FastTravel and CoreConfig.FastTravel[realmId]
-    local realmCoords = RealmConfig[realmId] or RealmConfig[parentRealmId]
-    local targetSpawn = (ftNode and ftNode.Pos) or (islandMeta and islandMeta.Pos) or (realmCoords and realmCoords.Spawn)
+    local reqLv = 1
+    if sea == 2 or parentRealmId == "FrozenCyber" then
+        reqLv = 700
+    elseif sea == 3 or parentRealmId == "ShadowRealm" then
+        reqLv = 1500
+    elseif sea >= 4 then
+        reqLv = islMinLv
+    end
+
+    local isDev = DevGate.IsAllowed(player)
+    local isDiscovered = (profile.DiscoveredIslands[destId] == true)
+    local playerLv = tonumber(profile.Level) or 1
+
+    if not isDev and (not isDiscovered or playerLv < reqLv) then
+        local displayLv = math.max(reqLv, islMinLv)
+        local lockMsg = string.format(
+            "Hãy lái Tàu Bay khám phá đảo này trước hoặc đạt Lv. %d để mở khóa Dịch Chuyển Nhanh!",
+            displayLv
+        )
+        return false, lockMsg, destId
+    end
+
+    return true, nil, destId, parentRealmId, coreIsl, islandMeta, realmMeta
+end
+
+function TravelService.HandleFastTravel(player, payload)
+    if not GameService.Rate(player, "UI_Travel", 1.0) then
+        return false, "Vui lòng chờ giây lát trước khi dịch chuyển tiếp."
+    end
+
+    local allowed, lockMsg, destId, parentRealmId, coreIsl, islandMeta, realmMeta = TravelService.CanFastTravel(player, payload)
+    if not allowed then
+        if lockMsg and GameService.Notify then
+            GameService.Notify(player, lockMsg)
+        end
+        return false, lockMsg
+    end
+
+    local profile = PlayerDataService.Get(player)
+    if destId == "SkyHub" or destId == "GoldenSky" then
+        local hubPos = (destId == "GoldenSky" and CoreConfig.FastTravel and CoreConfig.FastTravel.GoldenSky and CoreConfig.FastTravel.GoldenSky.Pos)
+            or CoreConfig.Spawn
+        player:SetAttribute("CurrentRealm", "GoldenSky")
+        player:SetAttribute("CurrentIsland", destId)
+        GameService.Teleport(player, hubPos)
+        GameService.Sync(player)
+        return true, "Đã dịch chuyển tới " .. (destId == "GoldenSky" and "Bầu Trời Hoàng Kim" or "Sky Hub") .. "!"
+    end
+
+    parentRealmId = parentRealmId or "GoldenSky"
+    if profile then
+        profile.UnlockedWorlds = type(profile.UnlockedWorlds) == "table" and profile.UnlockedWorlds or {}
+        profile.UnlockedWorlds[destId] = true
+        profile.UnlockedWorlds[parentRealmId] = true
+        profile.DiscoveredIslands[destId] = true
+    end
+
+    local realmCoords = RealmConfig[destId] or RealmConfig[parentRealmId]
+    local targetSpawn = (coreIsl and coreIsl.Pos)
+        or (islandMeta and islandMeta.Pos)
+        or (realmCoords and realmCoords.Spawn)
     if not targetSpawn then
-        return false, realmMeta.Name .. " geometry is not loaded in this server instance."
+        local label = (islandMeta and (islandMeta.VietnameseName or islandMeta.Name))
+            or (realmMeta and (realmMeta.VietnameseName or realmMeta.Name))
+            or destId
+        return false, tostring(label) .. " chưa sẵn sàng trong máy chủ này."
     end
 
     player:SetAttribute("CurrentRealm", parentRealmId)
+    player:SetAttribute("CurrentIsland", destId)
     GameService.Teleport(player, targetSpawn)
     GameService.Sync(player)
-    return true, "Traveled to " .. realmMeta.Name .. "."
+    local destLabel = (islandMeta and (islandMeta.VietnameseName or islandMeta.Name))
+        or (realmMeta and (realmMeta.VietnameseName or realmMeta.Name))
+        or (coreIsl and coreIsl.Name)
+        or destId
+    return true, "Đã dịch chuyển tới " .. tostring(destLabel) .. "!"
 end
 
 return TravelService

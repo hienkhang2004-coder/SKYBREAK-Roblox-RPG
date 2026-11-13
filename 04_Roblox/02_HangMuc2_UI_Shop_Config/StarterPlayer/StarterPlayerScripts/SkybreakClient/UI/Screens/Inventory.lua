@@ -318,17 +318,22 @@ function Inventory.Build(parent, _responsiveState)
 
     PremiumButton.Create(setBonusCard, {
         name = "OpenForgeShortcut",
-        icon = "Forge",
-        label = I18n.Pick("LÒ RÈN [F]", "FORGE [F]"),
+        icon = "Compass",
+        label = I18n.Pick("CHỈ ĐƯỜNG LÒ RÈN", "LOCATE FORGE"),
         variant = "gold",
         anchorPoint = Vector2.new(1, 1),
         position = UDim2.new(1, -10, 1, -8),
-        size = UDim2.fromOffset(118, 30),
+        size = UDim2.fromOffset(132, 30),
         textSize = 10,
         minTextSize = 8,
         zIndex = 7,
         onActivated = function()
-            ScreenRouter.Navigate(UIState.Screens.Forge)
+            UIFactory.GuideToNPCStation("Forge", {
+                OnClose = function()
+                    ScreenRouter.CloseAllToHUD()
+                end,
+                ShowToast = Store.ShowToast,
+            })
         end,
     })
 
@@ -627,8 +632,8 @@ function Inventory.Build(parent, _responsiveState)
 
     local forgeActionBtn, _ = PremiumButton.Create(detailActionsRow, {
         name = "DetailForgeBtn",
-        icon = "Forge",
-        label = I18n.Pick("CƯỜNG HÓA & SAO [F]", "UPGRADE & STARS [F]"),
+        icon = "Compass",
+        label = I18n.Pick("CHỈ ĐƯỜNG LÒ RÈN", "LOCATE FORGE"),
         variant = "gold",
         size = UDim2.fromOffset(162, 32),
         textSize = 10,
@@ -636,7 +641,12 @@ function Inventory.Build(parent, _responsiveState)
         layoutOrder = 2,
         zIndex = 8,
         onActivated = function()
-            ScreenRouter.Navigate(UIState.Screens.Forge)
+            UIFactory.GuideToNPCStation("Forge", {
+                OnClose = function()
+                    ScreenRouter.CloseAllToHUD()
+                end,
+                ShowToast = Store.ShowToast,
+            })
         end,
     })
 
@@ -812,9 +822,15 @@ function Inventory.RefreshEquipmentSlots()
             or UDim2.new(1, -74, 0, pSlot.Row * 82)
 
         local equippedItemId = eqMap[pSlot.Id]
+        local eqSlotCfg = equippedItemId and RarityConfig.GetItem(equippedItemId) or nil
         local invEntry = equippedItemId and invLookup[equippedItemId] or nil
         local upg = invEntry and (tonumber(invEntry.upgrade) or 0) or 0
-        local stars = (equippedItemId and (pSlot.Id == "Weapon" or pSlot.Id == "Gun")) and Store.GetWeaponStar(equippedItemId) or 0
+        local isEqWepOrGun = equippedItemId and (
+            pSlot.Id == "Weapon"
+            or pSlot.Id == "Gun"
+            or (pSlot.Id == "Offhand" and eqSlotCfg and eqSlotCfg.Category == "Weapons")
+        )
+        local stars = isEqWepOrGun and Store.GetWeaponStar(equippedItemId) or 0
         local slotTag = I18n.Pick(pSlot.TagVi, pSlot.TagEn)
 
         ItemSlot.Create(holder, {
@@ -967,7 +983,11 @@ function Inventory.RefreshTooltip(overrideItemId)
     local eqMap = snap.equipped or snap.equipment or {}
     local isEq = (cfg.Slot and eqMap[cfg.Slot] == inspectId) or (foundEntry and foundEntry.equipped == true)
     local upg = foundEntry and (tonumber(foundEntry.upgrade) or 0) or 0
-    local isWeaponOrGun = (cfg.Slot == "Weapon" or cfg.Slot == "Gun")
+    local isWeaponOrGun = (
+        cfg.Slot == "Weapon"
+        or cfg.Slot == "Gun"
+        or (cfg.Slot == "Offhand" and cfg.Category == "Weapons")
+    )
     local stars = isWeaponOrGun and Store.GetWeaponStar(inspectId) or 0
     local rarity = RarityConfig.GetRarity(cfg.Rarity)
 

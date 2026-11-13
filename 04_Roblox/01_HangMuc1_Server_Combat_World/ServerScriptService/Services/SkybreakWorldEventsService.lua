@@ -4,9 +4,12 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local DevGate = require(script.Parent:WaitForChild("DevGate"))
+local Helpers = require(script.Parent:WaitForChild("GameExperienceHelpers"))
+local SpireAndLeviathan = require(script.Parent:WaitForChild("SkybreakSpireAndLeviathanSubService"))
 
 local WorldEvents = {}
 WorldEvents._initialized = false
@@ -15,15 +18,62 @@ local G, D, W, C, R
 local CombatData
 
 local ActiveWarships = {} -- [player] = shipEntry
-local ActiveLeviathanHearts = {} -- array of heartEntries
 local ActiveRespawnHolograms = {} -- [bossKey] = holoEntry
 local ActivePurifyingZones = {} -- array of { Pos, Radius, ExpiresAt, Model }
-local ActiveRaidSession = nil
-local ActiveSpireSessions = {} -- [player] = spireEntry
-local ActiveMirageEvent = nil
 local ActivePirateRaid = nil
 local SoulRitualState = { Torches = { false, false, false }, Models = {}, RiftModel = nil, Boss = nil, ResetAt = 0 }
 local DPSDummyEntry = nil
+
+local CANONICAL_FRUIT_MAP = {
+	GaleCore = "GaleCore",
+	Gale = "GaleCore",
+	SandstoneCore = "SandstoneCore",
+	Smoke = "SandstoneCore",
+	SolarFlameCore = "SolarFlameCore",
+	Flame = "SolarFlameCore",
+	GlacierIceCore = "GlacierIceCore",
+	Ice = "GlacierIceCore",
+	ThunderRumbleCore = "ThunderRumbleCore",
+	Rumble = "ThunderRumbleCore",
+	CelestialLightCore = "CelestialLightCore",
+	Light = "CelestialLightCore",
+	StarforgedMagmaCore = "StarforgedMagmaCore",
+	Magma = "StarforgedMagmaCore",
+	AstralGravityCore = "AstralGravityCore",
+	Gravity = "AstralGravityCore",
+	DimensionalPortalCore = "DimensionalPortalCore",
+	Portal = "DimensionalPortalCore",
+	SolarTitanCore = "SolarTitanCore",
+	Buddha = "SolarTitanCore",
+	AetherflowCore = "AetherflowCore",
+	SweetDoughCore = "AetherflowCore",
+	Dough = "AetherflowCore",
+	AbyssalSovereignCore = "AbyssalSovereignCore",
+	Dragon = "AbyssalSovereignCore",
+}
+
+local function resolveCanonicalFruitId(rawId)
+	local key = tostring(rawId or "")
+	if key == "" then
+		return ""
+	end
+	if CANONICAL_FRUIT_MAP[key] then
+		return CANONICAL_FRUIT_MAP[key]
+	end
+	if D and D.NormalizeFruitId then
+		local norm = D.NormalizeFruitId(key)
+		if norm and CANONICAL_FRUIT_MAP[norm] then
+			return CANONICAL_FRUIT_MAP[norm]
+		end
+	end
+	if CombatData and CombatData.ResolveFruitId then
+		local res = CombatData.ResolveFruitId(key)
+		if res and CANONICAL_FRUIT_MAP[res] then
+			return CANONICAL_FRUIT_MAP[res]
+		end
+	end
+	return ""
+end
 
 local ALL_CANONICAL_FRUITS = {
 	"GaleCore",
@@ -99,40 +149,65 @@ local SAFE_HUB_CENTERS = {
 }
 
 local SHIP_SPECS = {
+	SkySloop = {
+		ShipId = "SkySloop",
+		MeshId = "CelestialAetherGalleon",
+		DisplayName = "THUYỀN BUỒM MÂY • SKY SLOOP",
+		MaxHP = 1500,
+		Speed = 95,
+		AscendSpeed = 32,
+		TurnSpeed = 1.65,
+		CannonDamage = 1400,
+		Scale = 2.85,
+		Accent = Color3.fromRGB(147, 197, 253),
+		HullSize = Vector3.new(12, 2.0, 26),
+	},
 	CelestialAetherGalleon = {
+		ShipId = "CelestialAetherGalleon",
 		MeshId = "CelestialAetherGalleon",
 		DisplayName = "CELESTIAL AETHER GALLEON",
-		Speed = 60,
+		MaxHP = 4200,
+		Speed = 125,
+		AscendSpeed = 40,
 		TurnSpeed = 1.35,
 		CannonDamage = 3200,
+		Scale = 4.2,
 		Accent = Color3.fromRGB(255, 214, 92),
 		HullSize = Vector3.new(16, 2.4, 36),
 	},
 	CyberEnforcerShip = {
+		ShipId = "CyberEnforcerShip",
 		MeshId = "CyberEnforcerShip",
 		DisplayName = "CYBER ENFORCER GUNSHIP",
-		Speed = 76,
+		MaxHP = 7200,
+		Speed = 155,
+		AscendSpeed = 48,
 		TurnSpeed = 1.55,
 		CannonDamage = 4600,
+		Scale = 3.85,
 		Accent = Color3.fromRGB(88, 238, 255),
 		HullSize = Vector3.new(15, 2.4, 34),
 	},
 	LeviathanHunterShip = {
+		ShipId = "LeviathanHunterShip",
 		MeshId = "LeviathanHunterShip",
 		DisplayName = "SERPENT HUNTER DREADNOUGHT",
-		Speed = 92,
+		MaxHP = 12000,
+		Speed = 185,
+		AscendSpeed = 56,
 		TurnSpeed = 1.45,
 		CannonDamage = 6500,
+		Scale = 4.5,
 		Accent = Color3.fromRGB(205, 108, 255),
 		HullSize = Vector3.new(18, 2.6, 40),
 	},
 }
 
 local HARBOR_PORTS = {
-	{ Id = "Port_SkyHub", Name = "Cảng Sky Hub", Realm = "GoldenSky", PedestalPos = Vector3.new(-366, 46.7, 548), WaterPos = Vector3.new(-428, 44.0, 565), DefaultShip = "CelestialAetherGalleon" },
-	{ Id = "Port_FrozenCyber", Name = "Cảng Frozen Cyber", Realm = "FrozenCyber", PedestalPos = Vector3.new(11572, 47.1, 560), WaterPos = Vector3.new(11512, 44.0, 585), DefaultShip = "CyberEnforcerShip" },
-	{ Id = "Port_Cyberport", Name = "Cảng Trạm Giao Thương", Realm = "FrozenCyber", PedestalPos = Vector3.new(9400, 47.1, 2312), WaterPos = Vector3.new(9400, 44.0, 2365), DefaultShip = "CyberEnforcerShip" },
-	{ Id = "Port_ShadowRealm", Name = "Cảng Shadow Realm", Realm = "ShadowRealm", PedestalPos = Vector3.new(-12658, 47.1, 446), WaterPos = Vector3.new(-12722, 44.0, 478), DefaultShip = "LeviathanHunterShip" },
+	{ Id = "Port_SkyHub", Name = "Cảng Sky Hub", Realm = "GoldenSky", PedestalPos = Vector3.new(-366, 46.7, 548), WaterPos = Vector3.new(-438, 44.0, 568), PlazaPos = Vector3.new(-317.4, 46.7, 527.8), DefaultShip = "CelestialAetherGalleon" },
+	{ Id = "Port_FrozenCyber", Name = "Cảng Frozen Cyber", Realm = "FrozenCyber", PedestalPos = Vector3.new(11572, 47.1, 560), WaterPos = Vector3.new(11418, 44.0, 595), PlazaPos = Vector3.new(11620.5, 47.1, 534.8), DefaultShip = "CyberEnforcerShip" },
+	{ Id = "Port_Cyberport", Name = "Cảng Trạm Giao Thương", Realm = "FrozenCyber", PedestalPos = Vector3.new(9400, 47.1, 2312), WaterPos = Vector3.new(9400, 44.0, 2385), PlazaPos = Vector3.new(9400, 47.1, 1785.0), DefaultShip = "CyberEnforcerShip" },
+	{ Id = "Port_ShadowRealm", Name = "Cảng Shadow Realm", Realm = "ShadowRealm", PedestalPos = Vector3.new(-12658, 47.1, 446), WaterPos = Vector3.new(-12792, 44.0, 498), PlazaPos = Vector3.new(-12593.4, 47.1, 414.0), DefaultShip = "LeviathanHunterShip" },
 }
 
 local RAID_DIFFICULTIES = {
@@ -244,8 +319,10 @@ local function normalizeShipId(rawId)
 		return "CyberEnforcerShip"
 	elseif s == "LeviathanHunterShip" or s == "LeviathanHunter" then
 		return "LeviathanHunterShip"
+	elseif s == "CelestialAetherGalleon" or s == "CelestialBrigantine" or s == "AetherBrigantine" then
+		return "CelestialAetherGalleon"
 	end
-	return "CelestialAetherGalleon"
+	return "SkySloop"
 end
 
 -- Cac ten goi cua cung mot chien ham (Id ban o Shipwright <-> ShipId/mesh).
@@ -253,11 +330,47 @@ local SHIP_ALIASES = {
 	SkySloop = { "SkySloop" },
 	CyberEnforcer = { "CyberEnforcerShip", "CyberEnforcer" },
 	CyberEnforcerShip = { "CyberEnforcerShip", "CyberEnforcer" },
-	CelestialAetherGalleon = { "CelestialAetherGalleon", "CelestialBrigantine" },
-	CelestialBrigantine = { "CelestialAetherGalleon", "CelestialBrigantine" },
+	CelestialAetherGalleon = { "CelestialAetherGalleon", "CelestialBrigantine", "AetherBrigantine" },
+	CelestialBrigantine = { "CelestialAetherGalleon", "CelestialBrigantine", "AetherBrigantine" },
+	AetherBrigantine = { "CelestialAetherGalleon", "CelestialBrigantine", "AetherBrigantine" },
 	LeviathanHunterShip = { "LeviathanHunterShip", "LeviathanHunter" },
 	LeviathanHunter = { "LeviathanHunterShip", "LeviathanHunter" },
 }
+
+local function syncShipSpecsFromConfig()
+	local sources = {}
+	if C and type(C.SkyShips) == "table" then
+		table.insert(sources, C.SkyShips)
+	end
+	if CombatData and type(CombatData.Warships) == "table" then
+		table.insert(sources, CombatData.Warships)
+	end
+	for _, src in ipairs(sources) do
+		for rawKey, cfg in pairs(src) do
+			if type(cfg) == "table" then
+				local canonKey = normalizeShipId(cfg.Id or rawKey)
+				local spec = SHIP_SPECS[canonKey]
+				if spec then
+					if tonumber(cfg.Speed) and tonumber(cfg.Speed) >= 80 then
+						spec.Speed = tonumber(cfg.Speed)
+					end
+					if tonumber(cfg.AscendSpeed) and tonumber(cfg.AscendSpeed) > 0 then
+						spec.AscendSpeed = tonumber(cfg.AscendSpeed)
+					end
+					if tonumber(cfg.HP or cfg.MaxHP) and tonumber(cfg.HP or cfg.MaxHP) > 0 then
+						spec.MaxHP = tonumber(cfg.HP or cfg.MaxHP)
+					end
+					if tonumber(cfg.TurnSpeed) and tonumber(cfg.TurnSpeed) > 0 then
+						spec.TurnSpeed = tonumber(cfg.TurnSpeed)
+					end
+					if tonumber(cfg.CannonDamage) and tonumber(cfg.CannonDamage) > 0 then
+						spec.CannonDamage = tonumber(cfg.CannonDamage)
+					end
+				end
+			end
+		end
+	end
+end
 
 -- Nguoi choi co so huu chien ham nay khong (da mua o Thuyen Truong Tho Dong Tau, hoac duoc thuong).
 local function playerOwnsShip(prof, rawId)
@@ -422,7 +535,7 @@ end
 -- ============================================================================
 -- 1. #18 - 3D GROUND TELEGRAPHS (ANTI-GLARE >= 0.35) & MULTI-PHASE BOSS AI
 -- ============================================================================
-local function spawn3DTelegraphZone(centerPos, radius, duration, label, onDetonate, style, dirVec, accentColor)
+local function spawn3DTelegraphZone(centerPos, radius, duration, label, onDetonate, style, dirVec, accentColor, ownerEnemy)
 	local tempFolder = getTempFX()
 	local dur = math.clamp(tonumber(duration) or 1.25, 0.45, 3.5)
 	local rad = math.max(3, tonumber(radius) or 10)
@@ -433,6 +546,11 @@ local function spawn3DTelegraphZone(centerPos, radius, duration, label, onDetona
 	local m = Instance.new("Model")
 	m.Name = "TelegraphZone"
 	m:SetAttribute("TelegraphStyle", tostring(style or "Circle"))
+	if type(ownerEnemy) == "table" then
+		m:SetAttribute("OwnerEnemyId", tostring(ownerEnemy.Id or ""))
+		ownerEnemy._ActiveTelegraphs = ownerEnemy._ActiveTelegraphs or {}
+		table.insert(ownerEnemy._ActiveTelegraphs, m)
+	end
 	m.Parent = tempFolder
 
 	if style == "Laser" or style == "Line" then
@@ -552,7 +670,7 @@ local function fireTelegraphAttack(e, centerPos, radius, windup, dmg, label, sty
 				end
 			end
 		end
-	end, style, look, col)
+	end, style, look, col, e)
 end
 
 local function notifyNearbyPlayers(pos, range, msg)
@@ -871,7 +989,7 @@ local function buildSoulReaperRitualSet()
 	rootModel.Name = "SoulReaperRitual_CastleVoid"
 	rootModel.Parent = worldObjects
 
-	local altarRaw = Vector3.new(-14600, 46.9, 2138)
+	local altarRaw = Vector3.new(-14600, 46.9, 2130)
 	local altarFY = safeFloorY(altarRaw, 46.9)
 	local altarPos = Vector3.new(altarRaw.X, altarFY, altarRaw.Z)
 
@@ -898,9 +1016,9 @@ local function buildSoulReaperRitualSet()
 	aLbl.Parent = aBill
 
 	local torchOffsets = {
-		Vector3.new(-15, 0, 8),
-		Vector3.new(15, 0, 8),
-		Vector3.new(0, 0, -14),
+		Vector3.new(-22, 0, 6),
+		Vector3.new(22, 0, 6),
+		Vector3.new(0, 0, -18),
 	}
 
 	SoulRitualState.Torches = { false, false, false }
@@ -1315,23 +1433,100 @@ local function parseCrewColor3(str, fallback)
 	return fallback or Color3.fromRGB(255, 214, 92)
 end
 
-local function applyCrewBannerToShip(shipEntry, profile)
+local FilteredCrewBannerCache = {}
+local FilteredCrewBannerCount = 0
+
+local function sanitizeRawCrewText(rawText, maxChars)
+	if type(rawText) ~= "string" then
+		return ""
+	end
+	local cleaned = string.gsub(rawText, "[%c]", " ")
+	cleaned = string.gsub(cleaned, "%s+", " ")
+	cleaned = string.match(cleaned, "^%s*(.-)%s*$") or ""
+	if cleaned == "" then
+		return ""
+	end
+	local out = {}
+	local count = 0
+	local okUtf8 = pcall(function()
+		for _, cp in utf8.codes(cleaned) do
+			if cp < 0x1F300 then
+				count += 1
+				if count <= maxChars then
+					table.insert(out, utf8.char(cp))
+				else
+					break
+				end
+			end
+		end
+	end)
+	if okUtf8 then
+		return table.concat(out)
+	end
+	return string.sub(cleaned, 1, maxChars)
+end
+
+local function filterCrewStringForBroadcast(rawClean, ownerPlr)
+	if rawClean == "" then
+		return ""
+	end
+	local uid = (ownerPlr and ownerPlr.UserId and ownerPlr.UserId > 0) and ownerPlr.UserId or 1
+	local cacheKey = tostring(uid) .. ":" .. rawClean
+	if FilteredCrewBannerCache[cacheKey] ~= nil then
+		return FilteredCrewBannerCache[cacheKey]
+	end
+
+	local filtered = nil
+	pcall(function()
+		local liveOps = G and G.LiveOps or nil
+		if not liveOps then
+			local mod = script.Parent:FindFirstChild("SkybreakLiveOpsService")
+			if mod and mod:IsA("ModuleScript") then
+				liveOps = require(mod)
+			end
+		end
+		if type(liveOps) == "table" and type(liveOps.FilterBroadcastText) == "function" then
+			filtered = liveOps.FilterBroadcastText(ownerPlr, rawClean)
+		end
+	end)
+
+	if type(filtered) ~= "string" then
+		local okFilter, res = pcall(function()
+			local filterResult = TextService:FilterStringAsync(rawClean, uid, Enum.TextFilterContext.PublicChat)
+			return filterResult:GetNonChatStringForBroadcastAsync()
+		end)
+		if okFilter and type(res) == "string" then
+			filtered = res
+		elseif RunService:IsStudio() then
+			filtered = rawClean
+		else
+			filtered = ""
+		end
+	end
+
+	filtered = sanitizeRawCrewText(filtered, 32)
+	if FilteredCrewBannerCount >= 256 then
+		table.clear(FilteredCrewBannerCache)
+		FilteredCrewBannerCount = 0
+	end
+	FilteredCrewBannerCache[cacheKey] = filtered
+	FilteredCrewBannerCount += 1
+	return filtered
+end
+
+local function writeShipBannerUI(shipEntry, safeCrewName, safeCrewTag, emblemCol)
 	if not shipEntry or not shipEntry.Model or not shipEntry.Model.Parent then
 		return
 	end
-	local crewName = (profile and type(profile.CrewName) == "string" and profile.CrewName ~= "") and profile.CrewName or ""
-	local crewTag = (profile and type(profile.CrewTag) == "string" and profile.CrewTag ~= "") and profile.CrewTag or ""
-	local emblemCol = parseCrewColor3(profile and profile.CrewColor, shipEntry.Spec.Accent)
-
-	shipEntry.Model:SetAttribute("CrewName", crewName)
-	shipEntry.Model:SetAttribute("CrewTag", crewTag)
+	shipEntry.Model:SetAttribute("CrewName", safeCrewName)
+	shipEntry.Model:SetAttribute("CrewTag", safeCrewTag)
 	shipEntry.Model:SetAttribute("CrewEmblemColor", emblemCol)
 
 	if shipEntry.BannerLabel and shipEntry.BannerLabel.Parent then
 		local ownerStr = shipEntry.Owner and shipEntry.Owner.Name or "Skyborn"
-		if crewName ~= "" then
-			local prefix = crewTag ~= "" and ("[" .. crewTag .. "] ") or ""
-			shipEntry.BannerLabel.Text = prefix .. crewName .. " • " .. shipEntry.Spec.DisplayName
+		if safeCrewName ~= "" then
+			local prefix = safeCrewTag ~= "" and ("[" .. safeCrewTag .. "] ") or ""
+			shipEntry.BannerLabel.Text = prefix .. safeCrewName .. " • " .. shipEntry.Spec.DisplayName
 		else
 			shipEntry.BannerLabel.Text = shipEntry.Spec.DisplayName .. " • [" .. ownerStr .. "]"
 		end
@@ -1342,6 +1537,48 @@ local function applyCrewBannerToShip(shipEntry, profile)
 	end
 end
 
+local function applyCrewBannerToShip(shipEntry, profile)
+	if not shipEntry or not shipEntry.Model or not shipEntry.Model.Parent then
+		return
+	end
+	local ownerPlr = shipEntry.Owner
+	local attrName = ownerPlr and ownerPlr:GetAttribute("FilteredCrewName")
+	local attrTag = ownerPlr and ownerPlr:GetAttribute("FilteredCrewTag")
+	local rawName = sanitizeRawCrewText((type(attrName) == "string" and attrName ~= "" and attrName) or (profile and profile.CrewName) or "", 28)
+	local rawTag = sanitizeRawCrewText((type(attrTag) == "string" and attrTag ~= "" and attrTag) or (profile and profile.CrewTag) or "", 6)
+	local emblemCol = parseCrewColor3(profile and profile.CrewColor, shipEntry.Spec.Accent)
+
+	shipEntry._bannerToken = (shipEntry._bannerToken or 0) + 1
+	local token = shipEntry._bannerToken
+
+	if type(attrName) == "string" and attrName ~= "" then
+		writeShipBannerUI(shipEntry, rawName, rawTag, emblemCol)
+		return
+	end
+	if rawName == "" and rawTag == "" then
+		writeShipBannerUI(shipEntry, "", "", emblemCol)
+		return
+	end
+
+	local uid = (ownerPlr and ownerPlr.UserId and ownerPlr.UserId > 0) and ownerPlr.UserId or 1
+	local cachedName = rawName ~= "" and FilteredCrewBannerCache[tostring(uid) .. ":" .. rawName] or ""
+	local cachedTag = rawTag ~= "" and FilteredCrewBannerCache[tostring(uid) .. ":" .. rawTag] or ""
+	if (rawName == "" or cachedName ~= nil) and (rawTag == "" or cachedTag ~= nil) then
+		writeShipBannerUI(shipEntry, cachedName or "", cachedTag or "", emblemCol)
+		return
+	end
+
+	-- Display safe owner fallback until async TextService filter resolves
+	writeShipBannerUI(shipEntry, "", "", emblemCol)
+	task.spawn(function()
+		local safeName = rawName ~= "" and filterCrewStringForBroadcast(rawName, ownerPlr) or ""
+		local safeTag = rawTag ~= "" and filterCrewStringForBroadcast(rawTag, ownerPlr) or ""
+		if shipEntry._bannerToken == token and shipEntry.Model and shipEntry.Model.Parent then
+			writeShipBannerUI(shipEntry, safeName, safeTag, emblemCol)
+		end
+	end)
+end
+
 function WorldEvents.RefreshPlayerShipBanner(p)
 	local entry = ActiveWarships[p]
 	local prof = D.Get(p)
@@ -1350,7 +1587,7 @@ function WorldEvents.RefreshPlayerShipBanner(p)
 	end
 end
 
-local function fireBroadsideCannon(p, shipEntry, side)
+local function fireBroadsideCannon(p, shipEntry, side, aimPos, aimDir)
 	if not shipEntry or not shipEntry.Model or not shipEntry.Model.Parent or not shipEntry.Hull then
 		return
 	end
@@ -1381,6 +1618,19 @@ local function fireBroadsideCannon(p, shipEntry, side)
 	for _, sgn in ipairs(sidesToFire) do
 		local muzzleCF = hullCF * CFrame.new(sgn * (shipEntry.Spec.HullSize.X * 0.55), 2.4, -2.0)
 		local dir = (hullCF.RightVector * sgn + hullCF.LookVector * 0.18 - Vector3.new(0, 0.04, 0)).Unit
+		if side ~= "Port" and side ~= "Starboard" then
+			if typeof(aimPos) == "Vector3" and (aimPos - muzzleCF.Position).Magnitude > 4 then
+				local cand = (aimPos - muzzleCF.Position).Unit
+				if cand:Dot(hullCF.RightVector * sgn) >= -0.35 then
+					dir = cand
+				end
+			elseif typeof(aimDir) == "Vector3" and aimDir.Magnitude > 0.05 then
+				local cand = aimDir.Unit
+				if cand:Dot(hullCF.RightVector * sgn) >= -0.35 then
+					dir = cand
+				end
+			end
+		end
 		local maxRange = 135
 		local hitEnemy = nil
 		local impactPos = muzzleCF.Position + dir * maxRange
@@ -1490,25 +1740,27 @@ function WorldEvents.SpawnWarship(p, requestedShipId, customSpawnPos, autoBoard)
 		r, h = root(plr)
 	end
 
-	local meshId = normalizeShipId(requestedShipId or (prof and prof.ActiveShip))
-	if not requestedShipId and plr and not (prof and prof.ActiveShip and SHIP_SPECS[prof.ActiveShip]) then
-		local realm = tostring(plr:GetAttribute("CurrentRealm") or "GoldenSky")
-		if realm == "FrozenCyber" then
-			meshId = "CyberEnforcerShip"
-		elseif realm == "ShadowRealm" then
-			meshId = "LeviathanHunterShip"
+	local shipId = normalizeShipId(requestedShipId or (prof and prof.ActiveShip) or "SkySloop")
+	if prof then
+		-- Khong cap quyen so huu o day; quyen so huu chi den tu mua o Shipwright hoac phan thuong.
+		prof.UnlockedShips = type(prof.UnlockedShips) == "table" and prof.UnlockedShips or { SkySloop = true }
+		prof.UnlockedShips.SkySloop = true
+		if not playerOwnsShip(prof, shipId) and not (plr and DevGate.IsAllowed(plr)) then
+			if requestedShipId ~= nil then
+				if G and G.Notify then
+					G.Notify(plr, "Bạn chưa sở hữu chiến hạm này! Hãy mua tại Thợ Đóng Tàu (Sky Shipwright).")
+				end
+				return nil, nil
+			end
+			shipId = "SkySloop"
+			prof.ActiveShip = "SkySloop"
+		elseif requestedShipId ~= nil then
+			prof.ActiveShip = shipId
 		end
 	end
 
-	local spec = SHIP_SPECS[meshId] or SHIP_SPECS.CelestialAetherGalleon
-	if prof then
-		-- Khong cap quyen so huu o day (truoc day goi SpawnShip voi shipId bat ky la co ngay chien ham 500k Gold).
-		-- Quyen so huu chi den tu mua o Shipwright (VendorAndArsenalService) hoac phan thuong.
-		prof.UnlockedShips = prof.UnlockedShips or { SkySloop = true }
-		if requestedShipId and playerOwnsShip(prof, requestedShipId) then
-			prof.ActiveShip = tostring(requestedShipId)
-		end
-	end
+	local spec = SHIP_SPECS[shipId] or SHIP_SPECS.SkySloop
+	local maxHP = tonumber(spec.MaxHP) or 1200
 
 	local spawnPos = customSpawnPos
 	local spawnLook = Vector3.new(0, 0, 1)
@@ -1544,7 +1796,7 @@ function WorldEvents.SpawnWarship(p, requestedShipId, customSpawnPos, autoBoard)
 	end
 
 	local shipsFolder = getActiveShipsFolder()
-	local modelName = plr and ("Warship_" .. plr.Name) or ("Warship_" .. meshId)
+	local modelName = plr and ("Warship_" .. plr.Name) or ("Warship_" .. shipId)
 	local old = shipsFolder:FindFirstChild(modelName)
 	if old then
 		old:Destroy()
@@ -1553,10 +1805,12 @@ function WorldEvents.SpawnWarship(p, requestedShipId, customSpawnPos, autoBoard)
 	local ship = Instance.new("Model")
 	ship.Name = modelName
 	ship:SetAttribute("ShipMeshId", spec.MeshId)
-	ship:SetAttribute("ShipId", spec.MeshId)
+	ship:SetAttribute("ShipId", spec.ShipId or shipId)
 	ship:SetAttribute("VisualAsset", spec.MeshId)
 	ship:SetAttribute("NPCId", spec.MeshId)
-	ship:SetAttribute("ShowcaseScale", 4.2)
+	ship:SetAttribute("ShowcaseScale", spec.Scale or 4.2)
+	ship:SetAttribute("MaxHP", maxHP)
+	ship:SetAttribute("HP", maxHP)
 	ship:SetAttribute("NPCFloorY", spawnPos.Y - 1.2)
 	ship:SetAttribute("TowingLeviathanHeart", false)
 	if plr then
@@ -1688,8 +1942,10 @@ function WorldEvents.SpawnWarship(p, requestedShipId, customSpawnPos, autoBoard)
 
 	local entry = {
 		Owner = plr,
-		ShipId = spec.MeshId,
+		ShipId = spec.ShipId or shipId,
 		Spec = spec,
+		MaxHP = maxHP,
+		HP = maxHP,
 		Model = ship,
 		Hull = hull,
 		Helm = helm,
@@ -1792,13 +2048,18 @@ local function buildHarborShipwrights()
 		local body = W.Part(m, "Body", Vector3.new(2.2, 4.6, 1.8), npcPos, Color3.fromRGB(95, 228, 255), Enum.Material.Metal)
 		body.Transparency = 1
 		body.CanCollide = false
+		local faceTarget = port.PlazaPos or Vector3.new(npcPos.X, npcPos.Y, npcPos.Z - 12)
+		if flatDist(npcPos, faceTarget) > 0.5 then
+			body.CFrame = CFrame.lookAt(npcPos, Vector3.new(faceTarget.X, npcPos.Y, faceTarget.Z))
+		end
 		m.PrimaryPart = body
 		m:SetAttribute("NPCId", "SkyShipwrightNPC")
 		m:SetAttribute("VisualAsset", "SkyShipwrightNPC")
 		m:SetAttribute("NPCFloorY", pfy)
 
-		local pedestal = W.Part(m, "ShipSpawnerPedestal", Vector3.new(4.2, 1.1, 4.2), Vector3.new(npcPos.X - 3.6, pfy + 0.55, npcPos.Z), Color3.fromRGB(238, 192, 78), Enum.Material.Metal)
-		local holoOrb = W.Part(m, "HoloShipCore", Vector3.new(1.8, 1.8, 1.8), Vector3.new(npcPos.X - 3.6, pfy + 2.2, npcPos.Z), Color3.fromRGB(88, 238, 255), Enum.Material.Neon)
+		local pedOffset = body.CFrame.RightVector * -3.6
+		local pedestal = W.Part(m, "ShipSpawnerPedestal", Vector3.new(4.2, 1.1, 4.2), Vector3.new(npcPos.X + pedOffset.X, pfy + 0.55, npcPos.Z + pedOffset.Z), Color3.fromRGB(238, 192, 78), Enum.Material.Metal)
+		local holoOrb = W.Part(m, "HoloShipCore", Vector3.new(1.8, 1.8, 1.8), Vector3.new(npcPos.X + pedOffset.X, pfy + 2.2, npcPos.Z + pedOffset.Z), Color3.fromRGB(88, 238, 255), Enum.Material.Neon)
 		holoOrb.Shape = Enum.PartType.Ball
 		holoOrb.Transparency = 0.42
 		holoOrb.CanCollide = false
@@ -1839,8 +2100,74 @@ local function buildHarborShipwrights()
 	end
 end
 
+local function findPilotedShipEntry(p)
+	if not p then
+		return nil
+	end
+	local entry = ActiveWarships[p] or (G and G.Runtime and G.Runtime[p] and G.Runtime[p].ActiveShipEntry)
+	local _, h = root(p)
+	if h and h.SeatPart then
+		for _, cand in pairs(ActiveWarships) do
+			if cand.Helm == h.SeatPart then
+				return cand
+			end
+		end
+	end
+	return entry
+end
+
+local function setPlayerShipVerticalInput(p, rawDir)
+	local dir = math.clamp(tonumber(rawDir) or 0, -1, 1)
+	if p and p.Parent == Players then
+		p:SetAttribute("ShipVerticalInput", dir)
+	end
+	local entry = findPilotedShipEntry(p)
+	if not entry or not entry.Model or not entry.Model.Parent then
+		return false
+	end
+	entry.VerticalInput = dir
+	entry.VerticalInputExpiresAt = (dir ~= 0) and (os.clock() + 0.85) or 0
+	if entry.Helm and entry.Helm.Parent then
+		entry.Helm:SetAttribute("ShipVerticalInput", dir)
+		entry.Helm:SetAttribute("VerticalInput", dir)
+	end
+	entry.Model:SetAttribute("ShipVerticalInput", dir)
+	return true
+end
+
+local function resolveShipVerticalInput(entry, helm, ship, now)
+	if entry.VerticalInput ~= nil then
+		if entry.VerticalInput == 0 then
+			-- allow fallback to attributes if someone explicitly set ShipVerticalInput attribute
+		elseif now <= (entry.VerticalInputExpiresAt or 0) then
+			return math.clamp(tonumber(entry.VerticalInput) or 0, -1, 1)
+		else
+			entry.VerticalInput = 0
+		end
+	end
+	local attrVal = tonumber(helm:GetAttribute("ShipVerticalInput"))
+		or tonumber(ship:GetAttribute("ShipVerticalInput"))
+		or tonumber(helm:GetAttribute("VerticalInput"))
+	if attrVal and math.abs(attrVal) > 0.01 then
+		return math.clamp(attrVal, -1, 1)
+	end
+	local occ = helm.Occupant
+	local pilot = occ and occ.Parent and Players:GetPlayerFromCharacter(occ.Parent) or nil
+	if pilot then
+		local pVal = tonumber(pilot:GetAttribute("ShipVerticalInput"))
+		if pVal and math.abs(pVal) > 0.01 then
+			return math.clamp(pVal, -1, 1)
+		end
+	end
+	return 0
+end
+
 local function tickActiveWarships(dt)
 	local now = os.clock()
+	local shipsFolder = getActiveShipsFolder()
+	local tempFX = workspace:FindFirstChild("TempFX")
+	local enemiesFolder = workspace:FindFirstChild("Enemies")
+
 	for owner, entry in pairs(ActiveWarships) do
 		local ship = entry.Model
 		local hull = entry.Hull
@@ -1851,17 +2178,32 @@ local function tickActiveWarships(dt)
 			entry.BobTime = (entry.BobTime or 0) + dt * 1.6
 			local throttle = math.clamp(helm.ThrottleFloat or 0, -1, 1)
 			local steer = math.clamp(helm.SteerFloat or 0, -1, 1)
-			local targetSpd = throttle * (entry.Spec.Speed or 65) * (throttle < 0 and 0.55 or 1.0)
-			local accel = (math.abs(targetSpd) > math.abs(entry.CurrentSpeed)) and 42 or 54
+			local maxSpd = tonumber(entry.Spec.Speed) or 95
+			if helm.MaxSpeed ~= maxSpd then
+				helm.MaxSpeed = maxSpd
+			end
+			local targetSpd = throttle * maxSpd * (throttle < 0 and 0.55 or 1.0)
+			local accel = (math.abs(targetSpd) > math.abs(entry.CurrentSpeed)) and 72 or 92
 			entry.CurrentSpeed += math.clamp(targetSpd - entry.CurrentSpeed, -accel * dt, accel * dt)
+
+			-- 3D Altitude Flight Control (Y = 38 .. 340 for Realms 1-8!)
+			local vertInput = helm.Occupant and resolveShipVerticalInput(entry, helm, ship, now) or 0
+			local maxAscend = tonumber(entry.Spec.AscendSpeed) or 40
+			local targetVertSpd = vertInput * maxAscend
+			entry.VerticalSpeed = (entry.VerticalSpeed or 0) + math.clamp(targetVertSpd - (entry.VerticalSpeed or 0), -115 * dt, 115 * dt)
+			entry.BaseY = math.clamp((entry.BaseY or hull.Position.Y) + entry.VerticalSpeed * dt, 38, 340)
+			if (entry.BaseY <= 38.01 and entry.VerticalSpeed < 0) or (entry.BaseY >= 339.99 and entry.VerticalSpeed > 0) then
+				entry.VerticalSpeed = 0
+			end
 
 			if math.abs(entry.CurrentSpeed) > 0.25 or math.abs(steer) > 0.05 then
 				local turnFactor = (entry.CurrentSpeed >= -1) and 1 or -1
 				entry.Yaw = (entry.Yaw or 0) - steer * (entry.Spec.TurnSpeed or 1.4) * dt * turnFactor
 			end
-			local targetBank = -steer * math.clamp(math.abs(entry.CurrentSpeed) / 60, 0.25, 1.0) * 0.12
+			local targetBank = -steer * math.clamp(math.abs(entry.CurrentSpeed) / math.max(60, maxSpd * 0.6), 0.25, 1.0) * 0.12
 			entry.BankAngle = entry.BankAngle + (targetBank - entry.BankAngle) * math.min(1, dt * 6)
-			local pitchAngle = math.clamp(entry.CurrentSpeed / 95, -0.05, 0.06)
+			local climbPitch = math.clamp((entry.VerticalSpeed or 0) / math.max(24, maxAscend), -1, 1) * 0.16
+			local pitchAngle = math.clamp(entry.CurrentSpeed / math.max(95, maxSpd), -0.05, 0.05) + climbPitch
 
 			local rotCF = CFrame.Angles(0, entry.Yaw, 0) * CFrame.Angles(pitchAngle, 0, entry.BankAngle)
 			local fwd = Vector3.new(rotCF.LookVector.X, 0, rotCF.LookVector.Z)
@@ -1870,25 +2212,97 @@ local function tickActiveWarships(dt)
 			else
 				fwd = Vector3.new(0, 0, -1)
 			end
+			local right = Vector3.new(-fwd.Z, 0, fwd.X)
 
-			local nextPos = hull.Position + fwd * (entry.CurrentSpeed * dt)
-			local bobY = (entry.BaseY or 35) + math.sin(entry.BobTime) * 0.35
-			nextPos = Vector3.new(nextPos.X, bobY, nextPos.Z)
+			local moveStep = fwd * (entry.CurrentSpeed * dt)
+			local bobY = (entry.BaseY or 44) + math.sin(entry.BobTime) * 0.35
+			local nextPos = Vector3.new(hull.Position.X + moveStep.X, bobY, hull.Position.Z + moveStep.Z)
 
-			-- Soft collision avoidance against island cliffs / Solid3DObstacles
-			if W and W.IsBlockedByObstacle and math.abs(entry.CurrentSpeed) > 0.5 then
-				local probe = nextPos + fwd * (entry.Spec.HullSize.Z * 0.52)
-				if W.IsBlockedByObstacle(probe.X, probe.Y - 4, probe.Z, 5.0) then
-					entry.CurrentSpeed = -entry.CurrentSpeed * 0.25
-					nextPos = Vector3.new(hull.Position.X, bobY, hull.Position.Z)
+			-- Build RaycastParams excluding ships, VFX, enemies, and riders
+			local rayParams = RaycastParams.new()
+			rayParams.FilterType = Enum.RaycastFilterType.Exclude
+			local excludeList = { ship, shipsFolder }
+			if tempFX then
+				table.insert(excludeList, tempFX)
+			end
+			if enemiesFolder then
+				table.insert(excludeList, enemiesFolder)
+			end
+			local seats = { helm, entry.CrewSeats[1], entry.CrewSeats[2] }
+			for _, st in ipairs(seats) do
+				local occ = st and st.Occupant
+				if occ and occ.Parent then
+					table.insert(excludeList, occ.Parent)
+				end
+			end
+			rayParams.FilterDescendantsInstances = excludeList
+
+			-- 1) Forward + diagonal + lateral workspace:Raycast cliff/rock collision checks (bounce/slide instead of phasing!)
+			local halfLen = entry.Spec.HullSize.Z * 0.52 + 3.0
+			local halfWid = entry.Spec.HullSize.X * 0.52 + 2.2
+			local travelSign = (entry.CurrentSpeed >= 0) and 1 or -1
+			local bowDir = fwd * travelSign
+			local originCenter = Vector3.new(hull.Position.X, bobY + 0.6, hull.Position.Z)
+
+			if math.abs(entry.CurrentSpeed) > 0.35 then
+				local reach = halfLen + math.abs(entry.CurrentSpeed) * dt + 2.0
+				local probes = {
+					{ Origin = originCenter, Vec = bowDir * reach },
+					{ Origin = originCenter - right * (halfWid * 0.72), Vec = (bowDir * 0.92 - right * 0.38).Unit * (reach * 0.88) },
+					{ Origin = originCenter + right * (halfWid * 0.72), Vec = (bowDir * 0.92 + right * 0.38).Unit * (reach * 0.88) },
+					{ Origin = originCenter, Vec = right * (halfWid + 2.2) },
+					{ Origin = originCenter, Vec = -right * (halfWid + 2.2) },
+				}
+				local hitWallNormal = nil
+				for _, prb in ipairs(probes) do
+					local hit = workspace:Raycast(prb.Origin, prb.Vec, rayParams)
+					if hit and hit.Instance and hit.Instance.CanCollide and hit.Normal.Y < 0.72 then
+						local nFlat = Vector3.new(hit.Normal.X, 0, hit.Normal.Z)
+						if nFlat.Magnitude > 0.05 then
+							hitWallNormal = nFlat.Unit
+							break
+						end
+					end
+				end
+				if hitWallNormal then
+					local into = moveStep:Dot(hitWallNormal)
+					if into < 0 then
+						local slide = moveStep - hitWallNormal * into
+						nextPos = Vector3.new(hull.Position.X + slide.X + hitWallNormal.X * 1.35, bobY, hull.Position.Z + slide.Z + hitWallNormal.Z * 1.35)
+						if bowDir:Dot(hitWallNormal) < -0.78 then
+							entry.CurrentSpeed = -entry.CurrentSpeed * 0.25
+						else
+							entry.CurrentSpeed = entry.CurrentSpeed * 0.55
+						end
+					end
+				elseif W and W.IsBlockedByObstacle then
+					local obsProbe = nextPos + bowDir * (entry.Spec.HullSize.Z * 0.52)
+					if W.IsBlockedByObstacle(obsProbe.X, obsProbe.Y - 2, obsProbe.Z, 5.0) then
+						entry.CurrentSpeed = -entry.CurrentSpeed * 0.25
+						nextPos = Vector3.new(hull.Position.X - bowDir.X * 1.2, bobY, hull.Position.Z - bowDir.Z * 1.2)
+					end
+				end
+			end
+
+			-- 2) Vertical underside ground raycast so descending ships skim cleanly above island decks instead of clipping inside!
+			local groundHit = workspace:Raycast(Vector3.new(nextPos.X, bobY + 4.5, nextPos.Z), Vector3.new(0, -8.0, 0), rayParams)
+			if groundHit and groundHit.Instance and groundHit.Instance.CanCollide and groundHit.Normal.Y >= 0.55 then
+				local minDeckY = math.clamp(groundHit.Position.Y + 3.2, 38, 340)
+				if bobY < minDeckY then
+					bobY = minDeckY
+					entry.BaseY = math.max(entry.BaseY or minDeckY, minDeckY)
+					if (entry.VerticalSpeed or 0) < 0 then
+						entry.VerticalSpeed = 0
+					end
+					nextPos = Vector3.new(nextPos.X, bobY, nextPos.Z)
 				end
 			end
 
 			ship:PivotTo(CFrame.new(nextPos) * rotCF)
 			ship:SetAttribute("NPCFloorY", bobY - 1.2)
+			ship:SetAttribute("AltitudeY", math.floor((entry.BaseY or bobY) + 0.5))
 
 			-- Refresh anti-cheat JumpPadUntil + SeatedInShip for pilot & crew!
-			local seats = { helm, entry.CrewSeats[1], entry.CrewSeats[2] }
 			for _, st in ipairs(seats) do
 				local occ = st and st.Occupant
 				if occ and occ.Parent then
@@ -1915,471 +2329,25 @@ local function tickActiveWarships(dt)
 			local _, h = root(p)
 			if not h or not h.SeatPart then
 				rt.SeatedInShip = false
+				p:SetAttribute("ShipVerticalInput", 0)
 			end
 		end
 	end
 end
 
 -- ============================================================================
--- 9. #21, #75, #66 - CLOUD-SEA MONSTERS, DANGER LEVEL 1-6 & LEVIATHAN HEART TOW
+-- 9 & 10. CLOUD-SEA MONSTERS, LEVIATHAN HEART & MIRAGE ISLAND (DELEGATED)
 -- ============================================================================
-local function spawnLeviathanHeartRelic(deathPos, killerPlayer)
-	local worldObjects = getWorldObjects()
-	local heartPos = Vector3.new(deathPos.X, math.max(30, deathPos.Y + 1.5), deathPos.Z)
-
-	local hm = Instance.new("Model")
-	hm.Name = "LeviathanHeart"
-	hm.Parent = worldObjects
-
-	local core = W.Part(hm, "HeartCore", Vector3.new(4.6, 5.2, 4.6), heartPos, Color3.fromRGB(228, 48, 108), Enum.Material.Neon)
-	core.Shape = Enum.PartType.Ball
-	core.Transparency = 0.35
-	core.CanCollide = false
-	hm.PrimaryPart = core
-
-	local cage = W.Part(hm, "AbyssalCage", Vector3.new(5.8, 1.2, 5.8), heartPos, Color3.fromRGB(82, 232, 255), Enum.Material.Metal)
-	cage.Shape = Enum.PartType.Cylinder
-	cage.CFrame = CFrame.new(heartPos) * CFrame.Angles(0, 0, math.pi / 2)
-	cage.CanCollide = false
-
-	local heartAtt = Instance.new("Attachment")
-	heartAtt.Name = "HeartHarpoonAttachment"
-	heartAtt.Parent = core
-
-	local bill = Instance.new("BillboardGui")
-	bill.Size = UDim2.fromScale(4.8, 0.92)
-	bill.StudsOffset = Vector3.new(0, 4.8, 0)
-	bill.AlwaysOnTop = true
-	bill.MaxDistance = 160
-	bill.Parent = core
-	local tl = Instance.new("TextLabel")
-	tl.Size = UDim2.fromScale(1, 1)
-	tl.BackgroundTransparency = 1
-	tl.Font = Enum.Font.GothamBlack
-	tl.TextScaled = true
-	tl.TextColor3 = Color3.fromRGB(255, 110, 155)
-	tl.TextStrokeTransparency = 0.15
-	tl.Text = "TIM THỦY XÀ VỰC THẲM [E]"
-	tl.Parent = bill
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Gắn Dây Cáp Kéo Tim Thủy Xà"
-	prompt.ObjectText = "Abyss Serpent Heart • Thủy Xà Vực Thẳm"
-	prompt.MaxActivationDistance = 30
-	prompt.HoldDuration = 0.5
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = core
-
-	local heartEntry = {
-		Model = hm,
-		Core = core,
-		Att = heartAtt,
-		Prompt = prompt,
-		Label = tl,
-		TowedByPlayer = nil,
-		TowedByShip = nil,
-		Beam = nil,
-		ExpiresAt = os.clock() + 600,
-	}
-	table.insert(ActiveLeviathanHearts, heartEntry)
-
-	prompt.Triggered:Connect(function(plr)
-		if heartEntry.TowedByShip and heartEntry.TowedByShip.Model and heartEntry.TowedByShip.Model.Parent then
-			G.Notify(plr, "Tim Thủy Xà đã được móc cáp vào chiến hạm!")
-			return
-		end
-		local shipEntry = ActiveWarships[plr]
-		local pr = root(plr)
-		if not shipEntry or not shipEntry.Model or not shipEntry.Model.Parent or (pr and dist(shipEntry.Hull.Position, core.Position) > 160) then
-			local spawnAt = core.Position + Vector3.new(0, 0, 26)
-			local _, newEntry = WorldEvents.SpawnWarship(plr, "LeviathanHunterShip", spawnAt, false)
-			shipEntry = newEntry
-		end
-		if not shipEntry or not shipEntry.SternAtt then
-			return
-		end
-
-		if heartEntry.Beam and heartEntry.Beam.Parent then
-			heartEntry.Beam:Destroy()
-		end
-		local beam = Instance.new("Beam")
-		beam.Name = "LeviathanHarpoonCable"
-		beam.Attachment0 = shipEntry.SternAtt
-		beam.Attachment1 = heartAtt
-		beam.Width0 = 0.65
-		beam.Width1 = 0.65
-		beam.FaceCamera = true
-		beam.LightEmission = 0.6
-		beam.Color = ColorSequence.new(Color3.fromRGB(88, 238, 255), Color3.fromRGB(255, 78, 138))
-		beam.Transparency = NumberSequence.new(0.35)
-		beam.Parent = hm
-
-		heartEntry.TowedByPlayer = plr
-		heartEntry.TowedByShip = shipEntry
-		heartEntry.Beam = beam
-		prompt.Enabled = false
-		tl.Text = "ĐANG KÉO VỀ CẢNG SKY SHIPWRIGHT..."
-
-		shipEntry.Model:SetAttribute("TowingLeviathanHeart", true)
-		plr:SetAttribute("TowingLeviathanHeart", true)
-		G.Notify(plr, "ĐÃ MÓC CÁP HARPOON! Hãy lái Chiến Hạm kéo Tim Thủy Xà về bất kỳ Cảng Sky Shipwright / Sky Hub Port (trong 55m) để nhận thưởng Thủy Xà Vực Thẳm!")
-	end)
-
-	if killerPlayer then
-		G.Notify(killerPlayer, "TIM THỦY XÀ VỰC THẲM đã trồi lên biển mây! Hãy bấm [E] để gắn cáp Harpoon vào Chiến Hạm và kéo về Cảng!")
-	end
-end
-
-local function detachLeviathanHeartTow(he)
-	if not he then
-		return
-	end
-	if he.TowedByShip and he.TowedByShip.Model and he.TowedByShip.Model.Parent then
-		he.TowedByShip.Model:SetAttribute("TowingLeviathanHeart", false)
-	end
-	if he.TowedByPlayer and he.TowedByPlayer.Parent == Players then
-		he.TowedByPlayer:SetAttribute("TowingLeviathanHeart", false)
-	end
-	if he.Beam and he.Beam.Parent then
-		he.Beam:Destroy()
-	end
-	he.Beam = nil
-	he.TowedByShip = nil
-	he.TowedByPlayer = nil
-	if he.Prompt and he.Prompt.Parent then
-		he.Prompt.Enabled = true
-	end
-	if he.Label and he.Label.Parent then
-		he.Label.Text = "TIM THỦY XÀ VỰC THẲM [E]"
-	end
-end
-
-local function tickLeviathanHearts(dt)
-	local now = os.clock()
-	for i = #ActiveLeviathanHearts, 1, -1 do
-		local he = ActiveLeviathanHearts[i]
-		if not he.Model or not he.Model.Parent or now >= he.ExpiresAt then
-			detachLeviathanHeartTow(he)
-			if he.Model and he.Model.Parent then
-				he.Model:Destroy()
-			end
-			table.remove(ActiveLeviathanHearts, i)
-		elseif he.TowedByShip and he.TowedByShip.Hull and he.TowedByShip.Hull.Parent and (not he.TowedByPlayer or he.TowedByPlayer.Parent == Players) then
-			local hullCF = he.TowedByShip.Hull.CFrame
-			local targetPos = (hullCF * CFrame.new(0, 1.2, he.TowedByShip.Spec.HullSize.Z * 0.5 + 18)).Position
-			local nextPos = he.Core.Position:Lerp(targetPos, math.min(1, dt * 6.5))
-			he.Model:PivotTo(CFrame.new(nextPos))
-
-			-- Check port delivery within 55 studs of any SkyShipwright / Sky Hub Port!
-			for _, port in ipairs(HARBOR_PORTS) do
-				if dist(he.TowedByShip.Hull.Position, port.PedestalPos) <= 55 or dist(he.TowedByShip.Hull.Position, port.WaterPos) <= 42 then
-					local owner = he.TowedByPlayer or he.TowedByShip.Owner
-					detachLeviathanHeartTow(he)
-					if owner and owner.Parent == Players then
-						local prof = D.Get(owner)
-						if prof then
-							prof.LeviathanHearts = (prof.LeviathanHearts or 0) + 1
-							prof.CoreShards = (prof.CoreShards or 0) + 500
-							prof.Inventory = prof.Inventory or {}
-							prof.Inventory.CoreEssence = (prof.Inventory.CoreEssence or 0) + 3
-							prof.Inventory.leviathan_shield = math.max(1, prof.Inventory.leviathan_shield or 0)
-							prof.UnlockedTitles = prof.UnlockedTitles or {}
-							prof.UnlockedTitles.leviathan_slayer = true
-							prof.UnlockedTitles.sea_king_slayer = true
-							prof.UnlockedShips = prof.UnlockedShips or {}
-							prof.UnlockedShips.LeviathanHunterShip = true
-							G.Reward(owner, 95000, 35000, 0)
-							G.Notify(owner, "GIAO TIM THỦY XÀ THÀNH CÔNG: +1 Tim Thủy Xà, +500 Core Shards, +35,000 Gold, Mở khóa Khiên Thủy Xà & Danh hiệu [Thợ Săn Thủy Xà Vực Thẳm]!")
-							G.Sync(owner)
-							task.spawn(D.Save, owner, false)
-						end
-						broadcastWorldBanner(
-							"TIM THỦY XÀ VỰC THẲM CẬP CẢNG!",
-							owner.Name .. " đã kéo thành công Tim Thủy Xà Vực Thẳm về " .. port.Name .. "!",
-							"Mythic"
-						)
-					end
-					he.Model:Destroy()
-					table.remove(ActiveLeviathanHearts, i)
-					break
-				end
-			end
-		elseif he.TowedByShip or he.TowedByPlayer then
-			detachLeviathanHeartTow(he)
-		end
-	end
-end
-
 function WorldEvents.SpawnSeaMonsterEvent(p, monsterId, customPos)
-	local r = p and root(p) or nil
-	local mId = tostring(monsterId or "SkySeaBeast")
-	if mId ~= "AbyssalLeviathan" and mId ~= "SkySeaBeast" and mId ~= "TerrorSkyShark" then
-		mId = "SkySeaBeast"
-	end
-	local shipEntry = p and ActiveWarships[p] or nil
-	local anchorCF = (shipEntry and shipEntry.Hull and shipEntry.Hull.Parent) and shipEntry.Hull.CFrame or (r and r.CFrame or CFrame.new(-428, 44, 595))
-	local spawnPos = customPos or (anchorCF.Position + anchorCF.LookVector * 38 + Vector3.new(0, 2, 0))
-
-	local bossFlag = (mId == "AbyssalLeviathan" or mId == "SkySeaBeast")
-	local mob = G.SpawnEnemy(mId, spawnPos, bossFlag, true)
-	if mob and mob.Model then
-		mob.Model:SetAttribute("VisualAsset", mId)
-		mob.IsSeaEventMonster = true
-		mob.Home = spawnPos
-		mob.HomeFloorY = spawnPos.Y - 3
-		mob.Model:PivotTo(CFrame.lookAt(spawnPos, anchorCF.Position))
-		mob.Model:SetAttribute("EnemyFloorY", spawnPos.Y - 3)
-	end
-
-	if mId == "AbyssalLeviathan" then
-		broadcastWorldBanner(
-			"THỦY XÀ VỰC THẲM TRỒI LÊN!",
-			"Vùng Biển Mây Nguy Hiểm (Danger 6) rung chuyển — Thủy Xà Vực Thẳm Lv.2350 đã xuất hiện!",
-			"Leviathan"
-		)
-	elseif p then
-		G.Notify(p, "SỰ KIỆN BIỂN MÂY: [" .. (C.Enemies[mId] and C.Enemies[mId].Name or mId) .. "] đã trồi lên từ biển mây!")
-	end
-	return mob
+	return SpireAndLeviathan.SpawnSeaMonsterEvent(p, monsterId, customPos)
 end
 
-local function computePlayerDangerLevel(p, pos, rt)
-	-- GlacialWreckageDangerSea (14600, 46.9, -1992.7) & LeviathanAbyss (-12000, 46.9, -3560)
-	if flatDist(pos, Vector3.new(-12000, 46.9, -3560)) <= 850 then
-		return 6
-	elseif flatDist(pos, Vector3.new(14600, 46.9, -1992.7)) <= 850 then
-		return rt and rt.SeatedInShip and 5 or 4
-	end
-
-	local minSafeRatio = math.huge
-	local minHubDist = math.huge
-	for _, hub in ipairs(SAFE_HUB_CENTERS) do
-		local d = flatDist(pos, hub.Pos)
-		minHubDist = math.min(minHubDist, d)
-		minSafeRatio = math.min(minSafeRatio, d / hub.SafeRadius)
-	end
-
-	if minSafeRatio <= 1.0 then
-		return 1
-	end
-	local bonus = (rt and rt.SeatedInShip) and 1 or 0
-	if minHubDist > 3800 then
-		return 6
-	elseif minHubDist > 2600 then
-		return math.min(6, 5 + bonus)
-	elseif minHubDist > 1600 then
-		return math.min(6, 4 + bonus)
-	elseif minHubDist > 850 then
-		return math.min(6, 3 + bonus)
-	end
-	return math.min(6, 2 + bonus)
-end
-
-local function tickSeaDangerAndDynamicEncounters()
-	local now = os.clock()
-	for p, rt in pairs(G.Runtime) do
-		local r = root(p)
-		if r then
-			local danger = computePlayerDangerLevel(p, r.Position, rt)
-			if p:GetAttribute("SeaDangerLevel") ~= danger then
-				p:SetAttribute("SeaDangerLevel", danger)
-			end
-			if danger >= 2 and rt.SeatedInShip and now >= (rt.NextSeaEncounterCheck or 0) then
-				rt.NextSeaEncounterCheck = now + math.max(18, 44 - danger * 4)
-				local roll = math.random()
-				if danger >= 5 and roll < 0.22 and not ActiveMirageEvent then
-					WorldEvents.SpawnMirageIsland(p)
-				elseif danger >= 5 and roll < 0.55 then
-					WorldEvents.SpawnSeaMonsterEvent(p, "AbyssalLeviathan")
-				elseif danger >= 4 and roll < 0.65 then
-					WorldEvents.SpawnSeaMonsterEvent(p, "SkySeaBeast")
-				elseif danger >= 2 and roll < 0.70 then
-					WorldEvents.SpawnSeaMonsterEvent(p, "TerrorSkyShark")
-				end
-			end
-		end
-	end
-end
-
--- ============================================================================
--- 10. #63 - DYNAMIC 15-MINUTE MIRAGESKYISLAND EVENT (BLUE GEAR V4 + DEALER)
--- ============================================================================
 function WorldEvents.SpawnMirageIsland(nearPlayerOrPos)
-	local worldObjects = getWorldObjects()
-	if ActiveMirageEvent and ActiveMirageEvent.Model and ActiveMirageEvent.Model.Parent then
-		ActiveMirageEvent.Model:Destroy()
-	end
+	return SpireAndLeviathan.SpawnMirageIsland(nearPlayerOrPos)
+end
 
-	local center = Vector3.new(-12000, 50.5, -2100)
-	if typeof(nearPlayerOrPos) == "Vector3" then
-		center = nearPlayerOrPos
-	elseif typeof(nearPlayerOrPos) == "Instance" and nearPlayerOrPos:IsA("Player") then
-		local pr = root(nearPlayerOrPos)
-		if pr then
-			local look = Vector3.new(pr.CFrame.LookVector.X, 0, pr.CFrame.LookVector.Z)
-			look = look.Magnitude > 0.05 and look.Unit or Vector3.new(0, 0, -1)
-			center = Vector3.new(pr.Position.X, math.max(50.5, pr.Position.Y + 6), pr.Position.Z) + look * 95
-		end
-	end
-
-	local m = Instance.new("Model")
-	m.Name = "MirageSkyIsland_Event"
-	m.Parent = worldObjects
-
-	local deck = Instance.new("Part")
-	deck.Name = "MirageSanctuaryDeck"
-	deck.Shape = Enum.PartType.Cylinder
-	deck.Size = Vector3.new(3.6, 84, 84)
-	deck.CFrame = CFrame.new(center.X, center.Y - 1.8, center.Z) * CFrame.Angles(0, 0, math.pi / 2)
-	deck.Color = Color3.fromRGB(196, 234, 248)
-	deck.Material = Enum.Material.Marble
-	deck.Anchored, deck.CanCollide, deck.CanQuery, deck.CanTouch = true, true, true, false
-	deck.Parent = m
-	m.PrimaryPart = deck
-
-	local gsiCol = workspace:FindFirstChild("GrandSkyIslands_Collision")
-	if gsiCol then
-		local oldCol = gsiCol:FindFirstChild("MirageSanctuaryCollider")
-		if oldCol then oldCol:Destroy() end
-		local col = deck:Clone()
-		col.Name = "MirageSanctuaryCollider"
-		col.Transparency = 1
-		col.Parent = gsiCol
-		m.Destroying:Once(function()
-			if col and col.Parent then col:Destroy() end
-		end)
-	end
-
-	local rim = Instance.new("Part")
-	rim.Name = "MirageAuraRim"
-	rim.Shape = Enum.PartType.Cylinder
-	rim.Size = Vector3.new(0.8, 88, 88)
-	rim.CFrame = CFrame.new(center.X, center.Y - 0.3, center.Z) * CFrame.Angles(0, 0, math.pi / 2)
-	rim.Color = Color3.fromRGB(82, 232, 255)
-	rim.Material = Enum.Material.Neon
-	rim.Transparency = 0.42
-	rim.Anchored, rim.CanCollide, rim.CanQuery, rim.CanTouch = true, false, false, false
-	rim.Parent = m
-
-	-- Collectible 3D Blue Resonance Gear (CoreGears +1 / RaceV4Unlocked = true)
-	local gearPos = center + Vector3.new(-10, 3.2, -8)
-	local gearPedestal = W.Part(m, "BlueGearPedestal", Vector3.new(3.8, 2.2, 3.8), center + Vector3.new(-10, 1.1, -8), Color3.fromRGB(36, 48, 72), Enum.Material.Slate)
-	local gear = W.Part(m, "BlueResonanceGear", Vector3.new(0.8, 3.6, 3.6), gearPos, Color3.fromRGB(64, 224, 255), Enum.Material.Neon)
-	gear.Shape = Enum.PartType.Cylinder
-	gear.Transparency = 0.35
-	gear.CanCollide = false
-
-	local gBill = Instance.new("BillboardGui")
-	gBill.Size = UDim2.fromScale(4.4, 0.82)
-	gBill.StudsOffset = Vector3.new(0, 3.6, 0)
-	gBill.AlwaysOnTop = true
-	gBill.MaxDistance = 120
-	gBill.Parent = gear
-	local gLbl = Instance.new("TextLabel")
-	gLbl.Size = UDim2.fromScale(1, 1)
-	gLbl.BackgroundTransparency = 1
-	gLbl.Font = Enum.Font.GothamBlack
-	gLbl.TextScaled = true
-	gLbl.TextColor3 = Color3.fromRGB(92, 240, 255)
-	gLbl.TextStrokeTransparency = 0.18
-	gLbl.Text = "BLUE RESONANCE GEAR [THĂNG HOA]"
-	gLbl.Parent = gBill
-
-	local claimedBy = {}
-	local gPrompt = Instance.new("ProximityPrompt")
-	gPrompt.ActionText = "Thu Thập Blue Resonance Gear [Thăng Hoa]"
-	gPrompt.ObjectText = "Cổ Vật Thăng Hoa • Đảo Hư Quang"
-	gPrompt.MaxActivationDistance = 16
-	gPrompt.HoldDuration = 0.4
-	gPrompt.RequiresLineOfSight = false
-	gPrompt.Parent = gearPedestal
-	gPrompt.Triggered:Connect(function(plr)
-		local uid = plr and plr.UserId
-		if not uid then
-			return
-		end
-		if claimedBy[uid] then
-			G.Notify(plr, "Bạn đã thu thập Blue Resonance Gear trên Đảo Hư Quang đợt này rồi!")
-			return
-		end
-		local prof = D.Get(plr)
-		if not prof then
-			return
-		end
-		claimedBy[uid] = true
-		prof.CoreGears = (prof.CoreGears or 0) + 1
-		prof.RaceV4Unlocked = true
-		prof.RaceTier = 4
-		prof.CoreShards = (prof.CoreShards or 0) + 300
-		G.Notify(plr, "THĂNG HOA CỔ ĐẠI: Thu thập Blue Resonance Gear (+1 CoreGear, +300 Shards) -> Đã MỞ KHÓA THĂNG HOA!")
-		G.Sync(plr)
-	end)
-
-	-- Physical 3D Mirage Stock Dealer NPC on the island
-	local dealerPos = center + Vector3.new(12, 2.3, -6)
-	local dealerModel = Instance.new("Model")
-	dealerModel.Name = "NPC_MirageStockDealer"
-	dealerModel.Parent = m
-	local dBody = W.Part(dealerModel, "Body", Vector3.new(2.2, 4.6, 1.8), dealerPos, Color3.fromRGB(168, 108, 255), Enum.Material.Metal)
-	dBody.Transparency = 1
-	dBody.CanCollide = false
-	dealerModel.PrimaryPart = dBody
-	dealerModel:SetAttribute("NPCId", "ZiolesGachaNPC")
-	dealerModel:SetAttribute("VisualAsset", "ZiolesGachaNPC")
-	dealerModel:SetAttribute("NPCFloorY", center.Y)
-
-	local dBill = Instance.new("BillboardGui")
-	dBill.Size = UDim2.fromScale(4.6, 0.85)
-	dBill.StudsOffset = Vector3.new(0, 4.8, 0)
-	dBill.AlwaysOnTop = false
-	dBill.MaxDistance = 75
-	dBill.Parent = dBody
-	local dLbl = Instance.new("TextLabel")
-	dLbl.Size = UDim2.fromScale(1, 1)
-	dLbl.BackgroundTransparency = 1
-	dLbl.Font = Enum.Font.GothamBlack
-	dLbl.TextScaled = true
-	dLbl.TextColor3 = Color3.fromRGB(215, 138, 255)
-	dLbl.TextStrokeTransparency = 0.18
-	dLbl.Text = "THƯƠNG NHÂN HƯ QUANG • LÕI HIẾM [E]"
-	dLbl.Parent = dBill
-
-	local dPrompt = Instance.new("ProximityPrompt")
-	dPrompt.ActionText = "Giao Dịch Kho Lõi Aether Hư Quang"
-	dPrompt.ObjectText = "Thương Nhân Hư Quang • Đảo Hư Quang"
-	dPrompt.MaxActivationDistance = 16
-	dPrompt.HoldDuration = 0
-	dPrompt.RequiresLineOfSight = false
-	dPrompt.Parent = dBody
-	dPrompt.Triggered:Connect(function(plr)
-		G.Interact(plr, "MirageDealer")
-		G.SendDialogue(
-			plr,
-			"Thương Nhân Hư Quang",
-			"THƯƠNG NHÂN ĐẢO HƯ QUANG",
-			"Chào mừng tới Đảo Hư Quang (Phantom Isle)! Kho Lõi Aether Thần Thoại của ta có tỉ lệ xuất hiện cao gấp đôi — hãy mở Cửa Hàng Hư Quang 3D!",
-			"Mở Cửa Hàng Hư Quang 3D",
-			"OpenScreen:NPCShop:MirageDealer"
-		)
-	end)
-
-	local endsAt = workspace:GetServerTimeNow() + 900
-	ActiveMirageEvent = {
-		Model = m,
-		Gear = gear,
-		Pos = center,
-		ExpiresClock = os.clock() + 900,
-	}
-	workspace:SetAttribute("MirageIslandActive", true)
-	workspace:SetAttribute("MirageIslandPos", center)
-	workspace:SetAttribute("MirageIslandEndsAt", endsAt)
-
-	broadcastWorldBanner(
-		"ĐẢO HƯ QUANG XUẤT HIỆN!",
-		"Đảo Hư Quang (Phantom Isle) đã hiện ra trong 15 phút! Tìm Blue Resonance Gear (Thăng Hoa) & Thương Nhân Hư Quang!",
-		"Mirage"
-	)
-	return m, center
+function WorldEvents.GetActiveMirageEvent()
+	return SpireAndLeviathan.GetActiveMirageEvent()
 end
 
 -- ============================================================================
@@ -2445,7 +2413,7 @@ local function buildPirateRaidHornBeacon()
 	if old then
 		old:Destroy()
 	end
-	local raw = Vector3.new(-14614, 46.9, 2180)
+	local raw = Vector3.new(-14600, 46.9, 2208)
 	local fy = safeFloorY(raw, 46.9)
 	local m = Instance.new("Model")
 	m.Name = "PirateRaidHorn_CastleVoid"
@@ -2773,7 +2741,7 @@ local function buildDPSTrainingDummy()
 	if DPSDummyEntry and DPSDummyEntry.Enemy and DPSDummyEntry.Enemy.Alive then
 		return
 	end
-	local rawPos = Vector3.new(-288, 48.0, 486)
+	local rawPos = Vector3.new(-278, 48.0, 480)
 	local fy = safeFloorY(rawPos, 46.5)
 	local spawnPos = Vector3.new(rawPos.X, fy + 2.6, rawPos.Z)
 
@@ -2803,6 +2771,7 @@ local function buildDPSTrainingDummy()
 	e.HP = 10000000
 	e.Model.Name = "DPSTrainingDummy"
 	e.Model:SetAttribute("IsDPSDummy", true)
+	e.Model:PivotTo(CFrame.lookAt(spawnPos, Vector3.new(-317.4, spawnPos.Y, 527.8)))
 
 
 	local bill = Instance.new("BillboardGui")
@@ -2929,365 +2898,14 @@ function WorldEvents.ResetDPSDummy(p)
 end
 
 -- ============================================================================
--- 14. #22, #118, #119 - 5-WAVE TIMED MICROCHIP AWAKENING RAID + REVIVE BEACON
+-- 14. #22, #118, #119 - INSTANCED MICROCHIP RAID (DELEGATED) & CO-OP REVIVE BEACON
 -- ============================================================================
-local RAID_PLATFORM_CENTERS = {
-	Vector3.new(14600, 96, 1770),
-	Vector3.new(14600, 100, 1740),
-	Vector3.new(14600, 104, 1710),
-	Vector3.new(14600, 108, 1680),
-	Vector3.new(14600, 112, 1650),
-}
-
-local function ensureRaidArenaPlatforms()
-	local worldObjects = getWorldObjects()
-	if worldObjects:FindFirstChild("MicrochipRaidArena_5Islands") then
-		return
-	end
-	local rootM = Instance.new("Model")
-	rootM.Name = "MicrochipRaidArena_5Islands"
-	rootM.Parent = worldObjects
-
-	local colFolder = workspace:FindFirstChild("GrandSkyIslands_Collision") or worldObjects
-
-	for idx, cpos in ipairs(RAID_PLATFORM_CENTERS) do
-		local radius = (idx == 5) and 24 or 20
-		local deck = Instance.new("Part")
-		deck.Name = "RaidWaveIsland_" .. idx
-		deck.Shape = Enum.PartType.Cylinder
-		deck.Size = Vector3.new(3.2, radius * 2, radius * 2)
-		deck.CFrame = CFrame.new(cpos.X, cpos.Y - 1.6, cpos.Z) * CFrame.Angles(0, 0, math.pi / 2)
-		deck.Color = Color3.fromRGB(32, 44, 68)
-		deck.Material = Enum.Material.Slate
-		deck.Anchored, deck.CanCollide, deck.CanQuery, deck.CanTouch = true, true, true, false
-		deck.Parent = colFolder
-
-		local ring = Instance.new("Part")
-		ring.Name = "RaidWaveRune_" .. idx
-		ring.Shape = Enum.PartType.Cylinder
-		ring.Size = Vector3.new(0.4, radius * 1.85, radius * 1.85)
-		ring.CFrame = CFrame.new(cpos.X, cpos.Y - 0.1, cpos.Z) * CFrame.Angles(0, 0, math.pi / 2)
-		ring.Color = (idx == 5) and Color3.fromRGB(255, 192, 78) or Color3.fromRGB(88, 236, 255)
-		ring.Material = Enum.Material.Neon
-		ring.Transparency = 0.46
-		ring.Anchored, ring.CanCollide, ring.CanQuery, ring.CanTouch = true, false, false, false
-		ring.Parent = rootM
-
-		if idx < 5 then
-			local nxt = RAID_PLATFORM_CENTERS[idx + 1]
-			local p0 = cpos + Vector3.new(0, -0.4, -13)
-			local p1 = nxt + Vector3.new(0, -0.4, 13)
-			local br = Instance.new("Part")
-			br.Name = "RaidLightBridge_" .. idx
-			br.Size = Vector3.new(12, 1.2, (p1 - p0).Magnitude + 4)
-			br.CFrame = CFrame.lookAt((p0 + p1) * 0.5, p1)
-			br.Color = Color3.fromRGB(82, 228, 255)
-			br.Material = Enum.Material.Neon
-			br.Transparency = 0.42
-			br.Anchored, br.CanCollide, br.CanQuery, br.CanTouch = true, true, true, false
-			br.Parent = colFolder
-		end
-	end
-end
-
-local function spawnRaidWave(session, waveNum)
-	session.Wave = waveNum
-	session.WaveStartedAt = os.clock()
-	session.AllMissingSince = nil
-	session.Mobs = {}
-	local cpos = RAID_PLATFORM_CENTERS[waveNum] or RAID_PLATFORM_CENTERS[5]
-	local diff = session.DifficultySpec
-
-	local waveTemplates = {
-		[1] = { "FrostDrone", "FrostDrone", "CryoGuard", "CyberArcher" },
-		[2] = { "CryoGuard", "CryoGuard", "CyberArcher", "CyberArcher", "GoldenKnight" },
-		[3] = { "GoldenKnight", "CryoGuard", "ShadowArcher", "ShadowArcher", "VoidPirate" },
-		[4] = { "AbyssalKnight", "AbyssalKnight", "ShadowArcher", "OrderCyborg", "OrderCyborg" },
-		[5] = { "CryoGuard", "AbyssalKnight", "OrderCyborgBoss" },
-	}
-	local list = waveTemplates[waveNum] or waveTemplates[5]
-	for idx, mobId in ipairs(list) do
-		local actualId = C.Enemies[mobId] and mobId or (mobId == "OrderCyborg" and "CryoGuard" or "FrostDrone")
-		local isWaveBoss = (waveNum == 5 and actualId == "OrderCyborgBoss")
-		local ang = (idx - 1) * (math.pi * 2 / #list)
-		local rad = isWaveBoss and 0 or 14
-		local mpos = cpos + Vector3.new(math.cos(ang) * rad, 2.8, math.sin(ang) * rad - 4)
-		local mob = G.SpawnEnemy(actualId, mpos, isWaveBoss, true)
-		if mob then
-			mob.IsRaidDungeonMob = true
-			mob.IsRaidBoss = isWaveBoss
-			mob.Home = mpos
-			mob.HomeFloorY = cpos.Y
-			mob.MaxHP = math.max(500, math.floor(mob.MaxHP * diff.HPMult * (1 + (#session.Players - 1) * 0.2)))
-			mob.HP = mob.MaxHP
-			if mob.Config then
-				mob.Config = table.clone(mob.Config)
-				mob.Config.ATK = math.floor((mob.Config.ATK or 40) * diff.ATKMult)
-			end
-			if mob.Model then
-				mob.Model:PivotTo(CFrame.new(mpos))
-				mob.Model:SetAttribute("EnemyFloorY", cpos.Y)
-			end
-			table.insert(session.Mobs, mob)
-		end
-	end
-
-	workspace:SetAttribute("RaidActive", true)
-	workspace:SetAttribute("RaidWave", waveNum)
-	workspace:SetAttribute("RaidDifficulty", diff.Id)
-	for _, plr in ipairs(session.Players) do
-		if plr.Parent == Players then
-			plr:SetAttribute("RaidActive", true)
-			plr:SetAttribute("RaidWave", waveNum)
-			plr:SetAttribute("RaidDifficulty", diff.Id)
-			local rt = G.Runtime[plr]
-			if rt then
-				rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 3.0)
-			end
-			G.Teleport(plr, cpos + Vector3.new(0, 3.2, 18))
-			G.Notify(plr, string.format("[RAID %s] WAVE %d/5 BẮT ĐẦU! Hạ gục toàn bộ quân đoàn trên Đảo #%d!", diff.Label, waveNum, waveNum))
-		end
-	end
-end
-
 function WorldEvents.VoteRaidDifficulty(p, diffId)
-	local clean = tostring(diffId or "Normal")
-	if not RAID_DIFFICULTIES[clean] then
-		clean = "Normal"
-	end
-	local rt = G.Runtime[p]
-	if rt then
-		rt.SelectedRaidDifficulty = clean
-	end
-	p:SetAttribute("RaidDifficulty", clean)
-	workspace:SetAttribute("RaidDifficulty", clean)
-	local spec = RAID_DIFFICULTIES[clean]
-	G.Notify(p, string.format("ĐÃ CHỌN ĐỘ KHÓ RAID: [%s] (%.2fx HP, +%d Core Shards%s)!", spec.Label, spec.HPMult, spec.Shards, spec.Microchip and " + Awakening Microchip" or ""))
+	return SpireAndLeviathan.VoteRaidDifficulty(p, diffId)
 end
 
 function WorldEvents.StartMicrochipRaid(leader, requestedDiff)
-	if not leader or leader.Parent ~= Players then
-		return
-	end
-	if leader:GetAttribute("InTrade") == true or leader:GetAttribute("ColosseumActive") == true or (leader:GetAttribute("SpireFloor") or 0) > 0 then
-		G.Notify(leader, "Không thể bắt đầu Awakening Raid khi đang Giao Dịch, Đấu Trường hoặc trong Sky Spire!")
-		return
-	end
-	if ActiveRaidSession then
-		G.Notify(leader, "Microchip Awakening Raid đang diễn ra (Wave " .. tostring(ActiveRaidSession.Wave) .. "/5)!")
-		return
-	end
-	ensureRaidArenaPlatforms()
-
-	local rt = G.Runtime[leader]
-	local diffKey = tostring(requestedDiff or (rt and rt.SelectedRaidDifficulty) or leader:GetAttribute("RaidDifficulty") or "Normal")
-	local diffSpec = RAID_DIFFICULTIES[diffKey] or RAID_DIFFICULTIES.Normal
-
-	local squad = {}
-	local seen = {}
-	for _, member in ipairs(getPartyGroup(leader)) do
-		if member and member.Parent == Players and not seen[member] and #squad < 6
-			and member:GetAttribute("InTrade") ~= true and member:GetAttribute("ColosseumActive") ~= true and (member:GetAttribute("SpireFloor") or 0) == 0 then
-			seen[member] = true
-			table.insert(squad, member)
-		end
-	end
-	local lr = root(leader)
-	if lr then
-		for _, other in ipairs(Players:GetPlayers()) do
-			local oroot = root(other)
-			if not seen[other] and oroot and dist(oroot.Position, lr.Position) <= 45 and #squad < 6
-				and other:GetAttribute("InTrade") ~= true and other:GetAttribute("ColosseumActive") ~= true and (other:GetAttribute("SpireFloor") or 0) == 0 then
-				seen[other] = true
-				table.insert(squad, other)
-			end
-		end
-	end
-	if #squad == 0 then
-		table.insert(squad, leader)
-	end
-
-	ActiveRaidSession = {
-		Leader = leader,
-		Players = squad,
-		DifficultySpec = diffSpec,
-		Wave = 1,
-		WaveStartedAt = os.clock(),
-		EndsAt = os.clock() + 720, -- 12:00 countdown
-		Mobs = {},
-		DamageMap = {},
-	}
-
-	for _, plr in ipairs(squad) do
-		plr:SetAttribute("CurrentRealm", "FrozenCyber")
-	end
-	spawnRaidWave(ActiveRaidSession, 1)
-end
-
-local function clearPlayerRaidAttributes(plr)
-	if plr and plr.Parent == Players then
-		plr:SetAttribute("RaidActive", false)
-		plr:SetAttribute("RaidWave", 0)
-		plr:SetAttribute("RaidTimer", 0)
-	end
-end
-
-local function endRaidSession(victory, reasonMsg)
-	local session = ActiveRaidSession
-	if not session then
-		return
-	end
-	ActiveRaidSession = nil
-	workspace:SetAttribute("RaidActive", false)
-	workspace:SetAttribute("RaidWave", 0)
-	workspace:SetAttribute("RaidTimer", 0)
-
-	for _, mob in ipairs(session.Mobs or {}) do
-		if mob.Alive then
-			mob.Alive = false
-			if mob.Model and mob.Model.Parent then
-				mob.Model:Destroy()
-			end
-		end
-	end
-
-	local diff = session.DifficultySpec
-	if victory then
-		for _, plr in ipairs(session.Players) do
-			if plr.Parent == Players then
-				local prof = D.Get(plr)
-				if prof then
-					local rawFid = prof.EquippedFruit or "SolarTitanCore"
-					local fid = (CombatData and CombatData.ResolveFruitId and CombatData.ResolveFruitId(rawFid)) or rawFid
-					prof.AwakenedFruits = prof.AwakenedFruits or {}
-					prof.AwakenedFruits[fid] = true
-					prof.UnlockedTitles = prof.UnlockedTitles or {}
-					prof.UnlockedTitles.awakened_ascendant = true
-					if diff.Microchip then
-						prof.Inventory = prof.Inventory or {}
-						prof.Inventory.AwakeningMicrochip = (prof.Inventory.AwakeningMicrochip or 0) + 1
-					end
-					G.Reward(plr, diff.XP, diff.Gold, diff.Shards)
-					G.Notify(plr, string.format("CHIẾN THẮNG AWAKENING RAID [%s]! +%d Core Shards, +%d Gold & Thức Tỉnh V2 [%s]!", diff.Label, diff.Shards, diff.Gold, fid))
-					G.Sync(plr)
-					task.spawn(D.Save, plr, false)
-				end
-			end
-		end
-		broadcastMVPSummary("Microchip Awakening Raid (" .. diff.Label .. ")", session.DamageMap, diff.HPMult)
-		if diff.Id == "Mythic" then
-			broadcastWorldBanner(
-				"CHINH PHỤC MYTHIC AWAKENING RAID!",
-				(session.Leader and session.Leader.Name or "Tổ Đội Skyborn") .. " đã vượt qua 5 Wave Mythic Raid và nhận Awakening Microchip!",
-				"MythicRaid"
-			)
-		end
-	end
-
-	for _, plr in ipairs(session.Players) do
-		if plr.Parent == Players then
-			clearPlayerRaidAttributes(plr)
-			if not victory and reasonMsg then
-				G.Notify(plr, reasonMsg)
-			end
-			task.delay(4.0, function()
-				if plr.Parent == Players then
-					local pr = root(plr)
-					local waveCenter = RAID_PLATFORM_CENTERS[session.Wave] or RAID_PLATFORM_CENTERS[1]
-					if not pr or dist(pr.Position, waveCenter) <= 450 then
-						local prt = G.Runtime[plr]
-						if prt then
-							prt.JumpPadUntil = math.max(prt.JumpPadUntil or 0, os.clock() + 2.5)
-						end
-						G.Teleport(plr, Vector3.new(14600, 50.9, 1785))
-					end
-				end
-			end)
-		end
-	end
-end
-
-local function tickRaidDungeon()
-	local session = ActiveRaidSession
-	if not session then
-		return
-	end
-	local now = os.clock()
-	local rem = math.max(0, math.ceil(session.EndsAt - now))
-	workspace:SetAttribute("RaidTimer", rem)
-
-	local waveCenter = RAID_PLATFORM_CENTERS[session.Wave] or RAID_PLATFORM_CENTERS[1]
-	local graceElapsed = (now - (session.WaveStartedAt or 0)) > 4.5
-	local activeSquad = {}
-	local inArenaAliveCount = 0
-
-	for _, plr in ipairs(session.Players) do
-		if plr and plr.Parent == Players then
-			local pr, ph = root(plr)
-			local prt = G.Runtime[plr]
-			local isDowned = prt and prt.IsDowned == true
-			if pr and ph and ph.Health > 0 and not isDowned and graceElapsed and dist(pr.Position, waveCenter) > 450 then
-				-- Player died and respawned outside the Raid islands (e.g. at Sky Hub); release Raid lock!
-				clearPlayerRaidAttributes(plr)
-				G.Notify(plr, "[RAID] Bạn đã rời khỏi Đấu Trường Awakening Raid!")
-				G.Sync(plr)
-			else
-				plr:SetAttribute("RaidTimer", rem)
-				table.insert(activeSquad, plr)
-				if pr and ph and (ph.Health > 0 or isDowned) and dist(pr.Position, waveCenter) <= 450 then
-					inArenaAliveCount += 1
-				end
-			end
-		end
-	end
-	session.Players = activeSquad
-
-	if #activeSquad == 0 then
-		endRaidSession(false, "[RAID] Toàn bộ tổ đội đã gục ngã hoặc rời khỏi Đấu Trường Raid!")
-		return
-	end
-	if inArenaAliveCount == 0 then
-		session.AllMissingSince = session.AllMissingSince or now
-		if (now - session.AllMissingSince) >= 6.5 then
-			endRaidSession(false, "[RAID] Tổ đội đã thất bại trong Awakening Raid!")
-			return
-		end
-	else
-		session.AllMissingSince = nil
-	end
-
-	if rem <= 0 then
-		endRaidSession(false, "[RAID] Hết thời gian 12:00! Hãy nâng cấp trang bị và thử lại!")
-		return
-	end
-
-	local aliveMobs = 0
-	for _, mob in ipairs(session.Mobs) do
-		if mob.Alive and mob.Model and mob.Model.Parent then
-			aliveMobs += 1
-		end
-		for plr, hit in pairs(mob.Contributors or {}) do
-			if not mob._raidCounted then
-				mob._raidCounted = {}
-			end
-			local prevCounted = mob._raidCounted[plr] or 0
-			local curDmg = (type(hit) == "table" and hit.Damage or 0)
-			if curDmg > prevCounted then
-				mob._raidCounted[plr] = curDmg
-				local entry = session.DamageMap[plr] or { Damage = 0 }
-				entry.Damage += (curDmg - prevCounted)
-				session.DamageMap[plr] = entry
-			end
-		end
-	end
-
-	if aliveMobs == 0 then
-		if session.Wave < 5 then
-			spawnRaidWave(session, session.Wave + 1)
-		else
-			endRaidSession(true)
-		end
-	end
+	return SpireAndLeviathan.StartMicrochipRaid(leader, requestedDiff)
 end
 
 -- #119: Co-op Raid / Boss Revive Beacon
@@ -3409,287 +3027,14 @@ local function tryEnterCoopDownedState(p, r, h, rt, profile)
 end
 
 -- ============================================================================
--- 15. #80 - 50-FLOOR ENDLESS SKY SPIRE TOWER AT SKY HUB
+-- 15. #80 - PER-PARTY INSTANCED 50-FLOOR ENDLESS SKY SPIRE (DELEGATED)
 -- ============================================================================
-local SPIRE_ARENA_CENTER = Vector3.new(-1080, 960, 1080)
-
-local function cleanupSpireSession(plr, teleportToHub)
-	local session = ActiveSpireSessions[plr]
-	if session then
-		for _, m in ipairs(session.Mobs or {}) do
-			if m.Alive then
-				m.Alive = false
-			end
-			if m.Model and m.Model.Parent then
-				m.Model:Destroy()
-			end
-		end
-		ActiveSpireSessions[plr] = nil
-	end
-	if plr and plr.Parent == Players then
-		plr:SetAttribute("SpireFloor", 0)
-		if teleportToHub then
-			local rt = G.Runtime[plr]
-			if rt then
-				rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 2.5)
-			end
-			G.Teleport(plr, Vector3.new(-322, 50.5, 504))
-			G.Notify(plr, "Đã trở về Quảng Trường Sky Hub!")
-			G.Sync(plr)
-		end
-	end
-end
-
-local function ensureSkySpirePortalAndArena()
-	local worldObjects = getWorldObjects()
-	local colFolder = workspace:FindFirstChild("GrandSkyIslands_Collision") or worldObjects
-	local old = worldObjects:FindFirstChild("SkySpirePortal_SkyHub")
-	if old then
-		old:Destroy()
-	end
-
-	-- Portal Archway at Sky Hub (-330, 46.7, 490)
-	local rawPos = Vector3.new(-330, 46.7, 490)
-	local fy = safeFloorY(rawPos, 46.5)
-	local pm = Instance.new("Model")
-	pm.Name = "SkySpirePortal_SkyHub"
-	pm.Parent = worldObjects
-
-	local base = W.Part(pm, "SpireArchBase", Vector3.new(8.5, 1.0, 4.2), Vector3.new(rawPos.X, fy + 0.5, rawPos.Z), Color3.fromRGB(36, 32, 52), Enum.Material.Slate)
-	W.Part(pm, "SpirePillarL", Vector3.new(1.6, 10.5, 1.8), Vector3.new(rawPos.X - 3.2, fy + 5.6, rawPos.Z), Color3.fromRGB(238, 192, 78), Enum.Material.Metal)
-	W.Part(pm, "SpirePillarR", Vector3.new(1.6, 10.5, 1.8), Vector3.new(rawPos.X + 3.2, fy + 5.6, rawPos.Z), Color3.fromRGB(238, 192, 78), Enum.Material.Metal)
-	W.Part(pm, "SpireCrown", Vector3.new(8.6, 1.6, 2.2), Vector3.new(rawPos.X, fy + 11.2, rawPos.Z), Color3.fromRGB(238, 192, 78), Enum.Material.Metal)
-	local gateCore = W.Part(pm, "SpireVortex", Vector3.new(4.8, 9.2, 0.45), Vector3.new(rawPos.X, fy + 5.6, rawPos.Z), Color3.fromRGB(98, 232, 255), Enum.Material.Neon)
-	gateCore.Transparency = 0.42
-	gateCore.CanCollide = false
-	pm.PrimaryPart = base
-
-	local bill = Instance.new("BillboardGui")
-	bill.Size = UDim2.fromScale(5.2, 1.0)
-	bill.StudsOffset = Vector3.new(0, 7.6, 0)
-	bill.AlwaysOnTop = false
-	bill.MaxDistance = 68
-	bill.Parent = gateCore
-	local tl = Instance.new("TextLabel")
-	tl.Size = UDim2.fromScale(1, 1)
-	tl.BackgroundTransparency = 1
-	tl.Font = Enum.Font.GothamBlack
-	tl.TextScaled = true
-	tl.TextColor3 = Color3.fromRGB(255, 224, 110)
-	tl.TextStrokeTransparency = 0.16
-	tl.Text = "ENDLESS SKY SPIRE [TẦNG 1 -> 50]"
-	tl.Parent = bill
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Khiêu Chiến Tháp Vô Tận Sky Spire"
-	prompt.ObjectText = "Endless Sky Spire • 50 Tầng Thử Thách"
-	prompt.MaxActivationDistance = 16
-	prompt.HoldDuration = 0
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = base
-	prompt.Triggered:Connect(function(plr)
-		WorldEvents.EnterSkySpire(plr)
-	end)
-end
-
-local function ensureSkySpireArenaDeck()
-	local worldObjects = getWorldObjects()
-	local colFolder = workspace:FindFirstChild("GrandSkyIslands_Collision") or worldObjects
-	local pm = worldObjects:FindFirstChild("SkySpirePortal_SkyHub") or worldObjects
-	if not colFolder:FindFirstChild("SkySpireColosseumFloor") then
-		local deck = Instance.new("Part")
-		deck.Name = "SkySpireColosseumFloor"
-		deck.Shape = Enum.PartType.Cylinder
-		deck.Size = Vector3.new(3.6, 92, 92)
-		deck.CFrame = CFrame.new(SPIRE_ARENA_CENTER.X, SPIRE_ARENA_CENTER.Y - 1.8, SPIRE_ARENA_CENTER.Z) * CFrame.Angles(0, 0, math.pi / 2)
-		deck.Color = Color3.fromRGB(228, 224, 214)
-		deck.Material = Enum.Material.Marble
-		deck.Anchored, deck.CanCollide, deck.CanQuery, deck.CanTouch = true, true, true, false
-		deck.Parent = colFolder
-
-		local exitPad = W.Part(pm, "SpireExitBeacon", Vector3.new(4.2, 1.0, 4.2), SPIRE_ARENA_CENTER + Vector3.new(0, 0.5, 38), Color3.fromRGB(255, 198, 84), Enum.Material.Neon)
-		exitPad.Transparency = 0.38
-		local ep = Instance.new("ProximityPrompt")
-		ep.ActionText = "Rời Tháp Sky Spire Về Sky Hub"
-		ep.ObjectText = "Sky Spire Exit"
-		ep.MaxActivationDistance = 14
-		ep.HoldDuration = 0
-		ep.RequiresLineOfSight = false
-		ep.Parent = exitPad
-		ep.Triggered:Connect(function(plr)
-			cleanupSpireSession(plr, true)
-		end)
-	end
-end
-
-local function spawnSpireFloorEnemies(p, session, floorNum)
-	session.Floor = floorNum
-	session.Mobs = {}
-	p:SetAttribute("SpireFloor", floorNum)
-
-	local isMilestoneBoss = (floorNum % 5 == 0)
-	local hpScale = 1 + (floorNum - 1) * 0.28 + ((floorNum > 25) and (floorNum - 25) * 0.22 or 0)
-	local atkScale = 1 + (floorNum - 1) * 0.08
-
-	local pool = (floorNum <= 15) and { "SkyPirate", "CorruptedGuard", "LightArcher", "GoldenKnight" }
-		or ((floorNum <= 35) and { "CryoGuard", "CyberArcher", "GoldenKnight", "AbyssalKnight" }
-		or { "AbyssalKnight", "ShadowArcher", "VoidPirate", "GoldenKnight" })
-
-	local count = isMilestoneBoss and 3 or math.min(5, 2 + math.floor(floorNum / 12))
-	for i = 1, count do
-		local ang = (i - 1) * (math.pi * 2 / count)
-		local mpos = SPIRE_ARENA_CENTER + Vector3.new(math.cos(ang) * 16, 2.6, math.sin(ang) * 16 - 4)
-		local mobId = pool[((floorNum + i) % #pool) + 1]
-		local mob = G.SpawnEnemy(mobId, mpos, false, true)
-		if mob then
-			mob.IsSpireMob = true
-			mob.Home = mpos
-			mob.HomeFloorY = SPIRE_ARENA_CENTER.Y
-			mob.MaxHP = math.floor(950 * hpScale)
-			mob.HP = mob.MaxHP
-			if mob.Config then
-				mob.Config = table.clone(mob.Config)
-				mob.Config.ATK = math.floor(24 * atkScale)
-			end
-			if mob.Model then
-				mob.Model:PivotTo(CFrame.new(mpos))
-				mob.Model:SetAttribute("EnemyFloorY", SPIRE_ARENA_CENTER.Y)
-			end
-			table.insert(session.Mobs, mob)
-		end
-	end
-
-	if isMilestoneBoss then
-		local bossPool = { "PirateCaptainVance", "OrderCyborgBoss", "CryonPrime", "SoulReaperRift", "Noxar" }
-		local bId = bossPool[math.clamp(math.ceil(floorNum / 10), 1, math.max(1, #bossPool))]
-		if not C.Enemies[bId] then
-			bId = "GoldenKnight"
-		end
-		local bpos = SPIRE_ARENA_CENTER + Vector3.new(0, 3.0, -10)
-		local bMob = G.SpawnEnemy(bId, bpos, true, true)
-		if bMob then
-			bMob.IsSpireMob = true
-			bMob.IsSpireBoss = true
-			bMob.Home = bpos
-			bMob.HomeFloorY = SPIRE_ARENA_CENTER.Y
-			bMob.MaxHP = math.floor(4200 * hpScale)
-			bMob.HP = bMob.MaxHP
-			if bMob.Config then
-				bMob.Config = table.clone(bMob.Config)
-				bMob.Config.ATK = math.floor(38 * atkScale)
-			end
-			if bMob.Model then
-				bMob.Model:PivotTo(CFrame.new(bpos))
-				bMob.Model:SetAttribute("EnemyFloorY", SPIRE_ARENA_CENTER.Y)
-			end
-			table.insert(session.Mobs, bMob)
-		end
-	end
-
-	G.Notify(p, string.format("[SKY SPIRE] TẦNG %d / 50%s!", floorNum, isMilestoneBoss and " • BOSS TẦNG MỐC" or ""))
-end
-
 function WorldEvents.EnterSkySpire(p, requestedFloor)
-	local prof = D.Get(p)
-	local rt = G.Runtime[p]
-	if not prof or not rt then
-		return
-	end
-	if p:GetAttribute("InTrade") == true or p:GetAttribute("RaidActive") == true or p:GetAttribute("ColosseumActive") == true then
-		G.Notify(p, "Không thể vào Endless Sky Spire khi đang Giao Dịch, Đấu Trường hoặc Raid!")
-		return
-	end
-	ensureSkySpirePortalAndArena()
-	ensureSkySpireArenaDeck()
-	local maxUnlocked = math.clamp((prof.HighestSpireFloor or 0) + 1, 1, 50)
-	local startFloor = requestedFloor and math.clamp(tonumber(requestedFloor) or maxUnlocked, 1, maxUnlocked) or maxUnlocked
-
-	cleanupSpireSession(p, false)
-
-	rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 3.0)
-	G.Teleport(p, SPIRE_ARENA_CENTER + Vector3.new(0, 3.2, 24))
-
-	local session = {
-		Player = p,
-		Floor = startFloor,
-		Mobs = {},
-	}
-	ActiveSpireSessions[p] = session
-	spawnSpireFloorEnemies(p, session, startFloor)
-	G.Sync(p)
+	return SpireAndLeviathan.EnterSkySpire(p, requestedFloor)
 end
 
 function WorldEvents.LeaveSkySpire(p)
-	cleanupSpireSession(p, true)
-	return true
-end
-
-local function tickSkySpireSessions()
-	for p, session in pairs(ActiveSpireSessions) do
-		if p.Parent ~= Players then
-			cleanupSpireSession(p, false)
-		else
-			local pr, ph = root(p)
-			if not pr or dist(pr.Position, SPIRE_ARENA_CENTER) > 130 then
-				cleanupSpireSession(p, false)
-				G.Sync(p)
-			else
-				local alive = 0
-				for _, m in ipairs(session.Mobs) do
-					if m.Alive and m.Model and m.Model.Parent then
-						alive += 1
-					end
-				end
-				if alive == 0 then
-					local prof = D.Get(p)
-					local cleared = session.Floor
-					if prof then
-						prof.HighestSpireFloor = math.max(prof.HighestSpireFloor or 0, cleared)
-						prof.UnlockedTitles = prof.UnlockedTitles or {}
-						local milestoneShards = (cleared % 5 == 0) and (cleared * 16) or 10
-						local floorGold = 900 + cleared * 350
-						local floorXP = 2400 + cleared * 1250
-						if cleared == 10 then
-							prof.UnlockedTitles.spire_challenger = true
-						elseif cleared == 25 then
-							prof.UnlockedTitles.spire_ascendant = true
-						elseif cleared == 50 then
-							prof.UnlockedTitles.sky_spire_sovereign = true
-							prof.Title = "sky_spire_sovereign"
-							broadcastWorldBanner(
-								"ĐỈNH CAO THÁP VÔ TẬN SKY SPIRE!",
-								p.Name .. " đã chinh phục Tầng 50/50 Endless Sky Spire và đạt danh hiệu [Độc Tôn Đỉnh Tháp Vô Tận]!",
-								"Spire50"
-							)
-						end
-						G.Reward(p, floorXP, floorGold, milestoneShards)
-						if ph then
-							ph.Health = math.min(ph.MaxHealth, ph.Health + math.floor(ph.MaxHealth * 0.25))
-						end
-						G.Sync(p)
-						if cleared % 5 == 0 then
-							task.spawn(D.Save, p, false)
-						end
-					end
-					if cleared >= 50 then
-						cleanupSpireSession(p, false)
-						G.Notify(p, "CHÚC MỪNG! Bạn đã hoàn tất Tầng 50/50 Endless Sky Spire!")
-						task.delay(3.5, function()
-							if p.Parent == Players then
-								local rt = G.Runtime[p]
-								if rt then
-									rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 2.5)
-								end
-								G.Teleport(p, Vector3.new(-322, 50.5, 504))
-							end
-						end)
-					else
-						spawnSpireFloorEnemies(p, session, cleared + 1)
-					end
-				end
-			end
-		end
-	end
+	return SpireAndLeviathan.LeaveSkySpire(p)
 end
 
 -- ============================================================================
@@ -3712,7 +3057,17 @@ local function handleVoidRescue(p, r, rt, profile)
 	end
 	rt.VoidRescueActiveUntil = now + 1.6
 
-	local safePos = (G.FindSafeRescuePos and G.FindSafeRescuePos(p, r.Position, rt, profile)) or C.Spawn
+	local raidSession = SpireAndLeviathan.GetPlayerRaidSession(p)
+	local spireSession = SpireAndLeviathan.GetActiveSpireSession(p)
+	local safePos
+	if raidSession and raidSession.PlatformCenters then
+		local cpos = raidSession.PlatformCenters[raidSession.Wave] or raidSession.PlatformCenters[1]
+		safePos = cpos + Vector3.new(0, 3.5, 16)
+	elseif spireSession and spireSession.ArenaCenter then
+		safePos = spireSession.ArenaCenter + Vector3.new(0, 3.5, 18)
+	else
+		safePos = (G.FindSafeRescuePos and G.FindSafeRescuePos(p, r.Position, rt, profile)) or C.Spawn
+	end
 	rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 2.5)
 	rt.InvincibleUntil = math.max(rt.InvincibleUntil or 0, now + 2.2)
 
@@ -3753,10 +3108,16 @@ end
 local WAVE3_WORLD_COMMANDS = {
 	SpawnShip = true,
 	SpawnWarship = true,
+	RepairShip = true,
 	FireShipCannon = true,
+	ShipAltitude = true,
+	ShipVerticalInput = true,
+	SetShipVertical = true,
+	ControlShipAltitude = true,
 	VoteRaidDifficulty = true,
 	StartRaid = true,
 	StartAwakeningRaid = true,
+	StartMicrochipRaid = true,
 	EnterSkySpire = true,
 	LeaveSkySpire = true,
 	ResetDPSDummy = true,
@@ -3782,22 +3143,30 @@ function WorldEvents.HandleUIRequest(p, cmd, payload)
 	if not p or type(cmd) ~= "string" or not WAVE3_WORLD_COMMANDS[cmd] then
 		return false
 	end
+	payload = type(payload) == "table" and payload or { value = payload }
+	if cmd == "ShipAltitude" or cmd == "ShipVerticalInput" or cmd == "SetShipVertical" or cmd == "ControlShipAltitude" then
+		local vDir = payload.Dir or payload.dir or payload.verticalDir or payload.value or 0
+		setPlayerShipVerticalInput(p, vDir)
+		return true
+	end
+
 	local now = os.clock()
 	local pMap = WorldCmdDedup[p]
 	if not pMap then
 		pMap = {}
 		WorldCmdDedup[p] = pMap
 	end
-	local canonicalCmd = (cmd == "SpawnWarship" and "SpawnShip") or (cmd == "StartAwakeningRaid" and "StartRaid") or cmd
+	local canonicalCmd = (cmd == "SpawnWarship" and "SpawnShip")
+		or ((cmd == "StartAwakeningRaid" or cmd == "StartMicrochipRaid") and "StartRaid")
+		or cmd
 	if (now - (pMap[canonicalCmd] or 0)) < 0.25 then
 		return true
 	end
 	pMap[canonicalCmd] = now
 
-	payload = type(payload) == "table" and payload or { value = payload }
 	if canonicalCmd == "SpawnShip" then
 		local reqShip = payload.shipId or payload.id or payload.value
-		if reqShip ~= nil and not playerOwnsShip(D.Get(p), reqShip) then
+		if reqShip ~= nil and not playerOwnsShip(D.Get(p), reqShip) and not DevGate.IsAllowed(p) then
 			G.Notify(p, "Bạn chưa sở hữu chiến hạm này! Hãy mua tại Thợ Đóng Tàu (Sky Shipwright).")
 			return false
 		end
@@ -3805,10 +3174,43 @@ function WorldEvents.HandleUIRequest(p, cmd, payload)
 		WorldEvents.SpawnWarship(p, reqShip, nil, payload.autoBoard ~= false)
 		G.Sync(p)
 		return true
-	elseif canonicalCmd == "FireShipCannon" then
+	elseif canonicalCmd == "RepairShip" then
 		local entry = ActiveWarships[p] or (G.Runtime[p] and G.Runtime[p].ActiveShipEntry)
+		if not entry or not entry.Model or not entry.Model.Parent then
+			G.Notify(p, "Bạn chưa triệu hồi Chiến Hạm nào! Hãy hạ thủy Chiến Hạm trước khi sửa chữa.")
+			return true
+		end
+		local maxHP = tonumber(entry.MaxHP) or tonumber(entry.Model:GetAttribute("MaxHP")) or (entry.Spec and entry.Spec.MaxHP) or 1200
+		local curHP = tonumber(entry.HP) or tonumber(entry.Model:GetAttribute("HP")) or maxHP
+		local dispName = tostring((entry.Spec and entry.Spec.DisplayName) or entry.ShipId or "Chiến Hạm")
+		if curHP >= maxHP then
+			G.Notify(p, "Chiến Hạm [" .. dispName .. "] đã đầy 100% Độ Bền (" .. tostring(maxHP) .. "/" .. tostring(maxHP) .. " HP)!")
+			return true
+		end
+		local prof = D.Get(p)
+		if not prof then
+			return false
+		end
+		if (tonumber(prof.Gold) or 0) < 500 then
+			G.Notify(p, "Cần 500 Gold để sửa chữa 100% Độ Bền Chiến Hạm!")
+			return true
+		end
+		prof.Gold = math.max(0, (tonumber(prof.Gold) or 0) - 500)
+		entry.MaxHP = maxHP
+		entry.HP = maxHP
+		entry.Model:SetAttribute("MaxHP", maxHP)
+		entry.Model:SetAttribute("HP", maxHP)
+		applyCrewBannerToShip(entry, prof)
+		G.Sync(p)
+		G.Notify(p, "ĐÃ SỬA CHỮA 100% CHIẾN HẠM [" .. dispName .. "] (" .. tostring(maxHP) .. "/" .. tostring(maxHP) .. " HP, -500 Gold)!")
+		return true
+	elseif canonicalCmd == "FireShipCannon" then
+		if payload.verticalDir ~= nil then
+			setPlayerShipVerticalInput(p, payload.verticalDir)
+		end
+		local entry = findPilotedShipEntry(p)
 		if entry then
-			fireBroadsideCannon(p, entry, tostring(payload.side or "Both"))
+			fireBroadsideCannon(p, entry, tostring(payload.side or "Both"), payload.aimPos, payload.AimDir)
 		else
 			G.Notify(p, "Hãy triệu hồi hoặc lên Chiến Hạm 3D trước khi khai hỏa Đại Bác!")
 		end
@@ -3843,7 +3245,34 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 	end)
 
 	ensureExtraEnemiesInConfig()
+	syncShipSpecsFromConfig()
 	getActiveShipsFolder()
+
+	SpireAndLeviathan.Init({
+		G = G,
+		D = D,
+		W = W,
+		C = C,
+		DevGate = DevGate,
+		ActiveWarships = ActiveWarships,
+		HARBOR_PORTS = HARBOR_PORTS,
+		SAFE_HUB_CENTERS = SAFE_HUB_CENTERS,
+		RAID_DIFFICULTIES = RAID_DIFFICULTIES,
+		root = root,
+		dist = dist,
+		flatDist = flatDist,
+		safeFloorY = safeFloorY,
+		getWorldObjects = getWorldObjects,
+		getActiveShipsFolder = getActiveShipsFolder,
+		broadcastWorldBanner = broadcastWorldBanner,
+		broadcastMVPSummary = broadcastMVPSummary,
+		resolveCanonicalFruitId = resolveCanonicalFruitId,
+		getPartyGroup = getPartyGroup,
+		playerOwnsShip = playerOwnsShip,
+		normalizeShipId = normalizeShipId,
+		findPilotedShipEntry = findPilotedShipEntry,
+		SpawnWarship = WorldEvents.SpawnWarship,
+	})
 
 	G.WorldEvents = WorldEvents
 	G.SpawnTelegraph = spawn3DTelegraphZone
@@ -3858,6 +3287,7 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 	end
 	G.SpawnWarship = WorldEvents.SpawnWarship
 	G.SpawnMirageIsland = WorldEvents.SpawnMirageIsland
+	G.GetActiveMirageEvent = WorldEvents.GetActiveMirageEvent
 	G.SpawnSeaMonsterEvent = WorldEvents.SpawnSeaMonsterEvent
 	G.RefreshPlayerShipBanner = WorldEvents.RefreshPlayerShipBanner
 	G.OnVoidRescue = handleVoidRescue
@@ -3982,6 +3412,32 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 			end
 		end
 
+		local raidSession = SpireAndLeviathan.GetPlayerRaidSession(p)
+		local hasRaidRevive = raidSession ~= nil and (tonumber(raidSession.RevivesLeft and raidSession.RevivesLeft[p]) or 0) > 0
+		if hasRaidRevive then
+			-- Temporarily cushion MaxHealth/Health so prevPlayerDamage still runs Instinct/Logia/DEF cleanly without triggering Humanoid.Died!
+			local origMax = h.MaxHealth
+			local origHP = h.Health
+			local cushion = 100000
+			h.MaxHealth = origMax + cushion
+			h.Health = origHP + cushion
+			prevPlayerDamage(p, dmg, attackerEnemy)
+			if h.Parent then
+				local dealt = math.max(0, (origHP + cushion) - h.Health)
+				h.MaxHealth = origMax
+				local nextHP = origHP - dealt
+				if nextHP > 1 then
+					h.Health = math.min(origMax, nextHP)
+				else
+					h.Health = math.max(5, math.floor(origMax * 0.1))
+					if not tryEnterCoopDownedState(p, r, h, rt, prof) then
+						SpireAndLeviathan.ConsumeRaidRevive(p, raidSession)
+					end
+				end
+			end
+			return
+		end
+
 		local preHP = h.Health
 		prevPlayerDamage(p, dmg, attackerEnemy)
 		if h.Parent and h.Health <= 1 and preHP > 1 then
@@ -4042,19 +3498,54 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 
 		-- #75 Defeating AbyssalLeviathan spawns towable 3D LeviathanHeart!
 		if e.Id == "AbyssalLeviathan" then
-			spawnLeviathanHeartRelic(deathPos, topPlr)
+			SpireAndLeviathan.SpawnLeviathanHeartRelic(deathPos, topPlr)
 		end
 
-		-- #76 Pirate Raid Siege Commander awards guaranteed random 3D Devil Fruit!
+		-- #76 Pirate Raid Siege Commander awards guaranteed random 3D Devil Fruit (respecting GetMaxCoreStorage)!
 		if e.IsPirateRaidCommander and topPlr and topPlr.Parent == Players then
 			local wonFruit = ALL_CANONICAL_FRUITS[math.random(1, #ALL_CANONICAL_FRUITS)]
 			local prof = D.Get(topPlr)
 			if prof then
-				prof.StoredFruits = prof.StoredFruits or {}
-				prof.StoredFruits[wonFruit] = (prof.StoredFruits[wonFruit] or 0) + 1
+				prof.StoredFruits = type(prof.StoredFruits) == "table" and prof.StoredFruits or {}
+				local maxCap = Helpers.GetMaxCoreStorage(topPlr, prof)
+				local curStored = tonumber(prof.StoredFruits[wonFruit]) or 0
+				local storedOk = false
+				local topRt = G.Runtime and G.Runtime[topPlr]
+				if curStored < maxCap then
+					prof.StoredFruits[wonFruit] = curStored + 1
+					curStored += 1
+					storedOk = true
+					if topRt then
+						topRt.HeldAlreadyStored = true
+					end
+				else
+					if topRt then
+						topRt.HeldAlreadyStored = false
+					end
+				end
 				prof.HeldFruit = wonFruit
 				local fName = (C.AetherFruits and C.AetherFruits[wonFruit] and C.AetherFruits[wonFruit].Name) or wonFruit
-				G.Notify(topPlr, "CHIẾN LỢI PHẨM PIRATE RAID: Bạn kết liễu Chỉ Huy Hải Tặc và nhận được Lõi Aether 3D [" .. fName .. "]!")
+				if storedOk then
+					G.Notify(
+						topPlr,
+						string.format(
+							"CHIẾN LỢI PHẨM PIRATE RAID: Kết liễu Chỉ Huy Hải Tặc nhận Lõi Aether 3D [%s]! Đã lưu vào Kho Lõi (%d/%d).",
+							fName,
+							curStored,
+							maxCap
+						)
+					)
+				else
+					G.Notify(
+						topPlr,
+						string.format(
+							"CHIẾN LỢI PHẨM PIRATE RAID: Kết liễu Chỉ Huy Hải Tặc nhận Lõi Aether 3D [%s]! Kho Lõi đã đầy (%d/%d) — Lõi đang cầm trên tay!",
+							fName,
+							curStored,
+							maxCap
+						)
+					)
+				end
 				G.Sync(topPlr)
 				broadcastWorldBanner(
 					"CHIẾN THẮNG PIRATE RAID!",
@@ -4259,7 +3750,13 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 					end
 				end
 			end
+			if SpireAndLeviathan.TickOpenSeaMonsterAI(e, dt) then
+				return
+			end
 		else
+			if SpireAndLeviathan.TickOpenSeaMonsterAI(e, dt) then
+				return
+			end
 			if tickRegularArchetypeAndLeash(e, dt) then
 				return
 			end
@@ -4268,18 +3765,40 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 		prevTickEnemy(e, dt)
 	end
 
+	-- 5. Chain G.HandleAbilityExtra for 3D Warship Altitude Flight (routed via GameService AbilityRequest + RemoteGuard)
+	local prevHandleAbilityExtra = G.HandleAbilityExtra
+	G.HandleAbilityExtra = function(p, payload)
+		if type(payload) == "table" then
+			local act = tostring(payload.Action or payload.action or payload.skillId or "")
+			if act == "ShipAltitude" or act == "ShipVerticalInput" or act == "SetShipVertical" or act == "ControlShipAltitude" then
+				setPlayerShipVerticalInput(p, payload.Dir or payload.dir or payload.verticalDir or payload.value or 0)
+				return true
+			end
+		end
+		if prevHandleAbilityExtra then
+			return prevHandleAbilityExtra(p, payload)
+		end
+		return false
+	end
+
 	-- 6. Chain G.Equipment so StartAwakeningRaid & SpawnSkyShip route into Wave 3 systems
 	local prevEquipment = G.Equipment
 	G.Equipment = function(p, payload)
 		if type(payload) == "table" then
-			if payload.action == "StartAwakeningRaid" then
+			if payload.action == "ShipAltitude" or payload.action == "ShipVerticalInput" or payload.action == "SetShipVertical" or payload.action == "ControlShipAltitude" then
+				setPlayerShipVerticalInput(p, payload.Dir or payload.dir or payload.verticalDir or payload.value or 0)
+				return
+			elseif payload.action == "StartAwakeningRaid" or payload.action == "StartMicrochipRaid" or payload.action == "StartRaid" then
 				WorldEvents.StartMicrochipRaid(p, payload.difficulty)
+				return
+			elseif payload.action == "RepairShip" then
+				WorldEvents.HandleUIRequest(p, "RepairShip", payload)
 				return
 			elseif payload.action == "SpawnSkyShip" then
 				-- Cung luat voi UIRequest SpawnShip: kiem tra so huu, khong nhan dockPos tu client
 				-- (tau tu dua nguoi choi len boong => dockPos tu do = dich chuyen tuy y).
 				local reqShip = payload.shipId
-				if reqShip ~= nil and not playerOwnsShip(D.Get(p), reqShip) then
+				if reqShip ~= nil and not playerOwnsShip(D.Get(p), reqShip) and not DevGate.IsAllowed(p) then
 					G.Notify(p, "Bạn chưa sở hữu chiến hạm này! Hãy mua tại Thợ Đóng Tàu (Sky Shipwright).")
 					return
 				end
@@ -4330,6 +3849,9 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 		statePayload.RaidWave = p:GetAttribute("RaidWave") or 0
 		statePayload.RaidTimer = p:GetAttribute("RaidTimer") or 0
 		statePayload.RaidDifficulty = p:GetAttribute("RaidDifficulty") or "Normal"
+		statePayload.RaidLivesLeft = p:GetAttribute("RaidLivesLeft") or 0
+		statePayload.RaidChipsCleared = tonumber(profile.RaidChipsCleared) or 0
+		statePayload.MicrochipRaidsCleared = type(profile.MicrochipRaidsCleared) == "table" and profile.MicrochipRaidsCleared or {}
 		statePayload.SpireFloor = p:GetAttribute("SpireFloor") or 0
 		statePayload.ActiveShip = normalizeShipId(profile.ActiveShip)
 	end
@@ -4345,43 +3867,19 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 
 	Players.PlayerRemoving:Connect(function(p)
 		WorldCmdDedup[p] = nil
-		for _, he in ipairs(ActiveLeviathanHearts) do
-			if he.TowedByPlayer == p or (he.TowedByShip and he.TowedByShip.Owner == p) then
-				detachLeviathanHeartTow(he)
-			end
-		end
+		SpireAndLeviathan.OnPlayerRemoving(p)
 		if ActiveWarships[p] then
 			if ActiveWarships[p].Model and ActiveWarships[p].Model.Parent then
 				ActiveWarships[p].Model:Destroy()
 			end
 			ActiveWarships[p] = nil
 		end
-		cleanupSpireSession(p, false)
-		if ActiveRaidSession then
-			if ActiveRaidSession.DamageMap then
-				ActiveRaidSession.DamageMap[p] = nil
-			end
-			local kept = {}
-			for _, member in ipairs(ActiveRaidSession.Players or {}) do
-				if member ~= p and member.Parent == Players then
-					table.insert(kept, member)
-				end
-			end
-			ActiveRaidSession.Players = kept
-			if ActiveRaidSession.Leader == p then
-				ActiveRaidSession.Leader = kept[1]
-			end
-			if #kept == 0 then
-				endRaidSession(false, nil)
-			end
-		end
 	end)
 
-	-- Build 3D World Objects for Tasks #74, #76, #22, #80, #70, #23/#115
+	-- Build 3D World Objects for Tasks #74, #76, #80, #70, #23/#115
 	pcall(buildSoulReaperRitualSet)
 	pcall(buildPirateRaidHornBeacon)
-	pcall(ensureRaidArenaPlatforms)
-	pcall(ensureSkySpirePortalAndArena)
+	pcall(SpireAndLeviathan.EnsureSkySpirePortalAndArena)
 	pcall(buildDPSTrainingDummy)
 	pcall(buildHarborShipwrights)
 
@@ -4389,10 +3887,8 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 	RunService.Heartbeat:Connect(function(dt)
 		local clamped = math.min(0.1, dt)
 		tickActiveWarships(clamped)
-		tickLeviathanHearts(clamped)
-		if ActiveMirageEvent and ActiveMirageEvent.Gear and ActiveMirageEvent.Gear.Parent then
-			ActiveMirageEvent.Gear.CFrame = ActiveMirageEvent.Gear.CFrame * CFrame.Angles(0, clamped * 1.9, 0)
-		end
+		SpireAndLeviathan.TickLeviathanHearts(clamped)
+		SpireAndLeviathan.TickMirageHeartbeat(clamped)
 	end)
 
 	-- 1s Strategic World Event Loop (Sea Danger 1-6, Raid Timer, Spire Floors, Respawn Holograms, DPS Dummy, Scheduled Mirage & Pirate Raid)
@@ -4402,9 +3898,13 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 		while true do
 			task.wait(1.0)
 			local now = os.clock()
-			pcall(tickSeaDangerAndDynamicEncounters)
-			pcall(tickRaidDungeon)
-			pcall(tickSkySpireSessions)
+			pcall(SpireAndLeviathan.TickSeaDangerAndDynamicEncounters)
+			local okRaid, raidErr = pcall(SpireAndLeviathan.TickRaidDungeon)
+			if not okRaid then
+				warn("[SkybreakWorldEvents] tickRaidDungeon error:", raidErr)
+				pcall(SpireAndLeviathan.ResetAllRaidsOnError)
+			end
+			pcall(SpireAndLeviathan.TickSkySpireSessions)
 			pcall(tickBossRespawnHolograms, 1.0)
 			pcall(tickDPSDummy)
 			if SoulRitualState.Boss and (not SoulRitualState.Boss.Alive or not SoulRitualState.Boss.Model or not SoulRitualState.Boss.Model.Parent) then
@@ -4423,15 +3923,9 @@ function WorldEvents.Init(gRef, dRef, wRef, cRef)
 			end
 
 			-- Despawn MirageSkyIsland after 15 minutes
-			if ActiveMirageEvent and now >= ActiveMirageEvent.ExpiresClock then
-				if ActiveMirageEvent.Model and ActiveMirageEvent.Model.Parent then
-					ActiveMirageEvent.Model:Destroy()
-				end
-				ActiveMirageEvent = nil
-				workspace:SetAttribute("MirageIslandActive", false)
-			end
+			SpireAndLeviathan.TickMirageExpiry(now)
 
-			if now >= nextAutoMirage and not ActiveMirageEvent then
+			if now >= nextAutoMirage and not SpireAndLeviathan.GetActiveMirageEvent() then
 				local plrs = Players:GetPlayers()
 				if #plrs > 0 then
 					nextAutoMirage = now + 1200

@@ -28,6 +28,8 @@ local Fruits = {
     GachaConnection = nil,
     GachaOverlay = nil,
     GachaOrbit = nil,
+    OddsModalOverlay = nil,
+    LastRollClock = 0,
     Refs = nil,
 }
 
@@ -38,9 +40,9 @@ local RARITY_PALETTE = {
         Stroke = Color3.fromRGB(148, 168, 196),
         Text = Color3.fromRGB(196, 212, 232),
         Tag = "COMMON",
-        Rate = "42.0%",
-        LabelVi = "Common (Phổ Biến)",
-        LabelEn = "Common",
+        Rate = "32.0%",
+        LabelVi = "Common (32.0%)",
+        LabelEn = "Common (32.0%)",
     },
     Uncommon = {
         Top = Color3.fromRGB(22, 189, 136),
@@ -48,9 +50,9 @@ local RARITY_PALETTE = {
         Stroke = Color3.fromRGB(110, 242, 190),
         Text = Color3.fromRGB(92, 236, 174),
         Tag = "UNCOMMON",
-        Rate = "25.0%",
-        LabelVi = "Uncommon (Tinh Anh)",
-        LabelEn = "Uncommon",
+        Rate = "29.0%",
+        LabelVi = "Uncommon (29.0%)",
+        LabelEn = "Uncommon (29.0%)",
     },
     Rare = {
         Top = Color3.fromRGB(56, 189, 248),
@@ -59,8 +61,8 @@ local RARITY_PALETTE = {
         Text = Color3.fromRGB(108, 206, 255),
         Tag = "RARE",
         Rate = "18.0%",
-        LabelVi = "Rare (Hiếm)",
-        LabelEn = "Rare",
+        LabelVi = "Rare (18.0%)",
+        LabelEn = "Rare (18.0%)",
     },
     Epic = {
         Top = Color3.fromRGB(192, 132, 252),
@@ -68,9 +70,9 @@ local RARITY_PALETTE = {
         Stroke = Color3.fromRGB(228, 184, 255),
         Text = Color3.fromRGB(214, 158, 255),
         Tag = "EPIC",
-        Rate = "9.0%",
-        LabelVi = "Epic (Sử Thi)",
-        LabelEn = "Epic",
+        Rate = "12.0%",
+        LabelVi = "Epic (12.0%)",
+        LabelEn = "Epic (12.0%)",
     },
     Legendary = {
         Top = Color3.fromRGB(252, 211, 77),
@@ -78,9 +80,9 @@ local RARITY_PALETTE = {
         Stroke = Color3.fromRGB(255, 242, 166),
         Text = Color3.fromRGB(255, 218, 92),
         Tag = "LEGEND",
-        Rate = "4.5%",
-        LabelVi = "Legendary (Huyền Thoại)",
-        LabelEn = "Legendary",
+        Rate = "6.6%",
+        LabelVi = "Legendary (6.6%)",
+        LabelEn = "Legendary (6.6%)",
     },
     Mythical = {
         Top = Color3.fromRGB(251, 113, 133),
@@ -88,14 +90,90 @@ local RARITY_PALETTE = {
         Stroke = Color3.fromRGB(255, 182, 212),
         Text = Color3.fromRGB(255, 128, 164),
         Tag = "MYTHIC",
-        Rate = "1.5%",
-        LabelVi = "Mythic (Thần Thoại)",
-        LabelEn = "Mythic",
+        Rate = "2.4%",
+        LabelVi = "Mythic (2.4%)",
+        LabelEn = "Mythic (2.4%)",
     },
 }
 RARITY_PALETTE.Mythic = RARITY_PALETTE.Mythical
 
 local RARITY_ORDER = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical" }
+
+-- Canonical Gacha Drop-Rate Odds (matches Config.lua C.FruitGachaOddsTable 100%, total weight = 1000)
+local GACHA_ODDS_TIERS = {
+    {
+        Rarity = "Common",
+        TierVi = "Common (Phổ Biến)",
+        TierEn = "Common",
+        TotalPct = "32.0%",
+        CompactVi = "Gale 32.0%",
+        CompactEn = "GaleCore 32.0%",
+        Items = {
+            { Id = "GaleCore", Weight = 320, Pct = "32.0%" },
+        },
+    },
+    {
+        Rarity = "Uncommon",
+        TierVi = "Uncommon (Tinh Anh)",
+        TierEn = "Uncommon",
+        TotalPct = "29.0%",
+        CompactVi = "Sandstone 29.0%",
+        CompactEn = "SandstoneCore 29.0%",
+        Items = {
+            { Id = "SandstoneCore", Weight = 290, Pct = "29.0%" },
+        },
+    },
+    {
+        Rarity = "Rare",
+        TierVi = "Rare (Hiếm)",
+        TierEn = "Rare",
+        TotalPct = "18.0%",
+        CompactVi = "Flame 9.0% • Ice 9.0%",
+        CompactEn = "SolarFlame 9.0% • GlacierIce 9.0%",
+        Items = {
+            { Id = "SolarFlameCore", Weight = 90, Pct = "9.0%" },
+            { Id = "GlacierIceCore", Weight = 90, Pct = "9.0%" },
+        },
+    },
+    {
+        Rarity = "Epic",
+        TierVi = "Epic (Sử Thi)",
+        TierEn = "Epic",
+        TotalPct = "12.0%",
+        CompactVi = "Light 6.0% • Rumble 6.0%",
+        CompactEn = "CelestialLight 6.0% • ThunderRumble 6.0%",
+        Items = {
+            { Id = "CelestialLightCore", Weight = 60, Pct = "6.0%" },
+            { Id = "ThunderRumbleCore", Weight = 60, Pct = "6.0%" },
+        },
+    },
+    {
+        Rarity = "Legendary",
+        TierVi = "Legendary (Huyền Thoại)",
+        TierEn = "Legendary",
+        TotalPct = "6.6%",
+        CompactVi = "Magma 2.2% • Gravity 2.2% • Portal 2.2%",
+        CompactEn = "Magma 2.2% • Gravity 2.2% • Portal 2.2%",
+        Items = {
+            { Id = "StarforgedMagmaCore", Weight = 22, Pct = "2.2%" },
+            { Id = "AstralGravityCore", Weight = 22, Pct = "2.2%" },
+            { Id = "DimensionalPortalCore", Weight = 22, Pct = "2.2%" },
+        },
+    },
+    {
+        Rarity = "Mythical",
+        TierVi = "Mythic (Thần Thoại)",
+        TierEn = "Mythic",
+        TotalPct = "2.4%",
+        CompactVi = "Titan 0.8% • Aetherflow 0.8% • Dragon 0.8%",
+        CompactEn = "SolarTitan 0.8% • Aetherflow 0.8% • Dragon 0.8%",
+        Items = {
+            { Id = "SolarTitanCore", Weight = 8, Pct = "0.8%" },
+            { Id = "AetherflowCore", Weight = 8, Pct = "0.8%" },
+            { Id = "AbyssalSovereignCore", Weight = 8, Pct = "0.8%" },
+        },
+    },
+}
 
 local RARITY_COLORS = {
     Common = RARITY_PALETTE.Common.Text,
@@ -145,9 +223,9 @@ local FRUIT_CATALOG = {
         DescVi = "Điều khiển bão cát hoàng kim sa mạc, trói chân mục tiêu trong lốc cát.",
         DescEn = "Command golden desert sandstorms and snare targets inside quicksand vortices.",
         Moves = {
-            { Key = "Z", Name = "Desert Blade Spada", Mult = "2.0x ATK", Range = "25m", Cd = "3.2s" },
+            { Key = "Z", Name = "Golden Sand Blade • Sa Nhận", Mult = "2.0x ATK", Range = "25m", Cd = "3.2s" },
             { Key = "X", Name = "Quicksand Tomb Trap", Mult = "2.6x ATK", Range = "26m", Cd = "4.8s" },
-            { Key = "C", Name = "Sandstorm Sables", Mult = "3.3x ATK", Range = "30m", Cd = "6.5s" },
+            { Key = "C", Name = "Abyssal Sandstorm • Bão Cát Hư Không", Mult = "3.3x ATK", Range = "30m", Cd = "6.5s" },
             { Key = "V", Name = "Imperial Desert Burial", Mult = "4.3x ATK", Range = "36m", Cd = "9.5s" },
             { Key = "F", Name = "Dune Whirlwind Flight", Mult = "1.6x ATK", Range = "28m", Cd = "3.8s" },
         },
@@ -164,13 +242,13 @@ local FRUIT_CATALOG = {
         Element = "Sky",
         Icon = "Flame",
         Color = Color3.fromRGB(255, 125, 45),
-        DescVi = "Ngọn lửa mặt trời rực cháy thiêu rụi mọi kẻ địch với Hỏa Quyền và Đại Viêm Đế.",
-        DescEn = "Blazing solar fire that incinerates foes with Fire Fist and Solar Emperor Nova.",
+        DescVi = "Ngọn lửa mặt trời rực cháy thiêu rụi mọi kẻ địch với Hỏa Quyền Thái Dương và Đại Viêm Đế.",
+        DescEn = "Blazing solar fire that incinerates foes with Solar Fire Fist and Flame Emperor Nova.",
         Moves = {
-            { Key = "Z", Name = "Fire Fist Hiken", Mult = "2.2x ATK", Range = "28m", Cd = "3.2s" },
+            { Key = "Z", Name = "Solar Fire Fist • Hỏa Quyền Thái Dương", Mult = "2.2x ATK", Range = "28m", Cd = "3.2s" },
             { Key = "X", Name = "Solar Flame Pillar", Mult = "2.9x ATK", Range = "30m", Cd = "4.8s" },
             { Key = "C", Name = "Cross Fire Barrage", Mult = "3.5x ATK", Range = "32m", Cd = "6.5s" },
-            { Key = "V", Name = "Dai Enkai: Flame Emperor", Mult = "4.8x ATK", Range = "40m", Cd = "9.5s" },
+            { Key = "V", Name = "Solar Flame Emperor • Đại Viêm Đế", Mult = "4.8x ATK", Range = "40m", Cd = "9.5s" },
             { Key = "F", Name = "Rocket Flame Jet", Mult = "1.7x ATK", Range = "28m", Cd = "3.5s" },
         },
     },
@@ -213,7 +291,7 @@ local FRUIT_CATALOG = {
         Moves = {
             { Key = "Z", Name = "Photon Spear Beam", Mult = "2.4x ATK", Range = "32m", Cd = "3.2s" },
             { Key = "X", Name = "Mirror Kick Barrage", Mult = "3.1x ATK", Range = "30m", Cd = "4.8s" },
-            { Key = "C", Name = "Yasakani Sacred Jewels", Mult = "3.9x ATK", Range = "36m", Cd = "6.8s" },
+            { Key = "C", Name = "Celestial Photon Volley • Thiên Quang Vũ", Mult = "3.9x ATK", Range = "36m", Cd = "6.8s" },
             { Key = "V", Name = "Heavenly Judgement Ray", Mult = "5.0x ATK", Range = "42m", Cd = "9.5s" },
             { Key = "F", Name = "Lightspeed Starlight Flight", Mult = "1.9x ATK", Range = "32m", Cd = "3.2s" },
         },
@@ -225,18 +303,18 @@ local FRUIT_CATALOG = {
         ShortEn = "Star Magma",
         NameVi = "Lõi Dung Nham Tinh Cầu (Magma)",
         NameEn = "Starforged Magma Core",
-        Rarity = "Epic",
+        Rarity = "Legendary",
         Type = "Elemental",
         Element = "Sky",
         Icon = "Flame",
         Color = Color3.fromRGB(255, 82, 48),
-        DescVi = "Sức sát thương nguyên tố cao nhất với mưa thiên thạch dung nham và Minh Cẩu.",
-        DescEn = "Supreme elemental burn damage with volcanic meteor showers and Magma Hound.",
+        DescVi = "Sức sát thương nguyên tố cao nhất với mưa thiên thạch dung nham và Phán Quyết Tinh Cầu.",
+        DescEn = "Supreme elemental burn damage with volcanic meteor showers and Starforged Judgment.",
         Moves = {
             { Key = "Z", Name = "Magma Clap Eruption", Mult = "2.5x ATK", Range = "26m", Cd = "3.5s" },
-            { Key = "X", Name = "Volcanic Meigo Hound", Mult = "3.2x ATK", Range = "30m", Cd = "5.0s" },
+            { Key = "X", Name = "Magma Judgment • Dung Nham Phán Quyết", Mult = "3.2x ATK", Range = "30m", Cd = "5.0s" },
             { Key = "C", Name = "Meteor Volcano Shower", Mult = "4.0x ATK", Range = "34m", Cd = "7.0s" },
-            { Key = "V", Name = "Great Starforged Hound", Mult = "5.2x ATK", Range = "38m", Cd = "10.0s" },
+            { Key = "V", Name = "Great Starforged Eruption", Mult = "5.2x ATK", Range = "38m", Cd = "10.0s" },
             { Key = "F", Name = "Magma Beast Flight", Mult = "1.8x ATK", Range = "28m", Cd = "4.0s" },
         },
     },
@@ -244,21 +322,21 @@ local FRUIT_CATALOG = {
         Id = "ThunderRumbleCore",
         Asset = "Fruit_ThunderRumbleCore",
         ShortVi = "Lôi Thần",
-        ShortEn = "Thunder Rumble",
-        NameVi = "Lõi Lôi Thần (Thunder Rumble)",
+        ShortEn = "Thunder Core",
+        NameVi = "Lõi Lôi Thần Cửu Thiên (Thunder Core)",
         NameEn = "Thunder Core",
-        Rarity = "Legendary",
+        Rarity = "Epic",
         Type = "Elemental",
         Element = "Lightning",
         Icon = "Lightning",
         Color = Color3.fromRGB(88, 210, 255),
-        DescVi = "Triệu hồi Lôi Long và quả cầu sấm sét Raigo hủy diệt diện rộng.",
-        DescEn = "Summon Thunder Dragons and colossal Raigo storm spheres across the sky.",
+        DescVi = "Triệu hồi Lôi Long và quả cầu Lôi Đế Diệt Thế hủy diệt diện rộng.",
+        DescEn = "Summon Thunder Dragons and colossal Thunder Sovereign storm spheres across the sky.",
         Moves = {
             { Key = "Z", Name = "Thunderball Dragon", Mult = "2.5x ATK", Range = "30m", Cd = "3.5s" },
             { Key = "X", Name = "Sky Thunder Judgement", Mult = "3.2x ATK", Range = "32m", Cd = "5.0s" },
             { Key = "C", Name = "Ion Storm Barrage", Mult = "3.9x ATK", Range = "36m", Cd = "7.0s" },
-            { Key = "V", Name = "Raigo Thundercloud Sphere", Mult = "5.2x ATK", Range = "42m", Cd = "10.0s" },
+            { Key = "V", Name = "Thunder Sovereign • Lôi Đế Diệt Thế", Mult = "5.2x ATK", Range = "42m", Cd = "10.0s" },
             { Key = "F", Name = "Lightning Flash Teleport", Mult = "1.9x ATK", Range = "28m", Cd = "4.0s" },
         },
     },
@@ -379,6 +457,88 @@ for _, f in ipairs(FRUIT_CATALOG) do
     FRUIT_BY_ID[f.Id] = f
 end
 
+-- Rule 3: Support all 12 canonical + legacy alias Devil Fruit IDs
+local FRUIT_ALIAS_TO_CANONICAL = {
+    Gale = "GaleCore",
+    Smoke = "SandstoneCore",
+    Sand = "SandstoneCore",
+    Flame = "SolarFlameCore",
+    Ice = "GlacierIceCore",
+    Rumble = "ThunderRumbleCore",
+    Light = "CelestialLightCore",
+    Magma = "StarforgedMagmaCore",
+    Gravity = "AstralGravityCore",
+    Portal = "DimensionalPortalCore",
+    Buddha = "SolarTitanCore",
+    SweetDoughCore = "AetherflowCore",
+    Dough = "AetherflowCore",
+    Dragon = "AbyssalSovereignCore",
+}
+for aliasId, canonId in pairs(FRUIT_ALIAS_TO_CANONICAL) do
+    if FRUIT_BY_ID[canonId] then
+        FRUIT_BY_ID[aliasId] = FRUIT_BY_ID[canonId]
+    end
+end
+
+local CANONICAL_TO_ALIASES = {}
+for aliasId, canonId in pairs(FRUIT_ALIAS_TO_CANONICAL) do
+    CANONICAL_TO_ALIASES[canonId] = CANONICAL_TO_ALIASES[canonId] or {}
+    table.insert(CANONICAL_TO_ALIASES[canonId], aliasId)
+end
+
+local function isFruitAwakenedState(fState, canonId)
+    local awk = fState and fState.awakenedFruits
+    if type(awk) ~= "table" then
+        return false
+    end
+    if awk[canonId] == true then
+        return true
+    end
+    for _, al in ipairs(CANONICAL_TO_ALIASES[canonId] or {}) do
+        if awk[al] == true then
+            return true
+        end
+    end
+    return false
+end
+
+local function getFruitMasteryLevel(fState, canonId)
+    local m = fState and fState.mastery
+    if type(m) ~= "table" then
+        return 1
+    end
+    if tonumber(m[canonId]) then
+        return tonumber(m[canonId])
+    end
+    for _, al in ipairs(CANONICAL_TO_ALIASES[canonId] or {}) do
+        if tonumber(m[al]) then
+            return tonumber(m[al])
+        end
+    end
+    return 1
+end
+
+local function getFruitStoredQty(stored, canonId)
+    if type(stored) ~= "table" then
+        return 0
+    end
+    local total = tonumber(stored[canonId]) or 0
+    for _, al in ipairs(CANONICAL_TO_ALIASES[canonId] or {}) do
+        total += tonumber(stored[al]) or 0
+    end
+    return total
+end
+
+local function formatAwakenV2Label(isAwakened, raidChipsCleared)
+    if isAwakened then
+        return I18n.Pick("ĐÃ THỨC TỈNH LÕI V2 ✓", "AWAKENED V2 ✓"), "gold"
+    end
+    if (tonumber(raidChipsCleared) or 0) >= 1 then
+        return I18n.Pick("THỨC TỈNH V2 (1K SHARDS • RAID ✓)", "AWAKEN V2 (1K SHARDS • RAID ✓)"), "primary"
+    end
+    return I18n.Pick("CẦN VƯỢT RAID V2 [P] (0/1)", "NEED MICROCHIP RAID [P] (0/1)"), "secondary"
+end
+
 local function getFruitName(item)
     if not item then
         return "Gale Core"
@@ -398,6 +558,88 @@ local function getFruitDesc(item)
         return ""
     end
     return I18n.GetLanguage() == "en" and item.DescEn or item.DescVi
+end
+
+local function formatLineageDisplayName(rawRace)
+    local low = string.lower(tostring(rawRace or "Skyborn"))
+    if low:find("mink") or low:find("azure") then
+        return I18n.Pick("Tộc Linh Vũ Azurefang", "Azurefang")
+    elseif low:find("ghoul") or low:find("umbral") then
+        return I18n.Pick("Tộc Dạ Ảnh Umbral", "Umbral")
+    elseif low:find("leviathan") or low:find("tide") then
+        return I18n.Pick("Tộc Hải Vương Tideborn", "Tideborn")
+    elseif low:find("cyborg") then
+        return I18n.Pick("Tộc Cơ Giới Cyborg", "Cyborg")
+    elseif low:find("draco") then
+        return I18n.Pick("Tộc Cổ Long Draco", "Draco")
+    end
+    return I18n.Pick("Thiên Tộc Skyborn", "Skyborn")
+end
+
+local CoreSharedConfig = nil
+pcall(function()
+    local sh = ReplicatedStorage:FindFirstChild("Shared") or ReplicatedStorage:FindFirstChild("SkybreakShared")
+    local cfgMod = sh and sh:FindFirstChild("Config")
+    if cfgMod and cfgMod:IsA("ModuleScript") then
+        CoreSharedConfig = require(cfgMod)
+    end
+end)
+
+local function getDynamicGachaGoldCost(snap)
+    local lv = math.max(1, math.floor(tonumber(snap and snap.player and snap.player.level) or 1))
+    if type(CoreSharedConfig) == "table" then
+        local fn = CoreSharedConfig.FruitGachaCost or CoreSharedConfig.GetGachaGoldCost
+        if type(fn) == "function" then
+            local ok, val = pcall(fn, lv)
+            if ok and tonumber(val) and tonumber(val) > 0 then
+                return math.floor(tonumber(val))
+            end
+        end
+    end
+    return math.min(165000, 25000 + math.floor(math.max(0, lv - 1) * 55))
+end
+
+local function getServerFruitPity(snap)
+    local lp = Players.LocalPlayer
+    local rawPity = tonumber(snap and (snap.FruitPity or snap.fruitPity))
+        or tonumber(snap and snap.fruits and (snap.fruits.fruitPity or snap.fruits.pityCount))
+        or tonumber(snap and snap.raw and snap.raw.FruitPity)
+        or tonumber(lp and lp:GetAttribute("FruitPity"))
+        or 0
+    local pityMax = tonumber(CoreSharedConfig and CoreSharedConfig.FruitPityMax) or 50
+    return math.clamp(math.floor(rawPity), 0, pityMax), pityMax
+end
+
+local function isPaidRandomRestricted(snap)
+    local lp = Players.LocalPlayer
+    return (snap and (snap.PaidRandomRestricted == true or snap.paidRandomRestricted == true))
+        or (snap and snap.raw and snap.raw.PaidRandomRestricted == true)
+        or (lp and lp:GetAttribute("PaidRandomRestricted") == true)
+        or false
+end
+
+local function getFreeVoucherCount(snap)
+    local lp = Players.LocalPlayer
+    return tonumber(snap and (snap.FreeFruitVouchers or snap.freeFruitVouchers))
+        or tonumber(snap and snap.fruits and snap.fruits.freeVouchers)
+        or tonumber(snap and snap.raw and snap.raw.FreeFruitVouchers)
+        or tonumber(lp and lp:GetAttribute("FreeFruitVouchers"))
+        or 0
+end
+
+local function formatZiolesSpinButtonLabel(snap)
+    local freeVouchers = getFreeVoucherCount(snap)
+    if freeVouchers > 0 then
+        return I18n.Pick(
+            string.format("QUAY MIỄN PHÍ (VÉ x%d)", freeVouchers),
+            string.format("FREE SPIN (TICKET x%d)", freeVouchers)
+        ), true
+    end
+    local goldCost = getDynamicGachaGoldCost(snap)
+    return I18n.Pick(
+        string.format("TRIỆU HỒI (%s GOLD)", UIFactory.FormatNumber(goldCost)),
+        string.format("SUMMON (%s GOLD)", UIFactory.FormatNumber(goldCost))
+    ), false
 end
 
 local function fireEquipRemote(payload)
@@ -445,8 +687,30 @@ local function cleanupGachaOverlay()
     Fruits.GachaOverlay = nil
 end
 
+local function cleanupOddsModal()
+    if Fruits.OddsModalOverlay and Fruits.OddsModalOverlay.Parent then
+        Fruits.OddsModalOverlay:Destroy()
+    end
+    Fruits.OddsModalOverlay = nil
+end
+
+local function rollWeightedFallbackFruitId()
+    local roll = math.random(1, 1000)
+    local acc = 0
+    for _, tier in ipairs(GACHA_ODDS_TIERS) do
+        for _, entry in ipairs(tier.Items) do
+            acc += entry.Weight
+            if roll <= acc then
+                return entry.Id
+            end
+        end
+    end
+    return "GaleCore"
+end
+
 function Fruits.Cleanup()
     cleanupGachaOverlay()
+    cleanupOddsModal()
     if Fruits.ZiolesBustConn then
         Fruits.ZiolesBustConn:Disconnect()
         Fruits.ZiolesBustConn = nil
@@ -933,29 +1197,50 @@ local function populateMovesList(movesList, selectedFruit, equippedId, colors, m
 end
 
 -- Zioles 3D Gacha Spin Presentation Overlay (3.2s easeOutQuart carousel + rarity aura shifts + burst)
-local function launchZiolesGachaCarousel(root)
+local function launchZiolesGachaCarousel(root, useVoucherOnly)
+    local nowClock = os.clock()
+    if nowClock - (Fruits.LastRollClock or 0) < 1.3 then
+        Store.ShowToast(
+            I18n.Pick("Đài Gacha đang tụ linh năng, vui lòng đợi giây lát!", "Gacha Shrine is recharging, please wait a moment!"),
+            "warning"
+        )
+        return
+    end
+
     cleanupGachaOverlay()
     local colors = Theme.Colors
 
     local beforeSnap = Store.GetSnapshot()
-    local curGold = (beforeSnap and beforeSnap.currency and tonumber(beforeSnap.currency.gold)) or 0
-    local curVouchers = (beforeSnap and beforeSnap.raw and tonumber(beforeSnap.raw.FreeFruitVouchers)) or 0
-    if curGold < 25000 and curVouchers <= 0 and not (beforeSnap and beforeSnap.isDemoMode) then
+    local curGold = (beforeSnap and beforeSnap.currency and tonumber(beforeSnap.currency.gold))
+        or (beforeSnap and beforeSnap.currencies and tonumber(beforeSnap.currencies.gold))
+        or 0
+    local curVouchers = getFreeVoucherCount(beforeSnap)
+    local isDemo = (beforeSnap and beforeSnap.isDemoMode == true)
+
+    if useVoucherOnly == true and curVouchers <= 0 and not isDemo then
+        Store.ShowToast(
+            I18n.Pick("Bạn chưa có Vé Gacha Miễn Phí nào!", "You have no Free Gacha Tickets!"),
+            "warning"
+        )
+        return
+    end
+    local reqGoldCost = getDynamicGachaGoldCost(beforeSnap)
+    if not useVoucherOnly and curGold < reqGoldCost and curVouchers <= 0 and not isDemo then
         fireEquipRemote({ action = "RollFruit" })
         return
     end
-    local prevHeld = beforeSnap and beforeSnap.fruits and beforeSnap.fruits.heldFruit or ""
+
+    Fruits.LastRollClock = nowClock
+    local prevHeld = tostring((beforeSnap and beforeSnap.fruits and beforeSnap.fruits.heldFruit) or "")
+    local prevStoredCounts = {}
+    for fKey, cnt in pairs((beforeSnap and beforeSnap.fruits and beforeSnap.fruits.storedFruits) or {}) do
+        prevStoredCounts[tostring(fKey)] = tonumber(cnt) or 0
+    end
 
     -- Fire authoritative server gacha roll immediately so server result arrives before 3.2s reveal
     fireEquipRemote({ action = "RollFruit" })
 
-    local weightedPool = {
-        "GaleCore", "SandstoneCore", "SolarFlameCore", "GlacierIceCore",
-        "CelestialLightCore", "StarforgedMagmaCore", "ThunderRumbleCore",
-        "AstralGravityCore", "DimensionalPortalCore", "SolarTitanCore",
-        "AetherflowCore", "AbyssalSovereignCore",
-    }
-    local fallbackWinId = weightedPool[math.random(1, #weightedPool)]
+    local fallbackWinId = rollWeightedFallbackFruitId()
 
     local backdrop = UIFactory.Create("TextButton", root, {
         Name = "ZiolesGachaModal",
@@ -974,9 +1259,13 @@ local function launchZiolesGachaCarousel(root)
         variant = "gold",
         anchorPoint = Vector2.new(0.5, 0.5),
         position = UDim2.fromScale(0.5, 0.5),
-        size = UDim2.fromOffset(580, 440),
+        size = UDim2.new(0.92, 0, 0.90, 0),
         zIndex = 62,
     })
+    local stageClamp = Instance.new("UISizeConstraint")
+    stageClamp.MaxSize = Vector2.new(580, 440)
+    stageClamp.MinSize = Vector2.new(320, 340)
+    stageClamp.Parent = stage
 
     local bannerTitle = UIFactory.Label(stage, {
         Name = "GachaTitle",
@@ -1089,8 +1378,8 @@ local function launchZiolesGachaCarousel(root)
     local progTrack = UIFactory.Create("Frame", stage, {
         Name = "SpinProgressTrack",
         AnchorPoint = Vector2.new(0.5, 0),
-        Position = UDim2.new(0.5, 0, 0, 392),
-        Size = UDim2.fromOffset(380, 8),
+        Position = UDim2.new(0.5, 0, 1, -68),
+        Size = UDim2.new(1, -64, 0, 8),
         BackgroundColor3 = colors.BG_900,
         BorderSizePixel = 0,
         ZIndex = 65,
@@ -1109,13 +1398,14 @@ local function launchZiolesGachaCarousel(root)
         Name = "RevealActions",
         AnchorPoint = Vector2.new(0.5, 1),
         Position = UDim2.new(0.5, 0, 1, -16),
-        Size = UDim2.fromOffset(420, 42),
+        Size = UDim2.new(1, -36, 0, 42),
         BackgroundTransparency = 1,
         Visible = false,
         ZIndex = 66,
     })
 
     local wonFruitInfo = FRUIT_BY_ID[fallbackWinId] or FRUIT_CATALOG[1]
+    local confirmedServerWin = isDemo and wonFruitInfo or nil
 
     PremiumButton.Create(btnRow, {
         name = "EatWonFruitBtn",
@@ -1145,7 +1435,12 @@ local function launchZiolesGachaCarousel(root)
         zIndex = 67,
         onActivated = function()
             Fruits.SelectedFruitId = wonFruitInfo.Id
-            fireEquipRemote({ action = "StoreFruit", fruitId = wonFruitInfo.Id })
+            local curSnap = Store.GetSnapshot()
+            local lp = Players.LocalPlayer
+            local curHeld = tostring((curSnap and curSnap.fruits and curSnap.fruits.heldFruit) or (lp and lp:GetAttribute("HeldFruit")) or "")
+            if curHeld ~= "" and curHeld ~= "None" then
+                fireEquipRemote({ action = "StoreFruit", fruitId = wonFruitInfo.Id })
+            end
             cleanupGachaOverlay()
             Fruits.Update()
         end,
@@ -1189,10 +1484,22 @@ local function launchZiolesGachaCarousel(root)
         progFill.Size = UDim2.fromScale(t, 1)
 
         local liveSnap = Store.GetSnapshot()
-        local liveHeld = liveSnap and liveSnap.fruits and liveSnap.fruits.heldFruit
-        if type(liveHeld) == "string" and FRUIT_BY_ID[liveHeld] and (liveHeld ~= prevHeld or t > 0.55) then
-            wonFruitInfo = FRUIT_BY_ID[liveHeld]
-            sequence[totalSteps] = wonFruitInfo
+        if not confirmedServerWin and liveSnap and liveSnap.fruits then
+            local liveStored = liveSnap.fruits.storedFruits or {}
+            for fId, fMeta in pairs(FRUIT_BY_ID) do
+                if (tonumber(liveStored[fId]) or 0) > (prevStoredCounts[fId] or 0) then
+                    confirmedServerWin = fMeta
+                    wonFruitInfo = fMeta
+                    sequence[totalSteps] = fMeta
+                    break
+                end
+            end
+            local liveHeld = tostring(liveSnap.fruits.heldFruit or "")
+            if not confirmedServerWin and liveHeld ~= "" and liveHeld ~= prevHeld and FRUIT_BY_ID[liveHeld] then
+                confirmedServerWin = FRUIT_BY_ID[liveHeld]
+                wonFruitInfo = confirmedServerWin
+                sequence[totalSteps] = confirmedServerWin
+            end
         end
 
         local stepIdx = math.clamp(math.floor(eased * (totalSteps - 1)) + 1, 1, totalSteps)
@@ -1203,6 +1510,15 @@ local function launchZiolesGachaCarousel(root)
 
         if t >= 1 and not landed then
             landed = true
+            if not confirmedServerWin then
+                cleanupGachaOverlay()
+                Store.ShowToast(
+                    I18n.Pick("Lượt triệu hồi chưa sẵn sàng hoặc đang hồi chiêu!", "Summon is on cooldown or unavailable!"),
+                    "warning"
+                )
+                return
+            end
+            wonFruitInfo = confirmedServerWin
             showCarouselEntry(wonFruitInfo)
             progTrack.Visible = false
             btnRow.Visible = true
@@ -1238,18 +1554,18 @@ function Fruits.Build(parent, _responsiveState)
     local colors = Theme.Colors
     local snap = Store.GetSnapshot()
     local fState = snap.fruits or {}
-    local equippedId = fState.equippedFruit or "GaleCore"
-    if not FRUIT_BY_ID[equippedId] then
-        equippedId = "SolarTitanCore"
-    end
+    local rawEq = tostring(fState.equippedFruit or "")
+    local equippedId = FRUIT_BY_ID[rawEq] and FRUIT_BY_ID[rawEq].Id or ""
     local localPlr = Players.LocalPlayer
     local previewAttr = localPlr and localPlr:GetAttribute("SelectedPreviewFruit")
     if type(previewAttr) == "string" and FRUIT_BY_ID[previewAttr] then
-        Fruits.SelectedFruitId = previewAttr
+        Fruits.SelectedFruitId = FRUIT_BY_ID[previewAttr].Id
         localPlr:SetAttribute("SelectedPreviewFruit", nil)
     end
     if not Fruits.SelectedFruitId or not FRUIT_BY_ID[Fruits.SelectedFruitId] then
-        Fruits.SelectedFruitId = equippedId
+        Fruits.SelectedFruitId = (equippedId ~= "" and equippedId) or "GaleCore"
+    else
+        Fruits.SelectedFruitId = FRUIT_BY_ID[Fruits.SelectedFruitId].Id
     end
     local selectedFruit = FRUIT_BY_ID[Fruits.SelectedFruitId] or FRUIT_CATALOG[1]
 
@@ -1269,9 +1585,16 @@ function Fruits.Build(parent, _responsiveState)
     }
     Fruits.Refs = refs
 
+    local viewState = Store.GetView()
+    local isGachaMode = (viewState and viewState.fruitsMode == "Gacha")
+
     local _, headerRefs = UIFactory.BuildScreenHeader(root, {
         ActiveScreen = UIState.Screens.Fruits,
-        Title = I18n.T("fruits.title"),
+        ContextualNPCStation = isGachaMode,
+        StationBadgeText = isGachaMode and I18n.Pick("HIỀN GIẢ ZIOLES • ĐIỆN THỜ GACHA", "ORACLE ZIOLES • GACHA SHRINE") or nil,
+        Title = isGachaMode
+            and I18n.Pick("ĐÀI TRIỆU HỒI LÕI AETHER 3D • HIỀN GIẢ ZIOLES", "ZIOLES 3D AETHER CORE GACHA SHRINE")
+            or I18n.T("fruits.title"),
         Snapshot = snap,
         OnNavigate = function(targetId)
             ScreenRouter.Navigate(targetId)
@@ -1281,10 +1604,10 @@ function Fruits.Build(parent, _responsiveState)
         end,
     })
     refs.HeaderRefs = headerRefs
+    refs.IsGachaMode = isGachaMode
 
     -- ========================================================================
-    -- LEFT PANEL (54%): ZIOLES 3D GACHA SHRINE, DROP RATES & 12-FRUIT GLOSSY VAULT
-    -- Matches SKYBREAK_NPC_01 Left Panel 1:1
+    -- LEFT PANEL (54%): PERSONAL CORE VAULT [G] OR CONTEXTUAL ZIOLES GACHA SHRINE [E]
     -- ========================================================================
     local leftPanel = PremiumPanel.Create(root, {
         name = "ZiolesGachaShrinePanel",
@@ -1295,7 +1618,9 @@ function Fruits.Build(parent, _responsiveState)
 
     UIFactory.Label(leftPanel, {
         Name = "ShrineHeader",
-        Text = I18n.Pick("ĐÀI TRIỆU HỒI LÕI 3D HIỀN GIẢ AETHER • TỶ LỆ & PITY MINH BẠCH", "AETHER ORACLE 3D GACHA SHRINE • TRANSPARENT ODDS & PITY"),
+        Text = isGachaMode
+            and I18n.Pick("ĐÀI TRIỆU HỒI LÕI 3D HIỀN GIẢ ZIOLES • TỶ LỆ & PITY MINH BẠCH", "ZIOLES 3D GACHA SHRINE • TRANSPARENT ODDS & PITY")
+            or I18n.Pick("KHO VĨNH VIỄN 12 LÕI AETHER 3D & TRANG BỊ CÁ NHÂN", "12 3D AETHER CORES PERMANENT VAULT & LOADOUT"),
         Position = UDim2.fromOffset(14, 8),
         Size = UDim2.new(1, -186, 0, 22),
         TextSize = 13,
@@ -1304,26 +1629,47 @@ function Fruits.Build(parent, _responsiveState)
         Truncate = Enum.TextTruncate.AtEnd,
     })
 
-    PremiumButton.Create(leftPanel, {
-        name = "OpenMirageShopBtn",
-        icon = "Gold",
-        label = I18n.Pick("KỆ HƯ QUANG 2H [N]", "PHANTOM 2H [N]"),
-        variant = "secondary",
-        position = UDim2.new(1, -162, 0, 6),
-        size = UDim2.fromOffset(150, 26),
-        textSize = 10,
-        minTextSize = 8,
-        onActivated = function()
-            Store.SetView({ activeVendorMode = "MirageDealer" })
-            ScreenRouter.Navigate(UIState.Screens.NPCShop, { forceRebuild = true })
-        end,
-    })
+    if isGachaMode then
+        PremiumButton.Create(leftPanel, {
+            name = "OpenMirageShopBtn",
+            icon = "Gold",
+            label = I18n.Pick("KỆ HƯ QUANG 1H", "PHANTOM STOCK 1H"),
+            variant = "secondary",
+            position = UDim2.new(1, -162, 0, 6),
+            size = UDim2.fromOffset(150, 26),
+            textSize = 10,
+            minTextSize = 8,
+            onActivated = function()
+                Store.SetView({ activeVendorMode = "MirageDealer" })
+                ScreenRouter.Navigate(UIState.Screens.NPCShop, { forceRebuild = true })
+            end,
+        })
+    else
+        PremiumButton.Create(leftPanel, {
+            name = "LocateZiolesBtn",
+            icon = "Compass",
+            label = I18n.Pick("CHỈ ĐƯỜNG GACHA", "LOCATE GACHA"),
+            variant = "gold",
+            position = UDim2.new(1, -162, 0, 6),
+            size = UDim2.fromOffset(150, 26),
+            textSize = 10,
+            minTextSize = 8,
+            onActivated = function()
+                UIFactory.GuideToNPCStation("Zioles", {
+                    OnClose = function()
+                        ScreenRouter.CloseAllToHUD()
+                    end,
+                    ShowToast = Store.ShowToast,
+                })
+            end,
+        })
+    end
 
-    -- Top Shrine Stage Box (3D Zioles Bust + Concentric 3D Rotating Fruit + 6-Rarity Drop Rates & Pity)
+    -- Top Stage Box (Gacha Mode: Zioles Bust + 3D Core + Odds | Vault Mode: 3D Core + Personal Core Summary)
     local shrineStage = UIFactory.Create("Frame", leftPanel, {
         Name = "ShrineStageBox",
         Position = UDim2.fromOffset(12, 36),
-        Size = UDim2.new(1, -24, 0, 184),
+        Size = UDim2.new(1, -24, 0, isGachaMode and 184 or 148),
         BackgroundColor3 = Color3.fromRGB(9, 13, 25),
         BackgroundTransparency = 0.08,
         BorderSizePixel = 0,
@@ -1331,15 +1677,17 @@ function Fruits.Build(parent, _responsiveState)
     UIFactory.Corner(shrineStage, Theme.Radius.Medium)
     UIFactory.Stroke(shrineStage, Color3.fromRGB(78, 98, 152), 1.2, 0.35)
 
-    -- 1. Left: Live 3D Zioles Bust Card
-    local _, ziolesCdLbl = mountZiolesBustCard(shrineStage, UDim2.fromOffset(8, 8), UDim2.fromOffset(124, 168))
-    refs.ZiolesCooldownLbl = ziolesCdLbl
+    -- 1. Left: Live 3D Zioles Bust Card (ONLY when interacting with NPC Zioles)
+    if isGachaMode then
+        local _, ziolesCdLbl = mountZiolesBustCard(shrineStage, UDim2.fromOffset(8, 8), UDim2.fromOffset(124, 168))
+        refs.ZiolesCooldownLbl = ziolesCdLbl
+    end
 
-    -- 2. Center: Large 3D Rotating Fruit Stage with Concentric Glowing Aura Rings
+    -- 2. Center/Left: Large 3D Rotating Fruit Stage with Concentric Glowing Aura Rings
     local centerStage = UIFactory.Create("Frame", shrineStage, {
         Name = "FruitOrbitStage",
-        Position = UDim2.fromOffset(140, 8),
-        Size = UDim2.fromOffset(186, 168),
+        Position = UDim2.fromOffset(isGachaMode and 140 or 8, 8),
+        Size = UDim2.fromOffset(186, isGachaMode and 168 or 132),
         BackgroundColor3 = Color3.fromRGB(12, 18, 34),
         BorderSizePixel = 0,
         ClipsDescendants = true,
@@ -1352,7 +1700,7 @@ function Fruits.Build(parent, _responsiveState)
         Name = "OuterAuraRing",
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0.5, 0, 0.45, 0),
-        Size = UDim2.fromOffset(126, 126),
+        Size = UDim2.fromOffset(isGachaMode and 126 or 106, isGachaMode and 126 or 106),
         BackgroundColor3 = selectedFruit.Color,
         BackgroundTransparency = 0.88,
         BorderSizePixel = 0,
@@ -1366,7 +1714,7 @@ function Fruits.Build(parent, _responsiveState)
         Name = "InnerAuraRing",
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0.5, 0, 0.45, 0),
-        Size = UDim2.fromOffset(84, 84),
+        Size = UDim2.fromOffset(isGachaMode and 84 or 72, isGachaMode and 84 or 72),
         BackgroundColor3 = selectedFruit.Color,
         BackgroundTransparency = 0.80,
         BorderSizePixel = 0,
@@ -1414,97 +1762,426 @@ function Fruits.Build(parent, _responsiveState)
         ZIndex = 5,
     })
 
-    -- 3. Right: Transparent 6-Rarity Drop-Rate Card + Mythic Pity Pill
-    local rateCard = UIFactory.Create("Frame", shrineStage, {
-        Name = "DropRateCard",
-        Position = UDim2.fromOffset(334, 8),
-        Size = UDim2.new(1, -342, 0, 168),
-        BackgroundColor3 = Color3.fromRGB(13, 19, 36),
-        BorderSizePixel = 0,
-    })
-    UIFactory.Corner(rateCard, Theme.Radius.Medium)
-    UIFactory.Stroke(rateCard, Color3.fromRGB(88, 112, 168), 1.1, 0.35)
-
-    UIFactory.Label(rateCard, {
-        Name = "RateHeader",
-        Text = I18n.Pick("TỶ LỆ TRIỆU HỒI MINH BẠCH (6 PHẨM)", "TRANSPARENT 6-TIER DROP RATES"),
-        Position = UDim2.fromOffset(10, 5),
-        Size = UDim2.new(1, -20, 0, 16),
-        TextSize = 10,
-        TextColor = colors.ACCENT_GOLD_BRIGHT,
-        Bold = true,
-        Truncate = Enum.TextTruncate.AtEnd,
-    })
-
-    for rIdx, rKey in ipairs(RARITY_ORDER) do
-        local pal = RARITY_PALETTE[rKey]
-        local yPos = 22 + (rIdx - 1) * 19
-        local dot = UIFactory.Create("Frame", rateCard, {
-            Name = "Dot_" .. rKey,
-            Position = UDim2.fromOffset(10, yPos + 5),
-            Size = UDim2.fromOffset(7, 7),
-            BackgroundColor3 = pal.Text,
+    -- 3. Right: Public Gacha Drop-Rate Odds Disclosure Strip + Expandable Full 12-Core Modal (P0-11)
+    local function openGachaOddsDisclosureModal()
+        cleanupOddsModal()
+        local backdrop = UIFactory.Create("TextButton", root, {
+            Name = "GachaOddsDisclosureModal",
+            Size = UDim2.fromScale(1, 1),
+            BackgroundColor3 = Color3.fromRGB(4, 8, 18),
+            BackgroundTransparency = 0.22,
             BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            ZIndex = 56,
         })
-        UIFactory.PillCorner(dot)
+        Fruits.OddsModalOverlay = backdrop
 
-        UIFactory.Label(rateCard, {
-            Name = "Tier_" .. rKey,
-            Text = I18n.GetLanguage() == "en" and pal.LabelEn or pal.LabelVi,
-            Position = UDim2.fromOffset(22, yPos),
-            Size = UDim2.new(1, -74, 0, 17),
-            TextSize = 10,
-            TextColor = pal.Text,
-            Bold = (rIdx >= 4),
-            Truncate = Enum.TextTruncate.AtEnd,
+        backdrop.Activated:Connect(function()
+            cleanupOddsModal()
+        end)
+
+        local modalCard = UIFactory.Create("TextButton", backdrop, {
+            Name = "OddsCard",
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.new(0.92, 0, 0.90, 0),
+            BackgroundColor3 = Color3.fromRGB(10, 16, 30),
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            ZIndex = 57,
         })
+        local oddsClamp = Instance.new("UISizeConstraint")
+        oddsClamp.MaxSize = Vector2.new(660, 468)
+        oddsClamp.MinSize = Vector2.new(320, 320)
+        oddsClamp.Parent = modalCard
+        UIFactory.Corner(modalCard, Theme.Radius.Large)
+        UIFactory.Stroke(modalCard, colors.ACCENT_GOLD, 1.8, 0.10)
+        UIFactory.Gradient(modalCard, Color3.fromRGB(18, 28, 52), Color3.fromRGB(9, 14, 26), 90)
 
-        UIFactory.Label(rateCard, {
-            Name = "Pct_" .. rKey,
-            Text = pal.Rate,
-            Position = UDim2.new(1, -54, 0, yPos),
-            Size = UDim2.fromOffset(44, 17),
-            TextSize = 10,
-            TextColor = pal.Text,
+        UIFactory.Icon(modalCard, "Star", UDim2.fromOffset(18, 14), 22, colors.ACCENT_GOLD_BRIGHT)
+        UIFactory.Label(modalCard, {
+            Name = "OddsModalTitle",
+            Text = I18n.Pick(
+                "TỶ LỆ CẦU LÕI AETHER • GACHA DROP RATES",
+                "GACHA DROP RATES • AETHER ORACLE DISCLOSURE"
+            ),
+            Position = UDim2.fromOffset(46, 12),
+            Size = UDim2.new(1, -156, 0, 24),
+            TextSize = 15,
+            TextColor = colors.ACCENT_GOLD_BRIGHT,
             Bold = true,
-            XAlign = Enum.TextXAlignment.Right,
+            Truncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 58,
+        })
+
+        UIFactory.Label(modalCard, {
+            Name = "OddsModalSub",
+            Text = I18n.Pick(
+                "Xác suất máy chủ chính thức (Tổng trọng số = 1,000 / 100.0% • Hồi quay 60s • Áp dụng cho cả Gold & Vé Quay Miễn Phí)",
+                "Server-verified probability table (Total Weight = 1,000 / 100.0% • 60s CD • Applies equally to Gold & Free Spin Tickets)"
+            ),
+            Position = UDim2.fromOffset(18, 38),
+            Size = UDim2.new(1, -36, 0, 18),
+            TextSize = 11,
+            TextColor = colors.TEXT_SECONDARY,
+            Truncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 58,
+        })
+
+        local closeModalBtn = UIFactory.Create("TextButton", modalCard, {
+            Name = "CloseOddsBtn",
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -14, 0, 12),
+            Size = UDim2.fromOffset(92, 28),
+            BackgroundColor3 = Color3.fromRGB(214, 40, 80),
+            BorderSizePixel = 0,
+            AutoButtonColor = true,
+            Font = Theme.Fonts.Bold,
+            TextSize = 11,
+            TextColor3 = Color3.fromRGB(255, 250, 252),
+            Text = I18n.Pick("ĐÓNG [X]", "CLOSE [X]"),
+            ZIndex = 59,
+        })
+        UIFactory.Corner(closeModalBtn, Theme.Radius.Small)
+        UIFactory.Stroke(closeModalBtn, Color3.fromRGB(255, 168, 186), 1.2, 0.15)
+        closeModalBtn.Activated:Connect(function()
+            cleanupOddsModal()
+        end)
+
+        local oddsScroll = UIFactory.Create("ScrollingFrame", modalCard, {
+            Name = "OddsTierScroll",
+            Position = UDim2.fromOffset(16, 62),
+            Size = UDim2.new(1, -32, 1, -104),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ScrollBarThickness = 5,
+            ScrollBarImageColor3 = colors.ACCENT_GOLD,
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            ZIndex = 58,
+        })
+        UIFactory.ListLayout(oddsScroll, Enum.FillDirection.Vertical, 8)
+
+        for tIdx, tier in ipairs(GACHA_ODDS_TIERS) do
+            local pal = RARITY_PALETTE[tier.Rarity] or RARITY_PALETTE.Common
+            local rowCount = #tier.Items
+            local boxHeight = 30 + rowCount * 28
+
+            local tierBox = UIFactory.Create("Frame", oddsScroll, {
+                Name = "OddsTier_" .. tier.Rarity,
+                Size = UDim2.new(1, -6, 0, boxHeight),
+                BackgroundColor3 = Color3.fromRGB(13, 20, 38),
+                BorderSizePixel = 0,
+                LayoutOrder = tIdx,
+                ZIndex = 58,
+            })
+            UIFactory.Corner(tierBox, Theme.Radius.Medium)
+            UIFactory.Stroke(tierBox, pal.Stroke, 1.3, 0.25)
+
+            local headerStrip = UIFactory.Create("Frame", tierBox, {
+                Name = "TierHeader",
+                Size = UDim2.new(1, 0, 0, 26),
+                BackgroundColor3 = pal.Bottom,
+                BackgroundTransparency = 0.28,
+                BorderSizePixel = 0,
+                ZIndex = 59,
+            })
+            UIFactory.Corner(headerStrip, Theme.Radius.Medium)
+
+            UIFactory.Label(headerStrip, {
+                Name = "TierTitle",
+                Text = I18n.Pick(tier.TierVi, tier.TierEn),
+                Position = UDim2.fromOffset(12, 0),
+                Size = UDim2.new(1, -120, 1, 0),
+                TextSize = 12,
+                TextColor = pal.Text,
+                Bold = true,
+                ZIndex = 60,
+            })
+
+            UIFactory.Label(headerStrip, {
+                Name = "TierTotalPct",
+                Text = I18n.Pick("Tổng bậc: ", "Tier Total: ") .. tier.TotalPct,
+                Position = UDim2.new(1, -148, 0, 0),
+                Size = UDim2.fromOffset(136, 26),
+                TextSize = 12,
+                TextColor = colors.ACCENT_GOLD_BRIGHT,
+                Bold = true,
+                XAlign = Enum.TextXAlignment.Right,
+                ZIndex = 60,
+            })
+
+            for iIdx, entry in ipairs(tier.Items) do
+                local fMeta = FRUIT_BY_ID[entry.Id]
+                local itemY = 28 + (iIdx - 1) * 27
+                local itemRow = UIFactory.Create("Frame", tierBox, {
+                    Name = "CoreRow_" .. entry.Id,
+                    Position = UDim2.fromOffset(10, itemY),
+                    Size = UDim2.new(1, -20, 0, 24),
+                    BackgroundColor3 = Color3.fromRGB(9, 14, 26),
+                    BackgroundTransparency = 0.25,
+                    BorderSizePixel = 0,
+                    ZIndex = 59,
+                })
+                UIFactory.Corner(itemRow, 5)
+
+                local coreCol = (fMeta and fMeta.Color) or pal.Text
+                UIFactory.Icon(itemRow, (fMeta and fMeta.Icon) or "Fruit", UDim2.fromOffset(6, 4), 16, coreCol).ZIndex = 60
+
+                local dispName = fMeta and getFruitName(fMeta) or entry.Id
+                UIFactory.Label(itemRow, {
+                    Name = "CoreName",
+                    Text = string.format("%s  [%s]", dispName, entry.Id),
+                    Position = UDim2.fromOffset(28, 0),
+                    Size = UDim2.new(1, -236, 1, 0),
+                    TextSize = 11,
+                    TextColor = colors.TEXT_PRIMARY,
+                    Bold = true,
+                    Truncate = Enum.TextTruncate.AtEnd,
+                    ZIndex = 60,
+                })
+
+                local barTrack = UIFactory.Create("Frame", itemRow, {
+                    Name = "ProbTrack",
+                    AnchorPoint = Vector2.new(1, 0.5),
+                    Position = UDim2.new(1, -78, 0.5, 0),
+                    Size = UDim2.fromOffset(120, 7),
+                    BackgroundColor3 = Color3.fromRGB(20, 30, 52),
+                    BorderSizePixel = 0,
+                    ZIndex = 60,
+                })
+                UIFactory.PillCorner(barTrack)
+
+                local barRatio = math.clamp(entry.Weight / 320, 0.05, 1)
+                local barFill = UIFactory.Create("Frame", barTrack, {
+                    Name = "Fill",
+                    Size = UDim2.fromScale(barRatio, 1),
+                    BackgroundColor3 = pal.Text,
+                    BorderSizePixel = 0,
+                    ZIndex = 61,
+                })
+                UIFactory.PillCorner(barFill)
+
+                UIFactory.Label(itemRow, {
+                    Name = "CorePct",
+                    Text = entry.Pct,
+                    Position = UDim2.new(1, -70, 0, 0),
+                    Size = UDim2.fromOffset(62, 24),
+                    TextSize = 12,
+                    TextColor = pal.Text,
+                    Bold = true,
+                    XAlign = Enum.TextXAlignment.Right,
+                    ZIndex = 60,
+                })
+            end
+        end
+
+        UIFactory.Label(modalCard, {
+            Name = "OddsFooterNote",
+            Text = I18n.Pick(
+                "Bảo hiểm Pity: Chắc chắn nhận Lõi Mythic ở lượt thứ 50 nếu 49 lượt trước chưa trúng Mythic.",
+                "Mythic Pity Guarantee: Guaranteed Mythic Aether Core on roll 50 if not obtained within 49 rolls."
+            ),
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.new(0, 18, 1, -10),
+            Size = UDim2.new(1, -36, 0, 22),
+            TextSize = 11,
+            TextColor = colors.ACCENT_GOLD,
+            Bold = true,
+            XAlign = Enum.TextXAlignment.Center,
+            Truncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 58,
         })
     end
 
-    local pityCount = tonumber(fState.pityCount)
-        or (snap.raw and tonumber(snap.raw.FruitPity))
-        or (localPlr and tonumber(localPlr:GetAttribute("FruitPity")))
-        or 18
-    local pityPill = UIFactory.Create("Frame", rateCard, {
-        Name = "MythicPityPill",
-        AnchorPoint = Vector2.new(0.5, 1),
-        Position = UDim2.new(0.5, 0, 1, -6),
-        Size = UDim2.new(1, -16, 0, 22),
-        BackgroundColor3 = Color3.fromRGB(28, 22, 12),
-        BorderSizePixel = 0,
-    })
-    UIFactory.PillCorner(pityPill)
-    UIFactory.Stroke(pityPill, colors.ACCENT_GOLD_BRIGHT, 1.3, 0.15)
-    refs.PityLabel = UIFactory.Label(pityPill, {
-        Name = "PityText",
-        Text = I18n.Pick(
-            string.format("BẢO HIỂM PITY MYTHIC: %d / 50 LƯỢT", pityCount),
-            string.format("MYTHIC PITY GUARANTEE: %d / 50 ROLLS", pityCount)
-        ),
-        Position = UDim2.fromOffset(8, 0),
-        Size = UDim2.new(1, -16, 1, 0),
-        TextSize = 9,
-        TextColor = colors.ACCENT_GOLD_BRIGHT,
-        Bold = true,
-        XAlign = Enum.TextXAlignment.Center,
-        Truncate = Enum.TextTruncate.AtEnd,
-    })
+    local stored = fState.storedFruits or {}
+    if isGachaMode then
+        local rateCard = UIFactory.Create("TextButton", shrineStage, {
+            Name = "DropRateCard",
+            Position = UDim2.fromOffset(334, 8),
+            Size = UDim2.new(1, -342, 0, 168),
+            BackgroundColor3 = Color3.fromRGB(13, 19, 36),
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+        })
+        UIFactory.Corner(rateCard, Theme.Radius.Medium)
+        UIFactory.Stroke(rateCard, colors.ACCENT_GOLD, 1.2, 0.28)
+        rateCard.Activated:Connect(openGachaOddsDisclosureModal)
+
+        UIFactory.Label(rateCard, {
+            Name = "RateHeader",
+            Text = I18n.Pick("TỶ LỆ CẦU LÕI AETHER • HỒI 60S", "AETHER CORE DROP RATES • 60S CD"),
+            Position = UDim2.fromOffset(8, 3),
+            Size = UDim2.new(1, -92, 0, 15),
+            TextSize = 9,
+            TextColor = colors.ACCENT_GOLD_BRIGHT,
+            Bold = true,
+            Truncate = Enum.TextTruncate.AtEnd,
+        })
+
+        local expandOddsBtn = UIFactory.Create("TextButton", rateCard, {
+            Name = "ExpandOddsBtn",
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -6, 0, 3),
+            Size = UDim2.fromOffset(80, 16),
+            BackgroundColor3 = Color3.fromRGB(24, 38, 68),
+            BorderSizePixel = 0,
+            AutoButtonColor = true,
+            Font = Theme.Fonts.Bold,
+            TextSize = 8,
+            TextColor3 = colors.ACCENT_ICE,
+            Text = I18n.Pick("CHI TIẾT 12 LÕI", "12-CORE ODDS"),
+            ZIndex = 5,
+        })
+        UIFactory.PillCorner(expandOddsBtn)
+        UIFactory.Stroke(expandOddsBtn, colors.ACCENT_SAPPHIRE, 1.0, 0.25)
+        expandOddsBtn.Activated:Connect(openGachaOddsDisclosureModal)
+
+        for rIdx, tier in ipairs(GACHA_ODDS_TIERS) do
+            local pal = RARITY_PALETTE[tier.Rarity] or RARITY_PALETTE.Common
+            local yPos = 20 + (rIdx - 1) * 19
+            local dot = UIFactory.Create("Frame", rateCard, {
+                Name = "Dot_" .. tier.Rarity,
+                Position = UDim2.fromOffset(8, yPos + 3),
+                Size = UDim2.fromOffset(6, 6),
+                BackgroundColor3 = pal.Text,
+                BorderSizePixel = 0,
+            })
+            UIFactory.PillCorner(dot)
+
+            UIFactory.Label(rateCard, {
+                Name = "Tier_" .. tier.Rarity,
+                Text = string.format("%s (%s)", tier.TierEn, tier.TotalPct),
+                Position = UDim2.fromOffset(18, yPos - 1),
+                Size = UDim2.fromOffset(102, 12),
+                TextSize = 8,
+                TextColor = pal.Text,
+                Bold = true,
+                Truncate = Enum.TextTruncate.AtEnd,
+            })
+
+            UIFactory.Label(rateCard, {
+                Name = "Break_" .. tier.Rarity,
+                Text = I18n.Pick(tier.CompactVi, tier.CompactEn),
+                Position = UDim2.fromOffset(120, yPos - 1),
+                Size = UDim2.new(1, -126, 0, 12),
+                TextSize = 8,
+                TextColor = colors.TEXT_SECONDARY,
+                XAlign = Enum.TextXAlignment.Right,
+                Truncate = Enum.TextTruncate.AtEnd,
+            })
+
+            local miniBar = UIFactory.Create("Frame", rateCard, {
+                Name = "MiniBar_" .. tier.Rarity,
+                Position = UDim2.fromOffset(18, yPos + 12),
+                Size = UDim2.new(1, -26, 0, 3),
+                BackgroundColor3 = Color3.fromRGB(20, 29, 48),
+                BorderSizePixel = 0,
+            })
+            UIFactory.PillCorner(miniBar)
+            local tierNum = tonumber((tier.TotalPct:gsub("%%", ""))) or 2.4
+            local miniFill = UIFactory.Create("Frame", miniBar, {
+                Name = "Fill",
+                Size = UDim2.fromScale(math.clamp(tierNum / 32, 0.07, 1), 1),
+                BackgroundColor3 = pal.Text,
+                BorderSizePixel = 0,
+            })
+            UIFactory.PillCorner(miniFill)
+        end
+
+        local pityCount, pityMax = getServerFruitPity(snap)
+        local pityPill = UIFactory.Create("Frame", rateCard, {
+            Name = "MythicPityPill",
+            AnchorPoint = Vector2.new(0.5, 1),
+            Position = UDim2.new(0.5, 0, 1, -4),
+            Size = UDim2.new(1, -16, 0, 20),
+            BackgroundColor3 = Color3.fromRGB(28, 22, 12),
+            BorderSizePixel = 0,
+        })
+        UIFactory.PillCorner(pityPill)
+        UIFactory.Stroke(pityPill, colors.ACCENT_GOLD_BRIGHT, 1.3, 0.15)
+        refs.PityLabel = UIFactory.Label(pityPill, {
+            Name = "PityText",
+            Text = I18n.Pick(
+                string.format("BẢO HIỂM PITY MYTHIC: %d / %d LƯỢT", pityCount, pityMax),
+                string.format("MYTHIC PITY GUARANTEE: %d / %d ROLLS", pityCount, pityMax)
+            ),
+            Position = UDim2.fromOffset(8, 0),
+            Size = UDim2.new(1, -16, 1, 0),
+            TextSize = 9,
+            TextColor = colors.ACCENT_GOLD_BRIGHT,
+            Bold = true,
+            XAlign = Enum.TextXAlignment.Center,
+            Truncate = Enum.TextTruncate.AtEnd,
+        })
+    else
+        local summaryCard = UIFactory.Create("Frame", shrineStage, {
+            Name = "PersonalVaultSummaryCard",
+            Position = UDim2.fromOffset(202, 8),
+            Size = UDim2.new(1, -210, 0, 132),
+            BackgroundColor3 = Color3.fromRGB(13, 19, 36),
+            BorderSizePixel = 0,
+        })
+        UIFactory.Corner(summaryCard, Theme.Radius.Medium)
+        UIFactory.Stroke(summaryCard, colors.ACCENT_SAPPHIRE, 1.2, 0.28)
+
+        local unlockedTypes = 0
+        for _, item in ipairs(FRUIT_CATALOG) do
+            if item.Id == equippedId or getFruitStoredQty(stored, item.Id) > 0 then
+                unlockedTypes = unlockedTypes + 1
+            end
+        end
+        local eqMeta = FRUIT_BY_ID[equippedId]
+        local eqNameTxt = eqMeta and getFruitShortName(eqMeta) or I18n.Pick("Chưa trang bị", "None Equipped")
+
+        refs.VaultSummaryTitle = UIFactory.Label(summaryCard, {
+            Name = "VaultSummaryTitle",
+            Text = string.format("%s  •  [%s]", UIFactory.Upper(getFruitName(selectedFruit)), selectedFruit.Rarity),
+            Position = UDim2.fromOffset(12, 8),
+            Size = UDim2.new(1, -24, 0, 20),
+            TextSize = 13,
+            TextColor = selectedFruit.Color,
+            Bold = true,
+            Truncate = Enum.TextTruncate.AtEnd,
+        })
+
+        refs.VaultSummaryStatus = UIFactory.Label(summaryCard, {
+            Name = "VaultSummaryStatus",
+            Text = I18n.Pick(
+                string.format("Đang mang [Slot 2]: %s  •  Sưu tập Kho: %d / 12 Lõi", eqNameTxt, unlockedTypes),
+                string.format("Equipped [Slot 2]: %s  •  Vault Unlocked: %d / 12 Cores", eqNameTxt, unlockedTypes)
+            ),
+            Position = UDim2.fromOffset(12, 30),
+            Size = UDim2.new(1, -24, 0, 18),
+            TextSize = 11,
+            TextColor = colors.ACCENT_GOLD_BRIGHT,
+            Bold = true,
+            Truncate = Enum.TextTruncate.AtEnd,
+        })
+
+        UIFactory.Label(summaryCard, {
+            Name = "VaultSummaryHint",
+            Text = I18n.Pick(
+                "• Chọn Lõi Aether bên dưới để xem 3D, hấp thụ ngay vào Slot [2], cất vào Kho hoặc cầm thử trên tay.\n• Triệu hồi Gacha & Kệ Lõi Hư Quang mở trực tiếp khi gặp Hiền Giả Zioles [E].",
+                "• Select any Core below to preview in 3D, absorb into Slot [2], store in your Vault, or hold in hand.\n• Gacha Summons & Hourly Stock open directly when visiting Oracle Zioles [E]."
+            ),
+            Position = UDim2.fromOffset(12, 54),
+            Size = UDim2.new(1, -24, 0, 70),
+            TextSize = 10,
+            TextColor = colors.TEXT_SECONDARY,
+            YAlign = Enum.TextYAlignment.Top,
+            Wrapped = true,
+        })
+    end
 
     -- Middle Section: 12 Vivid Glossy 6-Rarity Permanent Vault Fruit Tiles
     UIFactory.Label(leftPanel, {
         Name = "VaultHeader",
         Text = I18n.Pick("KHO VĨNH VIỄN 12 LÕI AETHER 3D (CHỌN ĐỂ XEM 3D • HẤP THỤ • CẤT KHO):", "12 SEPARATED 3D CORES PERMANENT VAULT (SELECT FOR 3D • ABSORB • STORE):"),
-        Position = UDim2.fromOffset(14, 225),
+        Position = UDim2.fromOffset(14, isGachaMode and 225 or 190),
         Size = UDim2.new(1, -28, 0, 17),
         TextSize = 10,
         TextColor = colors.ACCENT_SAPPHIRE,
@@ -1514,8 +2191,8 @@ function Fruits.Build(parent, _responsiveState)
 
     local vaultScroll = UIFactory.Create("ScrollingFrame", leftPanel, {
         Name = "GlossyFruitVaultScroll",
-        Position = UDim2.fromOffset(12, 245),
-        Size = UDim2.new(1, -24, 1, -396),
+        Position = UDim2.fromOffset(12, isGachaMode and 245 or 210),
+        Size = UDim2.new(1, -24, 1, isGachaMode and -396 or -306),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         ScrollBarThickness = 4,
@@ -1525,11 +2202,10 @@ function Fruits.Build(parent, _responsiveState)
     })
     UIFactory.GridLayout(vaultScroll, UDim2.new(0.25, -6, 0, 82), UDim2.fromOffset(7, 7))
 
-    local stored = fState.storedFruits or {}
     for idx, item in ipairs(FRUIT_CATALOG) do
         local isSelected = (item.Id == selectedFruit.Id)
         local isEq = (item.Id == equippedId)
-        local ownedCount = tonumber(stored[item.Id]) or 0
+        local ownedCount = getFruitStoredQty(stored, item.Id)
         local pal = RARITY_PALETTE[item.Rarity] or RARITY_PALETTE.Common
 
         local topBadge = isEq and I18n.Pick("ĐANG DÙNG", "EQUIPPED")
@@ -1570,7 +2246,7 @@ function Fruits.Build(parent, _responsiveState)
     local actionBox = UIFactory.Create("Frame", leftPanel, {
         Name = "SelectedFruitActionBox",
         AnchorPoint = Vector2.new(0, 1),
-        Position = UDim2.new(0, 12, 1, -62),
+        Position = UDim2.new(0, 12, 1, isGachaMode and -62 or -12),
         Size = UDim2.new(1, -24, 0, 82),
         BackgroundColor3 = Color3.fromRGB(10, 15, 28),
         BorderSizePixel = 0,
@@ -1578,14 +2254,21 @@ function Fruits.Build(parent, _responsiveState)
     UIFactory.Corner(actionBox, Theme.Radius.Medium)
     UIFactory.Stroke(actionBox, Color3.fromRGB(78, 102, 156), 1.1, 0.35)
 
-    local isAwakened = fState.awakenedFruits and fState.awakenedFruits[selectedFruit.Id] == true
-    local masteryLv = (fState.mastery and fState.mastery[selectedFruit.Id]) or 1
+    local isAwakened = isFruitAwakenedState(fState, selectedFruit.Id)
+    local masteryLv = getFruitMasteryLevel(fState, selectedFruit.Id)
+    local raidChipsCleared = tonumber(snap.raidChipsCleared) or 0
+    local raidStatusTag = isAwakened
+        and I18n.Pick(" [Đã Thức Tỉnh V2 ✓]", " [Awakened V2 ✓]")
+        or (raidChipsCleared >= 1
+            and I18n.Pick(" [Raid V2: Đạt ✓]", " [Raid V2: Met ✓]")
+            or I18n.Pick(" [Cần Raid V2: 0/1]", " [Need Raid V2: 0/1]"))
+    local awkLabel, awkVariant = formatAwakenV2Label(isAwakened, raidChipsCleared)
 
     refs.SelectedFruitTitle = UIFactory.Label(actionBox, {
         Name = "SelectedFruitTitle",
-        Text = string.format("%s  •  %s  •  Mastery Lv.%d%s", getFruitName(selectedFruit), selectedFruit.Rarity, masteryLv, isAwakened and " [V2]" or ""),
+        Text = string.format("%s  •  %s  •  Mastery Lv.%d%s", getFruitName(selectedFruit), selectedFruit.Rarity, masteryLv, raidStatusTag),
         Position = UDim2.fromOffset(10, 6),
-        Size = UDim2.new(1, -184, 0, 22),
+        Size = UDim2.new(1, -200, 0, 22),
         TextSize = 12,
         TextColor = selectedFruit.Color,
         Bold = true,
@@ -1595,14 +2278,28 @@ function Fruits.Build(parent, _responsiveState)
     local _, awakenApi = PremiumButton.Create(actionBox, {
         name = "AwakenFruitBtn",
         icon = "Bolt",
-        label = isAwakened and I18n.Pick("ĐÃ THỨC TỈNH LÕI", "AWAKENED CORE") or I18n.Pick("LÕI THỨC TỈNH (500)", "AWAKEN CORE (500)"),
-        variant = isAwakened and "gold" or "secondary",
-        position = UDim2.new(1, -168, 0, 5),
-        size = UDim2.fromOffset(160, 25),
+        label = awkLabel,
+        variant = awkVariant,
+        position = UDim2.new(1, -186, 0, 5),
+        size = UDim2.fromOffset(178, 25),
         textSize = 9,
         minTextSize = 8,
         onActivated = function()
+            local curSnap = Store.GetSnapshot()
+            local curFState = (curSnap and curSnap.fruits) or {}
             local sel = FRUIT_BY_ID[Fruits.SelectedFruitId] or selectedFruit
+            local alreadyAwk = isFruitAwakenedState(curFState, sel.Id)
+            local chips = tonumber(curSnap and curSnap.raidChipsCleared) or 0
+            if not alreadyAwk and chips < 1 then
+                Store.ShowToast(
+                    I18n.Pick(
+                        "Chưa đạt yêu cầu V2: Hãy gặp Tiến Sĩ Dr. Vega [E] vượt Wave 5 Microchip Raid + 1,000 Core Shards!",
+                        "V2 Requirement Not Met: Visit Dr. Vega [E] to clear Wave 5 Microchip Raid + 1,000 Core Shards!"
+                    ),
+                    "warning",
+                    3.2
+                )
+            end
             fireEquipRemote({ action = "AwakenFruit", fruitId = sel.Id })
             task.delay(0.15, function()
                 Fruits.Update()
@@ -1639,22 +2336,35 @@ function Fruits.Build(parent, _responsiveState)
     })
     refs.EatFruitApi = eatApi
 
+    local initHeldFruit = tostring(fState.heldFruit or (localPlr and localPlr:GetAttribute("HeldFruit")) or "")
+    local initHeldCanon = FRUIT_BY_ID[initHeldFruit] and FRUIT_BY_ID[initHeldFruit].Id or initHeldFruit
+    local hasHeldFruit = (initHeldFruit ~= "" and initHeldFruit ~= "None")
     local _, storeApi = PremiumButton.Create(actRow, {
         name = "StorePermanentBtn",
         icon = "Bag",
-        label = I18n.Pick("CẤT VÀO KHO VĨNH VIỄN", "STORE IN VAULT"),
-        variant = "primary",
+        label = hasHeldFruit
+            and I18n.Pick("CẤT VÀO KHO VĨNH VIỄN", "STORE IN VAULT")
+            or I18n.Pick("CHƯA CẦM LÕI TRÊN TAY", "NO CORE IN HAND"),
+        variant = hasHeldFruit and "primary" or "secondary",
+        disabled = not hasHeldFruit,
         position = UDim2.new(0.36, 2, 0, 0),
         size = UDim2.new(0.34, -4, 1, 0),
         textSize = 11,
         minTextSize = 9,
         onActivated = function()
-            local sel = FRUIT_BY_ID[Fruits.SelectedFruitId] or selectedFruit
-            fireEquipRemote({ action = "StoreFruit", fruitId = sel.Id })
             local curSnap = Store.GetSnapshot()
-            if curSnap and curSnap.fruits and curSnap.fruits.heldFruit == sel.Id then
-                fireEquipRemote({ action = "HoldFruit", fruitId = sel.Id })
+            local lp = Players.LocalPlayer
+            local heldNow = tostring((curSnap and curSnap.fruits and curSnap.fruits.heldFruit) or (lp and lp:GetAttribute("HeldFruit")) or "")
+            if heldNow == "" or heldNow == "None" then
+                Store.ShowToast(
+                    I18n.Pick("Bạn chưa cầm Lõi Aether nào trên tay để cất vào Kho!", "You are not holding any Aether Core in hand to store!"),
+                    "warning",
+                    2.2
+                )
+                return
             end
+            local sel = FRUIT_BY_ID[heldNow] or FRUIT_BY_ID[Fruits.SelectedFruitId] or selectedFruit
+            fireEquipRemote({ action = "StoreFruit", fruitId = sel.Id })
             Store.ShowToast(
                 I18n.Pick("Đã cất " .. getFruitShortName(sel) .. " vào Kho Vĩnh Viễn!", "Stored " .. getFruitShortName(sel) .. " in Permanent Vault!"),
                 "success",
@@ -1669,7 +2379,7 @@ function Fruits.Build(parent, _responsiveState)
 
     local _, holdApi = PremiumButton.Create(actRow, {
         name = "HoldFruitBtn",
-        label = (fState.heldFruit == selectedFruit.Id)
+        label = (initHeldCanon == selectedFruit.Id)
             and I18n.Pick("ĐANG CẦM 3D TRÊN TAY", "HOLDING 3D MODEL")
             or I18n.Pick("CẦM LÕI 3D TRÊN TAY", "HOLD 3D IN HAND"),
         variant = "secondary",
@@ -1687,47 +2397,74 @@ function Fruits.Build(parent, _responsiveState)
     })
     refs.HoldFruitApi = holdApi
 
-    -- Bottom Big Gacha Spin CTAs (Gold 25,000 Gold + Sapphire Free Voucher Roll)
-    local gachaBar = UIFactory.Create("Frame", leftPanel, {
-        Name = "BottomGachaCTABar",
-        AnchorPoint = Vector2.new(0, 1),
-        Position = UDim2.new(0, 12, 1, -10),
-        Size = UDim2.new(1, -24, 0, 44),
-        BackgroundTransparency = 1,
-    })
+    -- Bottom Big Gacha Spin CTAs (ONLY rendered when interacting with NPC Zioles in Gacha Mode)
+    if isGachaMode then
+        local restricted = isPaidRandomRestricted(snap)
+        local policyNotice = UIFactory.Label(leftPanel, {
+            Name = "PolicyComplianceBanner",
+            Text = I18n.Pick(
+                "Tuân thủ Chính sách Roblox: Chỉ dùng Gold & Vé cày miễn phí trong game (đã khóa gói Gold Robux tại khu vực của bạn).",
+                "Roblox Regional Policy Mode: Uses earned F2P Gold & Spin Tickets only (Robux Gold bundles restricted in your region)."
+            ),
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.new(0, 14, 1, -56),
+            Size = UDim2.new(1, -28, 0, 14),
+            TextSize = 8,
+            TextColor = colors.ACCENT_ICE,
+            Bold = true,
+            XAlign = Enum.TextXAlignment.Center,
+            Truncate = Enum.TextTruncate.AtEnd,
+            Visible = restricted,
+        })
+        refs.PolicyComplianceBanner = policyNotice
 
-    PremiumButton.Create(gachaBar, {
-        name = "RollGachaBtn",
-        icon = "Star",
-        label = I18n.Pick("TRIỆU HỒI GACHA (25,000 GOLD)", "SUMMON 3D GACHA (25,000 GOLD)"),
-        variant = "gold",
-        position = UDim2.fromOffset(0, 0),
-        size = UDim2.new(0.56, -4, 1, 0),
-        textSize = 12,
-        minTextSize = 9,
-        onActivated = function()
-            launchZiolesGachaCarousel(root)
-        end,
-    })
+        local gachaBar = UIFactory.Create("Frame", leftPanel, {
+            Name = "BottomGachaCTABar",
+            AnchorPoint = Vector2.new(0, 1),
+            Position = UDim2.new(0, 12, 1, -10),
+            Size = UDim2.new(1, -24, 0, 44),
+            BackgroundTransparency = 1,
+        })
 
-    local freeVouchers = (snap.raw and tonumber(snap.raw.FreeFruitVouchers)) or 0
-    local _, voucherBtnApi = PremiumButton.Create(gachaBar, {
-        name = "FreeVoucherGachaBtn",
-        icon = "Gift",
-        label = I18n.Pick(
-            string.format("DÙNG VÉ GACHA MIỄN PHÍ (%d VÉ)", freeVouchers),
-            string.format("USE FREE GACHA VOUCHER (%d)", freeVouchers)
-        ),
-        variant = "primary",
-        position = UDim2.new(0.56, 4, 0, 0),
-        size = UDim2.new(0.44, -4, 1, 0),
-        textSize = 11,
-        minTextSize = 9,
-        onActivated = function()
-            launchZiolesGachaCarousel(root)
-        end,
-    })
-    refs.VoucherBtnApi = voucherBtnApi
+        local spinLabel, spinUsesTicket = formatZiolesSpinButtonLabel(snap)
+        local _, rollGachaBtnApi = PremiumButton.Create(gachaBar, {
+            name = "RollGachaBtn",
+            icon = spinUsesTicket and "Gift" or "Star",
+            label = spinLabel,
+            variant = spinUsesTicket and "primary" or "gold",
+            position = UDim2.fromOffset(0, 0),
+            size = UDim2.new(0.56, -4, 1, 0),
+            textSize = 12,
+            minTextSize = 9,
+            onActivated = function()
+                launchZiolesGachaCarousel(root, false)
+            end,
+        })
+        refs.RollGachaBtnApi = rollGachaBtnApi
+
+        local freeVouchers = getFreeVoucherCount(snap)
+        local hasVouchers = freeVouchers > 0
+        local _, voucherBtnApi = PremiumButton.Create(gachaBar, {
+            name = "FreeVoucherGachaBtn",
+            icon = "Gift",
+            label = hasVouchers
+                and I18n.Pick(
+                    string.format("QUAY MIỄN PHÍ (VÉ x%d)", freeVouchers),
+                    string.format("FREE SPIN (TICKET x%d)", freeVouchers)
+                )
+                or I18n.Pick("VÉ QUAY MIỄN PHÍ (0 VÉ)", "FREE SPIN TICKETS (0)"),
+            variant = hasVouchers and "primary" or "secondary",
+            disabled = not hasVouchers,
+            position = UDim2.new(0.56, 4, 0, 0),
+            size = UDim2.new(0.44, -4, 1, 0),
+            textSize = 11,
+            minTextSize = 9,
+            onActivated = function()
+                launchZiolesGachaCarousel(root, true)
+            end,
+        })
+        refs.VoucherBtnApi = voucherBtnApi
+    end
 
     -- ========================================================================
     -- RIGHT PANEL (46%): 5 FRUIT ABILITIES ([Z][X][C][V][F]), HAKI & HOTBAR SLOTS
@@ -1826,7 +2563,7 @@ function Fruits.Build(parent, _responsiveState)
             id = "RaceV4",
             active = fState.raceV4Active == true,
             label = fState.raceV4Active
-                and I18n.Pick("THĂNG HOA [" .. tostring(fState.race or "Skyborn") .. "]: BẬT", "ASCENSION [" .. tostring(fState.race or "Skyborn") .. "]: ON")
+                and I18n.Pick("THĂNG HOA [" .. formatLineageDisplayName(fState.race) .. "]: BẬT", "ASCENSION [" .. formatLineageDisplayName(fState.race) .. "]: ON")
                 or I18n.Pick("KÍCH HOẠT THĂNG HOA [Y]", "ACTIVATE ASCENSION [Y]"),
             act = "ActivateRaceV4",
         },
@@ -1896,18 +2633,18 @@ function Fruits.Update(snap)
     local colors = Theme.Colors
     snap = snap or Store.GetSnapshot()
     local fState = snap.fruits or {}
-    local equippedId = fState.equippedFruit or "GaleCore"
-    if not FRUIT_BY_ID[equippedId] then
-        equippedId = "SolarTitanCore"
-    end
+    local rawEq = tostring(fState.equippedFruit or "")
+    local equippedId = FRUIT_BY_ID[rawEq] and FRUIT_BY_ID[rawEq].Id or ""
     local localPlr = Players.LocalPlayer
     local previewAttr = localPlr and localPlr:GetAttribute("SelectedPreviewFruit")
     if type(previewAttr) == "string" and FRUIT_BY_ID[previewAttr] then
-        Fruits.SelectedFruitId = previewAttr
+        Fruits.SelectedFruitId = FRUIT_BY_ID[previewAttr].Id
         localPlr:SetAttribute("SelectedPreviewFruit", nil)
     end
     if not Fruits.SelectedFruitId or not FRUIT_BY_ID[Fruits.SelectedFruitId] then
-        Fruits.SelectedFruitId = equippedId
+        Fruits.SelectedFruitId = (equippedId ~= "" and equippedId) or "GaleCore"
+    else
+        Fruits.SelectedFruitId = FRUIT_BY_ID[Fruits.SelectedFruitId].Id
     end
     local selectedFruit = FRUIT_BY_ID[Fruits.SelectedFruitId] or FRUIT_CATALOG[1]
 
@@ -1915,8 +2652,14 @@ function Fruits.Update(snap)
         refs.HeaderRefs.UpdateCurrencies(snap)
     end
 
-    local isAwakened = fState.awakenedFruits and fState.awakenedFruits[selectedFruit.Id] == true
-    local masteryLv = (fState.mastery and fState.mastery[selectedFruit.Id]) or 1
+    local isAwakened = isFruitAwakenedState(fState, selectedFruit.Id)
+    local masteryLv = getFruitMasteryLevel(fState, selectedFruit.Id)
+    local raidChipsCleared = tonumber(snap.raidChipsCleared) or 0
+    local raidStatusTag = isAwakened
+        and I18n.Pick(" [Đã Thức Tỉnh V2 ✓]", " [Awakened V2 ✓]")
+        or (raidChipsCleared >= 1
+            and I18n.Pick(" [Raid V2: Đạt ✓]", " [Raid V2: Met ✓]")
+            or I18n.Pick(" [Cần Raid V2: 0/1]", " [Need Raid V2: 0/1]"))
 
     if refs.RenderedFruitId ~= selectedFruit.Id then
         refs.RenderedFruitId = selectedFruit.Id
@@ -1955,28 +2698,70 @@ function Fruits.Update(snap)
             getFruitName(selectedFruit),
             selectedFruit.Rarity,
             masteryLv,
-            isAwakened and " [Lõi Thức Tỉnh]" or ""
+            raidStatusTag
         )
         refs.SelectedFruitTitle.TextColor3 = selectedFruit.Color
     end
-    if refs.PityLabel then
-        local pityCount = tonumber(fState.pityCount)
-            or (snap.raw and tonumber(snap.raw.FruitPity))
-            or (localPlr and tonumber(localPlr:GetAttribute("FruitPity")))
-            or 18
-        refs.PityLabel.Text = I18n.Pick(
-            string.format("BẢO HIỂM PITY MYTHIC: %d / 50 LƯỢT", pityCount),
-            string.format("MYTHIC PITY GUARANTEE: %d / 50 ROLLS", pityCount)
+    if refs.VaultSummaryTitle then
+        refs.VaultSummaryTitle.Text = string.format("%s  •  [%s]", UIFactory.Upper(getFruitName(selectedFruit)), selectedFruit.Rarity)
+        refs.VaultSummaryTitle.TextColor3 = selectedFruit.Color
+    end
+    if refs.VaultSummaryStatus then
+        local curStored = fState.storedFruits or {}
+        local unlockedTypes = 0
+        for _, item in ipairs(FRUIT_CATALOG) do
+            if item.Id == equippedId or getFruitStoredQty(curStored, item.Id) > 0 then
+                unlockedTypes = unlockedTypes + 1
+            end
+        end
+        local eqMeta = FRUIT_BY_ID[equippedId]
+        local eqNameTxt = eqMeta and getFruitShortName(eqMeta) or I18n.Pick("Chưa trang bị", "None Equipped")
+        refs.VaultSummaryStatus.Text = I18n.Pick(
+            string.format("Đang mang [Slot 2]: %s  •  Sưu tập Kho: %d / 12 Lõi", eqNameTxt, unlockedTypes),
+            string.format("Equipped [Slot 2]: %s  •  Vault Unlocked: %d / 12 Cores", eqNameTxt, unlockedTypes)
         )
     end
-    if refs.VoucherBtnApi then
-        local freeVouchers = (snap.raw and tonumber(snap.raw.FreeFruitVouchers)) or 0
-        refs.VoucherBtnApi:SetLabel(
-            I18n.Pick(
-                string.format("DÙNG VÉ GACHA MIỄN PHÍ (%d VÉ)", freeVouchers),
-                string.format("USE FREE GACHA VOUCHER (%d)", freeVouchers)
-            )
+    if refs.PityLabel then
+        local pityCount, pityMax = getServerFruitPity(snap)
+        refs.PityLabel.Text = I18n.Pick(
+            string.format("BẢO HIỂM PITY MYTHIC: %d / %d LƯỢT", pityCount, pityMax),
+            string.format("MYTHIC PITY GUARANTEE: %d / %d ROLLS", pityCount, pityMax)
         )
+    end
+    if refs.PolicyComplianceBanner then
+        refs.PolicyComplianceBanner.Visible = isPaidRandomRestricted(snap)
+    end
+    if refs.RollGachaBtnApi then
+        local spinLabel, spinUsesTicket = formatZiolesSpinButtonLabel(snap)
+        refs.RollGachaBtnApi:Update({
+            variant = spinUsesTicket and "primary" or "gold",
+            label = spinLabel,
+        })
+    end
+    if refs.VoucherBtnApi then
+        local freeVouchers = getFreeVoucherCount(snap)
+        local hasVouchers = freeVouchers > 0
+        refs.VoucherBtnApi:Update({
+            disabled = not hasVouchers,
+            variant = hasVouchers and "primary" or "secondary",
+            label = hasVouchers
+                and I18n.Pick(
+                    string.format("QUAY MIỄN PHÍ (VÉ x%d)", freeVouchers),
+                    string.format("FREE SPIN (TICKET x%d)", freeVouchers)
+                )
+                or I18n.Pick("VÉ QUAY MIỄN PHÍ (0 VÉ)", "FREE SPIN TICKETS (0)"),
+        })
+    end
+    if refs.StoreFruitApi then
+        local curHeld = tostring(fState.heldFruit or (localPlr and localPlr:GetAttribute("HeldFruit")) or "")
+        local hasHeld = (curHeld ~= "" and curHeld ~= "None")
+        refs.StoreFruitApi:Update({
+            disabled = not hasHeld,
+            variant = hasHeld and "primary" or "secondary",
+            label = hasHeld
+                and I18n.Pick("CẤT VÀO KHO VĨNH VIỄN", "STORE IN VAULT")
+                or I18n.Pick("CHƯA CẦM LÕI TRÊN TAY", "NO CORE IN HAND"),
+        })
     end
     if refs.EatFruitApi then
         local isEq = (equippedId == selectedFruit.Id)
@@ -1988,18 +2773,19 @@ function Fruits.Update(snap)
         })
     end
     if refs.HoldFruitApi then
+        local curHeldRaw = tostring(fState.heldFruit or (localPlr and localPlr:GetAttribute("HeldFruit")) or "")
+        local curHeldCanon = FRUIT_BY_ID[curHeldRaw] and FRUIT_BY_ID[curHeldRaw].Id or curHeldRaw
         refs.HoldFruitApi:SetLabel(
-            (fState.heldFruit == selectedFruit.Id)
+            (curHeldCanon == selectedFruit.Id)
                 and I18n.Pick("ĐANG CẦM 3D TRÊN TAY", "HOLDING 3D MODEL")
                 or I18n.Pick("CẦM LÕI 3D TRÊN TAY", "HOLD 3D IN HAND")
         )
     end
     if refs.AwakenFruitApi then
+        local awkLbl, awkVar = formatAwakenV2Label(isAwakened, raidChipsCleared)
         refs.AwakenFruitApi:Update({
-            variant = isAwakened and "gold" or "secondary",
-            label = isAwakened
-                and I18n.Pick("ĐÃ THỨC TỈNH LÕI", "AWAKENED CORE")
-                or I18n.Pick("LÕI THỨC TỈNH (500)", "AWAKEN CORE (500)"),
+            variant = awkVar,
+            label = awkLbl,
         })
     end
 
@@ -2025,7 +2811,7 @@ function Fruits.Update(snap)
             variant = on and "gold" or "secondary",
             selected = on,
             label = on
-                and I18n.Pick("THĂNG HOA [" .. tostring(fState.race or "Skyborn") .. "]: BẬT", "ASCENSION [" .. tostring(fState.race or "Skyborn") .. "]: ON")
+                and I18n.Pick("THĂNG HOA [" .. formatLineageDisplayName(fState.race) .. "]: BẬT", "ASCENSION [" .. formatLineageDisplayName(fState.race) .. "]: ON")
                 or I18n.Pick("KÍCH HOẠT THĂNG HOA [Y]", "ACTIVATE ASCENSION [Y]"),
         })
     end
@@ -2047,7 +2833,7 @@ function Fruits.Update(snap)
     for fId, cRef in pairs(refs.FruitCards) do
         local isSelected = (fId == selectedFruit.Id)
         local isEq = (fId == equippedId)
-        local ownedCount = tonumber(stored[fId]) or 0
+        local ownedCount = getFruitStoredQty(stored, fId)
         local pal = cRef.Palette or RARITY_PALETTE.Common
         if cRef.Stroke then
             cRef.Stroke.Color = isEq and colors.ACCENT_GOLD_BRIGHT or (isSelected and Color3.fromRGB(255, 255, 255) or pal.Stroke)

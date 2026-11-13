@@ -19,7 +19,7 @@ local ScreenRouter = {
 
 function ScreenRouter.NormalizeRoute(route)
     if type(route) ~= "string" or route == "" then
-        return UIState.Screens.HUD, nil
+        return UIState.Screens.HUD, nil, nil
     end
     local r = route
     if r:sub(1, 11) == "OpenScreen:" then
@@ -27,9 +27,13 @@ function ScreenRouter.NormalizeRoute(route)
     end
     if r:sub(1, 8) == "NPCShop:" then
         local vMode = r:sub(9)
-        return UIState.Screens.NPCShop, (#vMode > 0 and vMode or nil)
+        return UIState.Screens.NPCShop, (#vMode > 0 and vMode or nil), nil
     end
-    return UIState.LegacyPageMap[r] or r, nil
+    if r:sub(1, 7) == "Fruits:" then
+        local fMode = r:sub(8)
+        return UIState.Screens.Fruits, nil, (#fMode > 0 and fMode or nil)
+    end
+    return UIState.LegacyPageMap[r] or r, nil, nil
 end
 
 function ScreenRouter.RegisterScreen(screenId, screenModule)
@@ -38,9 +42,13 @@ end
 
 function ScreenRouter.Navigate(route, options)
     options = options or {}
-    local target, vendorMode = ScreenRouter.NormalizeRoute(route)
+    local target, vendorMode, fruitsMode = ScreenRouter.NormalizeRoute(route)
     if vendorMode then
         Store.SetView({ activeVendorMode = vendorMode })
+        options.forceRebuild = true
+    end
+    if fruitsMode then
+        Store.SetView({ fruitsMode = fruitsMode })
         options.forceRebuild = true
     end
     local previous = ScreenRouter.CurrentScreen
@@ -112,6 +120,7 @@ function ScreenRouter.Back()
             view.dialogue.questId = nil
             view.dialogue.actionLabel = nil
             view.dialogue.actionCommand = nil
+            view.dialogue.choices = nil
         end
         Store.SetView({ dialogue = { visible = false } })
         return ScreenRouter.CurrentScreen
@@ -133,6 +142,9 @@ function ScreenRouter.Back()
 end
 
 function ScreenRouter.BlocksCombat()
+    if Store.Session and Store.Session.onboardingModalVisible then
+        return true
+    end
     local view = Store.GetView()
     if view.modal and view.modal.visible then
         return true

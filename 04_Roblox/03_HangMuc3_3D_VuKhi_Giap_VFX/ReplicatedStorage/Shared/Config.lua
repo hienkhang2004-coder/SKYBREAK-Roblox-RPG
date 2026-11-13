@@ -12,10 +12,16 @@ C.ArenaEntry = Vector3.new(0, 50.5, -275)
 C.BossSpawn = Vector3.new(0, 50.5, -395)
 C.QuestCheckpoint = Vector3.new(-313.9, 50.5, 210.4)
 
-C.GachaCostGold = 150000
+C.GachaCostGold = 25000
+C.FruitGachaCooldown = 60
+C.FruitPityMax = 50
+C.FruitGachaCost = function(level)
+    return math.min(165000, 25000 + math.floor(math.max(0, (tonumber(level) or 1) - 1) * 55))
+end
+C.GetGachaGoldCost = C.FruitGachaCost
 C.GachaCostShards = 200
 C.AwakeningCostShards = 1000
-C.RaceRerollCostShards = 300
+C.RaceRerollCostShards = 50
 C.StatRefundCostShards = 150
 C.HotbarSlots = {
     [1] = "FightingStyle",
@@ -26,15 +32,52 @@ C.HotbarSlots = {
 
 C.RequiredXP = function(level)
     local lv = math.clamp(tonumber(level) or 1, 1, C.MaxLevel)
-    return math.floor(150 + 38 * (lv - 1) + 0.14 * ((lv - 1) ^ 1.75))
+    return math.floor(240 + 185 * (lv - 1) + 2.38 * ((lv - 1) ^ 2.02))
+end
+C.ExpNeed = C.RequiredXP
+
+local FORGE_UPGRADE_TIERS = {
+    [1]  = { Gold = 1500,   Shards = 0,   Materials = 1, Rate = 100, PityGain = 0 },
+    [2]  = { Gold = 2500,   Shards = 0,   Materials = 1, Rate = 100, PityGain = 0 },
+    [3]  = { Gold = 4000,   Shards = 0,   Materials = 1, Rate = 100, PityGain = 0 },
+    [4]  = { Gold = 6000,   Shards = 5,   Materials = 1, Rate = 100, PityGain = 0 },
+    [5]  = { Gold = 9000,   Shards = 10,  Materials = 1, Rate = 100, PityGain = 0 },
+    [6]  = { Gold = 12500,  Shards = 15,  Materials = 2, Rate = 100, PityGain = 0 },
+    [7]  = { Gold = 16500,  Shards = 22,  Materials = 2, Rate = 100, PityGain = 0 },
+    [8]  = { Gold = 21000,  Shards = 30,  Materials = 2, Rate = 100, PityGain = 0 },
+    [9]  = { Gold = 26000,  Shards = 40,  Materials = 2, Rate = 100, PityGain = 0 },
+    [10] = { Gold = 32000,  Shards = 50,  Materials = 2, Rate = 100, PityGain = 0 },
+    [11] = { Gold = 45000,  Shards = 75,  Materials = 3, Rate = 75,  PityGain = 25 },
+    [12] = { Gold = 60000,  Shards = 100, Materials = 3, Rate = 65,  PityGain = 25 },
+    [13] = { Gold = 80000,  Shards = 135, Materials = 3, Rate = 55,  PityGain = 30 },
+    [14] = { Gold = 105000, Shards = 175, Materials = 4, Rate = 42,  PityGain = 35 },
+    [15] = { Gold = 135000, Shards = 225, Materials = 4, Rate = 32,  PityGain = 35 },
+}
+C.ForgeUpgradeTiers = FORGE_UPGRADE_TIERS
+function C.GetForgeUpgradeCost(plusLevel)
+    local p = math.clamp(math.floor(tonumber(plusLevel) or 1), 1, 15)
+    local row = FORGE_UPGRADE_TIERS[p] or FORGE_UPGRADE_TIERS[15]
+    return {
+        Plus = p,
+        Gold = row.Gold,
+        GoldCost = row.Gold,
+        Shards = row.Shards,
+        ShardCost = row.Shards,
+        CoreShards = row.Shards,
+        Materials = row.Materials,
+        MaterialCount = row.Materials,
+        Rate = row.Rate,
+        SuccessRate = row.Rate / 100,
+        PityGain = row.PityGain,
+    }
 end
 
 local islandList = {
     -- Tầng Trời 1 (Sky 1): Golden Sky Archipelago (Lv. 1–700)
     {Id="SkyHub", Name="Tầng Trời 1 (Sky 1) • Zone 1: Đảo Khởi Đầu (Sky Hub Nexus)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-317.4, 50.5, 527.8), Level="Lv. 1–75", MinLevel=1, MaxLevel=75, Order=1},
     {Id="GoldenSky", Name="Tầng Trời 1 (Sky 1) • Zone 1: Bầu Trời Hoàng Kim (Golden Sky Hub)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-313.9, 50.5, 210.4), Level="Lv. 1–700", MinLevel=1, MaxLevel=700, Order=1},
-    {Id="ZiolesGachaShrine", Name="Tầng Trời 1 (Sky 1) • Zone 1B: Điện Cầu Lõi (Core Shrine)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-560, 52.5, 996), Level="Lv. 75–150", MinLevel=75, MaxLevel=150, Order=2},
-    {Id="AetherShrines", Name="Tầng Trời 1 (Sky 1) • Zone 1C: Đài Điện Thờ Aether (Aether Shrine)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(340, 52.5, 996), Level="Lv. 150–250", MinLevel=150, MaxLevel=250, Order=2},
+    {Id="ZiolesGachaShrine", Name="Tầng Trời 1 (Sky 1) • Zone 1B: Điện Cầu Lõi (Core Shrine)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-560, 52.5, 1028), Level="Lv. 75–150", MinLevel=75, MaxLevel=150, Order=2},
+    {Id="AetherShrines", Name="Tầng Trời 1 (Sky 1) • Zone 1C: Đài Điện Thờ Aether (Aether Shrine)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(340, 52.5, 1024), Level="Lv. 150–250", MinLevel=150, MaxLevel=250, Order=2},
     {Id="WestGarden", Name="Tầng Trời 1 (Sky 1) • Zone 2: Pháo Đài Không Tặc Vườn Tây (West Garden Bastion)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(-2800, 50.5, -65), Level="Lv. 250–375", MinLevel=250, MaxLevel=375, Order=3},
     {Id="LumenPlaza", Name="Tầng Trời 1 (Sky 1) • Zone 3: Quảng Trường Ánh Sáng (Lumen Plaza)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(0, 50.5, 65), Level="Lv. 375–525", MinLevel=375, MaxLevel=525, Order=4},
     {Id="SunshardSanctuary", Name="Tầng Trời 1 (Sky 1) • Zone 4: Đảo Đền Mây Nổi (Sunshard Sky Sanctuary)", Realm="GoldenSky", Sea=1, Pos=Vector3.new(2800, 50.5, -55), Level="Lv. 525–650", MinLevel=525, MaxLevel=650, Order=5},
@@ -151,24 +194,37 @@ C.SkillDetails = {
     AstralCataclysm = {Id='AstralCataclysm', Name='Astral Cataclysm', Key='R', Type='Ultimate', Element='Void', ClassId='ArcaneMage', Cooldown=22, Cost=28, Range=36, Multiplier=3.35, Break=28, Level=1, Desc='Tuyệt kỹ Tinh Vân Đại Diệt: Nổ tung trường trọng lực hư không tầm xa, gây 335% sát thương phép.'},
 }
 
-C.Stats = function(level, classId, statAlloc)
+C.Stats = function(level, classId, statAlloc, activeSlot)
     local lv = math.clamp(tonumber(level) or 1, 1, C.MaxLevel)
     local class = C.Classes[classId or 'SkyGuardian'] or C.Classes.SkyGuardian
     local baseCrit = classId == 'ThunderStriker' and 8 or (classId == 'ArcaneMage' and 6 or 4)
     local baseCritDmg = classId == 'ThunderStriker' and 30 or 25
     local alloc = type(statAlloc) == "table" and statAlloc or {}
     local defPts = math.clamp((tonumber(alloc.Defense) or 1) - 1, 0, C.MaxStat - 1)
-    local offensePts = math.clamp(math.max(
-        0,
-        (tonumber(alloc.Melee) or 1) - 1,
-        (tonumber(alloc.Sword) or 1) - 1,
-        (tonumber(alloc.Gun) or 1) - 1,
-        (tonumber(alloc.Fruit) or 1) - 1
-    ), 0, C.MaxStat - 1)
+    local meleePts = math.clamp((tonumber(alloc.Melee) or 1) - 1, 0, C.MaxStat - 1)
+    local fruitPts = math.clamp((tonumber(alloc.Fruit) or 1) - 1, 0, C.MaxStat - 1)
+    local swordPts = math.clamp((tonumber(alloc.Sword) or 1) - 1, 0, C.MaxStat - 1)
+    local gunPts = math.clamp((tonumber(alloc.Gun) or 1) - 1, 0, C.MaxStat - 1)
+    local HP = math.floor((110 + 1.45 * (lv - 1) + 2.8 * defPts) * class.HP)
+    local DEF = math.floor((4 + 0.035 * (lv - 1) + 0.08 * defPts) * class.DEF)
+    local MaxEnergy = math.floor(100 + meleePts * 0.45 + (lv - 1) * 0.04)
+    local MeleeATK = math.floor((12 + 0.07 * (lv - 1) + 0.22 * meleePts) * class.ATK)
+    local FruitATK = math.floor((12 + 0.07 * (lv - 1) + 0.22 * fruitPts) * class.ATK)
+    local SwordATK = math.floor((12 + 0.07 * (lv - 1) + 0.22 * swordPts) * class.ATK)
+    local GunATK = math.floor((12 + 0.07 * (lv - 1) + 0.22 * gunPts) * class.ATK)
+    local BestATK = math.max(MeleeATK, FruitATK, SwordATK, GunATK)
+    local slot = tonumber(activeSlot)
+    local ATK = (slot == 1 and MeleeATK) or (slot == 2 and FruitATK) or (slot == 3 and SwordATK) or (slot == 4 and GunATK) or BestATK
     return {
-        HP = math.floor((110 + 1.45 * (lv - 1) + 2.6 * defPts) * class.HP),
-        ATK = math.floor((10 + 0.09 * (lv - 1) + 0.18 * offensePts) * class.ATK),
-        DEF = math.floor((4 + 0.035 * (lv - 1) + 0.075 * defPts) * class.DEF),
+        HP = HP,
+        DEF = DEF,
+        MaxEnergy = MaxEnergy,
+        MeleeATK = MeleeATK,
+        FruitATK = FruitATK,
+        SwordATK = SwordATK,
+        GunATK = GunATK,
+        BestATK = BestATK,
+        ATK = ATK,
         CritRate = baseCrit,
         CritDmg = baseCritDmg,
         Break = 100,
@@ -206,14 +262,156 @@ C.FruitOrder = {
     "SolarFlameCore",
     "GlacierIceCore",
     "CelestialLightCore",
-    "StarforgedMagmaCore",
     "ThunderRumbleCore",
+    "StarforgedMagmaCore",
     "AstralGravityCore",
     "DimensionalPortalCore",
     "SolarTitanCore",
     "AetherflowCore",
     "AbyssalSovereignCore",
 }
+
+C.MythicFruits = {
+    "SolarTitanCore",
+    "AetherflowCore",
+    "AbyssalSovereignCore",
+}
+
+C.RarePlusFruits = {
+    "SolarFlameCore",
+    "GlacierIceCore",
+    "CelestialLightCore",
+    "ThunderRumbleCore",
+    "StarforgedMagmaCore",
+    "AstralGravityCore",
+    "DimensionalPortalCore",
+    "SolarTitanCore",
+    "AetherflowCore",
+    "AbyssalSovereignCore",
+}
+
+-- Canonical Launch Odds (Total Weight = 1000):
+-- Common 32.0% (GaleCore=320) | Uncommon 29.0% (SandstoneCore=290) | Rare 18.0% (90x2)
+-- Epic 12.0% (60x2) | Legendary 6.6% (22x3) | Mythic 2.4% (8x3)
+C.FruitGachaWeights = {
+    GaleCore = 320,
+    SandstoneCore = 290,
+    SolarFlameCore = 90,
+    GlacierIceCore = 90,
+    CelestialLightCore = 60,
+    ThunderRumbleCore = 60,
+    StarforgedMagmaCore = 22,
+    AstralGravityCore = 22,
+    DimensionalPortalCore = 22,
+    SolarTitanCore = 8,
+    AetherflowCore = 8,
+    AbyssalSovereignCore = 8,
+}
+
+C.FruitGachaOddsTable = {
+    { Rarity = "Mythic",    LabelVi = "Thần Thoại (Mythic)",   LabelEn = "Mythic",    ChancePct = 2.4,  Percent = 2.4,  PerCorePct = 0.8,  Cores = { "SolarTitanCore", "AetherflowCore", "AbyssalSovereignCore" } },
+    { Rarity = "Legendary", LabelVi = "Huyền Thoại (Legendary)", LabelEn = "Legendary", ChancePct = 6.6,  Percent = 6.6,  PerCorePct = 2.2,  Cores = { "StarforgedMagmaCore", "AstralGravityCore", "DimensionalPortalCore" } },
+    { Rarity = "Epic",      LabelVi = "Sử Thi (Epic)",         LabelEn = "Epic",      ChancePct = 12.0, Percent = 12.0, PerCorePct = 6.0,  Cores = { "CelestialLightCore", "ThunderRumbleCore" } },
+    { Rarity = "Rare",      LabelVi = "Hiếm (Rare)",           LabelEn = "Rare",      ChancePct = 18.0, Percent = 18.0, PerCorePct = 9.0,  Cores = { "SolarFlameCore", "GlacierIceCore" } },
+    { Rarity = "Uncommon",  LabelVi = "Khá Hiếm (Uncommon)",   LabelEn = "Uncommon",  ChancePct = 29.0, Percent = 29.0, PerCorePct = 29.0, Cores = { "SandstoneCore" } },
+    { Rarity = "Common",    LabelVi = "Phổ Thông (Common)",    LabelEn = "Common",    ChancePct = 32.0, Percent = 32.0, PerCorePct = 32.0, Cores = { "GaleCore" } },
+}
+C.FruitGachaOddsTable.Tiers = C.FruitGachaOddsTable
+C.FruitGachaOddsTable.PityMax = C.FruitPityMax
+C.FruitGachaOddsTable.ByRarity = {
+    Common = 32.0,
+    Uncommon = 29.0,
+    Rare = 18.0,
+    Epic = 12.0,
+    Legendary = 6.6,
+    Mythic = 2.4,
+    Mythical = 2.4,
+}
+C.FruitGachaOddsTable.ByFruit = {
+    GaleCore = 32.0,
+    SandstoneCore = 29.0,
+    SolarFlameCore = 9.0,
+    GlacierIceCore = 9.0,
+    CelestialLightCore = 6.0,
+    ThunderRumbleCore = 6.0,
+    StarforgedMagmaCore = 2.2,
+    AstralGravityCore = 2.2,
+    DimensionalPortalCore = 2.2,
+    SolarTitanCore = 0.8,
+    AetherflowCore = 0.8,
+    AbyssalSovereignCore = 0.8,
+}
+
+C.RuneOddsTable = {
+    { Id = "Vampiric",     NameVi = "Hấp Huyết",    NameEn = "Vampiric",      ChancePct = 20.0, Percent = 20.0, RerollPct = 25.0, DescVi = "Hồi 4% máu theo sát thương gây ra",       DescEn = "Heal 4% of damage dealt" },
+    { Id = "ChronoHaste",  NameVi = "Gia Tốc",      NameEn = "Chrono Haste",  ChancePct = 20.0, Percent = 20.0, RerollPct = 25.0, DescVi = "Giảm 15% hồi chiêu kỹ năng",              DescEn = "-15% skill cooldowns" },
+    { Id = "ChainVolt",    NameVi = "Lôi Liên Xích", NameEn = "Chain Volt",    ChancePct = 20.0, Percent = 20.0, RerollPct = 25.0, DescVi = "25% phóng lôi xích lan sang mục tiêu gần", DescEn = "25% chance to arc chain lightning" },
+    { Id = "SolarCrit",    NameVi = "Nhật Bạo",     NameEn = "Solar Crit",    ChancePct = 20.0, Percent = 20.0, RerollPct = 25.0, DescVi = "+10% Tỷ lệ Chí mạng & +20% Sát thương Chí mạng", DescEn = "+10% Crit Rate & +20% Crit DMG" },
+    { Id = "ArmorBreaker", NameVi = "Phá Giáp",     NameEn = "Armor Breaker", ChancePct = 20.0, Percent = 20.0, RerollPct = 25.0, DescVi = "Xuyên 18% DEF và +25% Break",             DescEn = "Ignore 18% DEF & +25% Break" },
+}
+C.RuneOddsTable.Runes = C.RuneOddsTable
+C.RuneOddsTable.EqualChancePct = 20.0
+C.RuneOddsTable.RerollChancePct = 25.0
+C.RuneOddsTable.ById = {}
+for _, r in ipairs(C.RuneOddsTable) do
+    C.RuneOddsTable.ById[r.Id] = r
+end
+
+local function sampleUnitNumber(rng, total)
+    local unit = 0
+    if type(rng) == "function" then
+        unit = tonumber(rng()) or 0
+    elseif rng ~= nil then
+        local ok, val = pcall(function()
+            return rng:NextNumber()
+        end)
+        unit = (ok and tonumber(val)) or math.random()
+    elseif Random and Random.new then
+        unit = Random.new():NextNumber()
+    else
+        unit = math.random()
+    end
+    if unit >= 1 then
+        unit = (unit % math.max(1, total)) / math.max(1, total)
+    elseif unit < 0 then
+        unit = 0
+    end
+    return unit
+end
+
+function C.RollWeightedFruitFromPool(pool, rng)
+    local list = (type(pool) == "table" and #pool > 0) and pool or C.FruitOrder
+    local total = 0
+    for _, fid in ipairs(list) do
+        total = total + (C.FruitGachaWeights[fid] or 0)
+    end
+    if total <= 0 then
+        local fb = list[1] or "GaleCore"
+        return fb, C.AetherFruits and C.AetherFruits[fb]
+    end
+    local target = sampleUnitNumber(rng, total) * total
+    local acc = 0
+    for _, fid in ipairs(list) do
+        acc = acc + (C.FruitGachaWeights[fid] or 0)
+        if target < acc then
+            return fid, C.AetherFruits and C.AetherFruits[fid]
+        end
+    end
+    local fallback = list[#list] or "GaleCore"
+    return fallback, C.AetherFruits and C.AetherFruits[fallback]
+end
+
+function C.RollWeightedFruit(rng)
+    return C.RollWeightedFruitFromPool(C.FruitOrder, rng)
+end
+
+function C.RollRarePlusFruit(rng)
+    return C.RollWeightedFruitFromPool(C.RarePlusFruits, rng)
+end
+
+function C.RollMythicFruit(rng)
+    return C.RollWeightedFruitFromPool(C.MythicFruits, rng)
+end
 
 C.AetherFruits = {
     GaleCore = {
@@ -223,7 +421,7 @@ C.AetherFruits = {
         Type = "Elemental",
         Logia = true,
         Transform3D = nil,
-        Price = 75000,
+        Price = 50000,
         Element = "Sky",
         Passive = "Cơ thể Gió (Nguyên Tố Hộ Thể): Miễn nhiễm sát thương thường từ kẻ địch cấp thấp hơn (trừ khi có Giáp Ý Chí).",
         Desc = "Lõi Aether hệ Nguyên Tố Gió cơ bản, cho phép phóng lưỡi đao gió và cưỡi lốc xoáy trên không.",
@@ -242,7 +440,7 @@ C.AetherFruits = {
         Type = "Elemental",
         Logia = true,
         Transform3D = nil,
-        Price = 420000,
+        Price = 120000,
         Element = "Sky",
         Passive = "Sa Mạc Hộ Thể (Nguyên Tố Hộ Thể): Hóa cát tránh đòn thường và làm khô cạn tốc độ di chuyển của kẻ địch.",
         Desc = "Điều khiển bão cát sa mạc cổ đại, trói chân mục tiêu trong quan tài cát và nghiền nát giáp.",
@@ -257,11 +455,11 @@ C.AetherFruits = {
     SolarFlameCore = {
         Id = "SolarFlameCore",
         Name = "Lõi Thái Dương Viêm • Solar Flame Core",
-        Rarity = "Uncommon",
+        Rarity = "Rare",
         Type = "Elemental",
         Logia = true,
         Transform3D = nil,
-        Price = 550000,
+        Price = 350000,
         Element = "Sky",
         Passive = "Lửa Thái Dương (Nguyên Tố Hộ Thể): Miễn nhiễm đòn thường và để lại hiệu ứng Thiêu Đốt mặt trời trên mục tiêu.",
         Desc = "Ngọn lửa mặt trời rực cháy từ tháp Aureon, gây sát thương nổ diện rộng và đẩy lùi mạnh.",
@@ -280,7 +478,7 @@ C.AetherFruits = {
         Type = "Elemental",
         Logia = true,
         Transform3D = nil,
-        Price = 750000,
+        Price = 450000,
         Element = "Frost",
         Passive = "Hàn Băng Tuyệt Đối (Nguyên Tố Hộ Thể): Miễn nhiễm đòn thường, có Đinh Ba Băng cận chiến và bước đi tạo đường băng.",
         Desc = "Tinh thể băng vĩnh cửu từ Frozen Cyber, chuyên làm choáng diện rộng để mở chuỗi combo.",
@@ -295,7 +493,7 @@ C.AetherFruits = {
     CelestialLightCore = {
         Id = "CelestialLightCore",
         Name = "Lõi Thiên Quang • Celestial Light Core",
-        Rarity = "Rare",
+        Rarity = "Epic",
         Type = "Elemental",
         Logia = true,
         Transform3D = nil,
@@ -314,11 +512,11 @@ C.AetherFruits = {
     StarforgedMagmaCore = {
         Id = "StarforgedMagmaCore",
         Name = "Lõi Dung Nham Tinh Luyện • Starforged Magma Core",
-        Rarity = "Rare",
+        Rarity = "Legendary",
         Type = "Elemental",
         Logia = true,
         Transform3D = nil,
-        Price = 1350000,
+        Price = 1800000,
         Element = "Sky",
         Passive = "Dung Nham Sao Băng (Nguyên Tố Hộ Thể): Miễn nhiễm đòn thường, bước đi trên biển mây và để lại hồ dung nham đốt cháy liên tục.",
         Desc = "Lõi Dung Nham có sát thương đốt theo thời gian (DPS) cao bậc nhất để săn Thú Trời và vượt Đấu Trường Giải Mã Lõi.",
@@ -333,11 +531,11 @@ C.AetherFruits = {
     ThunderRumbleCore = {
         Id = "ThunderRumbleCore",
         Name = "Lõi Lôi Đình • Thunder Core",
-        Rarity = "Legendary",
+        Rarity = "Epic",
         Type = "Elemental",
         Logia = true,
         Transform3D = nil,
-        Price = 2100000,
+        Price = 1200000,
         Element = "Lightning",
         Passive = "Lôi Thần Hộ Thể (Nguyên Tố Hộ Thể): Miễn nhiễm đòn thường, tích lũy 3 tầng Lôi Bộ và làm choáng diện rộng.",
         Desc = "Sức mạnh sấm sét tối thượng với 3 lần dịch chuyển chớp nhoáng và Quả Cầu Lôi Phạt khổng lồ.",
@@ -375,7 +573,7 @@ C.AetherFruits = {
         Type = "Natural",
         Logia = false,
         Transform3D = nil,
-        Price = 2500000,
+        Price = 2600000,
         Element = "Void",
         Passive = "Lữ Khách Chiều Không Gian: Cắt xuyên không gian, miễn nhiễm ngắn khi lướt qua cổng và mở cổng dịch chuyển toàn bản đồ.",
         Desc = "Vua cơ động và PvP với khả năng mở chiều không gian 4D và dịch chuyển tức thời tới mọi hòn đảo.",
@@ -390,11 +588,11 @@ C.AetherFruits = {
     SolarTitanCore = {
         Id = "SolarTitanCore",
         Name = "Lõi Kim Thân • Colossus Core",
-        Rarity = "Legendary",
+        Rarity = "Mythic",
         Type = "Beast",
         Logia = false,
         Transform3D = "SolarTitan",
-        Price = 2800000,
+        Price = 3800000,
         Element = "Sky",
         Passive = "Kim Thân Khổng Lồ (3D Transform): Hóa thân thành Đại Tượng Hoàng Kim cao gấp 2.4 lần, giảm 55% sát thương nhận vào và tăng tầm đánh cận chiến/kiếm gấp 3 lần!",
         Desc = "Lõi Kim Thân Hoàng Kim số 1 để cày cấp và vượt Đấu Trường Giải Mã Lõi, sở hữu mô hình biến hình 3D Kim Thân hào quang rực sáng.",
@@ -409,11 +607,11 @@ C.AetherFruits = {
     AetherflowCore = {
         Id = "AetherflowCore",
         Name = "Lõi Tinh Lưu • Aetherflow Core",
-        Rarity = "Mythical",
+        Rarity = "Mythic",
         Type = "Elemental",
         Logia = true,
         Transform3D = nil,
-        Price = 3400000,
+        Price = 4600000,
         Element = "Frost",
         Passive = "Tinh Thể Đặc Biệt (Nguyên Tố Hộ Thể): Miễn nhiễm đòn thường và cường hóa quyền cước bằng gai tinh thể Giáp Ý Chí.",
         Desc = "Lõi Thần Thoại Tinh Lưu với chuỗi combo trói chân, đấm liên hoàn trên không và lăn bánh xe gai tinh thể.",
@@ -428,11 +626,11 @@ C.AetherFruits = {
     AbyssalSovereignCore = {
         Id = "AbyssalSovereignCore",
         Name = "Lõi Long Đế Vực Thẳm • Abyssal Sovereign Core",
-        Rarity = "Mythical",
+        Rarity = "Mythic",
         Type = "Beast",
         Logia = false,
         Transform3D = "AbyssalSovereign",
-        Price = 5000000,
+        Price = 5500000,
         Element = "Void",
         Passive = "Song Long Biến Hình (2 Dạng & 2 Bộ Kỹ Năng): [Dạng 1 - Bán Long Nhân] thiên về cận chiến tốc độ & Hỏa Long Trảo; [Dạng 2 - Thái Cổ Long Hoàng] hóa Rồng Khổng Lồ 3D bay lượn hủy diệt diện rộng!",
         Desc = "Lõi Thần Thoại tối thượng sở hữu 2 Dạng Rồng 3D riêng biệt (Bán Long Nhân & Thái Cổ Long Hoàng) với 2 bộ kỹ năng hoàn toàn khác nhau.",
@@ -1026,39 +1224,148 @@ C.Races = {
     },
 }
 
+local raceEvolutionTable = {
+    V1 = {
+        Tier = 1,
+        Id = "V1",
+        LevelReq = 1,
+        CostGold = 0,
+        CostShards = 0,
+        SpeedMult = 1.00,
+        DefenseMult = 1.00,
+        DamageMult = 1.00,
+        Desc = "Huyết Mạch Khởi Nguyên Bậc 1",
+    },
+    V2 = {
+        Tier = 2,
+        Id = "V2",
+        LevelReq = 350,
+        CostGold = 250000,
+        CostShards = 0,
+        SpeedMult = 1.08,
+        DefenseMult = 1.08,
+        DamageMult = 1.06,
+        Desc = "Thức Tỉnh Huyết Mạch Bậc 2 (+6% ATK, +8% DEF, +8% Tốc chạy)",
+    },
+    V3 = {
+        Tier = 3,
+        Id = "V3",
+        LevelReq = 850,
+        CostGold = 750000,
+        CostShards = 500,
+        SpeedMult = 1.14,
+        DefenseMult = 1.15,
+        DamageMult = 1.12,
+        Desc = "Thức Tỉnh Huyết Mạch Bậc 3 (+12% ATK, +15% DEF, +14% Tốc chạy)",
+    },
+    V4 = {
+        Tier = 4,
+        Id = "V4",
+        LevelReq = 1900,
+        CostGold = 0,
+        CostShards = 0,
+        RequiresRaceV4Unlocked = true,
+        RequiresTrial = true,
+        SpeedMult = 1.22,
+        DefenseMult = 1.22,
+        DamageMult = 1.20,
+        Desc = "Thăng Hoa Huyết Mạch Bậc 4 — Yêu cầu hoàn thành Khảo Nghiệm Đền Thăng Hoa (RaceV4Unlocked)",
+    },
+}
+C.RaceEvolution = setmetatable(raceEvolutionTable, {
+    __index = function(tbl, k)
+        if type(k) == "number" then
+            return rawget(tbl, "V" .. tostring(math.floor(k)))
+        end
+        return nil
+    end,
+})
+
 C.ShipOrder = {"SkySloop", "CelestialBrigantine", "CyberEnforcer", "LeviathanHunterShip"}
 
 C.SkyShips = {
     SkySloop = {
         Id = "SkySloop",
         Name = "Thuyền Buồm Mây • Sky Sloop",
-        HP = 1200,
-        Speed = 45,
+        HP = 1500,
+        MaxHP = 1500,
+        Speed = 95,
+        AscendSpeed = 32,
+        Cannons = 0,
         Price = 0,
+        PriceGold = 0,
         Desc = "Thuyền buồm lướt mây cơ bản dành cho tân thủ khám phá Tầng Trời 1.",
     },
     CelestialBrigantine = {
         Id = "CelestialBrigantine",
         Name = "Chiến Hạm Ánh Sáng • Celestial Brigantine",
-        HP = 3500,
-        Speed = 62,
+        HP = 4200,
+        MaxHP = 4200,
+        Speed = 125,
+        AscendSpeed = 40,
+        Cannons = 2,
         Price = 25000,
+        PriceGold = 25000,
+        Desc = "Chiến hạm hai cột buồm gắn động cơ tinh thể mặt trời.",
+    },
+    AetherBrigantine = {
+        Id = "AetherBrigantine",
+        Name = "Chiến Hạm Ánh Sáng • Aether Brigantine",
+        HP = 4200,
+        MaxHP = 4200,
+        Speed = 125,
+        AscendSpeed = 40,
+        Cannons = 2,
+        Price = 25000,
+        PriceGold = 25000,
         Desc = "Chiến hạm hai cột buồm gắn động cơ tinh thể mặt trời.",
     },
     CyberEnforcer = {
         Id = "CyberEnforcer",
         Name = "Tàu Tuần Dương Băng Giá • Cyber Enforcer",
-        HP = 6000,
-        Speed = 78,
+        HP = 7200,
+        MaxHP = 7200,
+        Speed = 155,
+        AscendSpeed = 48,
+        Cannons = 4,
         Price = 75000,
+        PriceGold = 75000,
         Desc = "Chiến hạm bọc thép từ trường của Tầng Trời 2, lướt nhanh qua bão băng.",
+    },
+    CyberEnforcerShip = {
+        Id = "CyberEnforcerShip",
+        Name = "Tuần Dương Hạm Băng • Cyber Enforcer",
+        HP = 7200,
+        MaxHP = 7200,
+        Speed = 155,
+        AscendSpeed = 48,
+        Cannons = 4,
+        Price = 75000,
+        PriceGold = 75000,
+        Desc = "Chiến hạm bọc thép từ trường của Tầng Trời 2, lướt nhanh qua bão băng.",
+    },
+    CelestialAetherGalleon = {
+        Id = "CelestialAetherGalleon",
+        Name = "Đại Chiến Hạm Thánh Quang • Celestial Aether Galleon",
+        HP = 12500,
+        MaxHP = 12500,
+        Speed = 185,
+        AscendSpeed = 58,
+        Cannons = 6,
+        Price = 250000,
+        PriceGold = 250000,
+        Desc = "Đại chiến hạm buồm ánh sáng hoàng kim trang bị 6 đại pháo mạn tàu.",
     },
     LeviathanHunterShip = {
         Id = "LeviathanHunterShip",
         Name = "Thần Hạm Săn Thủy Xà • Void Dreadnought",
-        HP = 12000,
-        Speed = 95,
+        HP = 12500,
+        MaxHP = 12500,
+        Speed = 185,
+        AscendSpeed = 58,
+        Cannons = 6,
         Price = 250000,
+        PriceGold = 250000,
         Desc = "Đại chiến hạm tối thượng trang bị lao móc thần để săn Thủy Xà Vực Thẳm tại Vùng Nguy Hiểm Cấp 6.",
     },
 }
@@ -1097,59 +1404,136 @@ C.ForgeRecipes = setmetatable(recipeList, {
     end
 })
 
--- Sequential Main Storyline Quests (Q01 -> Q14) across all 8 Realms (Lv. 1 -> Lv. 2550 MAX).
--- Reward XP + TargetLevel milestone covers every Sky & Realm bracket smoothly without mandatory grinding.
+-- Sequential Main Storyline Quests (Q01 -> Q30) across all Islands & 8 Realms (Lv. 1 -> Lv. 2550 MAX).
+-- Tuned ~20.2h F2P grinding curve (Sky 1 ~4.5h, Sky 2 ~6.6h, Sky 3 + Realms 4-8 ~9.1h), mob-pack quests on non-capstone islands, and full EN/VI fields.
 C.Quests = {
     -- CHƯƠNG 1: TẦNG TRỜI 1 (SKY 1) • GOLDEN SKY (Lv. 1 - 700)
-    {Id="Q01", Name="Lời Gọi Skyborn (Tầng Trời 1 • Lv. 1–120)", Realm="GoldenSky", Level=1, TargetLevel=120, XP=95000, Gold=8000, CoreShards=100,
-        Text="Các quần đảo bầu trời đang mất dần năng lượng. Hãy tiêu diệt 3 Training Drone tại sân tập Sky Hub để làm quen với vũ khí và đột phá Lv. 120.",
-        Objectives={{Kind="Kill", Target="TrainingDrone", Count=3, Label="Hạ gục Training Drone"}}},
-    {Id="Q02", Name="Khôi Phục Cầu Năng Lượng (Tầng Trời 1 • Lv. 120–260)", Realm="GoldenSky", Level=120, TargetLevel=260, XP=320000, Gold=16000, CoreShards=150,
-        Text="Năng lượng cầu sang Quảng Trường Lumen đã cạn. Hãy đánh bại 3 Corrupted Guard và bật 3 Trạm Năng Lượng.",
-        Objectives={{Kind="Kill", Target="CorruptedGuard", Count=3, Label="Hạ gục Corrupted Guard"},
-        {Kind="Interact", Target="Station1", Count=1, Label="Bật Trạm 1"}, {Kind="Interact", Target="Station2", Count=1, Label="Bật Trạm 2"}, {Kind="Interact", Target="Station3", Count=1, Label="Bật Trạm 3"}}},
-    {Id="Q03", Name="Giải Cứu Quảng Trường Lumen (Tầng Trời 1 • Lv. 260–420)", Realm="GoldenSky", Level=260, TargetLevel=420, XP=720000, Gold=28000, CoreShards=220,
-        Text="Cầu ánh sáng đã mở. Hãy giải cứu 3 người dân bị mắc kẹt và đánh bại Tinh Anh Golden Knight tại quảng trường.",
-        Objectives={{Kind="Interact", Target="Citizen1", Count=1, Label="Cứu người dân 1"}, {Kind="Interact", Target="Citizen2", Count=1, Label="Cứu người dân 2"}, {Kind="Interact", Target="Citizen3", Count=1, Label="Cứu người dân 3"}, {Kind="Kill", Target="GoldenKnight", Count=1, Label="Hạ gục Golden Knight"}}},
-    {Id="Q04", Name="Chìa Khóa Tháp Ánh Sáng (Tầng Trời 1 • Lv. 420–560)", Realm="GoldenSky", Level=420, TargetLevel=560, XP=1100000, Gold=42000, CoreShards=300,
-        Text="Tiến tới Tiền Điện Aureon, kích hoạt 2 Công Tắc Cổ Ngữ và hạ 3 Light Archer để nhận Chìa Khóa Đấu Trường.",
-        Objectives={{Kind="Interact", Target="Switch1", Count=1, Label="Bật Công tắc 1"}, {Kind="Interact", Target="Switch2", Count=1, Label="Bật Công tắc 2"}, {Kind="Kill", Target="LightArcher", Count=3, Label="Hạ gục Light Archer"}}},
-    {Id="Q05", Name="Trái Tim Ánh Sáng (Boss Tầng Trời 1 • Đột Phá Lv. 700)", Realm="GoldenSky", Level=560, TargetLevel=700, XP=1800000, Gold=75000, CoreShards=500,
-        Text="Tiến vào Đấu Trường Tháp Ánh Sáng và đánh bại AUREON SENTINEL [Lv.700]. Phá hủy 2 trụ năng lượng khi Boss bật khiên để mở khóa Tầng Trời 2 (Lv. 700)!",
-        Objectives={{Kind="Kill", Target="AureonSentinel", Count=1, Label="Đánh bại Boss Aureon Sentinel [Lv.700]"}}},
+    {Id="Q01", Name="Lời Gọi Skyborn (Sky Hub • Lv. 1)", TitleEn="Skyborn Awakening (Sky Hub • Lv. 1)", TargetNameEn="Training Drone", IslandId="SkyHub", Realm="GoldenSky", Level=1, XP=15800, Gold=1500, CoreShards=4,
+        Text="Các quần đảo bầu trời đang mất dần năng lượng. Hãy tiêu diệt 5 Training Drone tại sân tập Đảo Khởi Đầu (Sky Hub) để rèn luyện kỹ năng chiến đấu cơ bản.",
+        DescEn="The floating sky islands are losing energy. Defeat 5 Training Drones at the Sky Hub training yard to master basic combat.",
+        Objectives={{Kind="Kill", Target="TrainingDrone", Count=5, Label="Hạ gục Training Drone", LabelEn="Defeat Training Drones"}}},
+    {Id="Q02", Name="Quét Sạch Không Tặc Ngoại Vi (Sky Hub Outskirts • Lv. 20)", TitleEn="Outskirts Sky Pirate Sweep (Lv. 20)", TargetNameEn="Sky Pirate", IslandId="GoldenSky", Realm="GoldenSky", Level=20, XP=29000, Gold=1950, CoreShards=4,
+        Text="Toán không tặc tiền trạm đang vây hãm rìa Bầu Trời Hoàng Kim. Hãy tiêu diệt 6 Sky Pirate tuần tra để giữ vững tuyến đầu.",
+        DescEn="Forward sky pirates are harassing the Golden Sky outskirts. Defeat 6 Sky Pirates to secure the perimeter.",
+        Objectives={{Kind="Kill", Target="SkyPirate", Count=6, Label="Hạ gục Sky Pirate", LabelEn="Defeat Sky Pirates"}}},
+    {Id="Q03", Name="Khảo Nghiệm Điện Cầu Lõi (Core Shrine • Lv. 85)", TitleEn="Core Shrine Trial (Lv. 85)", TargetNameEn="Corrupted Guard", IslandId="ZiolesGachaShrine", Realm="GoldenSky", Level=85, XP=93400, Gold=2450, CoreShards=5,
+        Text="Lái Tàu Bay về phía Nam tới Điện Cầu Lõi (Zioles Gacha Shrine) và thanh tẩy 6 Corrupted Guard đang bao vây bệ cầu nguyện.",
+        DescEn="Sail south to Zioles' Core Shrine and purge 6 Corrupted Guards besieging the prayer sanctuary.",
+        Objectives={{Kind="Kill", Target="CorruptedGuard", Count=6, Label="Hạ gục Corrupted Guard", LabelEn="Defeat Corrupted Guards"}}},
+    {Id="Q04", Name="Thanh Tẩy Đài Điện Thờ Aether (Aether Shrine • Lv. 150)", TitleEn="Purify the Aether Shrines (Lv. 150)", TargetNameEn="Corrupted Guard", IslandId="AetherShrines", Realm="GoldenSky", Level=150, XP=291000, Gold=3100, CoreShards=5,
+        Text="Dòng năng lượng tại Đài Điện Thờ Aether đang bị ô uế. Hãy tiêu diệt 6 Corrupted Guard canh giữ các trụ tinh thể.",
+        DescEn="Aether currents at the Aether Shrines are tainted. Defeat 6 Corrupted Guards holding the crystal pylons.",
+        Objectives={{Kind="Kill", Target="CorruptedGuard", Count=6, Label="Hạ gục Corrupted Guard", LabelEn="Defeat Corrupted Guards"}}},
+    {Id="Q05", Name="Đột Kích Pháo Đài Vườn Tây (West Garden • Lv. 250)", TitleEn="Raid on West Garden Bastion (Lv. 250)", TargetNameEn="Sky Pirate", IslandId="WestGarden", Realm="GoldenSky", Level=250, XP=601400, Gold=3850, CoreShards=6,
+        Text="Hạm đội không tặc đóng quân tại Pháo Đài Vườn Tây đang cướp phá tuyến hàng không. Hãy hạ gục 8 Sky Pirate trên các bệ pháo.",
+        DescEn="A pirate armada at West Garden Bastion is raiding sky lanes. Defeat 8 Sky Pirates across the gun decks.",
+        Objectives={{Kind="Kill", Target="SkyPirate", Count=8, Label="Hạ gục Sky Pirate", LabelEn="Defeat Sky Pirates"}}},
+    {Id="Q06", Name="Giải Phóng Quảng Trường Ánh Sáng (Lumen Plaza • Lv. 350)", TitleEn="Liberate Lumen Plaza (Lv. 350)", TargetNameEn="Corrupted Guard", IslandId="LumenPlaza", Realm="GoldenSky", Level=350, XP=844700, Gold=4700, CoreShards=6,
+        Text="Quảng Trường Lumen đang bị quân biến chất phong tỏa. Hãy hạ 6 Corrupted Guard để mở lại đại lộ trung tâm.",
+        DescEn="Lumen Plaza is blockaded by corrupted sentries. Defeat 6 Corrupted Guards to reopen the grand avenue.",
+        Objectives={{Kind="Kill", Target="CorruptedGuard", Count=6, Label="Hạ gục Corrupted Guard", LabelEn="Defeat Corrupted Guards"}}},
+    {Id="Q07", Name="Phá Vỡ Phòng Tuyến Hoàng Kim (Lumen Plaza Inner • Lv. 430)", TitleEn="Breach the Golden Vanguard (Lv. 430)", TargetNameEn="Sunshard Royal Guard", IslandId="LumenPlaza", Realm="GoldenSky", Level=430, XP=1235700, Gold=5650, CoreShards=6,
+        Text="Tiến sâu vào nội thành Quảng Trường Lumen, vượt qua 4 Sunshard Royal Guard và 2 Kỵ Sĩ Hoàng Kim Golden Knight.",
+        DescEn="Push into inner Lumen Plaza and defeat 4 Sunshard Royal Guards and 2 Golden Knights.",
+        Objectives={{Kind="Kill", Target="SunshardRoyalGuard", Count=4, Label="Hạ gục Sunshard Royal Guard", LabelEn="Defeat Sunshard Royal Guards"}, {Kind="Kill", Target="GoldenKnight", Count=2, Label="Hạ gục Golden Knight", LabelEn="Defeat Golden Knights"}}},
+    {Id="Q08", Name="Mở Khóa Tiền Điện Phán Quyết (Aureon Forecourt • Lv. 510)", TitleEn="Unseal Aureon Forecourt (Lv. 510)", TargetNameEn="Light Archer", IslandId="BossForecourt", Realm="GoldenSky", Level=510, XP=1471300, Gold=6750, CoreShards=7,
+        Text="Tại Tiền Điện Tháp Phán Quyết, hãy tiêu diệt 6 Light Archer canh giữ cổ ngữ dẫn vào đại đấu trường.",
+        DescEn="At Aureon Spire Forecourt, defeat 6 Light Archers guarding the ancient sigils to the grand arena.",
+        Objectives={{Kind="Kill", Target="LightArcher", Count=6, Label="Hạ gục Light Archer", LabelEn="Defeat Light Archers"}}},
+    {Id="Q09", Name="Thánh Điện Mặt Trời Rực Lửa (Sunshard Sanctuary • Lv. 580)", TitleEn="Blazing Sunshard Sanctuary (Lv. 580)", TargetNameEn="Sunshard Templar", IslandId="SunshardSanctuary", Realm="GoldenSky", Level=580, XP=1969700, Gold=7950, CoreShards=7,
+        Text="Bay sang Đảo Đền Mây Nổi ở phía Đông, đánh bại 6 Sunshard Templar để thu hồi ấn thánh quang.",
+        DescEn="Fly east to Sunshard Sky Sanctuary and defeat 6 Sunshard Templars to reclaim the solar crest.",
+        Objectives={{Kind="Kill", Target="SunshardTemplar", Count=6, Label="Hạ gục Sunshard Templar", LabelEn="Defeat Sunshard Templars"}}},
+    {Id="Q10", Name="Trái Tim Ánh Sáng • Aureon Sentinel (Boss Sky 1 • Lv. 650)", TitleEn="Heart of Light • Aureon Sentinel (Lv. 650)", TargetNameEn="Aureon Sentinel", IslandId="BossForecourt", Realm="GoldenSky", Level=650, XP=5048600, Gold=9500, CoreShards=25,
+        Text="Bước vào Đấu Trường Tháp Phán Quyết và đánh bại AUREON SENTINEL [Lv.700]. Phá hủy trụ năng lượng khi Boss bật khiên để mở đường lên Tầng Trời 2!",
+        DescEn="Enter the Spire Citadel Arena and vanquish AUREON SENTINEL [Lv.700]. Shatter its energy pylons during the shield phase to unlock Sky 2!",
+        Objectives={{Kind="Kill", Target="AureonSentinel", Count=1, Label="Đánh bại Boss Aureon Sentinel", LabelEn="Defeat Boss Aureon Sentinel"}}},
 
     -- CHƯƠNG 2: TẦNG TRỜI 2 (SKY 2) • FROZEN CYBER (Lv. 700 - 1500)
-    {Id="Q06", Name="Đột Nhập Thành Trì Băng Giá (Tầng Trời 2 • Lv. 700–960)", Realm="FrozenCyber", Level=700, TargetLevel=960, XP=3200000, Gold=95000, CoreShards=600,
-        Text="Cổng dịch chuyển Tầng Trời 2 • Frozen Cyber đã mở! Hãy tiêu diệt 3 Frost Automaton và 2 Cryo Vanguard để mở đường vào trung tâm.",
-        Objectives={{Kind="Kill", Target="FrostDrone", Count=3, Label="Hạ gục Frost Automaton"}, {Kind="Kill", Target="CryoGuard", Count=2, Label="Hạ gục Cryo Vanguard"}}},
-    {Id="Q07", Name="Lõi Lượng Tử Nổi Loạn (Tầng Trời 2 • Lv. 960–1240)", Realm="FrozenCyber", Level=960, TargetLevel=1240, XP=4800000, Gold=135000, CoreShards=750,
-        Text="Tại Đấu Trường Giải Mã Lõi (hoặc vùng biển mây Tầng Trời 2), hãy đánh bại ORDER • Lõi Lượng Tử hoặc Thú Trời Sky Beast.",
-        Objectives={{Kind="Kill", Target="OrderCyborg", Count=1, Label="Đánh bại Order Cyborg / Sky Beast"}}},
-    {Id="Q08", Name="Thực Thể Băng Giá Vĩnh Cửu (Boss Tầng Trời 2 • Đột Phá Lv. 1500)", Realm="FrozenCyber", Level=1240, TargetLevel=1500, XP=6800000, Gold=200000, CoreShards=1000,
-        Text="Tiến vào Đấu Trường Băng Giá và tiêu diệt CRYON PRIME [Lv.1500]. Phá 3 Cột Băng Vĩnh Cửu để tiến vào Tầng Trời 3 (Lv. 1500)!",
-        Objectives={{Kind="Kill", Target="CryonPrime", Count=1, Label="Đánh bại Boss Cryon Prime [Lv.1500]"}}},
+    {Id="Q11", Name="Đặt Chân Tới Cảng Băng Giá (Cyberport Outpost • Lv. 700)", TitleEn="Arrival at Cyberport Outpost (Lv. 700)", TargetNameEn="Frost Drone", IslandId="FrozenCyber", Realm="FrozenCyber", Level=700, XP=2710600, Gold=10800, CoreShards=7,
+        Text="Chào mừng tới Tầng Trời 2 • Frozen Cyber! Hãy quét sạch 4 Frost Drone và 4 Frost Automaton tuần tra quanh Cảng Băng Giá.",
+        DescEn="Welcome to Sky 2 • Frozen Cyber! Clear 4 Frost Drones and 4 Frost Automatons patrolling Cyberport Outpost.",
+        Objectives={{Kind="Kill", Target="FrostDrone", Count=4, Label="Hạ gục Frost Drone", LabelEn="Defeat Frost Drones"}, {Kind="Kill", Target="FrostAutomaton", Count=4, Label="Hạ gục Frost Automaton", LabelEn="Defeat Frost Automatons"}}},
+    {Id="Q12", Name="Giao Dịch Ngầm Trạm Thương Mại (Cyberport Cafe • Lv. 820)", TitleEn="Syndicate Sweep at Trade Station (Lv. 820)", TargetNameEn="Cyber Mercenary", IslandId="CyberportCafe", Realm="FrozenCyber", Level=820, XP=3759200, Gold=12400, CoreShards=7,
+        Text="Băng đảng lính đánh thuê đang vây quanh vùng ven Trạm Giao Thương. Hãy hạ 4 Frost Automaton và 4 Cyber Mercenary.",
+        DescEn="Rogue mercenaries are prowling outside the Trade Station. Defeat 4 Frost Automatons and 4 Cyber Mercenaries.",
+        Objectives={{Kind="Kill", Target="FrostAutomaton", Count=4, Label="Hạ gục Frost Automaton", LabelEn="Defeat Frost Automatons"}, {Kind="Kill", Target="CyberMercenary", Count=4, Label="Hạ gục Cyber Mercenary", LabelEn="Defeat Cyber Mercenaries"}}},
+    {Id="Q13", Name="Đột Phá Pháo Đài Tuyết Vĩnh Cửu (Permafrost Garrison • Lv. 950)", TitleEn="Storm Permafrost Garrison (Lv. 950)", TargetNameEn="Cryo Guard", IslandId="PermafrostGarrison", Realm="FrozenCyber", Level=950, XP=4831200, Gold=14100, CoreShards=8,
+        Text="Tiến về Pháo Đài Tuyết phương Bắc, đánh bại 4 Cryo Guard và 4 Cyber Archer canh gác tường băng.",
+        DescEn="Advance on Permafrost Garrison in the north and defeat 4 Cryo Guards and 4 Cyber Archers.",
+        Objectives={{Kind="Kill", Target="CryoGuard", Count=4, Label="Hạ gục Cryo Guard", LabelEn="Defeat Cryo Guards"}, {Kind="Kill", Target="CyberArcher", Count=4, Label="Hạ gục Cyber Archer", LabelEn="Defeat Cyber Archers"}}},
+    {Id="Q14", Name="Vệ Binh Thành Trì Hàn Băng (Frozen Cyber Citadel • Lv. 1080)", TitleEn="Citadel Cryo Vanguards (Lv. 1080)", TargetNameEn="Cryo Vanguard", IslandId="FrozenCyber", Realm="FrozenCyber", Level=1080, XP=5451200, Gold=15900, CoreShards=8,
+        Text="Quân đoàn cơ giới hạng nặng đã tái lập hàng phòng ngự trung tâm Frozen Cyber. Hãy hạ 4 Cryo Guard và 4 Cryo Vanguard.",
+        DescEn="Heavy mech divisions have reinforced central Frozen Cyber. Defeat 4 Cryo Guards and 4 Cryo Vanguards.",
+        Objectives={{Kind="Kill", Target="CryoGuard", Count=4, Label="Hạ gục Cryo Guard", LabelEn="Defeat Cryo Guards"}, {Kind="Kill", Target="CryoVanguard", Count=4, Label="Hạ gục Cryo Vanguard", LabelEn="Defeat Cryo Vanguards"}}},
+    {Id="Q15", Name="Giải Mã Lõi Lượng Tử Order (Microchip Raid Lab • Lv. 1180)", TitleEn="Quantum Raid Lab Breach (Lv. 1180)", TargetNameEn="Mecha Drone", IslandId="MicrochipRaidLab", Realm="FrozenCyber", Level=1180, XP=7218200, Gold=17850, CoreShards=8,
+        Text="Xâm nhập Đấu Trường Giải Mã Lõi ở phía Đông Nam, tiêu diệt 6 Mecha Drone và 2 Frost Automaton bảo vệ trạm nghiên cứu.",
+        DescEn="Infiltrate the Core Decryption Lab in the southeast and destroy 6 Mecha Drones and 2 Frost Automatons.",
+        Objectives={{Kind="Kill", Target="MechaDrone", Count=6, Label="Hạ gục Mecha Drone", LabelEn="Defeat Mecha Drones"}, {Kind="Kill", Target="FrostAutomaton", Count=2, Label="Hạ gục Frost Automaton", LabelEn="Defeat Frost Automatons"}}},
+    {Id="Q16", Name="Bóng Ma Xác Tàu Băng Cổ Đại (Glacial Wreckage • Lv. 1310)", TitleEn="Phantoms of Glacial Wreckage (Lv. 1310)", TargetNameEn="Arctic Corsair", IslandId="GlacialWreckage", Realm="FrozenCyber", Level=1310, XP=8044500, Gold=19900, CoreShards=8,
+        Text="Tại nghĩa địa Xác Tàu Băng Cổ Đại, hãy tiêu diệt 4 Arctic Corsair và 4 Glacial Sniper phục kích giữa sương mù.",
+        DescEn="Across the Glacial Wreckage graveyard, defeat 4 Arctic Corsairs and 4 Glacial Snipers lurking in the mist.",
+        Objectives={{Kind="Kill", Target="ArcticCorsair", Count=4, Label="Hạ gục Arctic Corsair", LabelEn="Defeat Arctic Corsairs"}, {Kind="Kill", Target="GlacialSniper", Count=4, Label="Hạ gục Glacial Sniper", LabelEn="Defeat Glacial Snipers"}}},
+    {Id="Q17", Name="Ngai Vàng Băng Đế • Cryon Prime (Boss Sky 2 • Lv. 1430)", TitleEn="Sub-Zero Throne • Cryon Prime (Lv. 1430)", TargetNameEn="Cryon Prime", IslandId="CryonArena", Realm="FrozenCyber", Level=1430, XP=16869700, Gold=22500, CoreShards=40,
+        Text="Tiến vào Đấu Trường Ngai Vàng Băng Đế và đánh bại CRYON PRIME [Lv.1500] để phá vỡ phong ấn dẫn tới Tầng Trời 3 • Shadow Realm!",
+        DescEn="Storm the Sub-Zero Citadel Arena and defeat CRYON PRIME [Lv.1500] to unseal the Void Gate to Sky 3 • Shadow Realm!",
+        Objectives={{Kind="Kill", Target="CryonPrime", Count=1, Label="Đánh bại Boss Cryon Prime", LabelEn="Defeat Boss Cryon Prime"}}},
 
     -- CHƯƠNG 3: TẦNG TRỜI 3 (SKY 3) • SHADOW REALM (Lv. 1500 - 2200)
-    {Id="Q09", Name="Quân Đoàn Bóng Đêm (Tầng Trời 3 • Lv. 1500–1750)", Realm="ShadowRealm", Level=1500, TargetLevel=1750, XP=8500000, Gold=250000, CoreShards=1200,
-        Text="Bước qua cổng Hư Không vào Tầng Trời 3 • Shadow Realm. Hãy thanh trừng 3 Void Marauder và 2 Kỵ Sĩ Hắc Ám Abyssal Dreadknight.",
-        Objectives={{Kind="Kill", Target="VoidPirate", Count=3, Label="Hạ gục Void Marauder"}, {Kind="Kill", Target="AbyssalKnight", Count=2, Label="Hạ gục Abyssal Dreadknight"}}},
-    {Id="Q10", Name="Săn Lùng Thủy Xà Vực Thẳm (Tầng Trời 3 • Lv. 1750–1980)", Realm="ShadowRealm", Level=1750, TargetLevel=1980, XP=11000000, Gold=320000, CoreShards=1500,
-        Text="Tiến vào Vực Thẳm Thủy Xà (hoặc Đền Thăng Hoa) tại Shadow Realm và đánh bại Thủy Xà ABYSS SERPENT hoặc VOID HARBINGER.",
-        Objectives={{Kind="Kill", Target="AbyssalLeviathan", Count=1, Label="Đánh bại Abyss Serpent / Void Harbinger"}}},
-    {Id="Q11", Name="Chúa Tể Hư Không (Boss Tầng Trời 3 • Đột Phá Lv. 2200)", Realm="ShadowRealm", Level=1980, TargetLevel=2200, XP=14000000, Gold=480000, CoreShards=2000,
-        Text="Đối mặt với NOXAR • THE VOID SOVEREIGN [Lv.2200] tại Đấu Trường Hắc Tinh. Phá hủy Void Singularity để đoạt lấy Song Kiếm Nguyệt Thực!",
-        Objectives={{Kind="Kill", Target="Noxar", Count=1, Label="Đánh bại Boss Noxar • Void Sovereign [Lv.2200]"}}},
+    {Id="Q18", Name="Tiền Đồn Hư Không Thức Giấc (Shadow Realm Outpost • Lv. 1500)", TitleEn="Shadow Realm Outpost (Lv. 1500)", TargetNameEn="Void Marauder", IslandId="ShadowRealm", Realm="ShadowRealm", Level=1500, XP=12770500, Gold=24500, CoreShards=8,
+        Text="Bước qua cánh cổng Hư Không tới Tầng Trời 3! Hãy đánh bại 5 Void Marauder và 3 Void Raider tại Tiền Đồn Hư Không.",
+        DescEn="Step through the Void Gate into Sky 3! Defeat 5 Void Marauders and 3 Void Raiders at Shadow Realm Outpost.",
+        Objectives={{Kind="Kill", Target="VoidMarauder", Count=5, Label="Hạ gục Void Marauder", LabelEn="Defeat Void Marauders"}, {Kind="Kill", Target="VoidRaider", Count=3, Label="Hạ gục Void Raider", LabelEn="Defeat Void Raiders"}}},
+    {Id="Q19", Name="Vây Hãm Pháo Đài Hư Không (Castle on the Void • Lv. 1620)", TitleEn="Siege of Void Bastion (Lv. 1620)", TargetNameEn="Abyssal Knight", IslandId="CastleOnTheVoid", Realm="ShadowRealm", Level=1620, XP=14624000, Gold=26900, CoreShards=9,
+        Text="Tấn công Pháo Đài Hư Không, hạ gục 4 Void Raider và 4 Abyssal Knight canh giữ đại sảnh.",
+        DescEn="Assault Castle on the Void and defeat 4 Void Raiders and 4 Abyssal Knights guarding the grand hall.",
+        Objectives={{Kind="Kill", Target="VoidRaider", Count=4, Label="Hạ gục Void Raider", LabelEn="Defeat Void Raiders"}, {Kind="Kill", Target="AbyssalKnight", Count=4, Label="Hạ gục Abyssal Knight", LabelEn="Defeat Abyssal Knights"}}},
+    {Id="Q20", Name="Rừng Tinh Thể Đen Huyền Bí (Umbral Sanctum • Lv. 1750)", TitleEn="Umbral Crystal Sanctum (Lv. 1750)", TargetNameEn="Shadow Specter", IslandId="UmbralSanctum", Realm="ShadowRealm", Level=1750, XP=16472800, Gold=29400, CoreShards=9,
+        Text="Lần theo dị năng trong Rừng Tinh Thể Đen, tiêu diệt 4 Umbral Bowman và 4 Shadow Specter.",
+        DescEn="Track dark resonance through Umbral Crystal Sanctum and defeat 4 Umbral Bowmen and 4 Shadow Specters.",
+        Objectives={{Kind="Kill", Target="UmbralBowman", Count=4, Label="Hạ gục Umbral Bowman", LabelEn="Defeat Umbral Bowmen"}, {Kind="Kill", Target="ShadowSpecter", Count=4, Label="Hạ gục Shadow Specter", LabelEn="Defeat Shadow Specters"}}},
+    {Id="Q21", Name="Tử Chiến Cầu Hắc Tinh (Shadow Realm Bridge • Lv. 1870)", TitleEn="Blackstar Bridge Clash (Lv. 1870)", TargetNameEn="Abyssal Dreadknight", IslandId="ShadowRealm", Realm="ShadowRealm", Level=1870, XP=15974800, Gold=32100, CoreShards=9,
+        Text="Mở đường qua cây cầu trung tâm Shadow Realm bằng cách đánh bại 4 Abyssal Dreadknight và 4 Shadow Archer.",
+        DescEn="Carve a path across central Shadow Realm Bridge by defeating 4 Abyssal Dreadknights and 4 Shadow Archers.",
+        Objectives={{Kind="Kill", Target="AbyssalDreadknight", Count=4, Label="Hạ gục Abyssal Dreadknight", LabelEn="Defeat Abyssal Dreadknights"}, {Kind="Kill", Target="ShadowArcher", Count=4, Label="Hạ gục Shadow Archer", LabelEn="Defeat Shadow Archers"}}},
+    {Id="Q22", Name="Bí Mật Đền Thăng Hoa Huyết Mạch (Temple of the Core • Lv. 1950)", TitleEn="Secrets of Ascension Shrine (Lv. 1950)", TargetNameEn="Abyssal Dreadknight", IslandId="TempleOfTheCore", Realm="ShadowRealm", Level=1950, XP=17775200, Gold=34900, CoreShards=9,
+        Text="Tại Đền Thăng Hoa — nơi ẩn giấu khảo nghiệm Tộc V4 — hãy thanh trừng 4 Shadow Specter và 4 Abyssal Dreadknight canh giữ cổ đàn.",
+        DescEn="At Temple of the Core — home of the Ancient V4 Trial — purge 4 Shadow Specters and 4 Abyssal Dreadknights.",
+        Objectives={{Kind="Kill", Target="ShadowSpecter", Count=4, Label="Hạ gục Shadow Specter", LabelEn="Defeat Shadow Specters"}, {Kind="Kill", Target="AbyssalDreadknight", Count=4, Label="Hạ gục Abyssal Dreadknight", LabelEn="Defeat Abyssal Dreadknights"}}},
+    {Id="Q23", Name="Cuộc Săn Vực Thẳm Thủy Xà (Leviathan Abyss • Lv. 2040)", TitleEn="Trench of the Abyssal Serpent (Lv. 2040)", TargetNameEn="Terror Sky Shark", IslandId="LeviathanAbyss", Realm="ShadowRealm", Level=2040, XP=18953900, Gold=37800, CoreShards=9,
+        Text="Tiến vào Vực Thẳm Thủy Xà, tiêu diệt 4 Terror Sky Shark và 4 Long Nhân Vực Thẳm Abyssal Dragon Hybrid tuần tiễu!",
+        DescEn="Venture into Leviathan Abyss and defeat 4 Terror Sky Sharks and 4 Abyssal Dragon Hybrids prowling the trench!",
+        Objectives={{Kind="Kill", Target="TerrorSkyShark", Count=4, Label="Hạ gục Terror Sky Shark", LabelEn="Defeat Terror Sky Sharks"}, {Kind="Kill", Target="AbyssalDragonHybrid", Count=4, Label="Hạ gục Abyssal Dragon Hybrid", LabelEn="Defeat Abyssal Dragon Hybrids"}}},
+    {Id="Q24", Name="Ngai Vàng Hư Không • Noxar (Boss Sky 3 • Lv. 2130)", TitleEn="Void Sovereign Throne • Noxar (Lv. 2130)", TargetNameEn="Noxar", IslandId="NoxarArena", Realm="ShadowRealm", Level=2130, XP=38862800, Gold=41000, CoreShards=55,
+        Text="Đối mặt với NOXAR • THE VOID SOVEREIGN [Lv.2200] tại Ngai Vàng Hư Không để khai mở 5 Cõi Giới Thượng Cổ!",
+        DescEn="Confront NOXAR • THE VOID SOVEREIGN [Lv.2200] upon the Void Throne to unlock the 5 Elder Realms!",
+        Objectives={{Kind="Kill", Target="Noxar", Count=1, Label="Đánh bại Boss Noxar • Void Sovereign", LabelEn="Defeat Boss Noxar • Void Sovereign"}}},
 
-    -- CHƯƠNG 4 - 5: CÁC CÕI GIỚI THƯỢNG CỔ & CHUNG CUỘC (Lv. 2200 - 2550 MAX)
-    {Id="Q12", Name="Thức Tỉnh Nguyên Tố Cổ Đại (Realms 4–5 • Lv. 2200–2340)", Realm="VerdantCrown", Level=2200, TargetLevel=2340, XP=18000000, Gold=600000, CoreShards=2500,
-        Text="Dịch chuyển tới Verdant Crown và Emberforge Wastes để chinh phục Đại Cổ Thụ SYLVARIS [Lv.2250] cùng Titan Lửa IGNIVAR [Lv.2325].",
-        Objectives={{Kind="Kill", Target="Sylvaris", Count=1, Label="Đánh bại Sylvaris (Verdant Crown)"}, {Kind="Kill", Target="Ignivar", Count=1, Label="Đánh bại Ignivar (Emberforge Wastes)"}}},
-    {Id="Q13", Name="Vượt Qua Dòng Chảy Thời Gian (Realms 6–7 • Lv. 2340–2480)", Realm="ChronosBastion", Level=2340, TargetLevel=2480, XP=24000000, Gold=800000, CoreShards=3200,
-        Text="Tiến vào Abyssal Tides và Chronos Bastion để đánh bại Thủy Hoàng NERITH [Lv.2400] và Pháp Vương Thời Gian AION [Lv.2475].",
-        Objectives={{Kind="Kill", Target="Nerith", Count=1, Label="Đánh bại Nerith (Abyssal Tides)"}, {Kind="Kill", Target="Aion", Count=1, Label="Đánh bại Aion (Chronos Bastion)"}}},
-    {Id="Q14", Name="Đấng Kiến Tạo Đầu Tiên (Chung Cuộc • MAX LV. 2550)", Realm="VeilsEnd", Level=2480, TargetLevel=2550, XP=40000000, Gold=1250000, CoreShards=5000,
-        Text="Bước lên Đỉnh Phán Quyết tại Veil's End và đánh bại Boss tối thượng VEYR • ĐẤNG KIẾN TẠO ĐẦU TIÊN [Lv.2550] để đạt MAX LEVEL 2550!",
-        Objectives={{Kind="Kill", Target="Veyr", Count=1, Label="Đánh bại Final Boss Veyr [Lv.2550]"}}},
+    -- CHƯƠNG 4 - 5: CÁC CÕI GIỚI THƯỢNG CỔ & CHUNG CUỘC (Realms 4–8 • Lv. 2200 - 2550 MAX)
+    {Id="Q25", Name="Vương Miện Cổ Thụ Thức Tỉnh (Verdant Crown • Lv. 2200)", TitleEn="Awakening of Verdant Crown (Lv. 2200)", TargetNameEn="Shadow Specter", IslandId="VerdantCrown", Realm="VerdantCrown", Level=2200, XP=18770800, Gold=44000, CoreShards=10,
+        Text="Bay lên tầng mây Realm 4 • Verdant Crown, thanh tẩy 4 Umbral Bowman và 4 Shadow Specter ký sinh quanh Đại Cổ Thụ.",
+        DescEn="Ascend to Realm 4 • Verdant Crown and purge 4 Umbral Bowmen and 4 Shadow Specters corrupting the World-Tree.",
+        Objectives={{Kind="Kill", Target="UmbralBowman", Count=4, Label="Hạ gục Umbral Bowman", LabelEn="Defeat Umbral Bowmen"}, {Kind="Kill", Target="ShadowSpecter", Count=4, Label="Hạ gục Shadow Specter", LabelEn="Defeat Shadow Specters"}}},
+    {Id="Q26", Name="Lò Rèn Sao Nung Rực Cháy (Emberforge Wastes • Lv. 2270)", TitleEn="Crucible of Emberforge Wastes (Lv. 2270)", TargetNameEn="Sunshard Templar", IslandId="EmberforgeWastes", Realm="EmberforgeWastes", Level=2270, XP=19959300, Gold=47200, CoreShards=10,
+        Text="Tiến vào Hoang Mạc Lò Rèn Lửa (Realm 5), vượt qua 4 Sunshard Templar và 4 Golden Knight canh giữ lò sao nung.",
+        DescEn="March into Emberforge Wastes (Realm 5) and defeat 4 Sunshard Templars and 4 Golden Knights guarding the star-forges.",
+        Objectives={{Kind="Kill", Target="SunshardTemplar", Count=4, Label="Hạ gục Sunshard Templar", LabelEn="Defeat Sunshard Templars"}, {Kind="Kill", Target="GoldenKnight", Count=4, Label="Hạ gục Golden Knight", LabelEn="Defeat Golden Knights"}}},
+    {Id="Q27", Name="Cung Điện Thủy Triều Vực Sâu (Abyssal Tides • Lv. 2340)", TitleEn="Sanctuaries of Abyssal Tides (Lv. 2340)", TargetNameEn="Terror Sky Shark", IslandId="AbyssalTides", Realm="AbyssalTides", Level=2340, XP=20642900, Gold=50600, CoreShards=10,
+        Text="Vượt qua vùng nước ngược tại Thủy Triều Vực Sâu (Realm 6), hạ 4 Arctic Corsair và 4 Terror Sky Shark.",
+        DescEn="Navigate the inverted currents of Abyssal Tides (Realm 6) and defeat 4 Arctic Corsairs and 4 Terror Sky Sharks.",
+        Objectives={{Kind="Kill", Target="ArcticCorsair", Count=4, Label="Hạ gục Arctic Corsair", LabelEn="Defeat Arctic Corsairs"}, {Kind="Kill", Target="TerrorSkyShark", Count=4, Label="Hạ gục Terror Sky Shark", LabelEn="Defeat Terror Sky Sharks"}}},
+    {Id="Q28", Name="Pháo Đài Thời Gian Ngưng Đọng (Chronos Bastion • Lv. 2410)", TitleEn="Astrolabes of Chronos Bastion (Lv. 2410)", TargetNameEn="Cryo Vanguard", IslandId="ChronosBastion", Realm="ChronosBastion", Level=2410, XP=20807600, Gold=54100, CoreShards=10,
+        Text="Đặt chân lên Pháo Đài Thời Gian (Realm 7), phá hủy 4 Mecha Drone niên đại và 4 Cryo Vanguard.",
+        DescEn="Step onto Chronos Bastion (Realm 7) and destroy 4 temporal Mecha Drones and 4 Cryo Vanguards.",
+        Objectives={{Kind="Kill", Target="MechaDrone", Count=4, Label="Hạ gục Mecha Drone", LabelEn="Defeat Mecha Drones"}, {Kind="Kill", Target="CryoVanguard", Count=4, Label="Hạ gục Cryo Vanguard", LabelEn="Defeat Cryo Vanguards"}}},
+    {Id="Q29", Name="Tiền Tuyến Tận Cùng Bức Màn (Veil's End • Lv. 2480)", TitleEn="Vanguard of Veil's End (Lv. 2480)", TargetNameEn="Abyssal Dragon Hybrid", IslandId="VeilsEnd", Realm="VeilsEnd", Level=2480, XP=18798500, Gold=57800, CoreShards=10,
+        Text="Chân trời sự kiện tại Veil's End (Realm 8) đã mở! Hãy tiêu diệt 4 Abyssal Dreadknight và 4 Long Nhân Hư Không Abyssal Dragon Hybrid hộ giá.",
+        DescEn="The event horizon at Veil's End (Realm 8) is open! Defeat 4 Abyssal Dreadknights and 4 Abyssal Dragon Hybrids.",
+        Objectives={{Kind="Kill", Target="AbyssalDreadknight", Count=4, Label="Hạ gục Abyssal Dreadknight", LabelEn="Defeat Abyssal Dreadknights"}, {Kind="Kill", Target="AbyssalDragonHybrid", Count=4, Label="Hạ gục Abyssal Dragon Hybrid", LabelEn="Defeat Abyssal Dragon Hybrids"}}},
+    {Id="Q30", Name="Đấng Kiến Tạo Đầu Tiên • Veyr (Chung Cuộc • Lv. 2530)", TitleEn="The First Architect • Veyr (Finale • Lv. 2530)", TargetNameEn="Veyr, The First Architect", IslandId="VeilsNorthThrone", Realm="VeilsEnd", Level=2530, XP=17524300, Gold=62000, CoreShards=75,
+        Text="Bước lên Ngai Vàng Đấng Kiến Tạo phương Bắc và đánh bại Boss tối thượng VEYR • THE FIRST ARCHITECT [Lv.2550] để thống lĩnh bầu trời SKYBREAK!",
+        DescEn="Ascend the North Architect's Citadel and vanquish VEYR • THE FIRST ARCHITECT [Lv.2550] to claim sovereignty over SKYBREAK!",
+        Objectives={{Kind="Kill", Target="Veyr", Count=1, Label="Đánh bại Final Boss Veyr [Lv.2550]", LabelEn="Defeat Final Boss Veyr [Lv.2550]"}}},
 }
 
 -- ============================================================================
@@ -1365,53 +1749,28 @@ do
         C.FightingStyles.ChronoVoidPalm = chronoDef
         C.FightingStyles.chrono_void_palm = chronoDef
     end
-
-    if not C.SkyShips.CyberEnforcerShip then
-        C.SkyShips.CyberEnforcerShip = {
-            Id = "CyberEnforcerShip",
-            Name = "Tuần Dương Hạm Băng • Cyber Enforcer",
-            HP = 6000,
-            Speed = 78,
-            Price = 45000,
-            Desc = "Chiến hạm bọc thép từ trường của Tầng Trời 2, lướt nhanh qua bão băng.",
+    if not C.FightingStyles.SanguineVoidArt then
+        local sangDef = {
+            Id = "SanguineVoidArt",
+            Name = "Huyết Hư Không Quyền - Sanguine Void Art",
+            PriceGold = 5000000,
+            PriceShards = 5000,
+            Element = "Void",
+            Desc = "Cấm thuật cổ võ hút sinh lực từ vết nứt Hư Không, cào xé giáp và hồi phục theo sát thương.",
+            Moves = {
+                Z = { Key = "Z", Name = "Bloodscar Drain - Huyết Trảo Hút Hồn", Mastery = 1, Cooldown = 4.8, Cost = 12, Range = 28, Multiplier = 3.4, Break = 36, Element = "Void", Desc = "Lao chớp nhoáng cào xé mục tiêu và hấp thụ sinh lực." },
+                X = { Key = "X", Name = "Scarlet Rift Volley - Huyết Nguyệt Xung Kích", Mastery = 75, Cooldown = 8.4, Cost = 18, Range = 32, Multiplier = 4.3, Break = 48, Element = "Void", Desc = "Phóng chùm lưỡi hái huyết tinh xuyên phá đội hình địch." },
+                C = { Key = "C", Name = "Devouring Void Maw - Thực Không Huyết Ngục", Mastery = 150, Cooldown = 11.8, Cost = 24, Range = 34, Multiplier = 5.5, Break = 62, Element = "Void", Desc = "Triệu hồi vực xoáy huyết không giam cầm và nghiền nát mục tiêu." },
+            },
         }
-    end
-    if not C.SkyShips.CelestialAetherGalleon then
-        C.SkyShips.CelestialAetherGalleon = {
-            Id = "CelestialAetherGalleon",
-            Name = "Đại Chiến Hạm Thánh Quang • Celestial Aether Galleon",
-            HP = 9200,
-            Speed = 86,
-            Price = 250000,
-            Desc = "Đại chiến hạm buồm ánh sáng hoàng kim trang bị 6 đại pháo mạn tàu.",
-        }
+        C.FightingStyles.SanguineVoidArt = sangDef
+        C.FightingStyles.sanguine_void_art = sangDef
     end
 
-    -- Enforce 100% ItemCatalog.ConfigRarityParity in both directions
+    -- Shipwright Fleet aliases are defined authoritatively in C.SkyShips above (95 / 125 / 155 / 185 Speed + AscendSpeed).
+
+    -- Enforce 100% ItemCatalog.ConfigRarityParity & 1:1 Stat/LevelReq sync in both directions
     if RarityCfg and type(RarityCfg.Items) == "table" then
-        for itemId, cItem in pairs(C.Items) do
-            if RarityCfg.Items[itemId] == nil then
-                RarityCfg.Items[itemId] = {
-                    Id = itemId,
-                    Name = cItem.Name or itemId,
-                    Category = (cItem.Slot == "Weapon" or cItem.Slot == "Gun") and "Weapons"
-                        or ((cItem.Slot == "Material" or cItem.Slot == "Quest") and "Materials" or "Armor"),
-                    Slot = if (cItem.Slot == "Material" or cItem.Slot == "Quest") then nil
-                        else (cItem.Slot == "Gun" and "Offhand" or cItem.Slot),
-                    WeaponType = (cItem.Slot == "Gun") and "Gun" or nil,
-                    Rarity = cItem.Rarity or "Common",
-                    LevelReq = cItem.LevelReq or 1,
-                    Icon = (cItem.Slot == "Gun") and "Gun" or ((cItem.Slot == "Weapon") and "Sword" or "Shield"),
-                    Stats = {
-                        ATK = cItem.ATK,
-                        DEF = cItem.DEF,
-                        HP = cItem.HP,
-                        CRIT = cItem.CritRate,
-                    },
-                    Description = cItem.Desc or "",
-                }
-            end
-        end
         for itemId, rItem in pairs(RarityCfg.Items) do
             if C.Items[itemId] == nil then
                 local st = type(rItem.Stats) == "table" and rItem.Stats or {}
@@ -1430,6 +1789,62 @@ do
                 }
             end
         end
+    end
+
+    if not C._ItemsBalanced then
+        C._ItemsBalanced = true
+        local RARITY_LV = { Common = 1, Uncommon = 50, Rare = 150, Epic = 350, Legendary = 700, Mythic = 1800, Mythical = 1800 }
+        for _, item in pairs(C.Items) do
+            if type(item) == "table" and item.Slot ~= "Material" and item.Slot ~= "Quest" then
+                if not item.LevelReq or item.LevelReq <= 1 then item.LevelReq = RARITY_LV[tostring(item.Rarity or "Common")] or 1 end
+                if item.ATK and item.ATK > 0 then item.ATK = math.max(5, math.floor(item.ATK * 0.45 + 0.5)) end
+                if item.DEF and item.DEF > 0 then item.DEF = math.max(2, math.floor(item.DEF * 0.45 + 0.5)) end
+                if item.HP and item.HP > 0 then item.HP = math.max(15, math.floor(item.HP * 0.45 + 0.5)) end
+                if item.CritRate and item.CritRate > 0 then item.CritRate = math.clamp(math.floor(item.CritRate * 0.45 + 0.5), 1, 8) end
+                if item.CritDmg and item.CritDmg > 0 then item.CritDmg = math.clamp(math.floor(item.CritDmg * 0.45 + 0.5), 3, 12) end
+            end
+        end
+    end
+
+    local function syncCatalogStats(catTbl)
+        if type(catTbl) ~= "table" then return end
+        for itemId, cItem in pairs(C.Items) do
+            if type(cItem) == "table" then
+                local rItem = catTbl[itemId]
+                if rItem == nil and catTbl == (RarityCfg and RarityCfg.Items) then
+                    catTbl[itemId] = {
+                        Id = itemId,
+                        Name = cItem.Name or itemId,
+                        Category = (cItem.Slot == "Weapon" or cItem.Slot == "Gun") and "Weapons"
+                            or ((cItem.Slot == "Material" or cItem.Slot == "Quest") and "Materials" or "Armor"),
+                        Slot = if (cItem.Slot == "Material" or cItem.Slot == "Quest") then nil
+                            else (cItem.Slot == "Gun" and "Offhand" or cItem.Slot),
+                        WeaponType = (cItem.Slot == "Gun") and "Gun" or nil,
+                        Rarity = cItem.Rarity or "Common",
+                        LevelReq = cItem.LevelReq or 1,
+                        Icon = (cItem.Slot == "Gun") and "Gun" or ((cItem.Slot == "Weapon") and "Sword" or "Shield"),
+                        Stats = {
+                            ATK = (cItem.ATK and cItem.ATK > 0) and cItem.ATK or nil,
+                            DEF = (cItem.DEF and cItem.DEF > 0) and cItem.DEF or nil,
+                            HP = (cItem.HP and cItem.HP > 0) and cItem.HP or nil,
+                            CRIT = (cItem.CritRate and cItem.CritRate > 0) and cItem.CritRate or nil,
+                        },
+                        Description = cItem.Desc or "",
+                    }
+                elseif type(rItem) == "table" and cItem.Slot ~= "Material" and cItem.Slot ~= "Quest" then
+                    rItem.LevelReq = cItem.LevelReq or rItem.LevelReq or 1
+                    rItem.Stats = type(rItem.Stats) == "table" and rItem.Stats or {}
+                    rItem.Stats.ATK = (cItem.ATK and cItem.ATK > 0) and cItem.ATK or nil
+                    rItem.Stats.DEF = (cItem.DEF and cItem.DEF > 0) and cItem.DEF or nil
+                    rItem.Stats.HP = (cItem.HP and cItem.HP > 0) and cItem.HP or nil
+                    rItem.Stats.CRIT = (cItem.CritRate and cItem.CritRate > 0) and cItem.CritRate or nil
+                end
+            end
+        end
+    end
+
+    if RarityCfg and type(RarityCfg.Items) == "table" then
+        syncCatalogStats(RarityCfg.Items)
         if type(RarityCfg.Recipes) == "table" then
             for _, rec in pairs(RarityCfg.Recipes) do
                 if type(rec) == "table" then
@@ -1442,53 +1857,118 @@ do
             end
         end
     end
-
-    local RARITY_LV = { Common = 1, Uncommon = 50, Rare = 150, Epic = 350, Legendary = 700, Mythic = 1800, Mythical = 1800 }
-    for _, item in pairs(C.Items) do
-        if type(item) == "table" and item.Slot ~= "Material" and item.Slot ~= "Quest" then
-            if not item.LevelReq or item.LevelReq <= 1 then item.LevelReq = RARITY_LV[tostring(item.Rarity or "Common")] or 1 end
-            if item.ATK and item.ATK > 0 then item.ATK = math.max(5, math.floor(item.ATK * 0.45 + 0.5)) end
-            if item.DEF and item.DEF > 0 then item.DEF = math.max(2, math.floor(item.DEF * 0.45 + 0.5)) end
-            if item.HP and item.HP > 0 then item.HP = math.max(15, math.floor(item.HP * 0.45 + 0.5)) end
-            if item.CritRate and item.CritRate > 0 then item.CritRate = math.clamp(math.floor(item.CritRate * 0.45 + 0.5), 1, 8) end
-            if item.CritDmg and item.CritDmg > 0 then item.CritDmg = math.clamp(math.floor(item.CritDmg * 0.45 + 0.5), 3, 12) end
-        end
+    if ArsenalExp and type(ArsenalExp.Items) == "table" and ArsenalExp.Items ~= (RarityCfg and RarityCfg.Items) then
+        syncCatalogStats(ArsenalExp.Items)
     end
-    local function normMoves(cat, skipId)
-        for id, entry in pairs(cat or {}) do
-            if type(entry) == "table" then
-                if id ~= skipId then
-                    if entry.ATK and entry.ATK > 0 then entry.ATK = math.max(5, math.floor(entry.ATK * 0.45 + 0.5)) end
-                    if entry.CritRate and entry.CritRate > 0 then entry.CritRate = math.clamp(math.floor(entry.CritRate * 0.45 + 0.5), 1, 8) end
-                    if entry.CritDmg and entry.CritDmg > 0 then entry.CritDmg = math.clamp(math.floor(entry.CritDmg * 0.45 + 0.5), 3, 12) end
-                end
-                for _, tblKey in ipairs({ "Moves", "Form1Moves", "Form2Moves" }) do
-                    local mTbl = entry[tblKey]
-                    if type(mTbl) == "table" then
-                        for k, mv in pairs(mTbl) do
-                            if type(mv) == "table" and id ~= skipId then
-                                local ku = string.upper(tostring(mv.Key or k or "Z"))
-                                local minCd = (ku == "V" and 15.0) or (ku == "C" and 10.5) or (ku == "X" and 7.5) or (ku == "F" and 6.0) or 5.0
-                                mv.Cooldown = math.max(minCd, math.floor(((tonumber(mv.Cooldown) or 5.0) * 1.20) * 10 + 0.5) / 10)
-                                if mv.Multiplier and mv.Multiplier > 0 then mv.Multiplier = math.clamp(math.floor((mv.Multiplier * 0.65) * 100 + 0.5) / 100, 1.05, 3.40) end
-                                if mv.Break and mv.Break > 0 then mv.Break = math.clamp(math.floor(mv.Break * 0.48 + 0.5), 6, 26) end
+
+    if C.AetherFruits and C.AetherFruits.AbyssalSovereignCore then
+        C.AetherFruits.AbyssalSovereignCore.HumanMoves = C.AetherFruits.AbyssalSovereignCore.HumanMoves or C.AetherFruits.AbyssalSovereignCore.Moves
+    end
+    if not C._MovesBalanced then
+        C._MovesBalanced = true
+        local function normMoves(cat, skipId)
+            for id, entry in pairs(cat or {}) do
+                if type(entry) == "table" then
+                    if id ~= skipId then
+                        if entry.ATK and entry.ATK > 0 then entry.ATK = math.max(5, math.floor(entry.ATK * 0.45 + 0.5)) end
+                        if entry.CritRate and entry.CritRate > 0 then entry.CritRate = math.clamp(math.floor(entry.CritRate * 0.45 + 0.5), 1, 8) end
+                        if entry.CritDmg and entry.CritDmg > 0 then entry.CritDmg = math.clamp(math.floor(entry.CritDmg * 0.45 + 0.5), 3, 12) end
+                    end
+                    for _, tblKey in ipairs({ "Moves", "Form1Moves", "Form2Moves" }) do
+                        local mTbl = entry[tblKey]
+                        if type(mTbl) == "table" then
+                            for k, mv in pairs(mTbl) do
+                                if type(mv) == "table" and id ~= skipId then
+                                    local ku = string.upper(tostring(mv.Key or k or "Z"))
+                                    local minCd = (ku == "V" and 15.0) or (ku == "C" and 10.5) or (ku == "X" and 7.5) or (ku == "F" and 6.0) or 5.0
+                                    mv.Cooldown = math.max(minCd, math.floor(((tonumber(mv.Cooldown) or 5.0) * 1.20) * 10 + 0.5) / 10)
+                                    if mv.Multiplier and mv.Multiplier > 0 then mv.Multiplier = math.clamp(math.floor((mv.Multiplier * 0.65) * 100 + 0.5) / 100, 1.05, 3.40) end
+                                    if mv.Break and mv.Break > 0 then mv.Break = math.clamp(math.floor(mv.Break * 0.48 + 0.5), 6, 26) end
+                                end
                             end
                         end
                     end
                 end
             end
         end
+        normMoves(C.AetherFruits, "AbyssalSovereignCore")
+        normMoves(C.FightingStyles, nil)
+        normMoves(C.Swords, nil)
+        normMoves(C.Guns, nil)
     end
-    normMoves(C.AetherFruits, "AbyssalSovereignCore")
-    normMoves(C.FightingStyles, nil)
-    normMoves(C.Swords, nil)
-    normMoves(C.Guns, nil)
+end
+
+C.FruitAliases = {
+    galecore = "GaleCore", gale = "GaleCore",
+    sandstonecore = "SandstoneCore", sandstone = "SandstoneCore", sand = "SandstoneCore", smoke = "SandstoneCore",
+    solarflamecore = "SolarFlameCore", flame = "SolarFlameCore",
+    glaciericecore = "GlacierIceCore", ice = "GlacierIceCore",
+    thunderrumblecore = "ThunderRumbleCore", rumble = "ThunderRumbleCore", thunder = "ThunderRumbleCore",
+    celestiallightcore = "CelestialLightCore", light = "CelestialLightCore",
+    starforgedmagmacore = "StarforgedMagmaCore", magma = "StarforgedMagmaCore",
+    astralgravitycore = "AstralGravityCore", gravity = "AstralGravityCore",
+    dimensionalportalcore = "DimensionalPortalCore", portal = "DimensionalPortalCore",
+    solartitancore = "SolarTitanCore", buddha = "SolarTitanCore", quake = "SolarTitanCore", starlightquakecore = "SolarTitanCore",
+    aetherflowcore = "AetherflowCore", sweetdoughcore = "AetherflowCore", dough = "AetherflowCore", aetherflow = "AetherflowCore",
+    abyssalsovereigncore = "AbyssalSovereignCore", dragon = "AbyssalSovereignCore", abyssal_dragon = "AbyssalSovereignCore",
+}
+
+function C.ResolveFruitId(rawId)
+    if type(rawId) ~= "string" or rawId == "" or rawId == "None" then return "" end
+    local head = rawId:match("^([^|]+)") or rawId
+    if C.AetherFruits and rawget(C.AetherFruits, head) then return head end
+    return C.FruitAliases[string.lower(head)] or ""
+end
+
+-- Canonical 12-Core Gold Values (Rule 3: all Canonical IDs + Legacy Aliases supported)
+C.FruitGoldValues = {
+    GaleCore = 50000, Gale = 50000,
+    SandstoneCore = 120000, Sandstone = 120000, Sand = 120000, Smoke = 120000,
+    SolarFlameCore = 350000, Flame = 350000,
+    GlacierIceCore = 450000, Ice = 450000,
+    CelestialLightCore = 1100000, Light = 1100000,
+    ThunderRumbleCore = 1200000, Rumble = 1200000, Thunder = 1200000,
+    StarforgedMagmaCore = 1800000, Magma = 1800000,
+    AstralGravityCore = 2300000, Gravity = 2300000,
+    DimensionalPortalCore = 2600000, Portal = 2600000,
+    SolarTitanCore = 3800000, Buddha = 3800000, Quake = 3800000, StarlightQuakeCore = 3800000,
+    AetherflowCore = 4600000, SweetDoughCore = 4600000, Dough = 4600000, Aetherflow = 4600000,
+    AbyssalSovereignCore = 5500000, Dragon = 5500000,
+}
+
+function C.GetFruitGoldValue(rawId)
+    if type(rawId) ~= "string" or rawId == "" then return 0 end
+    if C.FruitGoldValues[rawId] then return C.FruitGoldValues[rawId] end
+    local canon = C.ResolveFruitId(rawId)
+    if canon ~= "" and C.FruitGoldValues[canon] then return C.FruitGoldValues[canon] end
+    return 0
+end
+
+if type(C.AetherFruits) == "table" and getmetatable(C.AetherFruits) == nil then
+    setmetatable(C.AetherFruits, {
+        __index = function(tbl, key)
+            if type(key) == "string" then
+                local canon = C.FruitAliases[string.lower(key)]
+                if canon then
+                    return rawget(tbl, canon)
+                end
+            end
+            return nil
+        end,
+    })
 end
 
 function C.GetDragonFormMoves(tier)
     local d = C.AetherFruits and C.AetherFruits.AbyssalSovereignCore
     if not d then return nil end
-    return (tonumber(tier) and tonumber(tier) >= 2) and (d.Form2Moves or d.Moves) or (d.Form1Moves or d.Moves)
+    local baseMoves = d.HumanMoves or d.Moves
+    local t = tonumber(tier) or 0
+    if t >= 2 then
+        return d.Form2Moves or baseMoves
+    elseif t == 1 then
+        return d.Form1Moves or baseMoves
+    end
+    return baseMoves
 end
 
 -- Luat combat chay tren server (ghi de G.Action, G.Hit, G.TickEnemy, hoi Energy...) da chuyen sang

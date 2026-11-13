@@ -9,21 +9,26 @@ local RarityConfig = require(Shared:WaitForChild("Config"):WaitForChild("RarityC
 local WorldConfig = require(Shared:WaitForChild("Config"):WaitForChild("WorldConfig"))
 local I18n = require(script.Parent:WaitForChild("I18n"))
 
-local initialSnapshot = UIState.CreateDefaultSnapshot(true)
+local initialSnapshot = UIState.CreateDefaultSnapshot(false)
 if initialSnapshot.raid then
     initialSnapshot.raid.active = false
 end
+initialSnapshot.ownedGamePasses = type(initialSnapshot.ownedGamePasses) == "table" and initialSnapshot.ownedGamePasses or {}
+initialSnapshot.maxCoreStorage = tonumber(initialSnapshot.maxCoreStorage) or 1
 
 local Store = {
     Snapshot = initialSnapshot,
     View = UIState.CreateDefaultViewState(),
     LastServerSyncClock = os.clock(),
     HasReceivedInitialServerSync = false,
+    MergedServerExtras = {},
+    LastRawServerState = nil,
     SnapshotListeners = {},
     ViewListeners = {},
     ToastListeners = {},
     LootListeners = {},
     Session = {
+        localClassChosen = false,
         redeemedCodes = {},
         weaponStars = {
             Dawnbringer = 2,
@@ -46,6 +51,49 @@ local Store = {
         raidSimulationActive = false,
         inventoryPreviewMode = "Weapon",
     },
+}
+
+local PRESERVED_EXTRA_KEYS = {
+    "CrewData",
+    "CrewName",
+    "CrewTag",
+    "CrewColor",
+    "PendingCrewInvite",
+    "PartyData",
+    "PartyId",
+    "PartyLeaderId",
+    "PartyMembers",
+    "PendingPartyInvite",
+    "DailyLogin",
+    "DailyBounties",
+    "DailyTasks",
+    "P2PTrade",
+    "DiscoveredIslands",
+    "RaidChipsCleared",
+    "MicrochipRaidsCleared",
+    "HighestSpireFloor",
+    "MaxEnergy",
+    "ClassChosen",
+    "MeleeATK",
+    "SwordATK",
+    "GunATK",
+    "FruitATK",
+    "RaceTier",
+    "OwnedGamePasses",
+    "MaxCoreStorage",
+    "DoubleExpSeconds",
+    "DoubleExpRemainingSec",
+    "FruitPity",
+    "FreeFruitVouchers",
+    "StatRefundTokens",
+    "PaidRandomRestricted",
+    "PlaytimeGifts",
+    "FriendBoostPct",
+    "UnlockedBadges",
+    "GlobalLeaderboards",
+    "PvPCombatUntil",
+    "StarterCoreVoucherGranted",
+    "BlueResonanceGearFound",
 }
 
 local function notify(list, payload)
@@ -110,10 +158,102 @@ function Store.GetWeaponStarPity(itemId)
     return math.clamp(tonumber(Store.Session.weaponStarPity[id]) or 0, 0, 100)
 end
 
+function Store.CaptureServerExtras(rawTbl)
+    if type(rawTbl) ~= "table" then
+        return
+    end
+    for _, key in ipairs(PRESERVED_EXTRA_KEYS) do
+        if rawTbl[key] ~= nil then
+            Store.MergedServerExtras[key] = rawTbl[key]
+        end
+    end
+    if rawTbl.ClassChosen == true or (tonumber(rawTbl.Level) or 1) > 1 then
+        Store.Session.localClassChosen = true
+        Store.MergedServerExtras.ClassChosen = true
+    end
+end
+
+function Store.MarkClassChosen(classId)
+    Store.Session.localClassChosen = true
+    Store.MergedServerExtras.ClassChosen = true
+    if type(Store.LastRawServerState) == "table" then
+        Store.LastRawServerState.ClassChosen = true
+        if type(classId) == "string" and #classId > 0 then
+            Store.LastRawServerState.ClassId = classId
+        end
+    end
+    if Store.Snapshot and Store.Snapshot.player then
+        Store.Snapshot.player.classChosen = true
+        if type(classId) == "string" and #classId > 0 then
+            Store.Snapshot.player.classId = classId
+        end
+        notify(Store.SnapshotListeners, Store.Snapshot)
+    end
+end
+
+function Store.MergePartialServerState(partial, currentRealmAttr)
+    if type(partial) ~= "table" then
+        return
+    end
+    Store.CaptureServerExtras(partial)
+    if type(Store.LastRawServerState) == "table" then
+        for _, key in ipairs(PRESERVED_EXTRA_KEYS) do
+            if partial[key] ~= nil then
+                Store.LastRawServerState[key] = partial[key]
+            end
+        end
+        Store.SetServerSnapshot(Store.LastRawServerState, currentRealmAttr or (Store.Snapshot and Store.Snapshot.world and Store.Snapshot.world.current))
+    elseif Store.Snapshot then
+        local synthetic = {
+            Level = Store.Snapshot.player and Store.Snapshot.player.level or 1,
+            ClassId = Store.Snapshot.player and Store.Snapshot.player.classId or "SkyGuardian",
+            ClassChosen = Store.Session.localClassChosen or (Store.Snapshot.player and Store.Snapshot.player.classChosen ~= false),
+            Gold = Store.Snapshot.currency and Store.Snapshot.currency.gold or 0,
+            CoreShards = Store.Snapshot.currency and Store.Snapshot.currency.coreShards or 0,
+        }
+        for _, key in ipairs(PRESERVED_EXTRA_KEYS) do
+            if Store.MergedServerExtras[key] ~= nil then
+                synthetic[key] = Store.MergedServerExtras[key]
+            end
+        end
+        Store.SetServerSnapshot(synthetic, currentRealmAttr or (Store.Snapshot.world and Store.Snapshot.world.current))
+    end
+end
+
 function Store.SetServerSnapshot(rawOrNormalized, currentRealmAttr)
     local prev = Store.Snapshot
     local hadFirstSync = Store.HasReceivedInitialServerSync
-    local nextSnap = UIState.NormalizeServerState(rawOrNormalized, currentRealmAttr)
+    local sourceForNorm = rawOrNormalized
+    if type(rawOrNormalized) == "table" and not (rawOrNormalized.player and rawOrNormalized.vitals and rawOrNormalized.currency) then
+        Store.CaptureServerExtras(rawOrNormalized)
+        local mergedRaw = {}
+        for k, v in pairs(rawOrNormalized) do
+            mergedRaw[k] = v
+        end
+        for _, key in ipairs(PRESERVED_EXTRA_KEYS) do
+            if mergedRaw[key] == nil and Store.MergedServerExtras[key] ~= nil then
+                mergedRaw[key] = Store.MergedServerExtras[key]
+            end
+        end
+        if Store.Session.localClassChosen then
+            mergedRaw.ClassChosen = true
+        end
+        Store.LastRawServerState = mergedRaw
+        sourceForNorm = mergedRaw
+    end
+    local nextSnap = UIState.NormalizeServerState(sourceForNorm, currentRealmAttr)
+    local rawPasses = type(sourceForNorm) == "table" and (sourceForNorm.OwnedGamePasses or sourceForNorm.ownedGamePasses) or nil
+    local mappedPasses = type(nextSnap.ownedGamePasses) == "table" and nextSnap.ownedGamePasses or {}
+    if type(rawPasses) == "table" then
+        for passKey, isOwned in pairs(rawPasses) do
+            if isOwned == true then
+                mappedPasses[tostring(passKey)] = true
+            end
+        end
+    end
+    nextSnap.ownedGamePasses = mappedPasses
+    local rawMaxCap = type(sourceForNorm) == "table" and (sourceForNorm.MaxCoreStorage or sourceForNorm.maxCoreStorage) or nil
+    nextSnap.maxCoreStorage = tonumber(rawMaxCap) or (mappedPasses.extra_core_storage and 4 or 1)
 
     -- Track boss HP drop to automatically refresh 15s boss combat visibility grace (#6)
     if nextSnap.raid and nextSnap.raid.active and tonumber(nextSnap.raid.bossHp) then
@@ -411,6 +551,10 @@ function Store.ApplyDemoPreviewAction(action, payload)
     end
 
     return false
+end
+
+function Store.Notify()
+    notify(Store.SnapshotListeners, Store.GetSnapshot())
 end
 
 function Store.SubscribeSnapshot(callback)

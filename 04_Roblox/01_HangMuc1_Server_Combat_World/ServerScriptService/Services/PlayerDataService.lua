@@ -152,6 +152,29 @@ local function migrateProfile(p)
 		ver = tonumber(p.SchemaVersion) or (ver + 1)
 		p.SchemaVersion = ver
 	end
+	if type(p.OwnedGamePasses) ~= "table" then
+		p.OwnedGamePasses = {}
+	end
+	if type(p.ProcessedReceipts) ~= "table" then
+		p.ProcessedReceipts = {}
+	end
+	if type(p.ProcessedReceiptOrder) ~= "table" then
+		p.ProcessedReceiptOrder = {}
+	end
+	if type(p.DoubleExpRemaining) ~= "number" then
+		p.DoubleExpRemaining = 0
+	end
+	if type(p.DoubleExpRemainingSec) ~= "number" then
+		local legacyRem = tonumber(p.DoubleExpRemaining) or 0
+		if legacyRem <= 0 and (tonumber(p.DoubleExpUntil) or 0) > os.time() then
+			legacyRem = math.max(0, math.floor((tonumber(p.DoubleExpUntil) or 0) - os.time()))
+		end
+		p.DoubleExpRemainingSec = math.max(0, math.floor(legacyRem))
+	end
+	p.DoubleExpRemaining = p.DoubleExpRemainingSec
+	if type(p.UnlockedBadges) ~= "table" then
+		p.UnlockedBadges = {}
+	end
 	p.SchemaVersion = CURRENT_SCHEMA_VERSION
 	return p
 end
@@ -204,59 +227,22 @@ local function defaults()
 		WeaponEnchants = {},
 		StatPresets = {},
 		ClassId = "SkyGuardian",
+		ClassChosen = false,
 		Gender = "Male",
 		ActiveSlot = 3, -- 1=FightingStyle, 2=AetherFruit, 3=Sword, 4=Gun
 		FightingStyle = "SkybornCombat",
 		UnlockedStyles = {
 			SkybornCombat = true,
-			SkyStep = true,
-			ElectricClaw = true,
-			GlacialKarate = true,
-			AshuraStep = true,
-			JadeDragonTalon = true,
-			AbyssalTalon = true,
-			ChronoVoidPalm = true,
 		},
-		EquippedFruit = "GaleCore",
+		EquippedFruit = "",
 		HeldFruit = "",
-		StoredFruits = {
-			GaleCore = 1,
-			SolarFlameCore = 1,
-			ThunderRumbleCore = 1,
-			GlacierIceCore = 1,
-			AetherWindCore = 1,
-			AstralGravityCore = 1,
-			MagmaBurstCore = 1,
-			AbyssalDarkCore = 1,
-			CelestialLightCore = 1,
-			DimensionalPortalCore = 1,
-			SolarTitanCore = 1,
-			AetherflowCore = 1,
-			AbyssalSovereignCore = 1,
-		},
+		StoredFruits = {},
 		AwakenedFruits = {},
 		EquippedGun = "aether_flintlock",
 		Mastery = {
-			SkybornCombat = 300,
-			GaleCore = 300,
-			starter_sword = 300,
-			starter_daggers = 300,
-			starter_staff = 300,
-			aether_flintlock = 300,
-			sunshard_halberd = 300,
-			cyber_katana_mk2 = 300,
-			sylvaris_thornblade = 300,
-			ignivar_magma_breaker = 300,
-			nerith_abyssal_trident = 300,
-			aion_chrono_scythe = 300,
-			architect_severance = 300,
-			eternal_frost_staff = 300,
-			sylvaris_thornbow = 300,
-			ignivar_hellcannon = 300,
-			aion_chrono_pistols = 300,
-			veyr_singularity_cannon = 300,
-			kabucha_wind = 300,
-			bizarre_rifle_cyber = 300,
+			SkybornCombat = 1,
+			starter_sword = 1,
+			aether_flintlock = 1,
 		},
 		MasteryXP = {},
 		MasteryMilestones = {},
@@ -283,9 +269,19 @@ local function defaults()
 		CoreGears = 0,
 		AwakeningMeter = 0,
 		DoubleExpUntil = 0,
+		DoubleExpRemaining = 0,
+		DoubleExpRemainingSec = 0,
+		OwnedGamePasses = {},
+		ProcessedReceipts = {},
+		ProcessedReceiptOrder = {},
 		RedeemedCodes = {},
+		FruitPity = 0,
 		FreeFruitVouchers = 0,
 		StatRefundTokens = 0,
+		StarterCoreVoucherGranted = false,
+		BlueResonanceGearFound = false,
+		UnlockedBadges = {},
+		HighestBossDPS = 0,
 		Faction = "Pirate",
 		Bounty = 0,
 		Honor = 0,
@@ -328,7 +324,13 @@ local function defaults()
 			ChronosBastion = false,
 			VeilsEnd = false,
 		},
+		DiscoveredIslands = {
+			SkyHub = true,
+			GoldenSky = true,
+		},
 		DiscoveredPortals = {},
+		RaidChipsCleared = 0,
+		MicrochipRaidsCleared = {},
 		CurrentWorldOrder = 1,
 		CollectedLore = {},
 		LoginStreak = 1,
@@ -354,6 +356,9 @@ local TABLE_FIELDS = {
 	"MasteryXP",
 	"MasteryMilestones",
 	"UnlockedHakiColors",
+	"OwnedGamePasses",
+	"ProcessedReceipts",
+	"ProcessedReceiptOrder",
 	"RedeemedCodes",
 	"DiscoveredPortals",
 	"CollectedLore",
@@ -362,14 +367,74 @@ local TABLE_FIELDS = {
 	"Progress",
 	"CompletedQuests",
 	"FirstClearBosses",
+	"UnlockedBadges",
 }
+
+local CANONICAL_FRUIT_MAP = {
+	GaleCore = "GaleCore",
+	Gale = "GaleCore",
+	AetherWindCore = "GaleCore",
+	SandstoneCore = "SandstoneCore",
+	Smoke = "SandstoneCore",
+	SmokeCore = "SandstoneCore",
+	SolarFlameCore = "SolarFlameCore",
+	Flame = "SolarFlameCore",
+	FlameCore = "SolarFlameCore",
+	CyberPhoenixCore = "SolarFlameCore",
+	GlacierIceCore = "GlacierIceCore",
+	Ice = "GlacierIceCore",
+	IceCore = "GlacierIceCore",
+	ThunderRumbleCore = "ThunderRumbleCore",
+	Rumble = "ThunderRumbleCore",
+	RumbleCore = "ThunderRumbleCore",
+	CelestialLightCore = "CelestialLightCore",
+	Light = "CelestialLightCore",
+	LightCore = "CelestialLightCore",
+	StarforgedMagmaCore = "StarforgedMagmaCore",
+	Magma = "StarforgedMagmaCore",
+	MagmaCore = "StarforgedMagmaCore",
+	MagmaBurstCore = "StarforgedMagmaCore",
+	AstralGravityCore = "AstralGravityCore",
+	Gravity = "AstralGravityCore",
+	GravityCore = "AstralGravityCore",
+	DimensionalPortalCore = "DimensionalPortalCore",
+	Portal = "DimensionalPortalCore",
+	PortalCore = "DimensionalPortalCore",
+	SolarTitanCore = "SolarTitanCore",
+	Buddha = "SolarTitanCore",
+	Quake = "SolarTitanCore",
+	QuakeCore = "SolarTitanCore",
+	StarlightQuakeCore = "SolarTitanCore",
+	AetherflowCore = "AetherflowCore",
+	SweetDoughCore = "AetherflowCore",
+	Dough = "AetherflowCore",
+	DoughCore = "AetherflowCore",
+	AbyssalSovereignCore = "AbyssalSovereignCore",
+	Dragon = "AbyssalSovereignCore",
+	DragonCore = "AbyssalSovereignCore",
+	AbyssalDarkCore = "AbyssalSovereignCore",
+}
+
+local CANONICAL_FRUIT_LOWER = {}
+for k, v in pairs(CANONICAL_FRUIT_MAP) do
+	CANONICAL_FRUIT_LOWER[string.lower(k)] = v
+end
+
+local function normalizeFruitId(fid)
+	if type(fid) ~= "string" or fid == "" then
+		return ""
+	end
+	return CANONICAL_FRUIT_MAP[fid] or CANONICAL_FRUIT_LOWER[string.lower(fid)] or fid
+end
+
+D.NormalizeFruitId = normalizeFruitId
 
 local function hydrate(p)
 	if type(p) ~= "table" then
 		return defaults()
 	end
+	local rawClassChosen = p.ClassChosen
 	local def = defaults()
-	local isLegacyUnseeded = (p.StarterGrantDone == nil and p.StoredFruits == nil and p.Inventory == nil)
 	migrateProfile(p)
 	for k, v in pairs(def) do
 		if p[k] == nil then
@@ -381,6 +446,11 @@ local function hydrate(p)
 	p.StarterGrantDone = true
 	p.ClassId = (type(p.ClassId) == "string" and C.Classes[p.ClassId]) and p.ClassId or def.ClassId
 	p.Level = cleanNum(p.Level, 1, C.MaxLevel, def.Level)
+	if rawClassChosen == nil then
+		p.ClassChosen = (p.Level > 1) and true or false
+	else
+		p.ClassChosen = (rawClassChosen == true)
+	end
 	p.XP = cleanNum(p.XP, 0, 1e15, def.XP)
 	p.Gold = cleanNum(p.Gold, 0, 1e15, def.Gold)
 	p.CoreShards = cleanNum(p.CoreShards, 0, 1e15, def.CoreShards)
@@ -394,6 +464,15 @@ local function hydrate(p)
 	p.SkillPoints = cleanNum(p.SkillPoints, 0, 1e6, def.SkillPoints)
 	p.WeaponEnhance = cleanNum(p.WeaponEnhance, 0, 15, 0)
 	p.EnhancePity = cleanNum(p.EnhancePity, 0, 100, 0)
+	p.FruitPity = cleanNum(p.FruitPity, 0, 50, 0)
+	p.FreeFruitVouchers = cleanNum(p.FreeFruitVouchers, 0, 9999, 0)
+	p.StatRefundTokens = cleanNum(p.StatRefundTokens, 0, 9999, 0)
+	p.StarterCoreVoucherGranted = (p.StarterCoreVoucherGranted == true)
+	p.BlueResonanceGearFound = (p.BlueResonanceGearFound == true or p.BlueGearFound == true)
+	p.BlueGearFound = p.BlueResonanceGearFound
+	p.HighestBossDPS = cleanNum(p.HighestBossDPS, 0, 1e12, 0)
+	p.DoubleExpRemainingSec = cleanNum(p.DoubleExpRemainingSec ~= nil and p.DoubleExpRemainingSec or p.DoubleExpRemaining, 0, 86400 * 30, 0)
+	p.DoubleExpRemaining = p.DoubleExpRemainingSec
 
 	for _, tKey in ipairs(TABLE_FIELDS) do
 		if type(p[tKey]) ~= "table" then
@@ -432,30 +511,32 @@ local function hydrate(p)
 		end
 	end
 
-	p.EquippedFruit = type(p.EquippedFruit) == "string" and p.EquippedFruit or def.EquippedFruit
-	p.HeldFruit = type(p.HeldFruit) == "string" and p.HeldFruit or ""
+	p.EquippedFruit = normalizeFruitId(type(p.EquippedFruit) == "string" and p.EquippedFruit or def.EquippedFruit)
+	p.HeldFruit = normalizeFruitId(type(p.HeldFruit) == "string" and p.HeldFruit or "")
 	p.StoredFruits = type(p.StoredFruits) == "table" and p.StoredFruits or {}
 	local cleanFruits = {}
 	for fruitId, count in pairs(p.StoredFruits) do
 		if type(fruitId) == "string" and fruitId ~= "" then
+			local canonId = normalizeFruitId(fruitId)
 			local c = cleanNum(count, 0, 9999, 0)
-			if c > 0 then
-				cleanFruits[fruitId] = c
-			end
-		end
-	end
-	-- Chi seed trai khoi dau cho ho so moi/legacy. Neu ep "san" moi lan hydrate (ca khi Save),
-	-- trai da giao dich/tha/an se tu hoi sinh khi vao lai => nhan ban vo han (ke ca Mythic).
-	if isLegacyUnseeded then
-		for fruitId, count in pairs(def.StoredFruits) do
-			if (cleanFruits[fruitId] or 0) < count then
-				cleanFruits[fruitId] = count
+			if canonId ~= "" and c > 0 then
+				cleanFruits[canonId] = math.min(9999, (cleanFruits[canonId] or 0) + c)
 			end
 		end
 	end
 	p.StoredFruits = cleanFruits
 
-	p.AwakenedFruits = type(p.AwakenedFruits) == "table" and p.AwakenedFruits or clone(def.AwakenedFruits)
+	local rawAwakened = type(p.AwakenedFruits) == "table" and p.AwakenedFruits or clone(def.AwakenedFruits)
+	local cleanAwakened = {}
+	for fruitId, flag in pairs(rawAwakened) do
+		if flag == true and type(fruitId) == "string" and fruitId ~= "" then
+			local canonId = normalizeFruitId(fruitId)
+			if canonId ~= "" then
+				cleanAwakened[canonId] = true
+			end
+		end
+	end
+	p.AwakenedFruits = cleanAwakened
 	p.EquippedGun = (type(p.EquippedGun) == "string" and p.EquippedGun ~= "") and p.EquippedGun or def.EquippedGun
 
 	p.Mastery = type(p.Mastery) == "table" and p.Mastery or clone(def.Mastery)
@@ -489,12 +570,45 @@ local function hydrate(p)
 	p.KenV2Unlocked = p.KenV2Unlocked == true
 
 	p.Race = (type(p.Race) == "string" and p.Race ~= "") and p.Race or def.Race
-	p.RaceTier = cleanNum(p.RaceTier, 1, 4, def.RaceTier)
+	p.RaceTier = cleanNum(p.RaceTier, 1, 4, 1)
 	p.RaceV4Active = p.RaceV4Active == true
 	p.RaceV4Unlocked = p.RaceV4Unlocked == true
 	p.CoreGears = cleanNum(p.CoreGears, 0, 9999, 0)
 	p.AwakeningMeter = cleanNum(p.AwakeningMeter, 0, 100, 0, false)
 	p.DoubleExpUntil = cleanNum(p.DoubleExpUntil, 0, 4e9, 0)
+	p.DoubleExpRemaining = cleanNum(p.DoubleExpRemaining, 0, 4e9, 0)
+	local cleanPasses = {}
+	for pk, pv in pairs(type(p.OwnedGamePasses) == "table" and p.OwnedGamePasses or {}) do
+		if type(pk) == "string" and pk ~= "" and #pk <= 64 and pv == true then
+			cleanPasses[pk] = true
+		end
+	end
+	p.OwnedGamePasses = cleanPasses
+
+	local rawReceipts = type(p.ProcessedReceipts) == "table" and p.ProcessedReceipts or {}
+	local rawOrder = type(p.ProcessedReceiptOrder) == "table" and p.ProcessedReceiptOrder or {}
+	local cleanOrder, seenReceipt = {}, {}
+	for _, rid in ipairs(rawOrder) do
+		if type(rid) == "string" and rid ~= "" and #rid <= 96 and rawReceipts[rid] == true and not seenReceipt[rid] then
+			seenReceipt[rid] = true
+			table.insert(cleanOrder, rid)
+		end
+	end
+	for rid, rv in pairs(rawReceipts) do
+		if type(rid) == "string" and rid ~= "" and #rid <= 96 and rv == true and not seenReceipt[rid] then
+			seenReceipt[rid] = true
+			table.insert(cleanOrder, rid)
+		end
+	end
+	while #cleanOrder > 200 do
+		table.remove(cleanOrder, 1)
+	end
+	local cleanReceipts = {}
+	for _, rid in ipairs(cleanOrder) do
+		cleanReceipts[rid] = true
+	end
+	p.ProcessedReceipts = cleanReceipts
+	p.ProcessedReceiptOrder = cleanOrder
 	p.FreeFruitVouchers = cleanNum(p.FreeFruitVouchers, 0, 9999, 0)
 	p.StatRefundTokens = cleanNum(p.StatRefundTokens, 0, 9999, 0)
 
@@ -535,13 +649,6 @@ local function hydrate(p)
 			cleanInv[gearId] = minCount
 		end
 	end
-	if isLegacyUnseeded then
-		for itemId, count in pairs(def.Inventory) do
-			if cleanInv[itemId] == nil then
-				cleanInv[itemId] = count
-			end
-		end
-	end
 	p.Inventory = cleanInv
 
 	p.Equipped = type(p.Equipped) == "table" and p.Equipped or clone(def.Equipped)
@@ -574,6 +681,29 @@ local function hydrate(p)
 	cleanWorlds.SkyHub = true
 	cleanWorlds.GoldenSky = true
 	p.UnlockedWorlds = cleanWorlds
+
+	local rawDiscovered = type(p.DiscoveredIslands) == "table" and p.DiscoveredIslands or clone(def.DiscoveredIslands)
+	local cleanDiscovered = {}
+	for ik, iv in pairs(rawDiscovered) do
+		if type(ik) == "string" and ik ~= "" and #ik <= 64 and iv == true then
+			cleanDiscovered[ik] = true
+		elseif type(ik) == "number" and C.Islands and C.Islands[ik] and type(C.Islands[ik].Id) == "string" and iv == true then
+			cleanDiscovered[C.Islands[ik].Id] = true
+		end
+	end
+	cleanDiscovered.SkyHub = true
+	cleanDiscovered.GoldenSky = true
+	p.DiscoveredIslands = cleanDiscovered
+
+	p.RaidChipsCleared = cleanNum(p.RaidChipsCleared, 0, 999999, 0)
+	local rawChipsCleared = type(p.MicrochipRaidsCleared) == "table" and p.MicrochipRaidsCleared or {}
+	local cleanChipsCleared = {}
+	for rk, rv in pairs(rawChipsCleared) do
+		if type(rk) == "string" and rk ~= "" and #rk <= 64 and rv == true then
+			cleanChipsCleared[rk] = true
+		end
+	end
+	p.MicrochipRaidsCleared = cleanChipsCleared
 
 	p.LoginStreak = cleanNum(p.LoginStreak, 1, 7, 1)
 	p.LastLoginDay = cleanNum(p.LastLoginDay, 0, 1e9, 0)
@@ -620,7 +750,13 @@ local function valid(p)
 	if p.Gender ~= nil and p.Gender ~= "Male" and p.Gender ~= "Female" then
 		return false
 	end
-	for _, optTable in ipairs({"Loadouts", "Equipped", "SkillLevels", "StatAlloc", "StoredFruits", "AwakenedFruits", "Mastery", "Haki", "UnlockedStyles", "UnlockedTitles", "UnlockedShips"}) do
+	if p.ClassChosen ~= nil and type(p.ClassChosen) ~= "boolean" then
+		return false
+	end
+	if p.RaidChipsCleared ~= nil and (type(p.RaidChipsCleared) ~= "number" or p.RaidChipsCleared ~= p.RaidChipsCleared or p.RaidChipsCleared < 0 or p.RaidChipsCleared > 999999) then
+		return false
+	end
+	for _, optTable in ipairs({"Loadouts", "Equipped", "SkillLevels", "StatAlloc", "StoredFruits", "AwakenedFruits", "Mastery", "Haki", "UnlockedStyles", "UnlockedTitles", "UnlockedShips", "DiscoveredIslands", "MicrochipRaidsCleared"}) do
 		if p[optTable] ~= nil and type(p[optTable]) ~= "table" then
 			return false
 		end
@@ -755,10 +891,18 @@ function D.Load(player)
 		profile._ReadOnlyFallback = true
 		pcall(function()
 			player:SetAttribute("ReadOnlyFallback", true)
-			local rems = game.ReplicatedStorage:FindFirstChild("Remotes")
-			local notifyEv = rems and rems:FindFirstChild("Notify")
-			if notifyEv then
-				notifyEv:FireClient(player, "CẢNH BÁO DATASTORE: Đang ở chế độ Bảo Vệ Dữ Liệu Gốc (ReadOnly). Hệ thống sẽ tự động thử tải lại mỗi 30 giây!")
+			local rs = game.ReplicatedStorage
+			local msg = "CẢNH BÁO DATASTORE: Đang ở chế độ Bảo Vệ Dữ Liệu Gốc (ReadOnly). Hệ thống sẽ tự động thử tải lại mỗi 30 giây!"
+			local shared = rs and rs:FindFirstChild("SkybreakShared")
+			local sharedRems = shared and shared:FindFirstChild("Remotes")
+			local uiEv = sharedRems and sharedRems:FindFirstChild("UIStateUpdated")
+			if uiEv then
+				uiEv:FireClient(player, { Toast = { message = msg, kind = "warning" } })
+			end
+			local rems = rs and rs:FindFirstChild("Remotes")
+			local stateEv = rems and rems:FindFirstChild("StateUpdate")
+			if stateEv then
+				stateEv:FireClient(player, { Message = msg })
 			end
 		end)
 	elseif persistent then
@@ -783,6 +927,14 @@ function D.Load(player)
 		return nil
 	end
 	return profile
+end
+
+function D.IsReadOnlyFallback(player)
+	local s = D.Sessions[player]
+	if not s then
+		return true
+	end
+	return s.ReadOnlyFallback == true or (type(s.Profile) == "table" and s.Profile._ReadOnlyFallback == true)
 end
 
 function D.Get(player)
@@ -975,6 +1127,7 @@ function D.Start()
 							-- Gianh khoa phien nhu D.Load: chi nhan khi khong server nao khac dang giu khoa con han.
 							-- Nguoi choi moi (chua co ban ghi) cung duoc tao ban ghi o day.
 							local heldByOther = false
+							local hadExistingCloudData = false
 							local ok, record = pcall(function()
 								return store:UpdateAsync("u_" .. player.UserId, function(old)
 									local nowSec = os.time()
@@ -984,15 +1137,20 @@ function D.Start()
 									end
 									local rawData
 									if type(old) == "table" and type(old.Data) == "table" then
+										hadExistingCloudData = true
 										rawData = clone(old.Data)
 									elseif old == nil then
-										rawData = defaults() -- nguoi choi moi that su
+										hadExistingCloudData = false
+										rawData = type(s.Profile) == "table" and clone(s.Profile) or defaults()
+										rawData._ReadOnlyFallback = nil
 									else
 										heldByOther = true -- ban ghi la/cu: khong ghi de bang mac dinh
 										return nil
 									end
+									local cleanSnap = hydrate(rawData)
+									cleanSnap._ReadOnlyFallback = nil
 									return {
-										Data = hydrate(rawData),
+										Data = cleanSnap,
 										Owner = token,
 										Expires = nowSec + C.LeaseSeconds,
 									}
@@ -1003,18 +1161,39 @@ function D.Start()
 								return
 							end
 							if ok and type(record) == "table" and type(record.Data) == "table" then
-								local recovered = hydrate(clone(record.Data))
-								recovered._ReadOnlyFallback = nil
-								s.Profile = recovered
+								if hadExistingCloudData then
+									local recovered = hydrate(clone(record.Data))
+									recovered._ReadOnlyFallback = nil
+									s.Profile = recovered
+								elseif type(s.Profile) == "table" then
+									s.Profile._ReadOnlyFallback = nil
+								end
 								s.Expires = tonumber(record.Expires) or (os.time() + C.LeaseSeconds)
 								s.ReadOnlyFallback = false
 								s.SaveStatus = "Đã phục hồi từ Cloud"
 								pcall(function()
 									player:SetAttribute("ReadOnlyFallback", false)
-									local rems = game.ReplicatedStorage:FindFirstChild("Remotes")
-									local notifyEv = rems and rems:FindFirstChild("Notify")
-									if notifyEv then
-										notifyEv:FireClient(player, "DATASTORE: Đã kết nối lại và khôi phục dữ liệu gốc thành công!")
+									local rs = game.ReplicatedStorage
+									local msg = "DATASTORE: Đã kết nối lại và đồng bộ dữ liệu gốc thành công!"
+									local shared = rs and rs:FindFirstChild("SkybreakShared")
+									local sharedRems = shared and shared:FindFirstChild("Remotes")
+									local uiEv = sharedRems and sharedRems:FindFirstChild("UIStateUpdated")
+									if uiEv then
+										uiEv:FireClient(player, { Toast = { message = msg, kind = "success" } })
+									end
+									local rems = rs and rs:FindFirstChild("Remotes")
+									local stateEv = rems and rems:FindFirstChild("StateUpdate")
+									if stateEv then
+										stateEv:FireClient(player, { Message = msg })
+									end
+									local sss = game:GetService("ServerScriptService")
+									local svcs = sss and sss:FindFirstChild("Services")
+									local gsMod = svcs and svcs:FindFirstChild("GameService")
+									if gsMod then
+										local gs = require(gsMod)
+										if type(gs) == "table" and type(gs.Sync) == "function" then
+											gs.Sync(player)
+										end
 									end
 								end)
 							end

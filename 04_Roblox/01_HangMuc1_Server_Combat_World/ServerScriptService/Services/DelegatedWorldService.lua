@@ -492,10 +492,10 @@ local function buildSkybornCitizen3D(parent, activeNPCs, id, pos, floorY, marker
     make3DPart(dais, "SanctuaryGlowRing", Vector3.new(0.60, 3.65, 3.65), CFrame.new(pos.X, floorY + 0.30, pos.Z) * CFrame.Angles(0, 0, math.pi / 2), sapphire, Enum.Material.Neon, Enum.PartType.Cylinder, false)
     make3DPart(dais, "SanctuaryInnerDisc", Vector3.new(0.64, 3.1, 3.1), CFrame.new(pos.X, floorY + 0.32, pos.Z) * CFrame.Angles(0, 0, math.pi / 2), gold, Enum.Material.Metal, Enum.PartType.Cylinder, false)
 
-    -- Orientation facing toward Lumen Plaza center (0, floorY, 0)
-    local lookTarget = Vector3.new(0, floorY + 0.64, 0)
-    if (Vector3.new(pos.X, 0, pos.Z)).Magnitude < 1 then
-        lookTarget = Vector3.new(pos.X, floorY + 0.64, pos.Z + 10)
+    -- Orientation facing toward Lumen Plaza arrival hub (0, floorY, 65)
+    local lookTarget = Vector3.new(0, floorY + 0.64, 65)
+    if (Vector3.new(pos.X, 0, pos.Z - 65)).Magnitude < 1 then
+        lookTarget = Vector3.new(pos.X, floorY + 0.64, pos.Z - 10)
     end
     local baseCF = CFrame.lookAt(Vector3.new(pos.X, floorY + 0.64, pos.Z), lookTarget)
 
@@ -656,9 +656,9 @@ function M.Build(W)
     local spawn=Instance.new('SpawnLocation');spawn.Name='SkybornSpawn';spawn.Size=Vector3.new(12,1,12);spawn.Position=Vector3.new(-317.4,47.5,527.8)
     spawn.Anchored=true;spawn.Transparency=1;spawn.CanCollide=false;spawn.Neutral=true;spawn.Duration=2;spawn.Parent=hub;W.Spawn=spawn
     local locations={
-        Lyra={-298.0,49.0,506.0},Kael={-282.0,49.0,506.0},FrozenPortal={42.0,49.5,-435.0},ReturnHub={28.0,49.5,65.0},
+        Lyra={-298.0,49.0,506.0},Kael={-280.0,49.0,506.0},FrozenPortal={42.0,49.5,-435.0},ReturnHub={28.0,49.5,65.0},
         Station1={-72.0,49.5,55.0},Station2={0.0,49.5,95.0},Station3={72.0,49.5,55.0},
-        Citizen1={-80.0,49.5,-18.0},Citizen2={0.0,49.5,-85.0},Citizen3={80.0,49.5,-18.0},
+        Citizen1={-76.0,49.5,92.0},Citizen2={0.0,49.5,128.0},Citizen3={76.0,49.5,92.0},
         Switch1={-78.0,49.5,-112.0},Switch2={78.0,49.5,-112.0},ArenaGate={0.0,49.5,-148.0},LeaveArena={54.0,49.5,-285.0},
     }
     local labels={
@@ -678,6 +678,7 @@ function M.Build(W)
         LeaveArena='Rời Đấu Trường Aureon',
     }
     local promptSpecs={
+        Kael={Action='Rèn & Cường Hóa Thần Khí', Object='Kael • Thợ Rèn Thần Khí (Forge)', Offset=Vector3.new(0, 4.2, 0)},
         Station1={Action='Kích Hoạt Trạm Năng Lượng', Object='Trạm Năng Lượng Aether I (Lumen Plaza)', Offset=Vector3.new(0, 4.1, 0)},
         Station2={Action='Kích Hoạt Trạm Năng Lượng', Object='Trạm Năng Lượng Aether II (Lumen Plaza)', Offset=Vector3.new(0, 4.1, 0)},
         Station3={Action='Kích Hoạt Trạm Năng Lượng', Object='Trạm Năng Lượng Aether III (Lumen Plaza)', Offset=Vector3.new(0, 4.1, 0)},
@@ -691,11 +692,27 @@ function M.Build(W)
         LeaveArena={Action='Rời Khỏi Đấu Trường', Object='Lối Ra Đấu Trường Aureon', Offset=Vector3.new(0, 2.8, 0)},
         FrozenPortal={Action='Dịch Chuyển Sang Sky 2', Object='Cổng Sky 2 • Frozen Cyber', Offset=Vector3.new(0, 4.2, 0)},
     }
+    local function getPlazaFocus(id, vpos)
+        if id == 'Lyra' or id == 'Kael' then
+            return Vector3.new(-317.4, vpos.Y, 527.8)
+        elseif id == 'LeaveArena' or id == 'FrozenPortal' then
+            return Vector3.new(0, vpos.Y, -285.0)
+        end
+        return Vector3.new(0, vpos.Y, 65.0)
+    end
+    local kaelMarker = nil
     for id,pos in locations do
         local vpos = Vector3.new(table.unpack(pos))
         local marker=W.Interactable((id=='Lyra' or id=='Kael') and hub or sky,id,vpos,labels[id]or id)
         marker.Transparency=1
-        if id=='Lyra' or id=='Kael' or id=='FrozenPortal' then
+        local focusPos = getPlazaFocus(id, vpos)
+        if (Vector3.new(focusPos.X - vpos.X, 0, focusPos.Z - vpos.Z)).Magnitude > 0.5 then
+            marker.CFrame = CFrame.lookAt(vpos, focusPos)
+        end
+        if id == 'Kael' then
+            kaelMarker = marker
+        end
+        if id=='Lyra' or id=='FrozenPortal' then
             for _,ch in ipairs(marker:GetChildren()) do
                 if ch:IsA("BillboardGui") or ch:IsA("ProximityPrompt") then
                     ch:Destroy()
@@ -714,7 +731,7 @@ function M.Build(W)
                     bg.StudsOffset = pSpec.Offset
                 end
             end
-            local floorY = 46.5
+            local floorY = (id == 'Kael') and 46.5 or 46.5
             if string.sub(id, 1, 7) == 'Station' then
                 buildAetherStation3D(sky, id, vpos, floorY)
             elseif string.sub(id, 1, 7) == 'Citizen' then
@@ -726,6 +743,64 @@ function M.Build(W)
             end
         end
     end
+
+    local function reconcileSkyHubNPCsAndPortalGate()
+        local hubFocus = Vector3.new(-317.4, 49.0, 527.8)
+        local worldObjs = workspace:FindFirstChild("SkybreakWorldObjects") or workspace:FindFirstChild("WorldObjects")
+        if worldObjs then
+            local gsKael = worldObjs:FindFirstChild("Kael_MasterBlacksmith")
+                or worldObjs:FindFirstChild("Kael")
+                or worldObjs:FindFirstChild("NPC_Kael")
+            if gsKael and gsKael:FindFirstChildWhichIsA("ProximityPrompt", true) then
+                if kaelMarker and kaelMarker.Parent then
+                    for _, ch in ipairs(kaelMarker:GetChildren()) do
+                        if ch:IsA("BillboardGui") or ch:IsA("ProximityPrompt") then
+                            ch:Destroy()
+                        end
+                    end
+                end
+            end
+            for _, npcName in ipairs({ "Lyra_SkybornCommander", "Lyra", "Kael_MasterBlacksmith", "Kael", "Zioles_AetherGachaShrine", "AncientMonk_GodhumanShrine" }) do
+                local npcMdl = worldObjs:FindFirstChild(npcName)
+                if npcMdl and npcMdl:IsA("Model") then
+                    local pv = npcMdl:GetPivot()
+                    local p = pv.Position
+                    local look = Vector3.new(hubFocus.X, p.Y, hubFocus.Z)
+                    if (look - p).Magnitude > 1.5 and pv.LookVector:Dot((look - p).Unit) < 0.75 then
+                        pcall(function()
+                            npcMdl:PivotTo(CFrame.lookAt(p, look))
+                        end)
+                    end
+                end
+            end
+        end
+        for _, folderName in ipairs({ "WorldPortals", "SkybreakWorldObjects", "WorldObjects" }) do
+            local f = workspace:FindFirstChild(folderName)
+            local gate = f and f:FindFirstChild("WorldGate_SkyHub_Plaza", true)
+            if gate then
+                gate:SetAttribute("MinLevel", 75)
+                gate:SetAttribute("RequiredLevel", 75)
+                for _, d in ipairs(gate:GetDescendants()) do
+                    if d:IsA("ProximityPrompt") then
+                        d.ObjectText = "Cổng Điện Cầu Lõi (Lv. 75+)"
+                        d.ActionText = "Dịch Chuyển (Lv. 75+)"
+                    elseif d:IsA("TextLabel") and (d.Name == "Title" or d.Name == "NameLabel" or string.find(d.Text, "Cổng") or string.find(d.Text, "Gate") or string.find(d.Text, "Shrine")) then
+                        d.Text = "Cổng Điện Cầu Lõi (Lv. 75+)"
+                    end
+                end
+                if gate:IsA("BasePart") then
+                    local pr = gate:FindFirstChildOfClass("ProximityPrompt")
+                    if pr then
+                        pr.ObjectText = "Cổng Điện Cầu Lõi (Lv. 75+)"
+                        pr.ActionText = "Dịch Chuyển (Lv. 75+)"
+                    end
+                end
+            end
+        end
+    end
+    task.defer(reconcileSkyHubNPCsAndPortalGate)
+    task.delay(1.5, reconcileSkyHubNPCsAndPortalGate)
+    task.delay(4.0, reconcileSkyHubNPCsAndPortalGate)
     local floors={sky.GoldenSky_Collision}
 
     if game.ReplicatedStorage.DelegatedV5Sources:FindFirstChild('FrozenCyber') then
@@ -831,6 +906,12 @@ function M.Build(W)
     params.IgnoreWater=true
 
     function W.IsBlockedByObstacle(x, y, z, clear)
+        if typeof(x) == "Vector3" or (type(x) == "table" and x.X ~= nil and x.Z ~= nil) then
+            clear = y
+            z = x.Z
+            y = x.Y
+            x = x.X
+        end
         if solid3D and solid3D.IsBlockedByMainBox and solid3D.IsBlockedByMainBox(x, y, z, clear or 3.5) then
             return true
         end

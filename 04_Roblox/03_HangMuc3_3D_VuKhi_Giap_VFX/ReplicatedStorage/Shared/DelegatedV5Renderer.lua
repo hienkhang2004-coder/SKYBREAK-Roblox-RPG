@@ -2,17 +2,47 @@
 -- Compressed source inputs survive saving; ephemeral meshes are rebuilt per play session.
 local Asset=game:GetService('AssetService')
 local Run=game:GetService('RunService')
+local Players=game:GetService('Players')
+local UIS=game:GetService('UserInputService')
 local Sources=game.ReplicatedStorage:WaitForChild('DelegatedV5Sources')
-local M={Models={},Images={},Surfaces={},Contents={},Jobs={}}
+local M={Models={},Images={},Surfaces={},Contents={},ModelContents={},ModelImages={},ModelSurfaces={},Jobs={}}
+local function getGraphicsTier()
+    if Run:IsServer() then return 'Ultra' end
+    local lp=Players.LocalPlayer
+    if lp then
+        local t=lp:GetAttribute('GraphicsTier')
+        if t=='Ultra' or t=='Balanced' or t=='Smooth' then return t end
+    end
+    local wt=workspace:GetAttribute('GraphicsTier')
+    if wt=='Ultra' or wt=='Balanced' or wt=='Smooth' then return wt end
+    if (lp and lp:GetAttribute('LowFXMode')==true) or workspace:GetAttribute('LowFXMode')==true then return 'Smooth' end
+    if UIS.TouchEnabled and not UIS.KeyboardEnabled then return 'Smooth' end
+    return 'Ultra'
+end
 local function v(a)return Vector3.new(a[1],a[2],a[3])end
 local function cf(a)return CFrame.new(table.unpack(a))end
 local function srgb(x)return x<=.0031308 and x*12.92 or 1.055*x^(1/2.4)-.055 end
 local function snapshot(e)
     local status,content=Asset:CreateDataModelContentAsync(Content.fromObject(e))
     assert(status==Enum.CreateContentResult.Success,'V5 content: '..tostring(status))
-    table.insert(M.Contents,content);return content
+    local bname=M.ActiveBuildName
+    if bname then
+        M.ModelContents[bname]=M.ModelContents[bname] or {}
+        table.insert(M.ModelContents[bname],content)
+    else
+        table.insert(M.Contents,content)
+    end
+    return content
+end
+local function trackModelImage(name)
+    local bname=M.ActiveBuildName
+    if bname and name then
+        M.ModelImages[bname]=M.ModelImages[bname] or {}
+        M.ModelImages[bname][name]=true
+    end
 end
 local function texture(name)
+    trackModelImage(name)
     if M.Images[name] then return M.Images[name] end
     local module=Sources.Textures:FindFirstChild(name)
     if not module then return nil end
@@ -31,21 +61,49 @@ local function texture(name)
         local h=math.max(1,math.floor(npx/w))
         data={width=w,height=h,pixels=b}
     end
-    -- Runtime preview maps fit the shared client EditableImage budget. Original
-    -- full-resolution pixels remain in saved source modules and Blender files.
-    local cap=256
+    -- Runtime preview maps fit the shared client EditableImage budget with smooth bilinear resampling.
+    -- Original full-resolution pixels remain in saved source modules and Blender files.
+    local cap=(getGraphicsTier()=='Smooth') and 256 or 512
     local scale=math.min(1,cap/math.max(data.width,data.height))
     local width=math.max(1,math.floor(data.width*scale));local height=math.max(1,math.floor(data.height*scale))
     local pixels=data.pixels
     if width~=data.width or height~=data.height then
+        local sw,sh=data.width,data.height
+        local src=data.pixels
         pixels=buffer.create(width*height*4)
         for y=0,height-1 do
+            local fy=math.clamp(((y+0.5)*sh/height)-0.5,0,sh-1)
+            local y0=math.floor(fy)
+            local y1=math.min(sh-1,y0+1)
+            local ty=fy-y0
+            local ity=1-ty
+            local row0=y0*sw
+            local row1=y1*sw
+            local dstRow=y*width
             for x=0,width-1 do
-                local sx=math.min(data.width-1,math.floor((x+.5)*data.width/width))
-                local sy=math.min(data.height-1,math.floor((y+.5)*data.height/height))
-                buffer.copy(pixels,(y*width+x)*4,data.pixels,(sy*data.width+sx)*4,4)
+                local fx=math.clamp(((x+0.5)*sw/width)-0.5,0,sw-1)
+                local x0=math.floor(fx)
+                local x1=math.min(sw-1,x0+1)
+                local tx=fx-x0
+                local itx=1-tx
+                local w00=itx*ity
+                local w10=tx*ity
+                local w01=itx*ty
+                local w11=tx*ty
+                local o00=(row0+x0)*4
+                local o10=(row0+x1)*4
+                local o01=(row1+x0)*4
+                local o11=(row1+x1)*4
+                local dOff=(dstRow+x)*4
+                for c=0,3 do
+                    local val=buffer.readu8(src,o00+c)*w00
+                        +buffer.readu8(src,o10+c)*w10
+                        +buffer.readu8(src,o01+c)*w01
+                        +buffer.readu8(src,o11+c)*w11
+                    buffer.writeu8(pixels,dOff+c,math.clamp(math.floor(val+0.5),0,255))
+                end
             end
-            if y%32==0 then task.wait()end
+            if y>0 and y%24==0 then task.wait()end
         end
     end
     local im=assert(Asset:CreateEditableImage({Size=Vector2.new(width,height)}),'Texture allocation '..name)
@@ -65,6 +123,12 @@ local function surface(mat)
         error('Missing cloud surface template: '..mat.name)
     end
     local key=game.HttpService:JSONEncode(mat.maps)..':'..tostring(mat.emission_strength)
+    local bname=M.ActiveBuildName
+    if bname then
+        M.ModelSurfaces[bname]=M.ModelSurfaces[bname] or {}
+        M.ModelSurfaces[bname][key]=true
+        for _,tname in mat.maps do trackModelImage(tname) end
+    end
     if M.Surfaces[key] then return M.Surfaces[key]:Clone() end
     local maps={}
     for slot,name in mat.maps do local im=texture(name);if im then maps[slot]=Content.fromObject(im) end end
@@ -85,6 +149,8 @@ local STATIC_WORLD_MODELS={
     CelestialAetherGalleon=true,CyberEnforcerShip=true,LeviathanHunterShip=true,
     AetherFruitsCollection1=true,AetherFruitsCollection2=true,
     MythicalWeaponsSet=true,
+    ExpansionMeleeWeaponsSet=true,ExpansionGunsAndBowsSet=true,
+    ArmorSetsAndAccessoriesSet=true,CraftingMaterialsAndRelicsSet=true,
 }
 local function hexRGB(h)
     h=h:gsub('#','')
@@ -374,14 +440,16 @@ local function getWorldShaderSpec(matName,rawColor)
         elseif ml:find('crimson') or ml:find('magma') then
             nr,ng,nb=1.00,0.28,0.22
         end
+        local isGlassCrystal=ml:find('crystal') or ml:find('prism') or ml:find('amethyst') or ml:find('amber')
         spec={
             mode='PLASMA',
-            stops=makeWorldStops(nr,ng,nb,1.35,0.58,0.98,1.22,0.08),
+            stops=makeWorldStops(nr,ng,nb,1.35,0.62,1.00,1.25,0.08),
             scale=4.6,
-            boost=1.12,
-            mat=Enum.Material.Glass,
-            refl=0.18,
-            neon=false,
+            boost=1.16,
+            mat=isGlassCrystal and Enum.Material.Glass or Enum.Material.Neon,
+            refl=isGlassCrystal and 0.25 or 0.0,
+            neon=not isGlassCrystal,
+            neonColor=Color3.new(math.clamp(nr*0.92,0,1),math.clamp(ng*0.92,0,1),math.clamp(nb*0.92,0,1)),
             lightColor=Color3.new(math.clamp(nr,0,1),math.clamp(ng,0,1),math.clamp(nb,0,1)),
         }
     elseif ml:find('turf') or ml:find('grass') or ml:find('moss') or ml:find('lawn') then
@@ -413,7 +481,7 @@ local function getWorldShaderSpec(matName,rawColor)
             scale=7.5,
             boost=1.12,
             mat=Enum.Material.Metal,
-            refl=0.22,
+            refl=0.12,
         }
     elseif ml:find('steel') or ml:find('iron') or ml:find('alloy') or ml:find('chrome') or ml:find('hull') and ml:find('W4') then
         spec={
@@ -422,7 +490,7 @@ local function getWorldShaderSpec(matName,rawColor)
             scale=7.5,
             boost=1.06,
             mat=Enum.Material.Metal,
-            refl=0.16,
+            refl=0.12,
         }
     elseif ml:find('cliff') or ml:find('canyon') or ml:find('mesa') or ml:find('crag') or ml:find('spire') then
         if ml:find('goldencliff') or ml:find('suncliff') then
@@ -435,8 +503,8 @@ local function getWorldShaderSpec(matName,rawColor)
             stops=makeWorldStops(r,g,b,1.58,0.44,0.96,1.32,0.07),
             scale=5.4,
             boost=1.06,
-            mat=isIcy and Enum.Material.Glacier or (isDarkVolcanic and Enum.Material.Basalt or Enum.Material.Sandstone),
-            refl=isIcy and 0.12 or 0.0,
+            mat=isIcy and Enum.Material.Ice or (isDarkVolcanic and Enum.Material.Slate or Enum.Material.Rock),
+            refl=isIcy and 0.06 or 0.0,
         }
     elseif ml:find('water') or ml:find('sea') or ml:find('pool') or ml:find('fountain') then
         spec={
@@ -445,26 +513,18 @@ local function getWorldShaderSpec(matName,rawColor)
             scale=4.5,
             boost=1.12,
             mat=Enum.Material.Glass,
-            refl=0.28,
+            refl=0.20,
             trans=0.18,
         }
-    elseif ml:find('ice') or ml:find('glacier') or ml:find('frost') then
+    elseif ml:find('ice') or ml:find('glacier') or ml:find('frost') or ml:find('cryo') or ml:find('snow') then
+        local isSnowOnly=ml:find('snow') and not (ml:find('ice') or ml:find('glacier') or ml:find('frost'))
         spec={
-            mode='WORLD_CLIFF',
-            stops=makeWorldStops(r,g,b,1.50,0.58,1.04,1.32,0.06),
-            scale=5.0,
-            boost=1.08,
-            mat=Enum.Material.Glacier,
-            refl=0.14,
-        }
-    elseif ml:find('snow') then
-        spec={
-            mode='WORLD_TURF',
-            stops=makeWorldStops(0.78,0.88,0.98,1.25,0.74,1.00,1.16,0.04),
-            scale=4.5,
-            boost=1.04,
-            mat=Enum.Material.Snow,
-            refl=0.04,
+            mode=isSnowOnly and 'WORLD_TURF' or 'WORLD_CLIFF',
+            stops=isSnowOnly and makeWorldStops(0.78,0.88,0.98,1.25,0.74,1.00,1.16,0.04) or makeWorldStops(r,g,b,1.50,0.58,1.04,1.32,0.06),
+            scale=4.8,
+            boost=isSnowOnly and 1.04 or 1.08,
+            mat=Enum.Material.Ice,
+            refl=0.06,
         }
     elseif ml:find('wood') or ml:find('timber') or ml:find('plank') or ml:find('deck') or ml:find('trunk') or ml:find('bark') or ml:find('hull') then
         spec={
@@ -693,16 +753,160 @@ local VIRTUAL_SPLIT_SPECS={
     Shrine_CryoAether={source='AetherShrinesAndRaidConsole',minMesh=0,maxMesh=16,minX=0,minY=7.0,anchorBottom=true},
     Shrine_VoidAether={source='AetherShrinesAndRaidConsole',minMesh=17,maxMesh=21,maxX=0,anchorBottom=true},
     Console_RaidMicrochip={source='AetherShrinesAndRaidConsole',minMesh=0,maxMesh=16,minX=0,maxY=7.0,anchorBottom=true},
+    -- Sheet 25: 8 Expansion Melee Weapons & Staves (Pass 15 Chiseled Blender 5.2)
+    ExpSword_aion_chrono_scythe={source='ExpansionMeleeWeaponsSet',bones={ExpSword_aion_chrono_scythe=true},meshes={[0]=true,[1]=true,[3]=true,[21]=true,[26]=true,[27]=true},anchorGrip=true},
+    ExpSword_architect_severance={source='ExpansionMeleeWeaponsSet',bones={ExpSword_architect_severance=true},meshes={[1]=true,[3]=true,[5]=true,[19]=true,[23]=true,[27]=true},anchorGrip=true},
+    ExpSword_cyber_katana_mk2={source='ExpansionMeleeWeaponsSet',bones={ExpSword_cyber_katana_mk2=true},meshes={[6]=true,[7]=true,[11]=true,[12]=true,[29]=true},anchorGrip=true},
+    ExpSword_eternal_frost_staff={source='ExpansionMeleeWeaponsSet',bones={ExpSword_eternal_frost_staff=true},meshes={[6]=true,[7]=true,[14]=true,[22]=true,[29]=true},anchorGrip=true},
+    ExpSword_ignivar_magma_breaker={source='ExpansionMeleeWeaponsSet',bones={ExpSword_ignivar_magma_breaker=true},meshes={[2]=true,[12]=true,[15]=true,[16]=true,[23]=true,[28]=true},anchorGrip=true},
+    ExpSword_nerith_abyssal_trident={source='ExpansionMeleeWeaponsSet',bones={ExpSword_nerith_abyssal_trident=true},meshes={[1]=true,[4]=true,[6]=true,[13]=true,[14]=true,[20]=true,[25]=true},anchorGrip=true},
+    ExpSword_sunshard_halberd={source='ExpansionMeleeWeaponsSet',bones={ExpSword_sunshard_halberd=true},meshes={[1]=true,[2]=true,[7]=true,[22]=true,[23]=true,[29]=true},anchorGrip=true},
+    ExpSword_sylvaris_thornblade={source='ExpansionMeleeWeaponsSet',bones={ExpSword_sylvaris_thornblade=true},meshes={[1]=true,[3]=true,[8]=true,[9]=true,[10]=true,[17]=true,[18]=true,[24]=true},anchorGrip=true},
+    -- Sheet 26: 7 Expansion Guns, Cannons & Bows (Pass 15 Chiseled Blender 5.2)
+    ExpGun_aether_flintlock={source='ExpansionGunsAndBowsSet',bones={ExpGun_aether_flintlock=true},meshes={[3]=true,[4]=true,[9]=true,[10]=true,[14]=true,[16]=true}},
+    ExpGun_aion_chrono_pistols={source='ExpansionGunsAndBowsSet',bones={ExpGun_aion_chrono_pistols=true},meshes={[0]=true,[3]=true,[4]=true,[5]=true,[6]=true,[15]=true,[21]=true}},
+    ExpGun_bizarre_rifle_cyber={source='ExpansionGunsAndBowsSet',bones={ExpGun_bizarre_rifle_cyber=true},meshes={[10]=true,[15]=true,[26]=true}},
+    ExpGun_ignivar_hellcannon={source='ExpansionGunsAndBowsSet',bones={ExpGun_ignivar_hellcannon=true},meshes={[2]=true,[3]=true,[4]=true,[11]=true,[17]=true,[18]=true,[22]=true,[23]=true,[25]=true}},
+    ExpGun_kabucha_wind={source='ExpansionGunsAndBowsSet',bones={ExpGun_kabucha_wind=true},meshes={[3]=true,[4]=true,[7]=true,[9]=true,[10]=true,[23]=true}},
+    ExpGun_sylvaris_thornbow={source='ExpansionGunsAndBowsSet',bones={ExpGun_sylvaris_thornbow=true},meshes={[1]=true,[3]=true,[9]=true,[12]=true,[13]=true,[19]=true}},
+    ExpGun_veyr_singularity_cannon={source='ExpansionGunsAndBowsSet',bones={ExpGun_veyr_singularity_cannon=true},meshes={[3]=true,[4]=true,[8]=true,[11]=true,[15]=true,[20]=true,[24]=true,[26]=true}},
+    -- Sheet 27: 6 Modular 4-Slot Armor Sets + Full Set Previews + Shield, Hood & 4 Boss Relics (Pass 15 Chiseled Blender 5.2)
+    Acc_LeviathanShield={source='ArmorSetsAndAccessoriesSet',bones={Acc_LeviathanShield=true},meshes={[0]=true,[7]=true,[8]=true,[24]=true,[29]=true}},
+    Acc_MiragePhantomHood={source='ArmorSetsAndAccessoriesSet',bones={Acc_MiragePhantomHood=true},meshes={[7]=true,[8]=true,[14]=true,[15]=true,[22]=true,[27]=true}},
+    Armor_Aureon_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Chest=true},meshes={[0]=true,[4]=true,[5]=true,[23]=true,[29]=true}},
+    Armor_Aureon_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Gauntlets=true},meshes={[0]=true,[4]=true,[29]=true}},
+    Armor_Aureon_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Greaves=true},meshes={[0]=true,[4]=true,[23]=true,[29]=true}},
+    Armor_Aureon_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Helm=true},meshes={[0]=true,[23]=true,[29]=true}},
+    ArmorSet_Aureon={source='ArmorSetsAndAccessoriesSet',bones={Armor_Aureon_Helm=true,Armor_Aureon_Chest=true,Armor_Aureon_Gauntlets=true,Armor_Aureon_Greaves=true},meshes={[0]=true,[4]=true,[5]=true,[23]=true,[29]=true}},
+    Armor_Cryon_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Chest=true},meshes={[2]=true,[7]=true,[8]=true,[12]=true,[29]=true}},
+    Armor_Cryon_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Gauntlets=true},meshes={[2]=true,[7]=true,[29]=true}},
+    Armor_Cryon_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Greaves=true},meshes={[2]=true,[7]=true,[12]=true,[29]=true}},
+    Armor_Cryon_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Helm=true},meshes={[2]=true,[7]=true,[13]=true,[29]=true}},
+    ArmorSet_Cryon={source='ArmorSetsAndAccessoriesSet',bones={Armor_Cryon_Helm=true,Armor_Cryon_Chest=true,Armor_Cryon_Gauntlets=true,Armor_Cryon_Greaves=true},meshes={[2]=true,[7]=true,[8]=true,[12]=true,[13]=true,[29]=true}},
+    Armor_Nerith_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Chest=true},meshes={[0]=true,[7]=true,[8]=true,[20]=true,[21]=true,[23]=true,[24]=true}},
+    Armor_Nerith_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Gauntlets=true},meshes={[0]=true,[21]=true,[24]=true}},
+    Armor_Nerith_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Greaves=true},meshes={[0]=true,[7]=true,[24]=true}},
+    Armor_Nerith_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Helm=true},meshes={[0]=true,[7]=true,[15]=true,[24]=true}},
+    ArmorSet_Nerith={source='ArmorSetsAndAccessoriesSet',bones={Armor_Nerith_Helm=true,Armor_Nerith_Chest=true,Armor_Nerith_Gauntlets=true,Armor_Nerith_Greaves=true},meshes={[0]=true,[7]=true,[8]=true,[15]=true,[20]=true,[21]=true,[23]=true,[24]=true}},
+    Armor_Noxar_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Chest=true},meshes={[13]=true,[19]=true,[20]=true,[25]=true,[26]=true,[27]=true,[28]=true}},
+    Armor_Noxar_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Gauntlets=true},meshes={[13]=true,[20]=true,[25]=true,[28]=true}},
+    Armor_Noxar_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Greaves=true},meshes={[13]=true,[20]=true,[25]=true,[28]=true}},
+    Armor_Noxar_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Helm=true},meshes={[9]=true,[20]=true,[25]=true,[28]=true}},
+    ArmorSet_Noxar={source='ArmorSetsAndAccessoriesSet',bones={Armor_Noxar_Helm=true,Armor_Noxar_Chest=true,Armor_Noxar_Gauntlets=true,Armor_Noxar_Greaves=true},meshes={[9]=true,[13]=true,[19]=true,[20]=true,[25]=true,[26]=true,[27]=true,[28]=true}},
+    Armor_Sylvaris_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Chest=true},meshes={[5]=true,[11]=true,[16]=true,[17]=true,[18]=true,[28]=true}},
+    Armor_Sylvaris_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Gauntlets=true},meshes={[11]=true,[16]=true,[17]=true,[18]=true}},
+    Armor_Sylvaris_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Greaves=true},meshes={[10]=true,[11]=true,[18]=true,[28]=true}},
+    Armor_Sylvaris_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Helm=true},meshes={[10]=true,[16]=true,[18]=true,[28]=true}},
+    ArmorSet_Sylvaris={source='ArmorSetsAndAccessoriesSet',bones={Armor_Sylvaris_Helm=true,Armor_Sylvaris_Chest=true,Armor_Sylvaris_Gauntlets=true,Armor_Sylvaris_Greaves=true},meshes={[5]=true,[10]=true,[11]=true,[16]=true,[17]=true,[18]=true,[28]=true}},
+    Armor_Veyr_Chest={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Chest=true},meshes={[0]=true,[3]=true,[4]=true,[6]=true,[27]=true,[29]=true}},
+    Armor_Veyr_Gauntlets={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Gauntlets=true},meshes={[0]=true,[4]=true,[29]=true}},
+    Armor_Veyr_Greaves={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Greaves=true},meshes={[0]=true,[4]=true,[6]=true,[29]=true}},
+    Armor_Veyr_Helm={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Helm=true},meshes={[0]=true,[6]=true,[29]=true}},
+    ArmorSet_Veyr={source='ArmorSetsAndAccessoriesSet',bones={Armor_Veyr_Helm=true,Armor_Veyr_Chest=true,Armor_Veyr_Gauntlets=true,Armor_Veyr_Greaves=true},meshes={[0]=true,[3]=true,[4]=true,[6]=true,[27]=true,[29]=true}},
+    Relic_AureonSunRing={source='ArmorSetsAndAccessoriesSet',bones={Relic_AureonSunRing=true},meshes={[0]=true,[1]=true,[23]=true,[29]=true}},
+    Relic_CoreOfLight={source='ArmorSetsAndAccessoriesSet',bones={Relic_CoreOfLight=true},meshes={[0]=true,[7]=true,[15]=true,[19]=true,[20]=true,[23]=true}},
+    Relic_CryonFrostReactor={source='ArmorSetsAndAccessoriesSet',bones={Relic_CryonFrostReactor=true},meshes={[2]=true,[7]=true,[29]=true}},
+    Relic_NoxarEclipseRing={source='ArmorSetsAndAccessoriesSet',bones={Relic_NoxarEclipseRing=true},meshes={[0]=true,[19]=true,[20]=true,[21]=true,[27]=true}},
+    -- Sheet 28: 15 Crafting Materials, Gears, Microchip & Quest Relics (Pass 15 Chiseled Blender 5.2)
+    Mat_AwakeningMicrochip={source='CraftingMaterialsAndRelicsSet',bones={Mat_AwakeningMicrochip=true},meshes={[1]=true,[3]=true,[4]=true,[5]=true,[6]=true,[10]=true,[14]=true}},
+    Mat_BlueResonanceGear={source='CraftingMaterialsAndRelicsSet',bones={Mat_BlueResonanceGear=true},meshes={[1]=true,[4]=true,[5]=true,[14]=true}},
+    Mat_CelestialFeather={source='CraftingMaterialsAndRelicsSet',bones={Mat_CelestialFeather=true},meshes={[1]=true,[3]=true,[4]=true,[8]=true,[15]=true,[20]=true}},
+    Mat_CitadelBossKey={source='CraftingMaterialsAndRelicsSet',bones={Mat_CitadelBossKey=true},meshes={[1]=true,[2]=true,[4]=true,[20]=true}},
+    Mat_CoreEssence={source='CraftingMaterialsAndRelicsSet',bones={Mat_CoreEssence=true},meshes={[1]=true,[3]=true,[4]=true,[10]=true,[12]=true,[15]=true}},
+    Mat_CoreGear={source='CraftingMaterialsAndRelicsSet',bones={Mat_CoreGear=true},meshes={[1]=true,[2]=true,[15]=true}},
+    Mat_CoreOfLight={source='CraftingMaterialsAndRelicsSet',bones={Mat_CoreOfLight=true},meshes={[1]=true,[2]=true,[4]=true,[9]=true,[15]=true}},
+    Mat_DawnbringerBlueprint={source='CraftingMaterialsAndRelicsSet',bones={Mat_DawnbringerBlueprint=true},meshes={[1]=true,[3]=true,[4]=true,[13]=true}},
+    Mat_EnchantScroll={source='CraftingMaterialsAndRelicsSet',bones={Mat_EnchantScroll=true},meshes={[1]=true,[11]=true,[15]=true}},
+    Mat_LeviathanHeart={source='CraftingMaterialsAndRelicsSet',bones={Mat_LeviathanHeart=true},meshes={[1]=true,[3]=true,[4]=true,[7]=true,[8]=true,[16]=true}},
+    Mat_SkyCrystal={source='CraftingMaterialsAndRelicsSet',bones={Mat_SkyCrystal=true},meshes={[3]=true,[4]=true,[8]=true,[19]=true}},
+    Mat_SkyIron={source='CraftingMaterialsAndRelicsSet',bones={Mat_SkyIron=true},meshes={[3]=true,[4]=true,[14]=true}},
+    Mat_SunshardCore={source='CraftingMaterialsAndRelicsSet',bones={Mat_SunshardCore=true},meshes={[1]=true,[2]=true,[15]=true}},
+    Mat_VoidEssence={source='CraftingMaterialsAndRelicsSet',bones={Mat_VoidEssence=true},meshes={[10]=true,[12]=true,[17]=true,[18]=true}},
+    Mat_VoidShard={source='CraftingMaterialsAndRelicsSet',bones={Mat_VoidShard=true},meshes={[0]=true,[12]=true,[17]=true,[18]=true}},
 }
 M.VirtualSplitSpecs=VIRTUAL_SPLIT_SPECS
+local function resolveEnvMaterial(matLow,meshLow,modelLow,isEmissive,metalness)
+    local s=(matLow or '')..' '..(meshLow or '')
+    if s:find('crystal') or s:find('gem') or s:find('prism') or s:find('leyline') or s:find('amethyst') or s:find('sapphire') or s:find('quartz') then
+        if isEmissive then return Enum.Material.Neon,0 end
+        return Enum.Material.Glass,0.12
+    end
+    if isEmissive then
+        return Enum.Material.Neon,0
+    end
+    if (metalness or 0)>0.5 or s:find('gold') or s:find('bronze') or s:find('brass') or s:find('copper') or s:find('steel') or s:find('iron') or s:find('chain') or s:find('anchor') or s:find('cannon') or s:find('alloy') or s:find('chrome') then
+        return Enum.Material.Metal,0.12
+    end
+    if s:find('ice') or s:find('glacier') or s:find('frost') or s:find('cryo') or s:find('snow') or s:find('permafrost') then
+        return Enum.Material.Ice,0.06
+    end
+    if s:find('plank') or s:find('deck') or s:find('pier') or s:find('bridge') or s:find('crate') or s:find('barrel') or s:find('hull') or s:find('timber') or s:find('dock') or s:find('mast') then
+        return Enum.Material.WoodPlanks,0
+    end
+    if s:find('bark') or s:find('trunk') or s:find('root') or s:find('branch') or s:find('wood') then
+        return Enum.Material.Wood,0
+    end
+    if s:find('foliage') or s:find('canopy') or s:find('leaf') or s:find('leaves') or s:find('pine') or s:find('bush') or s:find('vine') or s:find('hedge') then
+        return Enum.Material.Grass,0
+    end
+    if s:find('grass') or s:find('turf') or s:find('moss') or s:find('meadow') or s:find('lawn') then
+        return Enum.Material.LeafyGrass,0
+    end
+    if s:find('marble') or s:find('sanctum') or s:find('palace') or s:find('alabaster') then
+        return Enum.Material.Marble,0.04
+    end
+    if s:find('sandstone') then
+        return Enum.Material.Sandstone,0
+    end
+    if s:find('sand') or s:find('dune') or s:find('beach') then
+        return Enum.Material.Sand,0
+    end
+    if s:find('sail') or s:find('banner') or s:find('cloth') or s:find('tent') or s:find('awning') then
+        return Enum.Material.Fabric,0
+    end
+    if s:find('roof') or s:find('shingle') then
+        return Enum.Material.RoofShingles,0
+    end
+    if s:find('cobble') or s:find('brick') or s:find('pave') or s:find('plaza') or s:find('road') then
+        return Enum.Material.Cobblestone,0
+    end
+    if s:find('pillar') or s:find('temple') or s:find('column') or s:find('arch') then
+        return Enum.Material.Limestone,0
+    end
+    if s:find('tile') or s:find('stair') or s:find('wall') then
+        return Enum.Material.Sandstone,0
+    end
+    if s:find('obsidian') or s:find('basalt') or s:find('ruin') or s:find('slate') or s:find('fortress') or s:find('arena') then
+        return Enum.Material.Slate,0.02
+    end
+    if s:find('cliff') or s:find('crag') or s:find('boulder') or s:find('rock') or s:find('mountain') or s:find('canyon') or s:find('island_base') or s:find('mesa') or s:find('stone') then
+        return Enum.Material.Rock,0
+    end
+    local ml=modelLow or ''
+    if ml:find('shadow') or ml:find('void') or ml:find('umbral') or ml:find('castle') or ml:find('fortress') then
+        return Enum.Material.Slate,0.02
+    elseif ml:find('golden') or ml:find('sunshard') or ml:find('shrine') or ml:find('temple') then
+        return Enum.Material.Sandstone,0
+    end
+    return Enum.Material.Rock,0
+end
 local function build(name,progress)
     if M.Models[name] and M.Models[name].PrimaryPart and M.Models[name].PrimaryPart.Parent then return M.Models[name] end
+    M.ActiveBuildName=name;M.ModelContents[name]={};M.ModelImages[name]={};M.ModelSurfaces[name]={}
     local vspec=VIRTUAL_SPLIT_SPECS[name]
     local isFruit=(name:sub(1,6)=='Fruit_' or name=='AetherFruitsCollection1' or name=='AetherFruitsCollection2')
     local isStatic=(STATIC_WORLD_MODELS[name]==true or isFruit or (vspec~=nil and vspec.bonePrefix==nil))
     local folder=Sources:WaitForChild(vspec and vspec.source or name);local h=require(folder.Header)
     if type(h)=='string' then h=game.HttpService:JSONDecode(h) end
     local model=Instance.new('Model');model.Name=name;model:SetAttribute('BlenderHandoff',true)
+    if Run:IsClient() then
+        local ss=game:GetService('SoundService')
+        local templateVault=ss:FindFirstChild('_SKYBREAK_MeshTemplates')
+        if not templateVault then
+            templateVault=Instance.new('Folder');templateVault.Name='_SKYBREAK_MeshTemplates';templateVault.Parent=ss
+        end
+        model.Parent=templateVault
+    end
     M.ActiveModel=model
     local root=Instance.new('Part');root.Name='RootPart';root.Transparency=1;root.Size=Vector3.one*.1
     root.Anchored=true;root.CanCollide=false;root.CanQuery=false;root.CanTouch=false;root.Parent=model;model.PrimaryPart=root
@@ -724,7 +928,7 @@ local function build(name,progress)
     end
     for index=0,h.mesh_count-1 do
         if progress then progress(name,index+1,h.mesh_count) end
-        if vspec and ((vspec.minMesh and index<vspec.minMesh) or (vspec.maxMesh and index>vspec.maxMesh)) then
+        if vspec and ((vspec.minMesh and index<vspec.minMesh) or (vspec.maxMesh and index>vspec.maxMesh) or (vspec.meshes and not vspec.meshes[index])) then
             continue
         end
         local d=require(folder[string.format('Mesh%03d',index)])
@@ -896,11 +1100,11 @@ local function build(name,progress)
                 end
             end
             local normals,uvlookup,colorLookup,vertColors={},{},{},{}
-            local useFacetNormals=fruitSpec and (fruitSpec.mode=='FRESNEL' or fruitSpec.mode=='METAL')
+            local useFacetNormals=fruitSpec and (fruitSpec.mode=='FRESNEL' or fruitSpec.mode=='METAL' or fruitSpec.mode:sub(1,6)=='WORLD_')
             for bidx=batchStart,batchEnd do
                 local ti=validTriangles[bidx]
                 local t=d.triangles[ti]
-                local face=e:AddTriangle(ids[t[1]+1],ids[t[2]+1],ids[t[3]+1]);local ns,uvs,fcs={},{},fruitSpec and {} or nil
+                local face=e:AddTriangle(ids[t[1]+1],ids[t[2]+1],ids[t[3]+1]);local ns,uvs,fcs={},{},(fruitSpec or d.vcol) and {} or nil
                 for j,normal in d.normals[ti] do
                     local vi=t[j]+1
                     local rawNx,rawNy,rawNz=normal[1],normal[2],normal[3]
@@ -938,6 +1142,19 @@ local function build(name,progress)
                             vertColors[vkey]=cid
                         end
                         fcs[j]=cid
+                    elseif d.vcol then
+                        -- Mau theo dinh: chuyen mau muot tren mang canh rong
+                        local vc=d.vcol[vi]
+                        local kr=math.floor(vc[1]*63+0.5)
+                        local kg=math.floor(vc[2]*63+0.5)
+                        local kb=math.floor(vc[3]*63+0.5)
+                        local ckey=kr*4096+kg*64+kb
+                        local cid=colorLookup[ckey]
+                        if not cid then
+                            cid=e:AddColor(Color3.new(kr/63,kg/63,kb/63),1)
+                            colorLookup[ckey]=cid
+                        end
+                        fcs[j]=cid
                     end
                 end
                 e:SetFaceNormals(face,ns);e:SetFaceUVs(face,uvs)
@@ -945,23 +1162,33 @@ local function build(name,progress)
                 if (bidx-batchStart+1)%4000==0 then task.wait() end
             end
             local part=Asset:CreateMeshPartAsync(snapshot(e),{CollisionFidelity=Enum.CollisionFidelity.Box})
-            -- Release the mutable builder before allocating any image/surface data.
-            e:Destroy();M.ActiveEditable=nil
+            M.ActiveEditable=nil
             part.Name=batchIdx==1 and d.name or (d.name..'_'..tostring(batchIdx));part.CFrame=CFrame.new(center);part.Anchored=true;part.CanCollide=false;part.CanQuery=false;part.CanTouch=false;part.Massless=true
             local isHandOrElemFX=(isHandRibbonFX or isElemFX)
             part:SetAttribute('SourceTriangles',batchEnd-batchStart+1);part:SetAttribute('EquipmentRole',isHandOrElemFX and 'AuraFX' or d.role)
             part:SetAttribute('BlenderMaterial',d.material.name)
             local color=mat.color_linear
+            local isAuthoredDragon=matNameLower:sub(1,9)=='mat_asd2_' or matNameLower:sub(1,9)=='mat_adh2_'
+            local isWorldEnv=(d.role=='Environment') and (not isFruit) and (not isAuthoredDragon) and (not (vspec and (vspec.bones or vspec.bonePrefix)))
             if fruitSpec then
                 part.Color=fruitSpec.neon and (fruitSpec.neonColor or Color3.new(1,1,1)) or Color3.new(1,1,1)
-                part.Material=fruitSpec.mat or Enum.Material.SmoothPlastic
-                part.Reflectance=fruitSpec.refl or 0
+                if fruitSpec.mat then
+                    part.Material=fruitSpec.mat
+                    part.Reflectance=fruitSpec.refl or 0
+                elseif isWorldEnv then
+                    local envMat,envRefl=resolveEnvMaterial(matNameLower,string.lower(meshNameStr),string.lower(name),fruitSpec.mode=='PLASMA' and (fruitSpec.refl or 0)==0,mat.metalness or mat.metallic or 0)
+                    part.Material=envMat
+                    part.Reflectance=fruitSpec.refl or envRefl
+                else
+                    part.Material=Enum.Material.SmoothPlastic
+                    part.Reflectance=fruitSpec.refl or 0
+                end
                 if fruitSpec.lightColor and batchIdx==1 then
                     local pl=Instance.new('PointLight')
                     pl.Name='WorldCrystalLight'
                     pl.Color=fruitSpec.lightColor
-                    pl.Brightness=1.85
-                    pl.Range=32
+                    pl.Brightness=1.10
+                    pl.Range=16
                     pl.Shadows=false
                     pl.Parent=part
                 end
@@ -1020,7 +1247,8 @@ local function build(name,progress)
             end
             local peak=math.max(cr,cg,cb)
             local minC=math.min(cr,cg,cb)
-            if not isHandOrElemFX then
+            -- Bo vat lieu rong v2 giu dung mau da chinh, khong nang sang va khong tone map.
+            if not isHandOrElemFX and not isAuthoredDragon then
                 if d.role=='Environment' then
                     if peak>0.90 then
                         local tone=0.90+(peak-0.90)*0.30
@@ -1049,13 +1277,27 @@ local function build(name,progress)
             end
             part.Color=Color3.new(math.clamp(cr,0,1),math.clamp(cg,0,1),math.clamp(cb,0,1))
             local metalness=mat.metalness or mat.metallic or 0
-            part.Material=metalness>.5 and Enum.Material.Metal or Enum.Material.SmoothPlastic
-            if metalness>.5 then
-                part.Reflectance=math.clamp((1-(mat.roughness or 0.45))*0.12,0.03,0.12)
-            elseif matNameLower:find('hair') then
-                part.Reflectance=0.04
-            elseif matNameLower:find('skin') then
-                part.Reflectance=0.01
+            if isWorldEnv then
+                local envMat,envRefl=resolveEnvMaterial(matNameLower,string.lower(meshNameStr),string.lower(name),isTrueEmissive,metalness)
+                part.Material=envMat
+                part.Reflectance=envRefl
+            else
+                part.Material=metalness>.5 and Enum.Material.Metal or Enum.Material.SmoothPlastic
+                if isAuthoredDragon then
+                    part.Reflectance=0
+                    if d.vcol then
+                        part.Color=Color3.new(1,1,1)
+                    elseif (mat.emission_strength or 0)>=1.5 then
+                        part.Material=Enum.Material.Neon
+                        part.Color=Color3.new(math.clamp(srgb(em[1] or 0),0,1),math.clamp(srgb(em[2] or 0),0,1),math.clamp(srgb(em[3] or 0),0,1))
+                    end
+                elseif metalness>.5 then
+                    part.Reflectance=math.clamp((1-(mat.roughness or 0.45))*0.12,0.03,0.12)
+                elseif matNameLower:find('hair') then
+                    part.Reflectance=0.04
+                elseif matNameLower:find('skin') then
+                    part.Reflectance=0.01
+                end
             end
             if isHandOrElemFX then
                 local er,eg,eb=srgb(em[1] or 0),srgb(em[2] or 0),srgb(em[3] or 0)
@@ -1077,7 +1319,7 @@ local function build(name,progress)
                 end
                 if nr and ng and nb then
                     part.Color=Color3.new(math.clamp(nr,0,1),math.clamp(ng,0,1),math.clamp(nb,0,1))
-                    part.Material=Enum.Material.SmoothPlastic;part.Reflectance=0
+                    part.Material=isWorldEnv and Enum.Material.Neon or Enum.Material.SmoothPlastic;part.Reflectance=0
                 end
             elseif mat.maps and next(mat.maps) then
                 if Run:IsServer() then
@@ -1087,7 +1329,14 @@ local function build(name,progress)
                 end
             end
             end
-            part.Transparency=isHandOrElemFX and 0.80 or ((fruitSpec and fruitSpec.trans) or (1-color[4]*(mat.alpha or 1)));part.Parent=model
+            part.Transparency=isHandOrElemFX and 0.80 or ((fruitSpec and fruitSpec.trans) or (1-color[4]*(mat.alpha or 1)))
+            if d.role=='Environment' and not isHandOrElemFX then
+                local pSz=part.Size
+                local maxDim=math.max(pSz.X,pSz.Y,pSz.Z)
+                part.CastShadow=(getGraphicsTier()~='Smooth') and (part.Transparency<0.25) and (part.Material~=Enum.Material.Neon) and (maxDim>=4.0)
+            end
+            part.Parent=model
+            local deadE=e;M.ActiveEditable=nil;task.defer(function() pcall(deadE.Destroy,deadE) end)
             if (not meshStatic) and #h.bones>0 then local weld=Instance.new('WeldConstraint');weld.Part0=root;weld.Part1=part;weld.Parent=part end
             if index%4==0 then task.wait() end
         end
@@ -1263,7 +1512,7 @@ local function build(name,progress)
         pe.Parent=root
     end
     model:SetAttribute('ImportStatus','BuiltLocally');model:SetAttribute('SourceTriangles',h.triangles)
-    M.Models[name]=model;return model
+    M.ActiveBuildName=nil;M.Models[name]=model;return model
 end
 local function clientBuild(name,progress)
     return build(name,progress)
@@ -1281,6 +1530,10 @@ local ALIAS={
     SolarTitanCore='Fruit_SolarTitanCore',
     AetherflowCore='Fruit_AetherflowCore',
     AbyssalSovereignCore='Fruit_AbyssalSovereignCore',
+    Gale='Fruit_GaleCore',Smoke='Fruit_SandstoneCore',Flame='Fruit_SolarFlameCore',Ice='Fruit_GlacierIceCore',
+    Light='Fruit_CelestialLightCore',Magma='Fruit_StarforgedMagmaCore',Rumble='Fruit_ThunderRumbleCore',Gravity='Fruit_AstralGravityCore',
+    Portal='Fruit_DimensionalPortalCore',Buddha='Fruit_SolarTitanCore',Quake='Fruit_SolarTitanCore',Dough='Fruit_AetherflowCore',
+    SweetDoughCore='Fruit_AetherflowCore',Dragon='Fruit_AbyssalSovereignCore',
     StarlightQuakeCore='Fruit_SolarTitanCore',
     Fruit_StarlightQuakeCore='Fruit_SolarTitanCore',
     GlacialPermafrostCore='Fruit_GlacierIceCore',
@@ -1293,7 +1546,7 @@ local ALIAS={
     Fruit_CyberPhoenixCore='Fruit_SolarFlameCore',
     VoidShadowCore='Fruit_AbyssalSovereignCore',
     Fruit_VoidShadowCore='Fruit_AbyssalSovereignCore',
-    -- Weapon IDs -> Separated 3D Blender Weapon Models
+    -- Weapon IDs -> Separated 3D Blender Weapon Models (MythicalWeaponsSet + Sheet 25 ExpansionMeleeWeaponsSet + Sheet 26 ExpansionGunsAndBowsSet)
     starter_sword='Wep_Dawnbringer',
     dawnbringer_sword='Wep_Dawnbringer',
     Dawnbringer='Wep_Dawnbringer',
@@ -1304,20 +1557,108 @@ local ALIAS={
     cursed_dual_skyblades='Wep_CursedDualSkyblades',
     CursedDualSkyblades='Wep_CursedDualSkyblades',
     yamo_voidblade='Wep_CursedBladeLeft',
-    starter_staff='Wep_CryonFrostblade',
-    astral_staff='Wep_CryonFrostblade',
-    EternalFrost='Wep_CryonFrostblade',
     cryon_frostblade='Wep_CryonFrostblade',
     noxar_abyssal_greatsword='Wep_NoxarGreatsword',
     noxar_greatsword='Wep_NoxarGreatsword',
     abyssal_greatsword='Wep_NoxarGreatsword',
-    ArchitectsSeverance='Wep_NoxarGreatsword',
-    aether_flintlock='Wep_CryoRailgun',
-    solar_kabucha='Wep_CryoRailgun',
-    kabucha_wind='Wep_CryoRailgun',
+    starter_staff='ExpSword_eternal_frost_staff',
+    astral_staff='ExpSword_eternal_frost_staff',
+    EternalFrost='ExpSword_eternal_frost_staff',
+    eternal_frost_staff='ExpSword_eternal_frost_staff',
+    ArchitectsSeverance='ExpSword_architect_severance',
+    architect_severance='ExpSword_architect_severance',
+    sunshard_halberd='ExpSword_sunshard_halberd',
+    cyber_katana_mk2='ExpSword_cyber_katana_mk2',
+    sylvaris_thornblade='ExpSword_sylvaris_thornblade',
+    ignivar_magma_breaker='ExpSword_ignivar_magma_breaker',
+    nerith_abyssal_trident='ExpSword_nerith_abyssal_trident',
+    aion_chrono_scythe='ExpSword_aion_chrono_scythe',
+    aether_flintlock='ExpGun_aether_flintlock',
+    solar_kabucha='ExpGun_kabucha_wind',
+    kabucha_wind='ExpGun_kabucha_wind',
     cryo_railgun='Wep_CryoRailgun',
-    bizarre_rifle_cyber='Wep_CryoRailgun',
+    bizarre_rifle_cyber='ExpGun_bizarre_rifle_cyber',
     soul_guitar_void='Wep_SoulGuitarVoid',
+    sylvaris_thornbow='ExpGun_sylvaris_thornbow',
+    ignivar_hellcannon='ExpGun_ignivar_hellcannon',
+    aion_chrono_pistols='ExpGun_aion_chrono_pistols',
+    veyr_singularity_cannon='ExpGun_veyr_singularity_cannon',
+    -- Sheet 27 Wearable 3D Armor Pieces, Full Sets, Shields, Hoods & Boss Relics
+    SkyHelm='Armor_Aureon_Helm',
+    CelestialPlate='Armor_Aureon_Chest',
+    StarlightGauntlets='Armor_Aureon_Gauntlets',
+    WindstriderGreaves='Armor_Aureon_Greaves',
+    skyward_helm='Armor_Cryon_Helm',
+    skyward_chest='Armor_Cryon_Chest',
+    skyward_gloves='Armor_Cryon_Gauntlets',
+    azure_gauntlets='Armor_Cryon_Gauntlets',
+    skyward_boots='Armor_Cryon_Greaves',
+    azure_greaves='Armor_Cryon_Greaves',
+    aureon_halo_helm='Armor_Aureon_Helm',
+    aureon_sunplate='Armor_Aureon_Chest',
+    aureon_gauntlets='Armor_Aureon_Gauntlets',
+    aureon_greaves='Armor_Aureon_Greaves',
+    cryon_cyber_helm='Armor_Cryon_Helm',
+    cryon_reactor_plate='Armor_Cryon_Chest',
+    cryon_gauntlets='Armor_Cryon_Gauntlets',
+    cryon_greaves='Armor_Cryon_Greaves',
+    noxar_horns='Armor_Noxar_Helm',
+    sovereign_cloak='Armor_Noxar_Chest',
+    noxar_abyss_gauntlets='Armor_Noxar_Gauntlets',
+    noxar_abyss_greaves='Armor_Noxar_Greaves',
+    sylvaris_antler_crown='Armor_Sylvaris_Helm',
+    ignivar_drake_cuirass='Armor_Sylvaris_Chest',
+    ignivar_lava_gauntlets='Armor_Sylvaris_Gauntlets',
+    sylvaris_root_greaves='Armor_Sylvaris_Greaves',
+    nerith_tidal_diadem='Armor_Nerith_Helm',
+    aion_chrono_vestment='Armor_Nerith_Chest',
+    aion_chrono_cloak='Armor_Nerith_Chest',
+    aion_astral_gauntlets='Armor_Nerith_Gauntlets',
+    nerith_abyss_greaves='Armor_Nerith_Greaves',
+    veyr_architect_crown='Armor_Veyr_Helm',
+    veyr_singularity_armor='Armor_Veyr_Chest',
+    veyr_void_gauntlets='Armor_Veyr_Gauntlets',
+    veyr_genesis_greaves='Armor_Veyr_Greaves',
+    AureonCrestShield='Acc_LeviathanShield',
+    leviathan_shield='Acc_LeviathanShield',
+    mirage_phantom_hood='Acc_MiragePhantomHood',
+    SolarBand='Relic_AureonSunRing',
+    aether_ring='Relic_AureonSunRing',
+    aureon_sun_ring='Relic_AureonSunRing',
+    cryon_frost_reactor='Relic_CryonFrostReactor',
+    noxar_eclipse_ring='Relic_NoxarEclipseRing',
+    nerith_leviathan_ring='Relic_NoxarEclipseRing',
+    CoreShardArtifact='Relic_CoreOfLight',
+    core_artifact='Relic_CoreOfLight',
+    celestial_necklace='Relic_CoreOfLight',
+    sylvaris_life_amulet='Mat_LeviathanHeart',
+    ignivar_molten_heart='Mat_SunshardCore',
+    veyr_genesis_core='Mat_CoreEssence',
+    -- Sheet 28 Crafting Materials, Gears, Microchip & Quest Relics
+    SkyIron='Mat_SkyIron',
+    upgrade_material='Mat_SkyIron',
+    SkyCrystal='Mat_SkyCrystal',
+    SunshardCore='Mat_SunshardCore',
+    CelestialFeather='Mat_CelestialFeather',
+    sylvaris_heartwood='Mat_CelestialFeather',
+    VoidShard='Mat_VoidShard',
+    VoidEssence='Mat_VoidEssence',
+    CoreEssence='Mat_CoreEssence',
+    veyr_architect_sigil='Mat_CoreEssence',
+    LeviathanHeart='Mat_LeviathanHeart',
+    nerith_pearl_core='Mat_LeviathanHeart',
+    BlueResonanceGear='Mat_BlueResonanceGear',
+    CoreGear='Mat_CoreGear',
+    AwakeningMicrochip='Mat_AwakeningMicrochip',
+    EnchantScroll='Mat_EnchantScroll',
+    CoreOfLight='Mat_CoreOfLight',
+    DawnbringerBlueprint='Mat_DawnbringerBlueprint',
+    BossKey='Mat_CitadelBossKey',
+    -- Ships
+    Ship_Dinghy='CelestialAetherGalleon',
+    Ship_Galleon='CelestialAetherGalleon',
+    Ship_Brigantine='CyberEnforcerShip',
+    Ship_Dreadnought='LeviathanHunterShip',
 }
 M.Alias=ALIAS
 function M.GetWeaponAsset(itemId)
@@ -1325,13 +1666,29 @@ function M.GetWeaponAsset(itemId)
     if VIRTUAL_SPLIT_SPECS[itemId] then return itemId end
     if ALIAS[itemId] and VIRTUAL_SPLIT_SPECS[ALIAS[itemId]] then return ALIAS[itemId] end
     local low=string.lower(tostring(itemId))
-    if low:find('dual') or low:find('cdk') or low:find('stormfang') then return 'Wep_CursedDualSkyblades'
+    if ALIAS[low] and VIRTUAL_SPLIT_SPECS[ALIAS[low]] then return ALIAS[low] end
+    if low:find('dual') and not low:find('pistol') or low:find('cdk') or low:find('stormfang') then return 'Wep_CursedDualSkyblades'
+    elseif low:find('halberd') then return 'ExpSword_sunshard_halberd'
+    elseif low:find('katana') then return 'ExpSword_cyber_katana_mk2'
+    elseif low:find('thornblade') or low:find('greatsaber') then return 'ExpSword_sylvaris_thornblade'
+    elseif low:find('magma_breaker') or low:find('warhammer') then return 'ExpSword_ignivar_magma_breaker'
+    elseif low:find('trident') then return 'ExpSword_nerith_abyssal_trident'
+    elseif low:find('scythe') then return 'ExpSword_aion_chrono_scythe'
+    elseif low:find('severance') or low:find('architect') then return 'ExpSword_architect_severance'
+    elseif low:find('frost_staff') or low:find('eternalfrost') or low:find('staff') then return 'ExpSword_eternal_frost_staff'
+    elseif low:find('thornbow') or low:find('longbow') then return 'ExpGun_sylvaris_thornbow'
+    elseif low:find('hellcannon') then return 'ExpGun_ignivar_hellcannon'
+    elseif low:find('chrono_pistol') then return 'ExpGun_aion_chrono_pistols'
+    elseif low:find('singularity_cannon') then return 'ExpGun_veyr_singularity_cannon'
+    elseif low:find('kabucha') then return 'ExpGun_kabucha_wind'
+    elseif low:find('flintlock') then return 'ExpGun_aether_flintlock'
+    elseif low:find('bizarre') or low:find('rifle') then return 'ExpGun_bizarre_rifle_cyber'
     elseif low:find('dagger') or low:find('yamo') then return 'Wep_CursedBladeLeft'
     elseif low:find('aureon') or low:find('celestial') then return 'Wep_CursedBladeRight'
-    elseif low:find('frost') or low:find('cryon') or low:find('staff') then return 'Wep_CryonFrostblade'
-    elseif low:find('noxar') or low:find('greatsword') or low:find('architect') or low:find('abyss') then return 'Wep_NoxarGreatsword'
+    elseif low:find('frostblade') or low:find('cryon') then return 'Wep_CryonFrostblade'
+    elseif low:find('noxar') or low:find('greatsword') or low:find('abyss') then return 'Wep_NoxarGreatsword'
     elseif low:find('guitar') then return 'Wep_SoulGuitarVoid'
-    elseif low:find('railgun') or low:find('rifle') or low:find('flintlock') or low:find('kabucha') then return 'Wep_CryoRailgun'
+    elseif low:find('railgun') then return 'Wep_CryoRailgun'
     end
     return 'Wep_Dawnbringer'
 end
@@ -1370,7 +1727,7 @@ function M.BuildPriority(name,priorityDist,progress)
     end,debug.traceback)
     if M.ActiveEditable then M.ActiveEditable:Destroy();M.ActiveEditable=nil end
     if not ok and M.ActiveModel then M.ActiveModel:Destroy()end
-    M.ActiveModel=nil;M.Building=false
+    M.ActiveBuildName=nil;M.ActiveModel=nil;M.Building=false
     job.Done=true
     if #M.WaitQueue>0 then
         local bestIdx,bestPrio=1,math.huge
@@ -2368,6 +2725,56 @@ function M.Pose(model,clip,time,dynCtx)
             bone.Transform=(blend<1 and fromCF) and fromCF:Lerp(target,blend) or target
         end
     end
+end
+function M.EvictModel(name)
+    name=ALIAS[name]or name
+    if not name or (M.Building and M.ActiveBuildName==name) then return false end
+    if M.Jobs[name] and not M.Jobs[name].Done then return false end
+    local mdl=M.Models[name]
+    M.Models[name]=nil;M.Jobs[name]=nil;M.ModelContents[name]=nil
+    local surfSet=M.ModelSurfaces[name];M.ModelSurfaces[name]=nil
+    local imgSet=M.ModelImages[name];M.ModelImages[name]=nil
+    if mdl then
+        boneCache[mdl]=nil;fxCache[mdl]=nil;poseState[mdl]=nil
+        pcall(mdl.Destroy,mdl)
+    end
+    if surfSet then
+        for skey in pairs(surfSet) do
+            local stillUsed=false
+            if M.ActiveBuildName and M.ModelSurfaces[M.ActiveBuildName] and M.ModelSurfaces[M.ActiveBuildName][skey] then
+                stillUsed=true
+            else
+                for otherName in pairs(M.Models) do
+                    if M.ModelSurfaces[otherName] and M.ModelSurfaces[otherName][skey] then
+                        stillUsed=true;break
+                    end
+                end
+            end
+            if not stillUsed then
+                local sa=M.Surfaces[skey];M.Surfaces[skey]=nil
+                if sa then pcall(sa.Destroy,sa) end
+            end
+        end
+    end
+    if imgSet then
+        for iname in pairs(imgSet) do
+            local stillUsed=false
+            if M.ActiveBuildName and M.ModelImages[M.ActiveBuildName] and M.ModelImages[M.ActiveBuildName][iname] then
+                stillUsed=true
+            else
+                for otherName in pairs(M.Models) do
+                    if M.ModelImages[otherName] and M.ModelImages[otherName][iname] then
+                        stillUsed=true;break
+                    end
+                end
+            end
+            if not stillUsed then
+                local im=M.Images[iname];M.Images[iname]=nil
+                if im then pcall(im.Destroy,im) end
+            end
+        end
+    end
+    return true
 end
 M.CanonicalClips={'Idle','Walk','Run','Attack','Skill','ElementalSurge','HeroicKata','UltimateAwakening'}
 M.CrossfadeDuration=0.12

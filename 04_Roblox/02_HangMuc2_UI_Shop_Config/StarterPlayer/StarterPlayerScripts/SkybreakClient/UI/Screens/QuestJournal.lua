@@ -117,7 +117,7 @@ local function buildCommanderLyra3DBust(parent, pos, size)
     UIFactory.Stroke(pill, colors.ACCENT_GOLD, 1.2, 0.15)
     UIFactory.Label(pill, {
         Name = "LiveTag",
-        Text = "• 3D LIVE - CHỈ HUY",
+        Text = I18n.Pick("• 3D LIVE - CHỈ HUY", "• 3D LIVE - COMMANDER"),
         Size = UDim2.fromScale(1, 1),
         TextSize = 8,
         TextColor = colors.ACCENT_GOLD_BRIGHT,
@@ -149,6 +149,76 @@ local function buildCommanderLyra3DBust(parent, pos, size)
     return frame, conn
 end
 
+local function fireQuestUIRemote(cmd, payload)
+    local sharedRemotes = Shared:FindFirstChild("Remotes")
+    if sharedRemotes then
+        local r = sharedRemotes:FindFirstChild("UIRequest") or sharedRemotes:FindFirstChild("UICommand")
+        if r then
+            r:FireServer(cmd, payload or {})
+            return true
+        end
+    end
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if remotes then
+        local r = remotes:FindFirstChild("UIRequest") or remotes:FindFirstChild("UICommand")
+        if r then
+            r:FireServer(cmd, payload or {})
+            return true
+        end
+    end
+    return false
+end
+
+local function formatLevelBracket(q, nextEntry)
+    local minLv = tonumber(q.LevelReq or q.Level) or 1
+    if (q.Category or "Main") == "Main" and nextEntry and nextEntry.config then
+        local nextLv = tonumber(nextEntry.config.LevelReq or nextEntry.config.Level)
+        if nextLv and nextLv > minLv then
+            return string.format("LV. %d - %d", minLv, nextLv - 1)
+        end
+    end
+    return string.format("LV. %d+", minLv)
+end
+
+local function getCleanQuestBaseTitle(q)
+    return I18n.QuestTitle(q, q and (q.Title or q.Name or q.Id) or "")
+end
+
+local function summarizeQuestObjectives(q, snap, isCompleted)
+    local isLiveActive = (snap and snap.quest and snap.quest.activeId == q.Id)
+    local curTotal, maxTotal = 0, 0
+    local parts = {}
+    local qDesc = I18n.QuestDesc(q, q and q.Description or "")
+
+    if isLiveActive and snap.quest.objectives and #snap.quest.objectives > 0 then
+        for idx, o in ipairs(snap.quest.objectives) do
+            local tgt = math.max(1, tonumber(o.target) or 1)
+            local cur = isCompleted and tgt or math.clamp(tonumber(o.current) or 0, 0, tgt)
+            curTotal += cur
+            maxTotal += tgt
+            table.insert(parts, string.format("%s (%d/%d)", I18n.QuestObjectiveLabel(q, o, idx), cur, tgt))
+        end
+    elseif q.Objectives and #q.Objectives > 0 then
+        for idx, o in ipairs(q.Objectives) do
+            local tgt = math.max(1, tonumber(o.Target or o.Goal or o.Count) or 1)
+            local cur = isCompleted and tgt or 0
+            curTotal += cur
+            maxTotal += tgt
+            table.insert(parts, string.format("%s (%d/%d)", I18n.QuestObjectiveLabel(q, o, idx), cur, tgt))
+        end
+    else
+        maxTotal = 1
+        curTotal = isCompleted and 1 or 0
+        if qDesc ~= "" then
+            table.insert(parts, qDesc)
+        end
+    end
+
+    maxTotal = math.max(1, maxTotal)
+    local summaryText = #parts > 0 and table.concat(parts, " • ") or qDesc
+    return curTotal, maxTotal, summaryText
+end
+
 local function formatRewardSummary(rewards)
     rewards = rewards or {}
     local parts = {}
@@ -162,18 +232,22 @@ local function formatRewardSummary(rewards)
         table.insert(parts, "+" .. UIFactory.FormatNumber(rewards.CoreShards) .. " Shards")
     end
     for _, itemReward in ipairs(rewards.Items or {}) do
-        table.insert(parts, string.format("%s x%d", itemReward.Id, itemReward.Count or 1))
+        local itemLabel = I18n.GetItemDisplayName(itemReward.Id, itemReward.Id)
+        table.insert(parts, string.format("%s x%d", itemLabel, itemReward.Count or 1))
     end
     return #parts > 0 and table.concat(parts, " • ") or "+EXP • +Gold"
 end
 
-function QuestJournal.Build(parent)
+function QuestJournal.Build(parent, responsiveState)
     QuestJournal.Cleanup()
     local colors = Theme.Colors
     local snap = Store.GetSnapshot()
     local view = Store.GetView()
     local activeCat = view.selectedQuestCategory or "Main"
     local selectedId = view.selectedQuestId or (snap.quest and snap.quest.activeId) or "Q01"
+    local cam = workspace.CurrentCamera
+    local vp = cam and cam.ViewportSize or Vector2.new(1366, 768)
+    local isPortrait = (responsiveState and responsiveState.isPortrait == true) or (vp.Y > vp.X and vp.X < 680)
 
     local root = UIFactory.Create("Frame", parent, {
         Name = "QuestJournalScreen",
@@ -194,13 +268,13 @@ function QuestJournal.Build(parent)
         end,
     })
 
-    -- Left Panel (55% width): Commander Lyra 3D Quick-Repeat Board (Figma SKYBREAK_NPC_05 Left Panel)
+    -- Left Panel (55% width on landscape, top half on portrait): Commander Lyra 3D Quick-Repeat Board
     local listPanel = PremiumPanel.Create(root, {
         name = "QuestListPanel",
         variant = "gold",
         title = I18n.Pick("CHỈ HUY LYRA & BẢNG NHIỆM VỤ ĐẢO [L]", "COMMANDER LYRA & QUICK-REPEAT QUEST BOARD [L]"),
-        position = UDim2.fromOffset(16, 74),
-        size = UDim2.new(0.55, -12, 1, -88),
+        position = isPortrait and UDim2.fromOffset(10, 68) or UDim2.fromOffset(16, 74),
+        size = isPortrait and UDim2.new(1, -20, 0.54, -40) or UDim2.new(0.55, -12, 1, -88),
     })
 
     -- Top Hero Commander Lyra 3D Card
@@ -263,10 +337,7 @@ function QuestJournal.Build(parent)
         onActivated = function()
             local nextVal = not (Store.Session.autoRepeatQuest == true)
             Store.Session.autoRepeatQuest = nextVal
-            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotes and remotes:FindFirstChild("UIRequest") then
-                remotes.UIRequest:FireServer("SetAutoRepeatQuest", { enabled = nextVal, questId = selectedId })
-            end
+            fireQuestUIRemote("RepeatQuest", { enabled = nextVal, questId = selectedId })
             Store.ShowToast(
                 nextVal and I18n.Pick("Đã BẬT Tự Lặp Nhiệm Vụ 1-Click!", "Enabled 1-Click Auto-Repeat!")
                     or I18n.Pick("Đã TẮT Tự Lặp Nhiệm Vụ.", "Disabled Auto-Repeat."),
@@ -304,7 +375,7 @@ function QuestJournal.Build(parent)
     UIFactory.ListLayout(catTabs, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
 
     local categories = {
-        { id = "Main", label = I18n.Pick("CHÍNH TUYẾN", "MAIN STORY") },
+        { id = "Main", label = I18n.Pick("CHÍNH TUYẾN (30)", "MAIN STORY (30)") },
         { id = "Side", label = I18n.Pick("BÃI QUÁI ĐẢO", "ISLAND PATROL") },
         { id = "Daily", label = I18n.Pick("HẰNG NGÀY", "DAILY") },
         { id = "BossHunt", label = I18n.Pick("SĂN BOSS", "BOSS HUNTS") },
@@ -341,41 +412,38 @@ function QuestJournal.Build(parent)
         BorderSizePixel = 0,
         ScrollBarThickness = 5,
         ScrollBarImageColor3 = colors.ACCENT_SAPPHIRE,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        CanvasSize = UDim2.fromOffset(0, 0),
     })
     UIFactory.ListLayout(questScroll, Enum.FillDirection.Vertical, 8, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top)
 
     local questsInCat = QuestController.GetQuestsByCategory(activeCat)
     local selectedQuestEntry = questsInCat[1]
+    local selectedQuestBracket = "LV. 1+"
 
     for idx, entry in ipairs(questsInCat) do
         local q = entry.config
+        local nextEntry = questsInCat[idx + 1]
+        local bracketText = formatLevelBracket(q, nextEntry)
         if q.Id == selectedId then
             selectedQuestEntry = entry
+            selectedQuestBracket = bracketText
+        elseif idx == 1 then
+            selectedQuestBracket = bracketText
         end
         local isSelected = (q.Id == selectedId)
         local isTracked = entry.isTracked == true
-        local isLiveActive = (snap.quest and snap.quest.activeId == q.Id)
+        local isCompleted = (entry.status == "Completed")
+        local isLocked = (entry.status == "Locked")
 
-        local curProg, maxProg = 0, 1
-        local firstObjText = q.Description or ""
-        if isLiveActive and snap.quest.objectives and snap.quest.objectives[1] then
-            local o = snap.quest.objectives[1]
-            curProg = tonumber(o.current) or 0
-            maxProg = math.max(1, tonumber(o.target) or 1)
-            firstObjText = tostring(o.label or firstObjText)
-        elseif q.Objectives and q.Objectives[1] then
-            local o = q.Objectives[1]
-            curProg = 0
-            maxProg = math.max(1, tonumber(o.Target) or 1)
-            firstObjText = tostring(o.Label or firstObjText)
-        end
+        local curProg, maxProg, objSummaryText = summarizeQuestObjectives(q, snap, isCompleted)
         local pct = math.clamp(math.floor((curProg / maxProg) * 100), 0, 100)
 
         local qCard = UIFactory.Create("TextButton", questScroll, {
             Name = "QuestItem_" .. q.Id,
             Size = UDim2.new(1, -8, 0, 102),
             BackgroundColor3 = colors.BG_900,
-            BackgroundTransparency = 0.06,
+            BackgroundTransparency = isLocked and 0.22 or 0.06,
             BorderSizePixel = 0,
             Text = "",
             AutoButtonColor = false,
@@ -385,19 +453,19 @@ function QuestJournal.Build(parent)
         UIFactory.Corner(qCard, Theme.Radius.Medium)
         UIFactory.Stroke(
             qCard,
-            (isTracked or isSelected) and colors.ACCENT_GOLD or colors.STROKE_STEEL,
+            isCompleted and colors.SUCCESS or ((isTracked or isSelected) and colors.ACCENT_GOLD or colors.STROKE_STEEL),
             (isTracked or isSelected) and 1.8 or 1.1,
-            (isTracked or isSelected) and 0.08 or 0.35
+            (isTracked or isSelected or isCompleted) and 0.08 or 0.35
         )
         UIFactory.Gradient(qCard, colors.BG_700, colors.BG_900, 90)
 
         UIFactory.Label(qCard, {
             Name = "QTitle",
-            Text = string.format("%s • %s (LV. %d+)", q.Id, UIFactory.Upper(q.Name), tonumber(q.LevelReq) or 1),
+            Text = string.format("%s • %s [%s]", q.Id, UIFactory.Upper(getCleanQuestBaseTitle(q)), bracketText),
             Position = UDim2.fromOffset(12, 7),
             Size = UDim2.new(1, -24, 0, 18),
             TextSize = 12,
-            TextColor = (isTracked or isSelected) and colors.ACCENT_GOLD_BRIGHT or colors.TEXT_PRIMARY,
+            TextColor = isCompleted and colors.SUCCESS or ((isTracked or isSelected) and colors.ACCENT_GOLD_BRIGHT or colors.TEXT_PRIMARY),
             Bold = true,
             Truncate = Enum.TextTruncate.AtEnd,
             Wrapped = false,
@@ -406,7 +474,7 @@ function QuestJournal.Build(parent)
 
         UIFactory.Label(qCard, {
             Name = "QTarget",
-            Text = I18n.Pick("Mục tiêu: ", "Target: ") .. firstObjText,
+            Text = I18n.Pick("Mục tiêu: ", "Objectives: ") .. objSummaryText,
             Position = UDim2.fromOffset(12, 26),
             Size = UDim2.new(1, -24, 0, 16),
             TextSize = 11,
@@ -434,22 +502,31 @@ function QuestJournal.Build(parent)
             type = "Energy",
             current = curProg,
             max = maxProg,
-            customText = I18n.Pick(
-                string.format("TIẾN ĐỘ: %d / %d MỤC TIÊU (%d%%)", curProg, maxProg, pct),
-                string.format("PROGRESS: %d / %d (%d%%)", curProg, maxProg, pct)
-            ),
+            customText = isCompleted
+                and I18n.Pick("HOÀN THÀNH 100% ✓", "COMPLETED 100% ✓")
+                or I18n.Pick(
+                    string.format("TIẾN ĐỘ: %d / %d (%d%%)", curProg, maxProg, pct),
+                    string.format("PROGRESS: %d / %d (%d%%)", curProg, maxProg, pct)
+                ),
             position = UDim2.fromOffset(12, 66),
             size = UDim2.new(0.64, -18, 0, 26),
             textSize = 10,
             zIndex = 5,
         })
 
+        local btnLabel = isTracked
+            and I18n.Pick(string.format("ĐANG THEO DÕI (%d/%d)", curProg, maxProg), string.format("TRACKING (%d/%d)", curProg, maxProg))
+            or (isCompleted
+                and I18n.Pick("THEO DÕI LẠI ✓", "RE-TRACK ✓")
+                or (isLocked
+                    and I18n.Pick(string.format("CẦN LV. %d+", entry.levelReq or 1), string.format("NEED LV. %d+", entry.levelReq or 1))
+                    or I18n.Pick("THEO DÕI [L]", "TRACK QUEST [L]")))
+        local btnVar = isTracked and "primary" or ((isCompleted or isLocked) and "secondary" or "gold")
+
         PremiumButton.Create(qCard, {
             name = "QActionBtn",
-            label = isTracked
-                and I18n.Pick(string.format("ĐANG NHẬN (%d/%d)", curProg, maxProg), string.format("ACTIVE (%d/%d)", curProg, maxProg))
-                or I18n.Pick("NHẬN NHIỆM VỤ", "ACCEPT QUEST"),
-            variant = isTracked and "primary" or "gold",
+            label = btnLabel,
+            variant = btnVar,
             position = UDim2.new(0.64, 4, 0, 64),
             size = UDim2.new(0.36, -16, 0, 30),
             textSize = 11,
@@ -469,22 +546,22 @@ function QuestJournal.Build(parent)
     end
     questScroll.CanvasSize = UDim2.fromOffset(0, #questsInCat * 110 + 14)
 
-    -- Right Quest Inspector & Expedition Supply Panel (45% width)
+    -- Right Quest Inspector & Expedition Supply Panel (45% width on landscape, bottom half on portrait)
     local detailPanel = PremiumPanel.Create(root, {
         name = "QuestJournal",
         variant = "gold",
-        title = selectedQuestEntry and (selectedQuestEntry.config.Id .. " • " .. UIFactory.Upper(selectedQuestEntry.config.Name)) or I18n.Pick("CHỌN NHIỆM VỤ", "SELECT A QUEST"),
+        title = selectedQuestEntry and (selectedQuestEntry.config.Id .. " • " .. UIFactory.Upper(getCleanQuestBaseTitle(selectedQuestEntry.config))) or I18n.Pick("CHỌN NHIỆM VỤ", "SELECT A QUEST"),
         subtitle = selectedQuestEntry
             and string.format(
-                "%s: %s  •  %s: Lv.%d",
-                I18n.Pick("Khu vực", "Realm"),
-                tostring(selectedQuestEntry.config.RealmId or "SkyHub"),
-                I18n.Pick("Cấp khuyến nghị", "Recommended"),
-                selectedQuestEntry.config.LevelReq or 1
+                "%s: %s  •  %s: %s",
+                I18n.Pick("Đảo / Vùng", "Island / Realm"),
+                tostring(selectedQuestEntry.config.IslandId or selectedQuestEntry.config.RealmId or "SkyHub"),
+                I18n.Pick("Khung cấp độ", "Level Bracket"),
+                selectedQuestBracket
             )
             or "",
-        position = UDim2.new(0.55, 10, 0, 74),
-        size = UDim2.new(0.45, -26, 1, -88),
+        position = isPortrait and UDim2.new(0, 10, 0.54, 34) or UDim2.new(0.55, 10, 0, 74),
+        size = isPortrait and UDim2.new(1, -20, 0.46, -44) or UDim2.new(0.45, -26, 1, -88),
     })
 
     local contentLbl = nil
@@ -493,26 +570,42 @@ function QuestJournal.Build(parent)
 
     if selectedQuestEntry then
         local q = selectedQuestEntry.config
+        local qDesc = I18n.QuestDesc(q, q.Description or "")
+        local selCompleted = (selectedQuestEntry.status == "Completed")
         local objLines = {}
         local isLiveActive = (snap.quest and snap.quest.activeId == q.Id)
-        if isLiveActive and snap.quest.objectives then
-            for _, o in ipairs(snap.quest.objectives) do
-                local done = (o.current or 0) >= (o.target or 1)
+        if isLiveActive and snap.quest.objectives and #snap.quest.objectives > 0 then
+            for idx, o in ipairs(snap.quest.objectives) do
+                local tgt = math.max(1, tonumber(o.target) or 1)
+                local cur = selCompleted and tgt or (tonumber(o.current) or 0)
+                local done = cur >= tgt
                 table.insert(
                     objLines,
                     string.format(
                         "<font color='%s'><b>%s</b></font> %s   <b>%d / %d</b>",
                         done and "#5ED79E" or "#E4B863",
                         done and "[x]" or "[ ]",
-                        o.label,
-                        o.current or 0,
-                        o.target or 1
+                        I18n.QuestObjectiveLabel(q, o, idx),
+                        cur,
+                        tgt
                     )
                 )
             end
         else
-            for _, o in ipairs(q.Objectives or {}) do
-                table.insert(objLines, string.format("<font color='#A8B9D1'><b>[ ]</b></font> %s   <b>0 / %d</b>", o.Label, o.Target or 1))
+            for idx, o in ipairs(q.Objectives or {}) do
+                local tgt = math.max(1, tonumber(o.Target or o.Goal or o.Count) or 1)
+                local cur = selCompleted and tgt or 0
+                table.insert(
+                    objLines,
+                    string.format(
+                        "<font color='%s'><b>%s</b></font> %s   <b>%d / %d</b>",
+                        selCompleted and "#5ED79E" or "#A8B9D1",
+                        selCompleted and "[x]" or "[ ]",
+                        I18n.QuestObjectiveLabel(q, o, idx),
+                        cur,
+                        tgt
+                    )
+                )
             end
         end
 
@@ -522,79 +615,78 @@ function QuestJournal.Build(parent)
             Name = "Content",
             Text = string.format(
                 "%s\n\n<font color='#E4B863'><b>%s</b></font>\n%s\n\n<font color='#5ED79E'><b>%s</b></font>\n%s",
-                q.Description or "",
+                qDesc,
                 I18n.Pick("MỤC TIÊU NHIỆM VỤ", "OBJECTIVES"),
                 table.concat(objLines, "\n"),
                 I18n.Pick("PHẦN THƯỞNG HOÀN THÀNH (SERVER CẤP)", "COMPLETION REWARDS (SERVER GRANTED)"),
                 rewardLineText
             ),
             Position = UDim2.fromOffset(18, 68),
-            Size = UDim2.new(1, -36, 1, -246),
-            TextSize = 13,
+            Size = UDim2.new(1, -36, 1, isPortrait and -124 or -246),
+            TextSize = isPortrait and 11 or 13,
             TextColor = colors.TEXT_PRIMARY,
             YAlign = Enum.TextYAlignment.Top,
             RichText = true,
         })
 
         -- Expedition Supply Crate Box (from SKYBREAK_NPC_05 bottom-left card!)
-        local supplyBox = UIFactory.Create("Frame", detailPanel, {
-            Name = "ExpeditionSupplyCard",
-            Position = UDim2.new(0, 16, 1, -168),
-            Size = UDim2.new(1, -32, 0, 96),
-            BackgroundColor3 = colors.BG_900,
-            BorderSizePixel = 0,
-            ZIndex = 4,
-        })
-        UIFactory.Corner(supplyBox, Theme.Radius.Medium)
-        UIFactory.Stroke(supplyBox, colors.ACCENT_SAPPHIRE, 1.3, 0.25)
+        if not isPortrait then
+            local supplyBox = UIFactory.Create("Frame", detailPanel, {
+                Name = "ExpeditionSupplyCard",
+                Position = UDim2.new(0, 16, 1, -168),
+                Size = UDim2.new(1, -32, 0, 96),
+                BackgroundColor3 = colors.BG_900,
+                BorderSizePixel = 0,
+                ZIndex = 4,
+            })
+            UIFactory.Corner(supplyBox, Theme.Radius.Medium)
+            UIFactory.Stroke(supplyBox, colors.ACCENT_SAPPHIRE, 1.3, 0.25)
 
-        UIFactory.Label(supplyBox, {
-            Name = "SupplyTitle",
-            Text = I18n.Pick("TIẾP TẾ ĐỒNG MINH VIỄN CHINH (MỖI NGÀY)", "ALLIED EXPEDITION SUPPLY CRATE"),
-            Position = UDim2.fromOffset(12, 7),
-            Size = UDim2.new(1, -24, 0, 18),
-            TextSize = 12,
-            TextColor = colors.ACCENT_GOLD_BRIGHT,
-            Bold = true,
-            Wrapped = false,
-            ZIndex = 5,
-        })
-        UIFactory.Label(supplyBox, {
-            Name = "SupplyReward",
-            Text = I18n.Pick("Thưởng quân nhu: Điểm Danh + Gold + Core Shards + Hồi phục", "Supply Bonus: Daily Gold + Core Shards + Vitality"),
-            Position = UDim2.fromOffset(12, 27),
-            Size = UDim2.new(1, -24, 0, 16),
-            TextSize = 11,
-            TextColor = colors.SUCCESS,
-            Bold = true,
-            Wrapped = false,
-            ZIndex = 5,
-        })
-        PremiumButton.Create(supplyBox, {
-            name = "ClaimSupplyBtn",
-            icon = "Gold",
-            label = I18n.Pick("NHẬN TIẾP TẾ NGAY", "CLAIM SUPPLY CRATE"),
-            variant = "gold",
-            position = UDim2.fromOffset(12, 50),
-            size = UDim2.new(1, -24, 0, 34),
-            textSize = 11,
-            minTextSize = 9,
-            zIndex = 6,
-            onActivated = function()
-                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-                if remotes and remotes:FindFirstChild("UIRequest") then
-                    remotes.UIRequest:FireServer("ClaimDailyReward", {})
-                end
-                Store.ShowToast(I18n.Pick("Đã gửi yêu cầu nhận Quân Nhu Tiếp Tế!", "Requested Allied Expedition Supply!"), "success", 2.0)
-            end,
-        })
+            UIFactory.Label(supplyBox, {
+                Name = "SupplyTitle",
+                Text = I18n.Pick("TIẾP TẾ ĐỒNG MINH VIỄN CHINH (MỖI NGÀY)", "ALLIED EXPEDITION SUPPLY CRATE"),
+                Position = UDim2.fromOffset(12, 7),
+                Size = UDim2.new(1, -24, 0, 18),
+                TextSize = 12,
+                TextColor = colors.ACCENT_GOLD_BRIGHT,
+                Bold = true,
+                Wrapped = false,
+                ZIndex = 5,
+            })
+            UIFactory.Label(supplyBox, {
+                Name = "SupplyReward",
+                Text = I18n.Pick("Thưởng quân nhu: Điểm Danh + Gold + Core Shards + Hồi phục", "Supply Bonus: Daily Gold + Core Shards + Vitality"),
+                Position = UDim2.fromOffset(12, 27),
+                Size = UDim2.new(1, -24, 0, 16),
+                TextSize = 11,
+                TextColor = colors.SUCCESS,
+                Bold = true,
+                Wrapped = false,
+                ZIndex = 5,
+            })
+            PremiumButton.Create(supplyBox, {
+                name = "ClaimSupplyBtn",
+                icon = "Gold",
+                label = I18n.Pick("NHẬN TIẾP TẾ NGAY", "CLAIM SUPPLY CRATE"),
+                variant = "gold",
+                position = UDim2.fromOffset(12, 50),
+                size = UDim2.new(1, -24, 0, 34),
+                textSize = 11,
+                minTextSize = 9,
+                zIndex = 6,
+                onActivated = function()
+                    fireQuestUIRemote("ClaimDailyReward", {})
+                    Store.ShowToast(I18n.Pick("Đã gửi yêu cầu nhận Quân Nhu Tiếp Tế!", "Requested Allied Expedition Supply!"), "success", 2.0)
+                end,
+            })
+        end
 
         local _, tApi = PremiumButton.Create(detailPanel, {
             name = "TrackQuestButton",
             icon = "Compass",
             label = selectedQuestEntry.isTracked
-                and I18n.Pick("ĐANG THEO DÕI TRÊN HUD & MINIMAP", "CURRENTLY TRACKED ON HUD")
-                or I18n.Pick("GHIM THEO DÕI LÊN HUD [L]", "TRACK QUEST ON HUD [L]"),
+                and I18n.Pick("ĐANG THEO DÕI TRÊN HUD & MINIMAP ✓", "CURRENTLY TRACKED ON HUD ✓")
+                or I18n.Pick("THEO DÕI LÊN HUD & LA BÀN [L]", "TRACK QUEST ON HUD [L]"),
             variant = selectedQuestEntry.isTracked and "gold" or "primary",
             position = UDim2.new(0, 16, 1, -60),
             size = UDim2.new(0.56, -20, 0, 44),
@@ -618,7 +710,7 @@ function QuestJournal.Build(parent)
             onActivated = function()
                 QuestController.OpenDialogue(
                     I18n.Pick("LYRA • CHỈ HUY SKY HUB", "LYRA • SKY HUB COMMANDER"),
-                    q.Description,
+                    qDesc,
                     I18n.Pick("Người Giữ Cổ Ngữ • " .. q.Id, "Lorekeeper of the Core • " .. q.Id),
                     q.Id
                 )
@@ -632,13 +724,19 @@ function QuestJournal.Build(parent)
         ContentLabel = contentLbl,
         TrackBtnApi = trackBtnApi,
         SelectedQuestConfig = selectedQuestEntry and selectedQuestEntry.config or nil,
+        SelectedQuestStatus = selectedQuestEntry and selectedQuestEntry.status or "Available",
         RewardLineText = rewardLineText,
+        LastLang = I18n.GetLanguage(),
     }
     return root
 end
 
 function QuestJournal.Update(snap)
     snap = snap or Store.GetSnapshot()
+    if QuestJournal.Refs.LastLang and QuestJournal.Refs.LastLang ~= I18n.GetLanguage() then
+        ScreenRouter.Navigate(UIState.Screens.QuestJournal, { forceRebuild = true, replace = true })
+        return
+    end
     if QuestJournal.Refs.HeaderRefs and QuestJournal.Refs.HeaderRefs.UpdateCurrencies then
         QuestJournal.Refs.HeaderRefs.UpdateCurrencies(snap)
     end
@@ -646,29 +744,44 @@ function QuestJournal.Update(snap)
     if q and QuestJournal.Refs.ContentLabel and QuestJournal.Refs.ContentLabel.Parent then
         local objLines = {}
         local isLiveActive = (snap and snap.quest and snap.quest.activeId == q.Id)
-        if isLiveActive and snap.quest.objectives then
-            for _, o in ipairs(snap.quest.objectives) do
-                local done = (o.current or 0) >= (o.target or 1)
+        local selCompleted = (QuestJournal.Refs.SelectedQuestStatus == "Completed")
+        if isLiveActive and snap.quest.objectives and #snap.quest.objectives > 0 then
+            for idx, o in ipairs(snap.quest.objectives) do
+                local tgt = math.max(1, tonumber(o.target) or 1)
+                local cur = selCompleted and tgt or (tonumber(o.current) or 0)
+                local done = cur >= tgt
                 table.insert(
                     objLines,
                     string.format(
                         "<font color='%s'><b>%s</b></font> %s   <b>%d / %d</b>",
                         done and "#5ED79E" or "#E4B863",
                         done and "[x]" or "[ ]",
-                        o.label,
-                        o.current or 0,
-                        o.target or 1
+                        I18n.QuestObjectiveLabel(q, o, idx),
+                        cur,
+                        tgt
                     )
                 )
             end
         else
-            for _, o in ipairs(q.Objectives or {}) do
-                table.insert(objLines, string.format("<font color='#A8B9D1'><b>[ ]</b></font> %s   <b>0 / %d</b>", o.Label, o.Target or 1))
+            for idx, o in ipairs(q.Objectives or {}) do
+                local tgt = math.max(1, tonumber(o.Target or o.Goal or o.Count) or 1)
+                local cur = selCompleted and tgt or 0
+                table.insert(
+                    objLines,
+                    string.format(
+                        "<font color='%s'><b>%s</b></font> %s   <b>%d / %d</b>",
+                        selCompleted and "#5ED79E" or "#A8B9D1",
+                        selCompleted and "[x]" or "[ ]",
+                        I18n.QuestObjectiveLabel(q, o, idx),
+                        cur,
+                        tgt
+                    )
+                )
             end
         end
         QuestJournal.Refs.ContentLabel.Text = string.format(
             "%s\n\n<font color='#E4B863'><b>%s</b></font>\n%s\n\n<font color='#5ED79E'><b>%s</b></font>\n%s",
-            q.Description or "",
+            I18n.QuestDesc(q, q.Description or ""),
             I18n.Pick("MỤC TIÊU NHIỆM VỤ", "OBJECTIVES"),
             table.concat(objLines, "\n"),
             I18n.Pick("PHẦN THƯỞNG HOÀN THÀNH (SERVER CẤP)", "COMPLETION REWARDS (SERVER GRANTED)"),
@@ -677,8 +790,8 @@ function QuestJournal.Update(snap)
         if QuestJournal.Refs.TrackBtnApi then
             QuestJournal.Refs.TrackBtnApi:Update({
                 label = isLiveActive
-                    and I18n.Pick("* ĐANG THEO DÕI TRÊN HUD & MINIMAP", "* CURRENTLY TRACKED ON HUD")
-                    or I18n.Pick("GHIM THEO DÕI LÊN HUD [L]", "TRACK QUEST ON HUD [L]"),
+                    and I18n.Pick("ĐANG THEO DÕI TRÊN HUD & MINIMAP ✓", "CURRENTLY TRACKED ON HUD ✓")
+                    or I18n.Pick("THEO DÕI LÊN HUD & LA BÀN [L]", "TRACK QUEST ON HUD [L]"),
                 variant = isLiveActive and "gold" or "primary",
             })
         end

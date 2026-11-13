@@ -17,7 +17,10 @@ local SpritePlayer = require(Shared:WaitForChild("SpritePlayer"))
 local AssetManifest = require(Shared:WaitForChild("AssetManifest"))
 local MotionTokens = require(Shared:WaitForChild("MotionTokens"))
 
-local skybreakGui = playerGui:WaitForChild("SkybreakGui", 10)
+local skybreakGui = playerGui:FindFirstChild("SkybreakUI")
+	or playerGui:FindFirstChild("SkybreakGui")
+	or playerGui:WaitForChild("SkybreakUI", 5)
+	or playerGui:FindFirstChild("SkybreakGui")
 if not skybreakGui then
 	return
 end

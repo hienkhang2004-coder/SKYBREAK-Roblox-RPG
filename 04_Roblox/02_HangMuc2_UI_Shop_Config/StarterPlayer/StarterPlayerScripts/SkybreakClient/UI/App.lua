@@ -53,8 +53,366 @@ local App = {
     ToastApi = nil,
     ModalApi = nil,
     DialogueApi = nil,
+    OnboardingModal = nil,
+    LastStructuredDialogueClock = 0,
     Connections = {},
 }
+
+local ORIGIN_CLASSES = {
+    {
+        id = "SkyGuardian",
+        name = "Sky Guardian",
+        roleVi = "Tank / Đại Kiếm Thánh Quang",
+        roleEn = "Tank / Solar Greatsword",
+        bonusVi = "+25% HP, +20% DEF",
+        bonusEn = "+25% HP, +20% DEF",
+        descVi = "Vệ Thần Bầu Trời khoác giáp thánh quang, vung đại kiếm chém sóng kiếm vàng và bật khiên Aegis bất hoại che chở đồng đội.",
+        descEn = "Solar-armored vanguard wielding a radiant greatsword, golden shockwaves, and unbreakable Aegis shields.",
+        accent = Color3.fromRGB(246, 198, 86),
+        badgeVi = "TANK • ĐẠI KIẾM",
+        badgeEn = "TANK • GREATSWORD",
+    },
+    {
+        id = "ThunderStriker",
+        name = "Thunder Striker",
+        roleVi = "Sát Thủ Lôi Đình / Song Đao",
+        roleEn = "Lightning Assassin / Twinblades",
+        bonusVi = "+10% ATK, Tốc Chạy 22",
+        bonusEn = "+10% ATK, 22 WalkSpeed",
+        descVi = "Thích khách tốc độ chớp giật lướt xuyên chiến trường, liên hoàn song đao sấm sét dồn sát thương chí mạng cực nhanh.",
+        descEn = "Hyper-mobile storm assassin dashing across battlefields to unleash rapid twinblade lightning crits.",
+        accent = Color3.fromRGB(88, 214, 255),
+        badgeVi = "SÁT THỦ • SONG ĐAO",
+        badgeEn = "ASSASSIN • TWINBLADES",
+    },
+    {
+        id = "ArcaneMage",
+        name = "Arcane Mage",
+        roleVi = "Pháp Sư Tinh Cầu / Tầm Xa AoE",
+        roleEn = "Astral Battlemage / Ranged AoE",
+        bonusVi = "+15% ATK, Phép Tầm Xa",
+        bonusEn = "+15% ATK, Ranged Spellcraft",
+        descVi = "Pháp sư điều khiển Tinh Cầu Aether phóng chùm tia năng lượng tầm xa và triệu hồi bão thiên thạch càn quét diện rộng.",
+        descEn = "Master of Aether orbs firing long-range arcane beams and summoning devastating astral meteor storms.",
+        accent = Color3.fromRGB(194, 128, 255),
+        badgeVi = "PHÁP SƯ • TẦM XA AOE",
+        badgeEn = "MAGE • RANGED AOE",
+    },
+}
+
+local function fireSelectOriginClass(classId)
+    local sharedRemotes = Shared:FindFirstChild("Remotes")
+    local uiCmd = sharedRemotes and sharedRemotes:FindFirstChild("UICommand")
+    if uiCmd and uiCmd:IsA("RemoteEvent") then
+        uiCmd:FireServer("SelectClass", { classId = classId })
+        return
+    end
+    local legacyRemotes = ReplicatedStorage:FindFirstChild("Remotes")
+    local legacyCmd = legacyRemotes and legacyRemotes:FindFirstChild("UICommand")
+    if legacyCmd and legacyCmd:IsA("RemoteEvent") then
+        legacyCmd:FireServer("SelectClass", { classId = classId })
+        return
+    end
+    local chooseApp = legacyRemotes and legacyRemotes:FindFirstChild("ChooseAppearance")
+    if chooseApp and chooseApp:IsA("RemoteEvent") then
+        chooseApp:FireServer({ ClassId = classId, Gender = "Male" })
+    end
+end
+
+local function createOnboardingClassModal(parent)
+    local backdrop = UIFactory.Create("TextButton", parent, {
+        Name = "OnboardingClassModal",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundColor3 = Color3.fromRGB(6, 10, 20),
+        BackgroundTransparency = 0.18,
+        BorderSizePixel = 0,
+        Text = "",
+        AutoButtonColor = false,
+        Modal = true,
+        Visible = false,
+        ZIndex = 38,
+    })
+
+    local card = UIFactory.Create("Frame", backdrop, {
+        Name = "OriginClassCard",
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(920, 468),
+        BackgroundColor3 = Theme.Colors.BG_850,
+        BackgroundTransparency = 0.03,
+        BorderSizePixel = 0,
+        ZIndex = 39,
+    })
+    local cardScale = UIFactory.Create("UIScale", card, { Scale = 1 })
+    UIFactory.Corner(card, Theme.Radius.Large)
+    UIFactory.Stroke(card, Theme.Colors.ACCENT_GOLD, 1.8, 0.12)
+    UIFactory.Gradient(card, Color3.fromRGB(22, 34, 62), Color3.fromRGB(11, 17, 32), 90)
+
+    local kickerLbl = UIFactory.Create("TextLabel", card, {
+        Name = "Kicker",
+        Position = UDim2.fromOffset(24, 14),
+        Size = UDim2.new(1, -48, 0, 18),
+        BackgroundTransparency = 1,
+        Text = I18n.Pick("SKYBREAK: FRAGMENTS OF THE CORE • KHỞI ĐẦU HÀNH TRÌNH", "SKYBREAK: FRAGMENTS OF THE CORE • ORIGIN AWAKENING"),
+        Font = Theme.Fonts.Bold,
+        TextSize = 11,
+        TextColor3 = Theme.Colors.ACCENT_SAPPHIRE,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 40,
+    })
+
+    local titleLbl = UIFactory.Create("TextLabel", card, {
+        Name = "Title",
+        Position = UDim2.fromOffset(24, 34),
+        Size = UDim2.new(1, -48, 0, 30),
+        BackgroundTransparency = 1,
+        Text = I18n.Pick("CHỌN HỆ KHỞI ĐẦU", "CHOOSE YOUR ORIGIN CLASS"),
+        Font = Theme.Fonts.Title,
+        TextSize = 22,
+        TextColor3 = Theme.Colors.ACCENT_GOLD,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 40,
+    })
+    UIFactory.TextSizeConstraint(titleLbl, 14, 24)
+    titleLbl.TextScaled = true
+
+    local subLbl = UIFactory.Create("TextLabel", card, {
+        Name = "Subtitle",
+        Position = UDim2.fromOffset(28, 66),
+        Size = UDim2.new(1, -56, 0, 22),
+        BackgroundTransparency = 1,
+        Text = I18n.Pick(
+            "Chọn phong cách chiến đấu khởi đầu của bạn (có thể đổi bất cứ lúc nào trong bảng Kỹ Năng [K]).",
+            "Pick your starting combat path (you can freely switch anytime in Skills [K])."
+        ),
+        Font = Theme.Fonts.Body,
+        TextSize = 12,
+        TextWrapped = true,
+        TextColor3 = Theme.Colors.TEXT_SECONDARY,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 40,
+    })
+
+    local row = UIFactory.Create("Frame", card, {
+        Name = "ClassCardsRow",
+        Position = UDim2.fromOffset(26, 98),
+        Size = UDim2.new(1, -52, 0, 346),
+        BackgroundTransparency = 1,
+        ZIndex = 40,
+    })
+    local rowLayout = UIFactory.ListLayout(row, Enum.FillDirection.Horizontal, 16, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
+
+    local cardRefs = {}
+    for _, cls in ipairs(ORIGIN_CLASSES) do
+        local colCard = UIFactory.Create("Frame", row, {
+            Name = "Class_" .. cls.id,
+            Size = UDim2.fromOffset(278, 332),
+            BackgroundColor3 = Theme.Colors.BG_800,
+            BackgroundTransparency = 0.06,
+            BorderSizePixel = 0,
+            ZIndex = 41,
+        })
+        UIFactory.Corner(colCard, Theme.Radius.Medium)
+        UIFactory.Stroke(colCard, cls.accent, 1.5, 0.18)
+        UIFactory.Gradient(colCard, Color3.fromRGB(26, 38, 68), Color3.fromRGB(14, 20, 38), 90)
+
+        local topBadge = UIFactory.Create("Frame", colCard, {
+            Position = UDim2.fromOffset(14, 10),
+            Size = UDim2.new(1, -28, 0, 22),
+            BackgroundColor3 = cls.accent,
+            BackgroundTransparency = 0.84,
+            BorderSizePixel = 0,
+            ZIndex = 42,
+        })
+        UIFactory.Corner(topBadge, Theme.Radius.Pill)
+        UIFactory.Stroke(topBadge, cls.accent, 1, 0.35)
+        local badgeLbl = UIFactory.Create("TextLabel", topBadge, {
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            Text = I18n.Pick(cls.badgeVi, cls.badgeEn),
+            Font = Theme.Fonts.Bold,
+            TextSize = 10,
+            TextColor3 = cls.accent,
+            ZIndex = 43,
+        })
+
+        local nameLbl = UIFactory.Create("TextLabel", colCard, {
+            Position = UDim2.fromOffset(14, 38),
+            Size = UDim2.new(1, -28, 0, 24),
+            BackgroundTransparency = 1,
+            Text = cls.name,
+            Font = Theme.Fonts.Title,
+            TextSize = 20,
+            TextColor3 = Theme.Colors.TEXT_PRIMARY,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 42,
+        })
+
+        local roleLbl = UIFactory.Create("TextLabel", colCard, {
+            Position = UDim2.fromOffset(14, 64),
+            Size = UDim2.new(1, -28, 0, 18),
+            BackgroundTransparency = 1,
+            Text = I18n.Pick(cls.roleVi, cls.roleEn),
+            Font = Theme.Fonts.SemiBold,
+            TextSize = 12,
+            TextColor3 = cls.accent,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 42,
+        })
+
+        local statBox = UIFactory.Create("Frame", colCard, {
+            Position = UDim2.fromOffset(14, 88),
+            Size = UDim2.new(1, -28, 0, 30),
+            BackgroundColor3 = Color3.fromRGB(12, 19, 36),
+            BackgroundTransparency = 0.15,
+            BorderSizePixel = 0,
+            ZIndex = 42,
+        })
+        UIFactory.Corner(statBox, Theme.Radius.Small)
+        UIFactory.Stroke(statBox, cls.accent, 1, 0.55)
+        local bonusLbl = UIFactory.Create("TextLabel", statBox, {
+            Position = UDim2.fromOffset(10, 0),
+            Size = UDim2.new(1, -20, 1, 0),
+            BackgroundTransparency = 1,
+            Text = "★  " .. I18n.Pick(cls.bonusVi, cls.bonusEn),
+            Font = Theme.Fonts.Bold,
+            TextSize = 11,
+            TextColor3 = Theme.Colors.ACCENT_GOLD,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 43,
+        })
+
+        local descLbl = UIFactory.Create("TextLabel", colCard, {
+            Position = UDim2.fromOffset(14, 126),
+            Size = UDim2.new(1, -28, 1, -184),
+            BackgroundTransparency = 1,
+            Text = I18n.Pick(cls.descVi, cls.descEn),
+            Font = Theme.Fonts.Body,
+            TextSize = 11,
+            TextColor3 = Theme.Colors.TEXT_SECONDARY,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            ZIndex = 42,
+        })
+
+        local chooseBtn = UIFactory.Create("TextButton", colCard, {
+            Name = "Choose_" .. cls.id,
+            Position = UDim2.new(0, 14, 1, -48),
+            Size = UDim2.new(1, -28, 0, 36),
+            BackgroundColor3 = cls.accent,
+            BackgroundTransparency = 0.12,
+            BorderSizePixel = 0,
+            Text = I18n.Pick("KHỞI ĐẦU VỚI ", "START AS ") .. string.upper(cls.name),
+            Font = Theme.Fonts.Bold,
+            TextSize = 12,
+            TextColor3 = Color3.fromRGB(10, 16, 28),
+            ZIndex = 43,
+        })
+        UIFactory.Corner(chooseBtn, Theme.Radius.Small)
+        UIFactory.Stroke(chooseBtn, Color3.fromRGB(255, 255, 255), 1, 0.55)
+
+        chooseBtn.Activated:Connect(function()
+            backdrop.Visible = false
+            Store.Session.onboardingModalVisible = false
+            Store.MarkClassChosen(cls.id)
+            fireSelectOriginClass(cls.id)
+            Store.ShowToast(
+                I18n.Pick(
+                    "Chào mừng đến Sky Hub! Đi theo tia sáng vàng gặp Chỉ Huy Lyra [E] để nhận Nhiệm Vụ đầu tiên!",
+                    "Welcome to Sky Hub! Follow the golden beam to Commander Lyra [E] for your first Quest!"
+                ),
+                "success",
+                6.0
+            )
+        end)
+
+        table.insert(cardRefs, {
+            Cls = cls,
+            Card = colCard,
+            NameLbl = nameLbl,
+            BadgeLbl = badgeLbl,
+            RoleLbl = roleLbl,
+            BonusLbl = bonusLbl,
+            DescLbl = descLbl,
+            ChooseBtn = chooseBtn,
+            StatBox = statBox,
+        })
+    end
+
+    local function applyModalLayoutAndLocale(uiScale)
+        kickerLbl.Text = I18n.Pick("SKYBREAK: FRAGMENTS OF THE CORE • KHỞI ĐẦU HÀNH TRÌNH", "SKYBREAK: FRAGMENTS OF THE CORE • ORIGIN AWAKENING")
+        titleLbl.Text = I18n.Pick("CHỌN HỆ KHỞI ĐẦU", "CHOOSE YOUR ORIGIN CLASS")
+        subLbl.Text = I18n.Pick(
+            "Chọn phong cách chiến đấu khởi đầu của bạn (có thể đổi bất cứ lúc nào trong bảng Kỹ Năng [K]).",
+            "Pick your starting combat path (you can freely switch anytime in Skills [K])."
+        )
+
+        local cam = workspace.CurrentCamera
+        local vp = (parent and parent:IsA("GuiBase2d") and parent.AbsoluteSize.X > 0 and parent.AbsoluteSize)
+            or (cam and cam.ViewportSize)
+            or Vector2.new(1280, 720)
+        local isPortraitModal = vp.X < (vp.Y * 0.92)
+
+        if isPortraitModal then
+            card.Size = UDim2.fromOffset(420, 724)
+            row.Position = UDim2.fromOffset(18, 96)
+            row.Size = UDim2.new(1, -36, 0, 612)
+            rowLayout.FillDirection = Enum.FillDirection.Vertical
+            rowLayout.Padding = UDim.new(0, 10)
+            for _, cr in ipairs(cardRefs) do
+                cr.Card.Size = UDim2.new(1, 0, 0, 196)
+                cr.NameLbl.TextSize = 17
+                cr.DescLbl.Position = UDim2.fromOffset(14, 120)
+                cr.DescLbl.Size = UDim2.new(1, -28, 0, 34)
+                cr.ChooseBtn.Position = UDim2.new(0, 14, 1, -38)
+                cr.ChooseBtn.Size = UDim2.new(1, -28, 0, 30)
+            end
+            local fit = math.min((vp.X - 16) / 420, (vp.Y - 16) / 724, 1.0)
+            cardScale.Scale = math.clamp(fit, 0.45, 1.0)
+        else
+            card.Size = UDim2.fromOffset(920, 468)
+            row.Position = UDim2.fromOffset(26, 98)
+            row.Size = UDim2.new(1, -52, 0, 346)
+            rowLayout.FillDirection = Enum.FillDirection.Horizontal
+            rowLayout.Padding = UDim.new(0, 16)
+            for _, cr in ipairs(cardRefs) do
+                cr.Card.Size = UDim2.fromOffset(278, 332)
+                cr.NameLbl.TextSize = 20
+                cr.DescLbl.Position = UDim2.fromOffset(14, 126)
+                cr.DescLbl.Size = UDim2.new(1, -28, 1, -184)
+                cr.ChooseBtn.Position = UDim2.new(0, 14, 1, -48)
+                cr.ChooseBtn.Size = UDim2.new(1, -28, 0, 36)
+            end
+            local fit = math.min((vp.X - 20) / 920, (vp.Y - 16) / 468, tonumber(uiScale) or 1.05)
+            cardScale.Scale = math.clamp(fit, 0.45, 1.05)
+        end
+
+        for _, cr in ipairs(cardRefs) do
+            cr.BadgeLbl.Text = I18n.Pick(cr.Cls.badgeVi, cr.Cls.badgeEn)
+            cr.RoleLbl.Text = I18n.Pick(cr.Cls.roleVi, cr.Cls.roleEn)
+            cr.BonusLbl.Text = "★  " .. I18n.Pick(cr.Cls.bonusVi, cr.Cls.bonusEn)
+            cr.DescLbl.Text = I18n.Pick(cr.Cls.descVi, cr.Cls.descEn)
+            cr.ChooseBtn.Text = I18n.Pick("KHỞI ĐẦU VỚI ", "START AS ") .. string.upper(cr.Cls.name)
+        end
+    end
+
+    return {
+        Backdrop = backdrop,
+        Scale = cardScale,
+        Sync = function(snap, uiScale)
+            applyModalLayoutAndLocale(uiScale)
+            local shouldShow = (snap ~= nil)
+                and (not snap.isDemoMode)
+                and (snap.player ~= nil)
+                and (tonumber(snap.player.level) == 1)
+                and (snap.player.classChosen == false)
+                and (not Store.Session.localClassChosen)
+            backdrop.Visible = shouldShow
+            Store.Session.onboardingModalVisible = shouldShow
+        end,
+    }
+end
 
 local SCREEN_MODULES = {
     [UIState.Screens.MainMenu] = MainMenu,
@@ -124,6 +482,9 @@ function App.RebuildActiveScreen(forceHUDRebuild)
         if App.Layers.MenuScale then
             App.Layers.MenuScale.Scale = resp.UIScale
         end
+    end
+    if App.OnboardingModal then
+        App.OnboardingModal.Sync(Store.GetSnapshot(), resp.UIScale)
     end
 
     -- Clear previous menu screen children (cleanup active screen connections/orbits on in-place rebuilds)
@@ -298,6 +659,7 @@ function App.Init(onAction, onAttack)
 
     local _, dialogueApi = Dialogue.CreateOverlay(modalLayer)
     local _, modalApi = Modal.Create(modalLayer, { name = "ConfirmModal", visible = false })
+    local onboardingModal = createOnboardingClassModal(modalLayer)
     local _, toastApi = Toast.Create(notificationLayer, { name = "Toast" })
     LootFeed.Init(notificationLayer)
 
@@ -315,6 +677,7 @@ function App.Init(onAction, onAttack)
     }
     App.DialogueApi = dialogueApi
     App.ModalApi = modalApi
+    App.OnboardingModal = onboardingModal
     App.ToastApi = toastApi
 
     Settings.OnLowFXChanged = function(val)
@@ -343,6 +706,10 @@ function App.Init(onAction, onAttack)
     end
 
     Store.SubscribeSnapshot(function(snap)
+        if App.OnboardingModal then
+            local respNow = App.GetResponsiveState()
+            App.OnboardingModal.Sync(snap, respNow.UIScale)
+        end
         local activeRoute = ScreenRouter.CurrentScreen
         if activeRoute == UIState.Screens.HUD then
             HUD.Update(snap, Store.GetView())
@@ -435,15 +802,24 @@ function App.Init(onAction, onAttack)
                     Store.SetView({ activeVendorMode = vMode })
                 end
                 ScreenRouter.Navigate(UIState.Screens.NPCShop, { forceRebuild = true })
+            elseif req:sub(1, 7) == "Fruits:" then
+                local fMode = req:sub(8)
+                QuestController.CloseDialogue()
+                Store.SetView({ fruitsMode = (#fMode > 0 and fMode or "Vault") })
+                ScreenRouter.Navigate(UIState.Screens.Fruits, { forceRebuild = true })
             else
                 QuestController.CloseDialogue()
-                ScreenRouter.Navigate(req)
+                if req == "Fruits" then
+                    Store.SetView({ fruitsMode = "Vault" })
+                end
+                ScreenRouter.Navigate(req, req == "Fruits" and { forceRebuild = true } or nil)
             end
         end
     end))
 
-    -- Keyboard & Gamepad Navigation Shortcuts (Escape, G, N, B, L, P, Space)
+    -- Keyboard & Gamepad Navigation Shortcuts (Escape, G, B, L, Space)
     -- #91: [L] universally opens/toggles QuestJournal; [J] is strictly Busoshoku Haki!
+    -- World stations (NPCShop, Forge, Raid) open contextually via NPC [E] interaction.
     table.insert(App.Connections, UserInputService.InputBegan:Connect(function(input, processed)
         if UserInputService:GetFocusedTextBox() then
             return
@@ -472,19 +848,19 @@ function App.Init(onAction, onAttack)
             return
         end
         if input.KeyCode == Enum.KeyCode.G then
-            ScreenRouter.ToggleScreen(UIState.Screens.Fruits)
-            return
-        elseif input.KeyCode == Enum.KeyCode.N then
-            ScreenRouter.ToggleScreen(UIState.Screens.NPCShop)
+            if ScreenRouter.CurrentScreen == UIState.Screens.Fruits and v.fruitsMode == "Gacha" then
+                Store.SetView({ fruitsMode = "Vault" })
+                ScreenRouter.Navigate(UIState.Screens.Fruits, { forceRebuild = true, replace = true })
+            else
+                Store.SetView({ fruitsMode = "Vault" })
+                ScreenRouter.ToggleScreen(UIState.Screens.Fruits)
+            end
             return
         elseif input.KeyCode == Enum.KeyCode.B then
             ScreenRouter.ToggleScreen(UIState.Screens.SocialRewards)
             return
         elseif input.KeyCode == Enum.KeyCode.L then
             ScreenRouter.ToggleScreen(UIState.Screens.QuestJournal)
-            return
-        elseif input.KeyCode == Enum.KeyCode.P then
-            ScreenRouter.ToggleScreen(UIState.Screens.Raid)
             return
         end
     end))
@@ -508,10 +884,16 @@ function App.Show(page)
     if os.clock() - (ScreenRouter.LastNavigateClock or 0) < 0.06 then
         return
     end
+    if page == "Fruits" then
+        Store.SetView({ fruitsMode = "Vault" })
+    end
     ScreenRouter.Navigate(page)
 end
 
 function App.Toggle(page)
+    if page == "Fruits" then
+        Store.SetView({ fruitsMode = "Vault" })
+    end
     return ScreenRouter.ToggleScreen(page)
 end
 
@@ -532,6 +914,8 @@ function App.Render()
         Skills.Update(snap)
     elseif activeRoute == UIState.Screens.Fruits then
         Fruits.Update(snap)
+    elseif activeRoute == UIState.Screens.NPCShop and type(NPCShop.Update) == "function" then
+        NPCShop.Update(snap)
     elseif activeRoute == UIState.Screens.Forge and type(Forge.Update) == "function" then
         Forge.Update(snap)
     elseif activeRoute == UIState.Screens.WorldMap and type(WorldMap.Update) == "function" then
@@ -540,6 +924,8 @@ function App.Render()
         QuestJournal.Update(snap)
     elseif activeRoute == UIState.Screens.Raid and type(Raid.Update) == "function" then
         Raid.Update(snap)
+    elseif activeRoute == UIState.Screens.SocialRewards and type(SocialRewards.Update) == "function" then
+        SocialRewards.Update(snap)
     elseif activeRoute == UIState.Screens.Settings and type(Settings.Update) == "function" then
         Settings.Update(snap)
     end
@@ -560,7 +946,7 @@ function App.Toast(message, kind)
 end
 
 function App.CyclePartySize()
-    ScreenRouter.ToggleScreen(UIState.Screens.Raid)
+    ScreenRouter.ToggleScreen(UIState.Screens.SocialRewards)
 end
 
 function App.BlocksCombat()
@@ -569,12 +955,24 @@ end
 
 function App.OpenDialogue(d)
     if type(d) == "table" then
-        QuestController.OpenDialogue(d.speaker, d.text, d.role, d.questId, d.actionLabel, d.actionCommand)
+        App.LastStructuredDialogueClock = os.clock()
+        QuestController.OpenDialogue(
+            d.speaker or d.Speaker,
+            d.text or d.Text,
+            d.role or d.Role,
+            d.questId or d.QuestId,
+            d.actionLabel or d.ActionLabel,
+            d.actionCommand or d.ActionCommand,
+            d.choices or d.Choices
+        )
     end
 end
 
 function App.Message(message)
     if type(message) ~= "string" then
+        return
+    end
+    if (os.clock() - (App.LastStructuredDialogueClock or 0)) < 0.08 then
         return
     end
     if string.sub(message, 1, 5) == "Lyra:" or string.sub(message, 1, 5) == "Kael:" or string.sub(message, 1, 7) == "Zioles:" then

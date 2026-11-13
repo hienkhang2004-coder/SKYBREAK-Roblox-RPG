@@ -59,7 +59,8 @@ VFXStudioLibrary.Palette = PAL
 
 function VFXStudioLibrary.IsLowFX()
 	local lp = Players.LocalPlayer
-	return (lp and lp:GetAttribute("LowFXMode") == true) or (Workspace:GetAttribute("LowFXMode") == true) or false
+	local tier = tostring((lp and lp:GetAttribute("GraphicsTier")) or Workspace:GetAttribute("GraphicsTier") or "")
+	return (lp and lp:GetAttribute("LowFXMode") == true) or (Workspace:GetAttribute("LowFXMode") == true) or (tier == "Smooth") or false
 end
 
 function VFXStudioLibrary.GetTempFolder(subName)
@@ -96,7 +97,7 @@ function VFXStudioLibrary.EmitCameraTrauma(trauma, fovPunch, dirVec)
 	end
 end
 
-function VFXStudioLibrary.MakePart(name, shape, size, cf, color, transparency, material, parent)
+function VFXStudioLibrary.MakePart(name, shape, size, cf, color, transparency, material, parent, preserveGeometry)
 	local p = Instance.new("Part")
 	local nm = name or "SkybreakVFXPart"
 	local sh = shape or Enum.PartType.Block
@@ -105,6 +106,9 @@ function VFXStudioLibrary.MakePart(name, shape, size, cf, color, transparency, m
 	local isEnergyMat = (material == nil) or (material == Enum.Material.ForceField) or (material == Enum.Material.Neon)
 
 	p.Name = nm
+	if preserveGeometry == true then
+		p:SetAttribute("PreserveGeometry", true)
+	end
 	p.Shape = sh
 	p.Size = sz
 	p.CFrame = cf or CFrame.new()
@@ -118,8 +122,11 @@ function VFXStudioLibrary.MakePart(name, shape, size, cf, color, transparency, m
 	p.CastShadow = false
 	p.Massless = true
 
-	-- Tapered 3D SpecialMesh(Sphere) so energy slashes, needles, bolts, and beams never look like blocky bricks
-	if isEnergyMat and sh == Enum.PartType.Block and p.Transparency < 0.95 then
+	-- Tapered 3D SpecialMesh(Sphere) for legacy energy parts ONLY when PreserveGeometry is NOT set
+	local keepExactGeo = (preserveGeometry == true)
+		or (p:GetAttribute("PreserveGeometry") == true)
+		or (parent ~= nil and parent:GetAttribute("PreserveGeometry") == true)
+	if not keepExactGeo and isEnergyMat and sh == Enum.PartType.Block and p.Transparency < 0.95 then
 		local maxD = math.max(sz.X, sz.Y, sz.Z)
 		local minD = math.max(0.01, math.min(sz.X, sz.Y, sz.Z))
 		if (maxD / minD >= 1.85) or string.find(nm, "Spark") or string.find(nm, "Slash") or string.find(nm, "Bolt") or string.find(nm, "Streak") or string.find(nm, "Ray") or string.find(nm, "Crack") or string.find(nm, "Fissure") or string.find(nm, "Spoke") or string.find(nm, "Bar") or string.find(nm, "Blade") or string.find(nm, "Prong") or string.find(nm, "Tracer") or string.find(nm, "Arc") or string.find(nm, "Wave") or string.find(nm, "Feather") or string.find(nm, "Lance") or string.find(nm, "Spear") then
@@ -1383,7 +1390,7 @@ function VFXStudioLibrary.SpawnPopTextBillboard(pos, text, primaryCol, strokeCol
 	lbl.Size = UDim2.fromScale(1, 1)
 	lbl.BackgroundTransparency = 1
 	lbl.Font = Enum.Font.GothamBlack
-	lbl.Text = text or "💥 CRIT!"
+	lbl.Text = text or "CRIT!"
 	lbl.TextColor3 = primaryCol or PAL.Gold
 	lbl.TextScaled = true
 	lbl.Parent = bg
@@ -1624,7 +1631,7 @@ function VFXStudioLibrary.VibeGG_Fireball5Steps(startPos, endPos, scale, isFinis
 
 				-- Bước 4: Damage numbers / Crit pop nảy lên
 				if isStepEnabled("Fireball", "Step4_DamageCritPop") then
-					VFXStudioLibrary.SpawnPopTextBillboard(endPos, isFinisher and "🔥 SOLAR CRIT!" or "🔥 BURN!", PAL.Gold, PAL.Magma, isFinisher and 1.45 or 1.18)
+					VFXStudioLibrary.SpawnPopTextBillboard(endPos, isFinisher and "SOLAR CRIT!" or "BURN!", PAL.Gold, PAL.Magma, isFinisher and 1.45 or 1.18)
 				end
 
 				-- Bước 5: Burn DoT (Mục tiêu bốc cháy nhấp nháy theo nhịp)
@@ -2668,7 +2675,7 @@ function VFXStudioLibrary.VibeGG_MagmaSpell5Steps(targetPos, scale, isHotFootFin
 					-- Finisher / Phản ứng đặc biệt: Mục tiêu giẫm phải vũng thì bỏng chân, nhảy tưng tưng!
 					task.delay(0.32, function()
 						if isHotFootFinisher and isStepEnabled("MagmaSpell", "Finisher_HotFootHopping") then
-							VFXStudioLibrary.SpawnPopTextBillboard(hitGround + Vector3.new(0, 3.5, 0), "🔥 BỎNG CHÂN!!", PAL.Solar, PAL.Obsidian, 1.35)
+							VFXStudioLibrary.SpawnPopTextBillboard(hitGround + Vector3.new(0, 3.5, 0), "BỎNG CHÂN!!", PAL.Solar, PAL.Obsidian, 1.35)
 							local hops = cfg.HopCount
 							local hopDur = 0.18
 							for hIdx = 1, hops do
@@ -3011,6 +3018,13 @@ end
 
 function VFXStudioLibrary.PlaySkillCastPose(actorChar, moveKey, dur)
 	if not actorChar or not actorChar.Parent then return end
+	-- Player characters are already animated every frame by StepStarterCharacterAnimation (Skybreak3DEquipment);
+	-- skip TweenService on motor.C0 to prevent competing C0 writes or corrupted rest poses!
+	if Players:GetPlayerFromCharacter(actorChar) ~= nil or actorChar:GetAttribute("SkybreakNativeAvatar") == true then
+		actorChar:SetAttribute("LastClientSkillKey", tostring(moveKey or "Z"))
+		actorChar:SetAttribute("LastClientSkillAt", os.clock())
+		return
+	end
 	local upperTorso = actorChar:FindFirstChild("UpperTorso") or actorChar:FindFirstChild("Torso")
 	local rootPart = actorChar:FindFirstChild("HumanoidRootPart")
 	if not upperTorso or not rootPart then return end

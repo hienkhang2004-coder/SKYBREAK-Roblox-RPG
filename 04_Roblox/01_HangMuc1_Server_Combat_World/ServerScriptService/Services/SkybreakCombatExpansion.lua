@@ -18,6 +18,103 @@ local TweenService = game:GetService("TweenService")
 local CombatData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SkybreakCombatData"))
 local DevGate = require(script.Parent:WaitForChild("DevGate"))
 local RemoteGuard = require(script.Parent:WaitForChild("RemoteGuard"))
+local Helpers = require(script.Parent:WaitForChild("GameExperienceHelpers"))
+local WildCoreService = require(script.Parent:WaitForChild("SkybreakWildCoreService"))
+local SkillMechanics = require(script.Parent:WaitForChild("SkybreakSkillMechanicsService"))
+
+local function getMaxCoreStorage(plr, prof)
+	if Helpers and type(Helpers.GetMaxCoreStorage) == "function" then
+		local ok, cap = pcall(Helpers.GetMaxCoreStorage, plr, prof)
+		if ok and tonumber(cap) then
+			return math.max(1, math.floor(tonumber(cap)))
+		end
+	end
+	return math.max(1, math.floor(tonumber(prof and prof.MaxFruitStorage) or 1))
+end
+
+local function isPlayerPvPCombatTagged(plr, rt)
+	if plr then
+		local untilTs = tonumber(plr:GetAttribute("PvPCombatUntil")) or 0
+		if untilTs > 0 and (untilTs > os.time() or untilTs > workspace:GetServerTimeNow()) then
+			return true
+		end
+	end
+	if rt and (tonumber(rt.PvPCombatTagUntil) or 0) > os.clock() then
+		return true
+	end
+	return false
+end
+
+local SERVER_FRUIT_ALIASES = {
+	galecore = "GaleCore",
+	gale = "GaleCore",
+	aetherwindcore = "GaleCore",
+	sandstonecore = "SandstoneCore",
+	smoke = "SandstoneCore",
+	smokecore = "SandstoneCore",
+	solarflamecore = "SolarFlameCore",
+	flame = "SolarFlameCore",
+	flamecore = "SolarFlameCore",
+	cyberphoenixcore = "SolarFlameCore",
+	glaciericecore = "GlacierIceCore",
+	ice = "GlacierIceCore",
+	icecore = "GlacierIceCore",
+	thunderrumblecore = "ThunderRumbleCore",
+	rumble = "ThunderRumbleCore",
+	rumblecore = "ThunderRumbleCore",
+	celestiallightcore = "CelestialLightCore",
+	light = "CelestialLightCore",
+	lightcore = "CelestialLightCore",
+	starforgedmagmacore = "StarforgedMagmaCore",
+	magma = "StarforgedMagmaCore",
+	magmacore = "StarforgedMagmaCore",
+	magmaburstcore = "StarforgedMagmaCore",
+	astralgravitycore = "AstralGravityCore",
+	gravity = "AstralGravityCore",
+	gravitycore = "AstralGravityCore",
+	dimensionalportalcore = "DimensionalPortalCore",
+	portal = "DimensionalPortalCore",
+	portalcore = "DimensionalPortalCore",
+	solartitancore = "SolarTitanCore",
+	buddha = "SolarTitanCore",
+	quake = "SolarTitanCore",
+	quakecore = "SolarTitanCore",
+	starlightquakecore = "SolarTitanCore",
+	aetherflowcore = "AetherflowCore",
+	sweetdoughcore = "AetherflowCore",
+	dough = "AetherflowCore",
+	doughcore = "AetherflowCore",
+	abyssalsovereigncore = "AbyssalSovereignCore",
+	dragon = "AbyssalSovereignCore",
+	dragoncore = "AbyssalSovereignCore",
+	abyssaldarkcore = "AbyssalSovereignCore",
+}
+
+local TRUE_FLIGHT_FRUITS = {
+	GaleCore = true,
+	SandstoneCore = true,
+	SolarFlameCore = true,
+	CelestialLightCore = true,
+	StarforgedMagmaCore = true,
+	AstralGravityCore = true,
+}
+
+do
+	local origResolve = CombatData.ResolveFruitId
+	CombatData.ResolveFruitId = function(rawId)
+		if type(rawId) ~= "string" or rawId == "" then
+			return ""
+		end
+		local clean = string.lower((string.gsub(rawId, "%s+", "")))
+		if SERVER_FRUIT_ALIASES[clean] then
+			return SERVER_FRUIT_ALIASES[clean]
+		end
+		if type(origResolve) == "function" then
+			return origResolve(rawId)
+		end
+		return rawId
+	end
+end
 
 local Expansion = {}
 
@@ -28,9 +125,7 @@ local WorldRoot = nil
 local TokenBuckets = {}      -- [Player] = { Tokens = 45, LastRefill = os.clock() }
 local ActiveTrades = {}      -- [sessionId] = TradeSession
 local PlayerTradeMap = {}    -- [Player] = TradeSession
-local AlliedSeaBeasts = {}   -- [Player] = SeaBeastRecord
 local TrialSessions = {}     -- [Player] = { EndsAt, Enemies = {}, Active = true }
-local LastWaterPadPos = {}   -- [Player] = Vector3
 local CurrentMirageStock = nil
 local LastMirageHourSeed = -1
 
@@ -89,36 +184,7 @@ local function getCharRoot(p)
 end
 
 local function clampAimRay(hrp, payload, maxRange)
-	local limit = math.clamp(tonumber(maxRange) or 120, 8, 185)
-	local fallbackOrigin = hrp.Position + Vector3.new(0, 1.5, 0)
-	local fallbackDir = hrp.CFrame.LookVector
-	if type(payload) ~= "table" then
-		return fallbackOrigin, fallbackDir, fallbackOrigin + fallbackDir * limit
-	end
-
-	local rawOrigin = sanitizeVec3(payload.AimOrigin or payload.aimOrigin or payload.Origin or payload.origin)
-	local origin = fallbackOrigin
-	if rawOrigin and (rawOrigin - hrp.Position).Magnitude <= 18 then
-		origin = rawOrigin
-	end
-
-	local dir = nil
-	local rawDir = sanitizeVec3(payload.AimDir or payload.aimDir or payload.Direction or payload.direction)
-	local rawTarget = sanitizeVec3(payload.TargetPos or payload.targetPos)
-	if rawTarget then
-		local delta = rawTarget - origin
-		if delta.Magnitude > 0.05 then
-			local clampedDist = math.min(limit, delta.Magnitude)
-			dir = delta.Unit
-			return origin, dir, origin + dir * clampedDist
-		end
-	end
-	if rawDir and rawDir.Magnitude > 0.05 then
-		dir = rawDir.Unit
-	else
-		dir = fallbackDir.Magnitude > 0.05 and fallbackDir.Unit or Vector3.new(0, 0, -1)
-	end
-	return origin, dir, origin + dir * limit
+	return Helpers.Resolve3DAimRay(hrp, payload, maxRange)
 end
 
 local function groundYAt(pos, refY)
@@ -189,6 +255,7 @@ local function ensureExpansionProfile(profile)
 	profile.StatPresets = type(profile.StatPresets) == "table" and profile.StatPresets or {}
 	profile.RedeemedCodes = type(profile.RedeemedCodes) == "table" and profile.RedeemedCodes or {}
 	profile.DoubleExpUntil = tonumber(profile.DoubleExpUntil) or 0
+	profile.DoubleExpRemainingSec = math.max(0, math.floor(tonumber(profile.DoubleExpRemainingSec) or 0))
 	profile.FreeFruitVouchers = tonumber(profile.FreeFruitVouchers) or 0
 	profile.StatRefundTokens = tonumber(profile.StatRefundTokens) or 0
 
@@ -247,10 +314,9 @@ local function ensureRuntimeFields(p, rt, profile)
 		return
 	end
 	if rt.FuryMeter == nil then
-		local fid = CombatData.ResolveFruitId(profile and profile.EquippedFruit or "")
-		local cat = CombatData.FruitCatalog[fid]
-		rt.FuryMeter = (cat and cat.MythicalZoan) and 55 or 25
+		rt.FuryMeter = 100
 	end
+	rt.AwakeningMeter = tonumber(profile and profile.AwakeningMeter) or tonumber(rt.AwakeningMeter) or 0
 	rt.DragonFormTier = tonumber(rt.DragonFormTier) or 0
 	rt.KataStep = tonumber(rt.KataStep) or 0
 	rt.LastKataAt = tonumber(rt.LastKataAt) or 0
@@ -307,7 +373,7 @@ local function checkMoveMasteryUnlock(p, profile, itemId, moveKey, slot)
 	elseif slot == 2 then
 		local fid = CombatData.ResolveFruitId(itemId)
 		local cat = CombatData.FruitCatalog and CombatData.FruitCatalog[fid]
-		if key == "V" and cat and cat.Rarity == "Mythic" then
+		if key == "V" and cat and (cat.Rarity == "Mythic" or cat.Rarity == "Mythical") then
 			reqLv = tonumber(mCfg.MythicalVThreshold) or 250
 		end
 		local fCfg = C and C.AetherFruits and C.AetherFruits[fid]
@@ -315,7 +381,7 @@ local function checkMoveMasteryUnlock(p, profile, itemId, moveKey, slot)
 			reqLv = tonumber(fCfg.Moves[key].Mastery) or reqLv
 		end
 	elseif slot == 3 then
-		local wCfg = C and C.Weapons and C.Weapons[itemId]
+		local wCfg = C and ((C.Swords and C.Swords[itemId]) or (C.Weapons and C.Weapons[itemId]))
 		if wCfg and wCfg.Moves and wCfg.Moves[key] and wCfg.Moves[key].Mastery then
 			reqLv = tonumber(wCfg.Moves[key].Mastery) or reqLv
 		end
@@ -342,11 +408,15 @@ local function addMasteryXP(p, itemId, rawXP)
 		return
 	end
 	ensureExpansionProfile(profile)
-	local hasDoubleExp = (profile.DoubleExpUntil and profile.DoubleExpUntil > os.time())
+	local hasDoubleExp = ((tonumber(profile.DoubleExpRemainingSec) or 0) > 0)
+		or (profile.DoubleExpUntil and profile.DoubleExpUntil > os.time())
 		or ((tonumber(profile.DoubleExpSeconds) or 0) > 0)
 		or (p and (tonumber(p:GetAttribute("DoubleExpSeconds")) or 0) > 0)
-	local mult = hasDoubleExp and 2 or 1
-	local add = math.max(1, math.floor((tonumber(rawXP) or 10) * mult))
+	local ownsMasteryPass = (type(profile.OwnedGamePasses) == "table" and profile.OwnedGamePasses.x2_mastery == true)
+		or (p and p:GetAttribute("OwnedPass_x2_mastery") == true)
+	local fbMult = 1 + math.clamp(tonumber(p and p:GetAttribute("FriendBoostPct")) or 0, 0, 15) / 100
+	local mult = (hasDoubleExp and 2 or 1) * (ownsMasteryPass and 2 or 1) * fbMult
+	local add = math.max(1, math.floor((tonumber(rawXP) or 10) * mult + 0.5))
 
 	local curLv = getMasteryLevel(profile, itemId)
 	if curLv >= CombatData.MasteryConfig.MaxLevel then
@@ -403,10 +473,14 @@ local function syncLeaderstats(p, profile)
 		ls.Name = "leaderstats"
 		ls.Parent = p
 	end
-	local bVal = ls:FindFirstChild("Bounty")
+	local oldBountyVal = ls:FindFirstChild("Bounty")
+	if oldBountyVal then
+		oldBountyVal:Destroy()
+	end
+	local bVal = ls:FindFirstChild("Renown")
 	if not bVal then
 		bVal = Instance.new("IntValue")
-		bVal.Name = "Bounty"
+		bVal.Name = "Renown"
 		bVal.Parent = ls
 	end
 	bVal.Value = math.clamp(math.floor(tonumber(profile.Bounty) or 0), 0, CombatData.MaxBounty)
@@ -489,7 +563,7 @@ local function updateOverheadTitleGui(p, profile)
 	end
 	if bountyLbl then
 		local bPct = math.floor(CombatData.GetBountyBuffPct(profile.Bounty) * 100 + 0.5)
-		local factionTag = (profile.Faction == "Marine") and "Honor" or "Bounty"
+		local factionTag = (profile.Faction == "Marine") and "Valor" or "Renown"
 		bountyLbl.Text = string.format("%s: %s (+%d%% ATK/DEF)", factionTag, formatBountyShort(profile.Bounty), bPct)
 	end
 end
@@ -591,14 +665,15 @@ local function awardBounty(p, delta, reason)
 	profile.Bounty = nextB
 	profile.Honor = nextB
 	p:SetAttribute("Bounty", nextB)
+	p:SetAttribute("Renown", nextB)
 	syncLeaderstats(p, profile)
 	if prev < CombatData.SeaBeastSummonBounty and nextB >= CombatData.SeaBeastSummonBounty then
 		unlockTitle(p, profile, "seabeast_caller_10m", false)
-		G.Notify(p, "ĐẠT 10,000,000 BOUNTY! Đã mở khóa tuyệt kỹ Triệu Hồi Thú Trời Hộ Vệ (Sky Beast Guardian)!")
+		G.Notify(p, "ĐẠT 10,000,000 ĐIỂM DANH VỌNG (RENOWN)! Đã mở khóa tuyệt kỹ Triệu Hồi Thú Trời Hộ Vệ (Sky Beast Guardian)!")
 	end
 	evaluateAutoTitles(p, profile)
 	if reason and reason ~= "" and math.abs(nextB - prev) >= 25000 then
-		G.Notify(p, string.format("+%s Bounty (%s) -> Tổng: %s", formatBountyShort(nextB - prev), reason, formatBountyShort(nextB)))
+		G.Notify(p, string.format("+%s Điểm Danh Vọng / Renown (%s) -> Tổng: %s", formatBountyShort(nextB - prev), reason, formatBountyShort(nextB)))
 	end
 end
 
@@ -918,459 +993,26 @@ local function pullEnemyToward(e, centerPos, strength)
 	end
 end
 
-local function spawnMagmaPool(p, centerPos, radius, tickDmg, ticks)
-	local fxFolder = ensureWorldFolder("CombatZones")
-	local fy = groundYAt(centerPos, centerPos.Y - 2.5) + 0.46
-	local pool = Instance.new("Part")
-	pool.Name = "AwakenedMagmaPool"
-	pool.Shape = Enum.PartType.Cylinder
-	pool.Size = Vector3.new(0.35, radius * 1.8, radius * 1.8)
-	pool.CFrame = CFrame.new(centerPos.X, fy, centerPos.Z) * CFrame.Angles(0, 0, math.pi * 0.5)
-	pool.Color = Color3.fromRGB(255, 86, 24)
-	pool.Material = Enum.Material.Neon
-	pool.Transparency = 0.22
-	pool.Anchored = true
-	pool.CanCollide = false
-	pool.CanQuery = false
-	pool.CanTouch = false
-	pool.Parent = fxFolder
-	Debris:AddItem(pool, ticks * 0.75 + 0.4)
-
-	for i = 1, ticks do
-		task.delay(i * 0.7, function()
-			if not p or not p.Parent then
-				return
-			end
-			for _, e in ipairs(G.Enemies or {}) do
-				if e.Alive and e.Body and (Vector3.new(e.Body.Position.X - centerPos.X, 0, e.Body.Position.Z - centerPos.Z).Magnitude <= radius) then
-					G.Hit(p, e, tickDmg, 4, "AwakenedMagmaPool")
-				end
-			end
-		end)
-	end
-end
-
 -- ============================================================================
--- COMBAT EXECUTION: 5 MARTIAL STYLES (#31-#33), GREATSWORD (#35), GUNS (#36-#38)
+-- COMBAT EXECUTION DELEGATION -> SkybreakSkillMechanicsService (Stage 1 Engine)
 -- ============================================================================
-local function getEnemiesAlongSegment(origin, endPos, width)
-	local results = {}
-	local seg = endPos - origin
-	local segLen = seg.Magnitude
-	local segDir = segLen > 0.05 and seg.Unit or Vector3.new(0, 0, -1)
-	local effWidth = math.max(tonumber(width) or 8, 8.5)
-	for _, e in ipairs(G.Enemies or {}) do
-		if e.Alive and e.Body and e.Model and e.Model.Parent then
-			local ep = e.Body.Position
-			local rel = ep - origin
-			local proj = math.clamp(rel:Dot(segDir), 0, segLen)
-			local closest = origin + segDir * proj
-			local perpDist = (ep - closest).Magnitude
-			local flatPerpDist = Vector3.new(ep.X - closest.X, 0, ep.Z - closest.Z).Magnitude
-			local bodyRad = math.max(e.Body.Size.X, e.Body.Size.Z) * 0.5 + 3.5
-			if perpDist <= (effWidth + bodyRad)
-				or (flatPerpDist <= (effWidth + bodyRad) and math.abs(ep.Y - closest.Y) <= 22)
-				or rel.Magnitude <= 14
-			then
-				table.insert(results, { Enemy = e, Dist = proj })
-			end
-		end
-	end
-	table.sort(results, function(a, b)
-		return a.Dist < b.Dist
-	end)
-	return results
-end
-
 local function executeMartialStyleKata(p, payload)
-	local hrp, hum = getCharRoot(p)
-	local rt = G.Runtime[p]
-	local profile = D.Get(p)
-	if not hrp or not hum or not rt or not profile then
-		return true
-	end
-	ensureExpansionProfile(profile)
-	ensureRuntimeFields(p, rt, profile)
-
-	local styleId = CombatData.ResolveStyleId(profile.FightingStyle)
-	local style = CombatData.MartialStyles[styleId] or CombatData.MartialStyles.skyborn_combat
-	local now = os.clock()
-	if now < (rt.NextStyleM1At or 0) then
-		return true
-	end
-
-	if now - (rt.LastKataAt or 0) > 1.35 then
-		rt.KataStep = 1
-	else
-		rt.KataStep = ((rt.KataStep or 0) % 4) + 1
-	end
-	rt.LastKataAt = now
-
-	local kata = style.Kata[rt.KataStep] or style.Kata[1]
-	rt.NextStyleM1At = now + (kata.Cadence or 0.24)
-
-	local origin, dir = clampAimRay(hrp, payload, math.min(45, kata.Reach or 16))
-	local reach = math.min(45, kata.Reach or 16)
-	local endPos = hrp.Position + dir * reach
-
-	if kata.Dash and kata.Dash > 0 then
-		rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 0.45)
-	end
-
-	local stats = G.Stats(p)
-	local baseAtk = (stats and stats.ATK) or 40
-	local mLv = getMasteryLevel(profile, styleId)
-	local masteryMult = 1 + (mLv - 1) * CombatData.MasteryConfig.SkillDamagePerLevel
-	local dmg = baseAtk * (kata.Mult or 1.0) * masteryMult
-
-	local hits = getEnemiesAlongSegment(hrp.Position, endPos, (kata.Width or 9) * 0.6)
-	local hitAny = false
-	for _, rec in ipairs(hits) do
-		local e = rec.Enemy
-		hitAny = true
-		if kata.ArmorShred then
-			e.ArmorShredUntil = now + 4.0
-		end
-		if kata.Pull then
-			pullEnemyToward(e, hrp.Position + dir * 4, 8)
-		end
-		if kata.StunDur and not isBossEnemy(e) then
-			e.StunnedUntil = math.max(e.StunnedUntil or 0, now + kata.StunDur)
-		end
-		G.Hit(p, e, dmg, kata.Break or 6, "StyleKata_" .. styleId)
-		if kata.BurnPct then
-			applyBurnOrDoT(p, e, dmg * kata.BurnPct, 2, "Flame")
-		end
-		if not kata.AoE and #hits > 3 then
-			break
-		end
-	end
-
-	if hitAny then
-		addMasteryXP(p, styleId, 8 + rt.KataStep * 2)
-	end
-
-	if R and R.CombatFX then
-		R.CombatFX:FireAllClients({
-			Kind = "StyleMove",
-			MoveType = "Kata",
-			StyleId = styleId,
-			MoveKey = "M1",
-			MoveName = kata.Name,
-			Combo = rt.KataStep,
-			Element = style.Element,
-			Color = style.Color,
-			Origin = origin,
-			Position = hrp.Position + dir * (reach * 0.6),
-			Direction = dir,
-			Actor = p.UserId,
-		})
-	end
-	return true
+	return SkillMechanics.ExecuteM1(p, 1, payload)
 end
 
-local function executeMartialStyleTechnique(p, key, payload)
-	local hrp, hum = getCharRoot(p)
-	local rt = G.Runtime[p]
-	local profile = D.Get(p)
-	if not hrp or not hum or not rt or not profile then
-		return true
-	end
-	ensureExpansionProfile(profile)
-	ensureRuntimeFields(p, rt, profile)
-
-	local styleId = CombatData.ResolveStyleId(profile.FightingStyle)
-	local style = CombatData.MartialStyles[styleId] or CombatData.MartialStyles.skyborn_combat
-	local move = style.Moves[key]
-	if not move then
-		return false
-	end
-
-	if not checkMoveMasteryUnlock(p, profile, styleId, key, 1) then
-		return true
-	end
-
-	local now = os.clock()
-	local cdKey = "Style_" .. styleId .. "_" .. key
-	if now < (rt.Cooldowns[cdKey] or 0) or now < (rt.Cooldowns["Slot_" .. key] or 0) then
-		return true
-	end
-	local cost = move.Cost or 10
-	if (rt.Energy or 100) < cost then
-		G.Notify(p, "Không đủ Aether Energy để thi triển [" .. move.Name .. "]!")
-		return true
-	end
-
-	local cdMult = 1
-	if profile.RaceV4Active and profile.Race == "Ghoul" then
-		cdMult = 1 - CombatData.RaceV4Passives.Ghoul.CooldownReductionPct
-	end
-	local finalCd = (move.Cooldown or 6) * cdMult
-	rt.Cooldowns[cdKey] = now + finalCd
-	rt.Cooldowns["Slot_" .. key] = now + finalCd
-	rt.Energy = math.max(0, (rt.Energy or 100) - cost)
-	rt.LastCastAt = now
-
-	local range = math.min(45, move.Range or 24)
-	local origin, dir, targetCenter = clampAimRay(hrp, payload, range)
-	if move.Dash and move.Dash > 0 then
-		rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 1.2)
-	end
-
-	local stats = G.Stats(p)
-	local baseAtk = (stats and stats.ATK) or 45
-	local mLv = getMasteryLevel(profile, styleId)
-	local skillMult = (1 + (mLv - 1) * CombatData.MasteryConfig.SkillDamagePerLevel) * (1 + ((stats and stats.StarSkillDmgPct) or 0))
-	local totalDmg = baseAtk * (move.Multiplier or 2.8) * skillMult
-	local hitsCount = math.max(1, move.Hits or 1)
-	local perHitDmg = totalDmg / hitsCount
-	local radius = move.Radius or 14
-
-	for pulse = 1, hitsCount do
-		local delaySec = (pulse - 1) * 0.11
-		task.delay(delaySec, function()
-			if not p or not p.Parent then
-				return
-			end
-			local curHrp = getCharRoot(p)
-			local pOrigin = curHrp and curHrp.Position or origin
-			local pEnd = pOrigin + dir * range
-			local hitList = getEnemiesAlongSegment(pOrigin, pEnd, radius)
-			local hitCount = 0
-			for _, rec in ipairs(hitList) do
-				local e = rec.Enemy
-				hitCount += 1
-				if move.Pull then
-					pullEnemyToward(e, pOrigin + dir * 6, 14)
-				end
-				if move.StunDur and pulse == hitsCount and not isBossEnemy(e) then
-					e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + move.StunDur)
-				end
-				G.Hit(p, e, perHitDmg, math.ceil((move.Break or 28) / hitsCount), "Style_" .. styleId .. "_" .. key)
-				if move.BurnTicks and pulse == hitsCount then
-					applyBurnOrDoT(p, e, totalDmg * 0.16, move.BurnTicks, "Flame")
-				end
-			end
-			if hitCount > 0 and pulse == hitsCount then
-				addMasteryXP(p, styleId, 18 + hitCount * 4)
-			end
-		end)
-	end
-
-	if R and R.CombatFX then
-		R.CombatFX:FireAllClients({
-			Kind = "StyleMove",
-			MoveType = "Technique",
-			StyleId = styleId,
-			MoveKey = key,
-			MoveName = move.Name,
-			Combo = 0,
-			Hits = hitsCount,
-			Element = style.Element,
-			Color = style.Color,
-			Origin = origin,
-			Position = targetCenter,
-			Direction = dir,
-			Radius = radius,
-			Range = range,
-			Actor = p.UserId,
-		})
-	end
-	G.Sync(p)
-	return true
+local function executeSwordComboM1(p, payload)
+	return SkillMechanics.ExecuteM1(p, 3, payload)
 end
 
 local function executeChargedCrescentSlash(p, payload)
-	local hrp, hum = getCharRoot(p)
-	local rt = G.Runtime[p]
-	local profile = D.Get(p)
-	if not hrp or not hum or not rt or not profile then
-		return false
-	end
-	ensureExpansionProfile(profile)
-	local swordId = tostring(profile.Weapon or "")
-	if (tonumber(profile.ActiveSlot) or 3) ~= 3 or not CombatData.IsChargedSlashWeapon(swordId) then
-		return false
-	end
-
-	local spec = CombatData.ChargedCrescentSpec
-	local now = os.clock()
-	if now < (rt.Cooldowns.ChargedCrescentSlash or 0) then
-		return true
-	end
-	local stamCost = tonumber(spec.StaminaCost) or 14
-	if (rt.Stamina or 100) < stamCost then
-		G.Notify(p, "Không đủ Stamina!")
-		return true
-	end
-	rt.Stamina = math.max(0, (rt.Stamina or 100) - stamCost)
-	rt.Cooldowns.ChargedCrescentSlash = now + spec.Cooldown
-	rt.Cooldowns.Heavy = now + 1.4
-
-	local rawRatio = type(payload) == "table" and (payload.ChargeRatio or payload.chargeRatio) or 1.0
-	local ratio = math.clamp(tonumber(rawRatio) or 1.0, 0, 1)
-	local mult = spec.MinMultiplier + (spec.MaxMultiplier - spec.MinMultiplier) * ratio
-	local range = spec.MinRange + (spec.MaxRange - spec.MinRange) * ratio
-	local radius = spec.MinRadius + (spec.MaxRadius - spec.MinRadius) * ratio
-	local breakAdd = math.floor(spec.MinBreakGauge + (spec.MaxBreakGauge - spec.MinBreakGauge) * ratio + 0.5)
-
-	local origin, dir, waveEnd = clampAimRay(hrp, payload, math.min(45, range))
-	local stats = G.Stats(p)
-	local baseAtk = (stats and stats.ATK) or 60
-	local mLv = getMasteryLevel(profile, swordId)
-	local skillMult = (1 + (mLv - 1) * CombatData.MasteryConfig.SkillDamagePerLevel) * (1 + ((stats and stats.StarSkillDmgPct) or 0))
-	local dmg = baseAtk * mult * skillMult
-
-	local hitList = getEnemiesAlongSegment(hrp.Position, hrp.Position + dir * range, radius)
-	for _, rec in ipairs(hitList) do
-		G.Hit(p, rec.Enemy, dmg, breakAdd, "ChargedCrescentSlash")
-		applyBurnOrDoT(p, rec.Enemy, dmg * 0.14, 2, "Void")
-	end
-	if #hitList > 0 then
-		addMasteryXP(p, swordId, 20 + #hitList * 4)
-	end
-
-	if R and R.CombatFX then
-		R.CombatFX:FireAllClients({
-			Kind = "ChargedSlash",
-			WeaponId = swordId,
-			MoveName = spec.Name,
-			ChargeRatio = ratio,
-			Multiplier = mult,
-			BreakAdded = breakAdd,
-			Element = "VoidMagma",
-			Origin = origin,
-			Position = waveEnd,
-			Direction = dir,
-			Range = range,
-			Radius = radius,
-			Actor = p.UserId,
-		})
-	end
-	G.Sync(p)
-	return true
+	return SkillMechanics.ExecuteChargedWeaponSlash(p, payload)
 end
 
 local function executeAimedGunShot(p, moveKey, payload)
-	local hrp, hum = getCharRoot(p)
-	local rt = G.Runtime[p]
-	local profile = D.Get(p)
-	if not hrp or not hum or not rt or not profile then
-		return true
+	if moveKey and moveKey ~= "M1" then
+		return SkillMechanics.ExecuteSlotSkill(p, 4, moveKey, payload)
 	end
-	ensureExpansionProfile(profile)
-	local gunId = tostring(profile.EquippedGun or "aether_flintlock")
-	local spec = CombatData.GunSpecs[gunId] or CombatData.GunSpecs.aether_flintlock
-
-	local isSkill = (moveKey == "Z" or moveKey == "X" or moveKey == "C" or moveKey == "V")
-	if isSkill and not checkMoveMasteryUnlock(p, profile, gunId, moveKey, 4) then
-		return true
-	end
-
-	local now = os.clock()
-	local cdKey = isSkill and ("Slot_" .. moveKey) or "GunM1"
-	if now < (rt.Cooldowns[cdKey] or 0) then
-		return true
-	end
-
-	local gunCfg = (C.Guns and C.Guns[gunId]) or nil
-	local moveCfg = (isSkill and gunCfg and gunCfg.Moves and gunCfg.Moves[moveKey]) or nil
-	local cd = isSkill and ((moveCfg and moveCfg.Cooldown) or 5.5) or (spec.Cooldown or 0.42)
-	local cost = isSkill and ((moveCfg and moveCfg.Cost) or 10) or 0
-	if cost > 0 and (rt.Energy or 100) < cost then
-		G.Notify(p, "Không đủ Aether Energy!")
-		return true
-	end
-	rt.Cooldowns[cdKey] = now + cd
-	if cost > 0 then
-		rt.Energy = math.max(0, (rt.Energy or 100) - cost)
-		rt.LastCastAt = now
-	end
-
-	local maxLen = math.min(180, (gunId == "cryo_railgun" and 115) or (spec.MaxRange or 115))
-	local origin, dir, rayEnd = clampAimRay(hrp, payload, maxLen)
-	if gunId == "cryo_railgun" then
-		rayEnd = origin + dir * 115
-	end
-
-	local stats = G.Stats(p)
-	local baseAtk = (stats and stats.ATK) or 45
-	local mLv = getMasteryLevel(profile, gunId)
-	local mult = isSkill and ((moveCfg and moveCfg.Multiplier) or 3.2) or (spec.M1Multiplier or 1.35)
-	local skillScale = (1 + (mLv - 1) * CombatData.MasteryConfig.SkillDamagePerLevel) * (1 + ((stats and stats.StarSkillDmgPct) or 0))
-	local dmg = baseAtk * mult * skillScale
-	local beamRad = (spec.BeamRadius or 6) * (isSkill and 1.35 or 1.0)
-	local brk = isSkill and ((moveCfg and moveCfg.Break) or 32) or (spec.Break or 16)
-
-	local candidates = getEnemiesAlongSegment(origin, rayEnd, beamRad)
-	local totalDealt = 0
-	local hitCount = 0
-
-	for _, rec in ipairs(candidates) do
-		local e = rec.Enemy
-		local preHP = e.HP or 0
-		G.Hit(p, e, dmg, brk, "Gun_" .. gunId .. "_" .. tostring(moveKey or "M1"))
-		local dealt = math.max(0, preHP - (e.HP or 0))
-		totalDealt += dealt
-		hitCount += 1
-
-		if gunId == "soul_guitar_void" then
-			-- #37: 1.4s Acoustic Stun on hit enemies
-			e.StunnedUntil = math.max(e.StunnedUntil or 0, now + (spec.StunDuration or 1.4))
-			if e.Model then
-				e.Model:SetAttribute("AcousticStun", true)
-				task.delay(spec.StunDuration or 1.4, function()
-					if e and e.Model and e.Model.Parent then
-						e.Model:SetAttribute("AcousticStun", false)
-					end
-				end)
-			end
-		elseif gunId == "cryo_railgun" then
-			-- #38: 2.2s Cryo Freeze along entire 115-stud piercing beam
-			applyCryoFreeze(e, spec.FreezeDuration or 2.2)
-		elseif spec.BurnTicks then
-			applyBurnOrDoT(p, e, dmg * 0.14, spec.BurnTicks, "Flame")
-		end
-
-		if not spec.Piercing and not isSkill then
-			rayEnd = e.Body and e.Body.Position or rayEnd
-			break
-		end
-	end
-
-	-- #37: Soul Guitar Void heals caster for 15% of total damage dealt
-	local healAmt = 0
-	if gunId == "soul_guitar_void" and totalDealt > 0 and hum.Health > 0 then
-		healAmt = math.max(1, math.floor(totalDealt * (spec.LifestealPct or 0.15)))
-		hum.Health = math.min(hum.MaxHealth, hum.Health + healAmt)
-	end
-
-	if hitCount > 0 then
-		addMasteryXP(p, gunId, (isSkill and 18 or 9) + hitCount * 3)
-	end
-
-	if R and R.CombatFX then
-		R.CombatFX:FireAllClients({
-			Kind = "GunShot",
-			SubKind = spec.SubKind,
-			WeaponId = gunId,
-			MoveKey = moveKey or "M1",
-			Element = spec.Element,
-			Color = spec.Color,
-			Origin = origin,
-			EndPos = rayEnd,
-			Position = rayEnd,
-			Direction = dir,
-			Length = (rayEnd - origin).Magnitude,
-			PiercedCount = hitCount,
-			HealAmount = healAmt,
-			Actor = p.UserId,
-		})
-	end
-	if isSkill then
-		G.Sync(p)
-	end
-	return true
+	return SkillMechanics.ExecuteM1(p, 4, payload)
 end
 
 -- ============================================================================
@@ -1483,6 +1125,20 @@ local function performPortalWorldWarp(caster, entryPos, destIsland)
 	Debris:AddItem(entryModel, 10)
 	Debris:AddItem(exitModel, 10)
 
+	local function getPortalDestMinLevel(isl)
+		local realm = isl and isl.Realm or "GoldenSky"
+		local realmMin = ({
+			FrozenCyber = 700,
+			ShadowRealm = 1500,
+			VerdantCrown = 2200,
+			EmberforgeWastes = 2270,
+			AbyssalTides = 2340,
+			ChronosBastion = 2410,
+			VeilsEnd = 2480,
+		})[realm] or 1
+		return math.max(tonumber(isl and isl.LevelReq) or 1, realmMin)
+	end
+
 	local function isBlockedFromPortalWarp(plr)
 		if G.Boss and G.Boss.Party and G.Boss.Party[plr] then
 			return true
@@ -1490,38 +1146,84 @@ local function performPortalWorldWarp(caster, entryPos, destIsland)
 		if PlayerTradeMap[plr] ~= nil or TrialSessions[plr] ~= nil then
 			return true
 		end
-		if plr:GetAttribute("RaidActive") == true or plr:GetAttribute("ColosseumActive") == true or plr:GetAttribute("InColosseum") == true or plr:GetAttribute("InColosseumDuel") == true then
+		local prt = G.Runtime and G.Runtime[plr]
+		if prt and (prt.InRaid or prt.InDuel or prt.InTrial) then
+			return true
+		end
+		if isPlayerPvPCombatTagged(plr, prt) then
+			return true
+		end
+		if plr:GetAttribute("RaidActive") == true
+			or plr:GetAttribute("ColosseumActive") == true
+			or plr:GetAttribute("InColosseum") == true
+			or plr:GetAttribute("InColosseumDuel") == true
+			or (tonumber(plr:GetAttribute("SpireFloor")) or 0) > 0 then
 			return true
 		end
 		return false
 	end
 
+	local function isCasterOrPortalAlly(plr)
+		if not plr or plr.Parent ~= Players then
+			return false
+		end
+		if plr == caster then
+			return true
+		end
+		if not caster or caster.Parent ~= Players then
+			return false
+		end
+		if G.SocialEconomy and type(G.SocialEconomy.AreInSameParty) == "function" then
+			local okP, sameP = pcall(G.SocialEconomy.AreInSameParty, caster, plr)
+			if okP and sameP == true then
+				return true
+			end
+		end
+		local cCrew = tostring(caster:GetAttribute("CrewName") or "")
+		local pCrew = tostring(plr:GetAttribute("CrewName") or "")
+		return cCrew ~= "" and cCrew == pCrew
+	end
+
+	local reqDestLv = getPortalDestMinLevel(destIsland)
+	local destRealm = tostring(destIsland.Realm or "GoldenSky")
+	local destId = tostring(destIsland.Id or "")
 	local warpedPlayers = {}
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local phrp = getCharRoot(plr)
 		local prt = G.Runtime[plr]
 		local pprof = D.Get(plr)
-		if phrp and prt and pprof and not isBlockedFromPortalWarp(plr) and (plr == caster or (phrp.Position - entryPos).Magnitude <= 14) then
-			prt.JumpPadUntil = os.clock() + 3.5
+		if phrp and prt and pprof and isCasterOrPortalAlly(plr) and not isBlockedFromPortalWarp(plr) and (plr == caster or (phrp.Position - entryPos).Magnitude <= 14) then
 			pprof.UnlockedWorlds = pprof.UnlockedWorlds or {}
-			if type(destIsland.Realm) == "string" and destIsland.Realm ~= "" then
-				pprof.UnlockedWorlds[destIsland.Realm] = true
+			local canEnterDest = (destRealm == "GoldenSky" or destRealm == "SkyHub")
+				or pprof.UnlockedWorlds[destRealm] == true
+				or (destId ~= "" and pprof.UnlockedWorlds[destId] == true)
+				or (tonumber(pprof.Level) or 1) >= reqDestLv
+				or DevGate.IsAllowed(plr)
+			if not canEnterDest then
+				if plr == caster then
+					G.Notify(plr, string.format("Cổng Không Gian tới [%s] yêu cầu đạt Level %d!", destIsland.Name or destId, reqDestLv))
+				end
+			else
+				prt.JumpPadUntil = os.clock() + 3.5
+				if destRealm ~= "" then
+					pprof.UnlockedWorlds[destRealm] = true
+				end
+				if destId ~= "" and not tonumber(destId) then
+					pprof.UnlockedWorlds[destId] = true
+				end
+				plr:SetAttribute("CurrentRealm", destRealm)
+				G.Teleport(plr, destPos)
+				table.insert(warpedPlayers, plr.UserId)
+				if plr == caster then
+					unlockTitle(plr, pprof, "dimensional_traveler", false)
+				end
+				G.Notify(plr, "PORTAL WORLD WARP -> " .. destIsland.Name .. "!")
+				G.Sync(plr)
 			end
-			if type(destIsland.Id) == "string" and destIsland.Id ~= "" and not tonumber(destIsland.Id) then
-				pprof.UnlockedWorlds[destIsland.Id] = true
-			end
-			plr:SetAttribute("CurrentRealm", destIsland.Realm or "GoldenSky")
-			G.Teleport(plr, destPos)
-			table.insert(warpedPlayers, plr.UserId)
-			if plr == caster then
-				unlockTitle(plr, pprof, "dimensional_traveler", false)
-			end
-			G.Notify(plr, "PORTAL WORLD WARP -> " .. destIsland.Name .. "!")
-			G.Sync(plr)
 		end
 	end
 
-	if R and R.CombatFX then
+	if #warpedPlayers > 0 and R and R.CombatFX then
 		R.CombatFX:FireAllClients({
 			Kind = "PortalWarp",
 			EntryPos = entryPos,
@@ -1550,15 +1252,62 @@ local function executePortalMoveC(p, payload)
 	end
 
 	local now = os.clock()
+	if now < (tonumber(rt.StunnedUntil) or 0) then
+		return true
+	end
+	if isPlayerPvPCombatTagged(p, rt) then
+		G.Notify(p, "Không thể mở Cổng Không Gian khi đang trong trạng thái Giao Tranh PvP! / Cannot open World Gate while in PvP combat!")
+		return true
+	end
+	if (G.Boss and G.Boss.Party and G.Boss.Party[p])
+		or PlayerTradeMap[p] ~= nil
+		or TrialSessions[p] ~= nil
+		or rt.InRaid or rt.InDuel or rt.InTrial
+		or p:GetAttribute("RaidActive") == true
+		or p:GetAttribute("ColosseumActive") == true
+		or p:GetAttribute("InColosseum") == true
+		or p:GetAttribute("InColosseumDuel") == true
+		or (tonumber(p:GetAttribute("SpireFloor")) or 0) > 0 then
+		G.Notify(p, "Không thể mở Cổng Không Gian khi đang trong Phó Bản, Tháp Vô Tận, Đấu Trường hoặc Giao Dịch!")
+		return true
+	end
 	if now < (rt.Cooldowns.PortalWarpC or 0) then
 		return true
 	end
-	rt.Cooldowns.PortalWarpC = now + 5.5
-	rt.Cooldowns.Slot_C = now + 5.5
+
+	local cMove = C and C.AetherFruits and C.AetherFruits.DimensionalPortalCore and C.AetherFruits.DimensionalPortalCore.Moves and C.AetherFruits.DimensionalPortalCore.Moves.C
+	local energyCost = math.max(0, tonumber(cMove and (cMove.Cost or cMove.EnergyCost)) or 18)
+	if (tonumber(rt.Energy) or 0) < energyCost then
+		G.Notify(p, "Không đủ Energy!")
+		return true
+	end
 
 	local islands = getOrderedIslands()
 	if #islands == 0 then
 		return false
+	end
+
+	local function canCasterTravelTo(isl)
+		if not isl then return false end
+		local realm = tostring(isl.Realm or "GoldenSky")
+		if realm == "GoldenSky" or realm == "SkyHub" or DevGate.IsAllowed(p) then
+			return true
+		end
+		profile.UnlockedWorlds = profile.UnlockedWorlds or {}
+		if profile.UnlockedWorlds[realm] == true or (isl.Id and profile.UnlockedWorlds[isl.Id] == true) then
+			return true
+		end
+		local realmMin = ({
+			FrozenCyber = 700,
+			ShadowRealm = 1500,
+			VerdantCrown = 2200,
+			EmberforgeWastes = 2270,
+			AbyssalTides = 2340,
+			ChronosBastion = 2410,
+			VeilsEnd = 2480,
+		})[realm] or 1
+		local reqLv = math.max(tonumber(isl.LevelReq) or 1, realmMin)
+		return (tonumber(profile.Level) or 1) >= reqLv, reqLv
 	end
 
 	local requestedId = type(payload) == "table" and (payload.targetIslandId or payload.islandId or payload.nodeId) or nil
@@ -1571,11 +1320,27 @@ local function executePortalMoveC(p, payload)
 			end
 		end
 		if chosen then
+			local okLv, reqLv = canCasterTravelTo(chosen)
+			if not okLv then
+				G.Notify(p, string.format("Cổng Không Gian tới [%s] yêu cầu đạt Level %d!", chosen.Name or chosen.Id, reqLv or 1))
+				return true
+			end
+			rt.Energy = math.max(0, (tonumber(rt.Energy) or 0) - energyCost)
+			rt.LastCastAt = now
+			rt._LastSkillAt = now
+			rt.Cooldowns.PortalWarpC = now + 5.5
+			rt.Cooldowns.Slot_C = now + 5.5
 			addMasteryXP(p, "DimensionalPortalCore", 22)
 			performPortalWorldWarp(p, hrp.Position, chosen)
 			return true
 		end
 	end
+
+	rt.Energy = math.max(0, (tonumber(rt.Energy) or 0) - energyCost)
+	rt.LastCastAt = now
+	rt._LastSkillAt = now
+	rt.Cooldowns.PortalWarpC = now + 5.5
+	rt.Cooldowns.Slot_C = now + 5.5
 
 	-- Interactive 3D Dimensional Rift Gate with cycle + instant warp prompts across all 20 islands
 	rt.SelectedPortalIndex = ((rt.SelectedPortalIndex - 1) % #islands) + 1
@@ -1618,6 +1383,10 @@ local function executePortalMoveC(p, payload)
 	cyclePrompt.Parent = ringPart
 
 	cyclePrompt.Triggered:Connect(function(who)
+		if who ~= p then
+			G.Notify(who, "Chỉ chủ nhân Cổng Không Gian mới có thể đổi đảo đích! / Only the caster can change this gate's destination!")
+			return
+		end
 		rt.SelectedPortalIndex = (rt.SelectedPortalIndex % #islands) + 1
 		curDest = islands[rt.SelectedPortalIndex]
 		destLabel.Text = string.format("CỔNG KHÔNG GIAN [%d/%d]: %s", rt.SelectedPortalIndex, #islands, curDest.Name)
@@ -1626,11 +1395,40 @@ local function executePortalMoveC(p, payload)
 	end)
 
 	warpPrompt.Triggered:Connect(function(who)
+		if not who or who.Parent ~= Players then
+			return
+		end
+		if isPlayerPvPCombatTagged(who, G.Runtime and G.Runtime[who]) then
+			G.Notify(who, "Không thể bước qua Cổng Không Gian khi đang Giao Tranh PvP! / Cannot use World Gate while in PvP combat!")
+			return
+		end
+		local allowedAlly = (who == p)
+		if not allowedAlly and p and p.Parent == Players then
+			if G.SocialEconomy and type(G.SocialEconomy.AreInSameParty) == "function" then
+				local okP, sameP = pcall(G.SocialEconomy.AreInSameParty, p, who)
+				if okP and sameP == true then
+					allowedAlly = true
+				end
+			end
+			local cCrew = tostring(p:GetAttribute("CrewName") or "")
+			local wCrew = tostring(who:GetAttribute("CrewName") or "")
+			if cCrew ~= "" and cCrew == wCrew then
+				allowedAlly = true
+			end
+		end
+		if not allowedAlly then
+			G.Notify(who, "Cổng Không Gian này chỉ dành cho Chủ Nhân và Đồng Đội Tổ Đội / Hạm Đội! / Restricted to caster and Party/Crew allies!")
+			return
+		end
 		if gateModel and gateModel.Parent then
 			gateModel:Destroy()
 		end
-		addMasteryXP(p, "DimensionalPortalCore", 22)
-		performPortalWorldWarp(who, gatePos, curDest)
+		if p and p.Parent == Players then
+			addMasteryXP(p, "DimensionalPortalCore", 22)
+			performPortalWorldWarp(p, gatePos, curDest)
+		else
+			performPortalWorldWarp(who, gatePos, curDest)
+		end
 	end)
 
 	if type(payload) == "table" and payload.instant == true then
@@ -1664,45 +1462,76 @@ local function executeDragonFuryMoveV(p, fruitId)
 	ensureExpansionProfile(profile)
 	ensureRuntimeFields(p, rt, profile)
 
-	if not checkMoveMasteryUnlock(p, profile, fruitId, "V", 2) then
+	local now = os.clock()
+	if now < (rt.Cooldowns.Slot_V or 0) or now < (rt._DragonToggleDebounceAt or 0) then
 		return true
 	end
 
-	local fury = tonumber(rt.FuryMeter) or 0
-	local curTier = tonumber(rt.DragonFormTier) or 0
-	-- Toggle Dragon Form OFF if already at Tier 2, or if at Tier 1 without 100% Fury to ascend to Tier 2
-	if curTier == 2 or (curTier == 1 and fury < 99.5) then
+	local fury = tonumber(rt.FuryMeter) or tonumber(rt.DragonFury) or 100
+	local curTier = tonumber(rt.DragonFormTier) or tonumber(ch and ch:GetAttribute("DragonFormTier")) or tonumber(p:GetAttribute("DragonFormTier")) or 0
+	local nextTier = (curTier == 0 and 1) or (curTier == 1 and 2) or 0
+
+	if curTier == 0 then
+		if not checkMoveMasteryUnlock(p, profile, fruitId, "V", 2) then
+			return true
+		end
+		if fury < 15 then
+			G.Notify(p, string.format("Cần tối thiểu 15%% Nộ Khí (Fury) để hóa Bán Long Nhân (Hiện tại: %d%%)! / Need 15%% Fury for Hybrid Form 1!", math.floor(fury)))
+			return true
+		end
+	elseif curTier == 1 then
+		if not checkMoveMasteryUnlock(p, profile, fruitId, "V", 2) or fury < 25 then
+			nextTier = 0
+		end
+	end
+
+	local awk = profile.AwakenedFruits and (profile.AwakenedFruits[fruitId] == true or profile.AwakenedFruits.AbyssalSovereignCore == true)
+	if nextTier == 0 then
+		rt._DragonToggleDebounceAt = now + 1.4
 		rt.DragonFormTier = 0
+		rt.FreeFlightActive = false
+		rt.FreeFlightUntil = 0
+		rt.FuryMeter = fury
+		rt.DragonFury = fury
 		p:SetAttribute("DragonFormTier", 0)
 		p:SetAttribute("FruitTransform", "")
+		p:SetAttribute("SkybreakFlightActive", false)
+		p:SetAttribute("FreeFlightUntil", 0)
 		if ch then
 			ch:SetAttribute("DragonFormTier", 0)
 			ch:SetAttribute("FruitTransform", "")
+			ch:SetAttribute("SkybreakFlightActive", false)
 		end
 		if R and R.CombatFX then
 			R.CombatFX:FireAllClients({
 				Kind = "DragonTransform",
 				DragonFormTier = 0,
 				TransformName = "",
-				Awakened = profile.AwakenedFruits and profile.AwakenedFruits[fruitId] == true,
+				Awakened = awk,
 				FuryMeter = fury,
 				Radius = 14,
 				Position = hrp.Position,
 				Actor = p.UserId,
 			})
 		end
-		G.Notify(p, "Đã thu hồi Long Hóa, trở về nhân dạng.")
+		G.Notify(p, "Đã thu hồi Long Hóa, trở về nhân dạng (0 Energy). / Reverted to Human form (0 Energy).")
 		G.Sync(p)
 		return true
 	end
 
-	if fury < 50 then
-		G.Notify(p, string.format("Cần tối thiểu 50%% Nộ Khí (Fury) để Hóa Bán Long hoặc 100%% để Hóa Hoàng Long! (Hiện tại: %d%%)", math.floor(fury)))
+	local vCost = 15
+	if (tonumber(rt.Energy) or 0) < vCost then
+		G.Notify(p, "Không đủ Aether Energy! / Not enough Energy!")
 		return true
 	end
+	rt.Energy = math.max(0, (tonumber(rt.Energy) or 0) - vCost)
+	rt.LastCastAt = now
+	rt.Cooldowns.Slot_V = now + 3.0
 
-	local tier = (fury >= 99.5) and 2 or 1
+	local tier = nextTier
 	rt.DragonFormTier = tier
+	rt.FuryMeter = fury
+	rt.DragonFury = fury
 	local tfName = (tier == 2) and "AbyssalSovereign" or "AbyssalDragonHybrid"
 	p:SetAttribute("DragonFormTier", tier)
 	p:SetAttribute("FruitTransform", tfName)
@@ -1710,29 +1539,37 @@ local function executeDragonFuryMoveV(p, fruitId)
 		ch:SetAttribute("DragonFormTier", tier)
 		ch:SetAttribute("FruitTransform", tfName)
 	end
+	if tier < 2 then
+		rt.FreeFlightActive = false
+		rt.FreeFlightUntil = 0
+		p:SetAttribute("SkybreakFlightActive", false)
+		p:SetAttribute("FreeFlightUntil", 0)
+		if ch then
+			ch:SetAttribute("SkybreakFlightActive", false)
+		end
+	end
 
-	local stats = G.Stats(p)
+	local stats = G.Stats(p, 2)
 	local atk = (stats and stats.ATK) or 65
-	local awk = profile.AwakenedFruits and profile.AwakenedFruits[fruitId] == true
-	local burstMult = (tier == 2 and 6.2 or 4.1) * (awk and 1.38 or 1.0)
-	local burstRadius = tier == 2 and 46 or 28
-	local burstBreak = tier == 2 and 68 or 42
+	local burstMult = (tier == 2 and 2.8 or 2.0) * (awk and 1.28 or 1.0)
+	local burstRadius = tier == 2 and 38 or 26
+	local burstBreak = tier == 2 and 42 or 26
 
 	if tier == 2 then
-		rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 40)
+		rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 45)
 		unlockTitle(p, profile, "sovereign_dragon_king", false)
-		G.Notify(p, "TIER 2 FULL SOVEREIGN DRAGON (100% FURY): Hoàng Long Khổng Lồ giáng thế (+40% DEF, +32% ATK, Phi Hành)!")
+		G.Notify(p, "[DẠNG 2 • THÁI CỔ LONG HOÀNG / SOVEREIGN FORM 2] Mở khóa Bay 3D [F] & Tuyệt Kỹ Long Đế! Nhấn [V] để thu hồi (0 Energy).")
 	else
-		G.Notify(p, "TIER 1 ABYSSAL DRAGON HYBRID (50%+ FURY): Hóa Bán Long Nhân (+22% Speed, +25% DEF)!")
+		G.Notify(p, "[DẠNG 1 • BÁN LONG NHÂN / HYBRID FORM 1] Hóa Bán Long Nhân (+22% Speed, +25% DEF)! Nhấn [V] lần nữa để hóa Rồng Dạng 2!")
 	end
 
 	for _, e in ipairs(G.Enemies or {}) do
 		if e.Alive and e.Body and (e.Body.Position - hrp.Position).Magnitude <= burstRadius then
 			G.Hit(p, e, atk * burstMult, burstBreak, "DragonFuryAscension_T" .. tostring(tier))
-			applyBurnOrDoT(p, e, atk * 0.45, tier == 2 and 4 or 2, "Void")
+			applyBurnOrDoT(p, e, atk * 0.35, tier == 2 and 3 or 2, "Void")
 		end
 	end
-	addMasteryXP(p, fruitId, tier == 2 and 34 or 22)
+	addMasteryXP(p, fruitId, tier == 2 and 30 or 20)
 
 	if R and R.CombatFX then
 		R.CombatFX:FireAllClients({
@@ -1750,131 +1587,8 @@ local function executeDragonFuryMoveV(p, fruitId)
 	return true
 end
 
-local function executeAwakenedFruitV2Move(p, fruitId, key, payload)
-	local hrp = getCharRoot(p)
-	local rt = G.Runtime[p]
-	local profile = D.Get(p)
-	if not hrp or not rt or not profile then
-		return false
-	end
-	local cid = CombatData.ResolveFruitId(fruitId)
-	local isAwakened = profile.AwakenedFruits and (profile.AwakenedFruits[cid] == true or profile.AwakenedFruits[fruitId] == true)
-	if not isAwakened then
-		return false
-	end
-	local v2Set = CombatData.AwakenedFruitMoves[cid]
-	local v2 = v2Set and v2Set[key]
-	if not v2 then
-		return false
-	end
-	if not checkMoveMasteryUnlock(p, profile, cid, key, 2) then
-		return true
-	end
+-- Awakened V2 & V1 Fruit Skills are executed authoritatively via SkillMechanics.ExecuteSlotSkill
 
-	local fruitCfg = C.AetherFruits and C.AetherFruits[cid]
-	local baseMove = fruitCfg and fruitCfg.Moves and fruitCfg.Moves[key]
-	local cd = (baseMove and baseMove.Cooldown) or 7.0
-	local cost = (baseMove and baseMove.Cost) or 14
-	local now = os.clock()
-	if now < (rt.Cooldowns["Slot_" .. key] or 0) then
-		return true
-	end
-	if (rt.Energy or 100) < cost then
-		G.Notify(p, "Không đủ Aether Energy!")
-		return true
-	end
-	local cdMult = (profile.RaceV4Active and profile.Race == "Ghoul") and (1 - CombatData.RaceV4Passives.Ghoul.CooldownReductionPct) or 1
-	rt.Cooldowns["Slot_" .. key] = now + cd * cdMult
-	rt.Energy = math.max(0, (rt.Energy or 100) - cost)
-	rt.LastCastAt = now
-
-	local mLv = getMasteryLevel(profile, cid)
-	if cid == "SolarTitanCore" and key == "Z" then
-		local ch = p.Character
-		local curTf = (ch and ch:GetAttribute("FruitTransform")) or p:GetAttribute("FruitTransform") or ""
-		local nextTf = (curTf == "SolarTitan") and "" or "SolarTitan"
-		p:SetAttribute("FruitTransform", nextTf)
-		if ch then
-			ch:SetAttribute("FruitTransform", nextTf)
-		end
-		if nextTf == "SolarTitan" then
-			G.Notify(p, "AWAKENED SOLAR TITAN SHIFT: Hóa Đại Kim Thân Thức Tỉnh 3D (+58% Giáp, x2.5 Tầm Đánh)!")
-		else
-			G.Notify(p, "AWAKENED SOLAR TITAN SHIFT: Thu hồi Kim Thân, trở về nhân dạng!")
-		end
-	elseif key == "F" then
-		local flightBoost = (mLv >= CombatData.MasteryConfig.FlightEnhancedLevel) and 1.35 or 1.0
-		rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, now + 3.2 * flightBoost)
-	end
-
-	local baseRange = math.min(60, (baseMove and baseMove.Range) or 28)
-	local radius = math.min(48, baseRange * 0.62 * (v2.RadiusScale or 1.4))
-	local origin, dir, centerPos = clampAimRay(hrp, payload, baseRange)
-
-	local stats = G.Stats(p)
-	local baseAtk = (stats and stats.ATK) or 55
-	local baseMult = (baseMove and baseMove.Multiplier) or 3.2
-	local skillMult = (1 + (mLv - 1) * CombatData.MasteryConfig.SkillDamagePerLevel) * (1 + ((stats and stats.StarSkillDmgPct) or 0))
-	local totalDmg = baseAtk * baseMult * (v2.MultBoost or 1.34) * skillMult
-	local hits = math.max(1, v2.Hits or 3)
-	local perHit = totalDmg / hits
-	local brk = math.ceil((((baseMove and baseMove.Break) or 30) * 1.25) / hits)
-
-	if v2.Mechanic == "MagmaPoolDoT" then
-		spawnMagmaPool(p, centerPos, math.max(10, radius * 0.75), totalDmg * 0.16, v2.DoTTicks or 4)
-	end
-
-	for pulse = 1, hits do
-		task.delay((pulse - 1) * 0.12, function()
-			if not p or not p.Parent then
-				return
-			end
-			local hitCount = 0
-			for _, e in ipairs(G.Enemies or {}) do
-				if e.Alive and e.Body and (e.Body.Position - centerPos).Magnitude <= radius then
-					hitCount += 1
-					if v2.PullStrength then
-						pullEnemyToward(e, centerPos, v2.PullStrength / hits)
-					end
-					if pulse == hits then
-						if v2.FreezeDur then
-							applyCryoFreeze(e, v2.FreezeDur)
-						elseif v2.StunDur and not isBossEnemy(e) then
-							e.StunnedUntil = math.max(e.StunnedUntil or 0, os.clock() + v2.StunDur)
-						end
-						if v2.DoTTicks and v2.Mechanic ~= "MagmaPoolDoT" then
-							applyBurnOrDoT(p, e, totalDmg * 0.14, v2.DoTTicks, (fruitCfg and fruitCfg.Element) or "Flame")
-						end
-					end
-					G.Hit(p, e, perHit, brk, "AwakenedV2_" .. cid .. "_" .. key)
-				end
-			end
-			if pulse == hits and hitCount > 0 then
-				addMasteryXP(p, cid, 24 + hitCount * 4)
-			end
-		end)
-	end
-
-	if R and R.CombatFX then
-		R.CombatFX:FireAllClients({
-			Kind = "FruitMove",
-			Awakened = true,
-			FruitId = cid,
-			MoveKey = key,
-			MoveName = v2.Name,
-			Mechanic = v2.Mechanic,
-			Hits = hits,
-			Element = (fruitCfg and fruitCfg.Element) or "Sky",
-			Origin = origin,
-			Position = centerPos,
-			Direction = dir,
-			Radius = radius,
-			Actor = p.UserId,
-		})
-	end
-	G.Sync(p)
-	return true
-end
 
 -- ============================================================================
 -- HOURLY MIRAGE FRUIT STOCK DEALER (#43)
@@ -1896,10 +1610,32 @@ end
 
 function Expansion.BuyMirageFruit(p, rawFruitId, equipNow)
 	local profile = D.Get(p)
-	if not profile then
+	local hrp = getCharRoot(p)
+	if not profile or not hrp then
 		return false
 	end
 	ensureExpansionProfile(profile)
+
+	-- D-A7: Must have an active Mirage Island event AND stand within <= 35 studs of the Mirage Stock Dealer
+	local swo = workspace:FindFirstChild("SkybreakWorldObjects")
+	local mirageModel = (swo and swo:FindFirstChild("MirageSkyIsland_Event")) or workspace:FindFirstChild("MirageSkyIsland_Event", true)
+	if workspace:GetAttribute("MirageIslandActive") ~= true or not mirageModel then
+		G.Notify(p, "Đảo Hư Quang (Phantom Isle) hiện chưa xuất hiện! Không thể mua từ xa! / Phantom Isle is not currently active!")
+		return false
+	end
+	local dealerNode = mirageModel:FindFirstChild("NPC_MirageStockDealer", true)
+	local dealerPos = nil
+	if dealerNode then
+		dealerPos = dealerNode:IsA("Model") and dealerNode:GetPivot().Position or (dealerNode:IsA("BasePart") and dealerNode.Position or nil)
+	end
+	if not dealerPos then
+		dealerPos = mirageModel:GetPivot().Position
+	end
+	if (hrp.Position - dealerPos).Magnitude > 35 then
+		G.Notify(p, "Bạn phải đứng gần Thương Nhân Đảo Hư Quang (<= 35m) mới có thể giao dịch! / Must be within 35 studs of the Mirage Stock Dealer!")
+		return false
+	end
+
 	local stock = refreshMirageStock()
 	local cid = CombatData.ResolveFruitId(tostring(rawFruitId or ""))
 
@@ -1916,25 +1652,62 @@ function Expansion.BuyMirageFruit(p, rawFruitId, equipNow)
 	end
 
 	if not chosenItem then
-		G.Notify(p, "Lõi Aether này hiện không có trong Kho Hư Quang giờ này!")
+		G.Notify(p, "Lõi Aether này hiện không có trong Kho Hư Quang giờ này! / This Aether Core is not in the current Mirage Stock!")
 		return false
 	end
 
-	local price = chosenItem.PriceGold or 250000
+	local shouldEquipOnly = (equipNow == true)
+	if not shouldEquipOnly then
+		local maxCap = getMaxCoreStorage(p, profile)
+		local curCnt = tonumber(profile.StoredFruits[chosenItem.Id]) or 0
+		if curCnt >= maxCap then
+			G.Notify(
+				p,
+				string.format(
+					"Kho Lõi [%s] đã đầy (%d/%d)! Hãy mở rộng Sức Chứa Lõi hoặc chọn Trang Bị Ngay! / [%s] Core Storage full (%d/%d)!",
+					chosenItem.Name,
+					curCnt,
+					maxCap,
+					chosenItem.Id,
+					curCnt,
+					maxCap
+				)
+			)
+			return false
+		end
+	end
+
+	local price = chosenItem.PriceGold or CombatData.GetFruitGoldValue(chosenItem.Id)
 	if (profile.Gold or 0) < price then
-		G.Notify(p, string.format("Không đủ Gold mua [%s] (Cần %d Gold, hiện có %d Gold)!", chosenItem.Name, price, profile.Gold or 0))
+		G.Notify(p, string.format("Không đủ Gold mua [%s] (Cần %d Gold, hiện có %d Gold)! / Not enough Gold!", chosenItem.Name, price, profile.Gold or 0))
 		return false
 	end
 
 	profile.Gold -= price
-	profile.StoredFruits[chosenItem.Id] = (profile.StoredFruits[chosenItem.Id] or 0) + 1
-	if equipNow == true or profile.EquippedFruit == "" or profile.EquippedFruit == nil then
+	if shouldEquipOnly then
+		-- D-A7 Single-Copy Rule: equipNow equips directly onto Slot 2 WITHOUT adding a duplicate StoredFruits copy
 		profile.EquippedFruit = chosenItem.Id
 		profile.ActiveSlot = 2
+		local rt = G.Runtime and G.Runtime[p]
+		if rt then
+			rt.DragonFormTier = 0
+			rt.FreeFlightActive = false
+		end
+		p:SetAttribute("DragonFormTier", 0)
+		p:SetAttribute("FruitTransform", "")
+		p:SetAttribute("SkybreakFlightActive", false)
+		if p.Character then
+			p.Character:SetAttribute("DragonFormTier", 0)
+			p.Character:SetAttribute("FruitTransform", "")
+			p.Character:SetAttribute("SkybreakFlightActive", false)
+		end
+	else
+		-- Store ONLY 1 copy in StoredFruits
+		profile.StoredFruits[chosenItem.Id] = (tonumber(profile.StoredFruits[chosenItem.Id]) or 0) + 1
+		profile.HeldFruit = chosenItem.Id
 	end
-	profile.HeldFruit = chosenItem.Id
 	unlockTitle(p, profile, "mirage_tycoon", false)
-	G.Notify(p, string.format("THƯƠNG NHÂN HƯ QUANG: Đã mua trực tiếp [%s] với giá %d Gold!", chosenItem.Name, price))
+	G.Notify(p, string.format("THƯƠNG NHÂN HƯ QUANG: Đã mua [%s] với giá %d Gold! / Purchased [%s] for %d Gold!", chosenItem.Name, price, chosenItem.Id, price))
 	G.Sync(p)
 	return true
 end
@@ -2044,19 +1817,40 @@ local function spawnPhysicalDroppedFruit(fruitId, dropPos, dropperName)
 
 	local claimed = false
 	prompt.Triggered:Connect(function(picker)
-		if claimed or not m.Parent then
+		if claimed or not m.Parent or m:GetAttribute("Claimed") == true then
+			return
+		end
+		if PlayerTradeMap[picker] ~= nil or picker:GetAttribute("InTrade") == true then
 			return
 		end
 		local pprof = D.Get(picker)
 		if not pprof then
 			return
 		end
-		claimed = true
 		ensureExpansionProfile(pprof)
-		pprof.StoredFruits[cid] = (pprof.StoredFruits[cid] or 0) + 1
+		local maxCap = getMaxCoreStorage(picker, pprof)
+		local curCnt = tonumber(pprof.StoredFruits[cid]) or 0
+		if curCnt >= maxCap then
+			G.Notify(
+				picker,
+				string.format(
+					"Kho Lõi [%s] đã đầy (%d/%d)! Không thể nhặt thêm! / [%s] Core Storage is full (%d/%d)!",
+					cat.Name,
+					curCnt,
+					maxCap,
+					cid,
+					curCnt,
+					maxCap
+				)
+			)
+			return
+		end
+		claimed = true
+		m:SetAttribute("Claimed", true)
+		pprof.StoredFruits[cid] = curCnt + 1
 		pprof.HeldFruit = cid
 		m:Destroy()
-		G.Notify(picker, "Đã nhặt Lõi Aether 3D: [" .. cat.Name .. "]!")
+		G.Notify(picker, string.format("Đã nhặt Lõi Aether 3D: [%s] (%d/%d)! / Picked up [%s]!", cat.Name, curCnt + 1, maxCap, cid))
 		G.Sync(picker)
 	end)
 
@@ -2280,8 +2074,11 @@ local function executeAtomicTradeSwap(session)
 
 	-- Verify PlayerA owns all offered fruits right before atomic swap
 	local needA = {}
-	for _, fid in ipairs(session.OfferA) do
-		needA[fid] = (needA[fid] or 0) + 1
+	for _, rawFid in ipairs(session.OfferA) do
+		local fid = CombatData.ResolveFruitId(rawFid)
+		if fid ~= "" then
+			needA[fid] = (needA[fid] or 0) + 1
+		end
 	end
 	for fid, cnt in pairs(needA) do
 		if (tonumber(profA.StoredFruits[fid]) or 0) < cnt then
@@ -2303,8 +2100,11 @@ local function executeAtomicTradeSwap(session)
 			return
 		end
 		ensureExpansionProfile(profB)
-		for _, fid in ipairs(session.OfferB) do
-			needB[fid] = (needB[fid] or 0) + 1
+		for _, rawFid in ipairs(session.OfferB) do
+			local fid = CombatData.ResolveFruitId(rawFid)
+			if fid ~= "" then
+				needB[fid] = (needB[fid] or 0) + 1
+			end
 		end
 		for fid, cnt in pairs(needB) do
 			if (tonumber(profB.StoredFruits[fid]) or 0) < cnt then
@@ -2313,8 +2113,55 @@ local function executeAtomicTradeSwap(session)
 			end
 		end
 	else
-		for _, fid in ipairs(session.OfferB) do
-			needB[fid] = (needB[fid] or 0) + 1
+		for _, rawFid in ipairs(session.OfferB) do
+			local fid = CombatData.ResolveFruitId(rawFid)
+			if fid ~= "" then
+				needB[fid] = (needB[fid] or 0) + 1
+			end
+		end
+	end
+
+	-- Enforce GetMaxCoreStorage cap on BOTH receiving sides before mutating inventories
+	local maxStoreA = getMaxCoreStorage(pA, profA)
+	local maxStoreB = (profB and pB) and getMaxCoreStorage(pB, profB) or 999
+	if profB and pB then
+		for fid, cnt in pairs(needA) do
+			local curB = math.max(0, (tonumber(profB.StoredFruits[fid]) or 0) - (needB[fid] or 0))
+			if (curB + cnt) > maxStoreB then
+				cancelTradeSession(
+					session,
+					string.format(
+						"Kho Lõi Aether của %s đã đầy [%s] (%d/%d)! / %s's Core Storage is full (%d/%d)!",
+						pB.Name,
+						fid,
+						tonumber(profB.StoredFruits[fid]) or 0,
+						maxStoreB,
+						pB.Name,
+						tonumber(profB.StoredFruits[fid]) or 0,
+						maxStoreB
+					)
+				)
+				return
+			end
+		end
+	end
+	for fid, cnt in pairs(needB) do
+		local curA = math.max(0, (tonumber(profA.StoredFruits[fid]) or 0) - (needA[fid] or 0))
+		if (curA + cnt) > maxStoreA then
+			cancelTradeSession(
+				session,
+				string.format(
+					"Kho Lõi Aether của %s đã đầy [%s] (%d/%d)! / %s's Core Storage is full (%d/%d)!",
+					pA.Name,
+					fid,
+					tonumber(profA.StoredFruits[fid]) or 0,
+					maxStoreA,
+					pA.Name,
+					tonumber(profA.StoredFruits[fid]) or 0,
+					maxStoreA
+				)
+			)
+			return
 		end
 	end
 
@@ -2533,332 +2380,15 @@ function Expansion.HandleTradeAction(p, actionOrPayload, arg2)
 	end
 end
 
-local function spawnNPCCollectorAtSeat(seatPos, lookPos, parentFolder)
-	local m = Instance.new("Model")
-	m.Name = "NPC_FruitCollector"
-	local torso = Instance.new("Part")
-	torso.Name = "Torso"
-	torso.Size = Vector3.new(2.0, 2.2, 1.1)
-	torso.CFrame = CFrame.lookAt(seatPos + Vector3.new(0, 1.6, 0), Vector3.new(lookPos.X, seatPos.Y + 1.6, lookPos.Z))
-	torso.Color = Color3.fromRGB(48, 36, 84)
-	torso.Material = Enum.Material.SmoothPlastic
-	torso.Anchored = true
-	torso.CanCollide = false
-	torso.Parent = m
-
-	local head = Instance.new("Part")
-	head.Name = "Head"
-	head.Shape = Enum.PartType.Ball
-	head.Size = Vector3.new(1.3, 1.3, 1.3)
-	head.CFrame = torso.CFrame * CFrame.new(0, 1.75, 0)
-	head.Color = Color3.fromRGB(238, 208, 178)
-	head.Material = Enum.Material.SmoothPlastic
-	head.Anchored = true
-	head.CanCollide = false
-	head.Parent = m
-
-	local bill = Instance.new("BillboardGui")
-	bill.Size = UDim2.fromOffset(180, 32)
-	bill.StudsOffset = Vector3.new(0, 2.0, 0)
-	bill.MaxDistance = 45
-	bill.LightInfluence = 0
-	bill.Parent = head
-
-	local tl = Instance.new("TextLabel")
-	tl.Size = UDim2.fromScale(1, 1)
-	tl.BackgroundTransparency = 1
-	tl.Font = Enum.Font.GothamBold
-	tl.TextSize = 12
-	tl.TextColor3 = Color3.fromRGB(162, 242, 210)
-	tl.TextStrokeTransparency = 0.2
-	tl.Text = "Nhà Sưu Tầm Ảo Ảnh [Trade]"
-	tl.Parent = bill
-
-	m.PrimaryPart = torso
-	m.Parent = parentFolder
-	return m
-end
-
 local function buildCafeTradingTables()
 	local hubFolder = ensureWorldFolder("CyberportCafeTradingHub")
 	hubFolder:ClearAllChildren()
-
-	local cafeBase = (C.FastTravel and C.FastTravel.CyberportCafe and C.FastTravel.CyberportCafe.Pos) or Vector3.new(9400, 50.9, 1785)
-	local tableCenters = {
-		Vector3.new(cafeBase.X - 10, cafeBase.Y, cafeBase.Z - 14),
-		Vector3.new(cafeBase.X + 12, cafeBase.Y, cafeBase.Z - 14),
-	}
-
-	for tIdx, rawCenter in ipairs(tableCenters) do
-		local fy = groundYAt(rawCenter, 46.9)
-		local center = Vector3.new(rawCenter.X, fy, rawCenter.Z)
-
-		local tModel = Instance.new("Model")
-		tModel.Name = "FruitTradingTable_" .. tostring(tIdx)
-		tModel.Parent = hubFolder
-
-		local pedestal = Instance.new("Part")
-		pedestal.Name = "TablePedestal"
-		pedestal.Size = Vector3.new(2.2, 2.6, 2.2)
-		pedestal.Position = center + Vector3.new(0, 1.3, 0)
-		pedestal.Color = Color3.fromRGB(28, 36, 52)
-		pedestal.Material = Enum.Material.Metal
-		pedestal.Anchored = true
-		pedestal.Parent = tModel
-
-		local top = Instance.new("Part")
-		top.Name = "TableTop"
-		top.Size = Vector3.new(7.6, 0.45, 5.4)
-		top.Position = center + Vector3.new(0, 2.75, 0)
-		top.Color = Color3.fromRGB(18, 24, 38)
-		top.Material = Enum.Material.Glass
-		top.Anchored = true
-		top.Parent = tModel
-
-		local trim = Instance.new("Part")
-		trim.Name = "NeonTrim"
-		trim.Size = Vector3.new(7.8, 0.16, 5.6)
-		trim.Position = center + Vector3.new(0, 2.62, 0)
-		trim.Color = Color3.fromRGB(72, 226, 255)
-		trim.Material = Enum.Material.Neon
-		trim.Anchored = true
-		trim.CanCollide = false
-		trim.Parent = tModel
-
-		local holoBill = Instance.new("BillboardGui")
-		holoBill.Size = UDim2.fromOffset(290, 40)
-		holoBill.StudsOffset = Vector3.new(0, 3.8, 0)
-		holoBill.MaxDistance = 60
-		holoBill.LightInfluence = 0
-		holoBill.Parent = top
-
-		local statusLbl = Instance.new("TextLabel")
-		statusLbl.Name = "StatusLabel"
-		statusLbl.Size = UDim2.fromScale(1, 1)
-		statusLbl.BackgroundTransparency = 1
-		statusLbl.Font = Enum.Font.GothamBlack
-		statusLbl.TextSize = 13
-		statusLbl.TextColor3 = Color3.fromRGB(110, 238, 255)
-		statusLbl.TextStrokeTransparency = 0.2
-		statusLbl.Text = "BÀN GIAO DỊCH LÕI AETHER #" .. tostring(tIdx) .. " (<= 40% Value Lock)"
-		statusLbl.Parent = holoBill
-
-		-- 4 Chairs: Pair 1 (Chair 1 North <-> Chair 2 South, West lane), Pair 2 (Chair 3 North <-> Chair 4 South, East lane)
-		local chairSpecs = {
-			{ Idx = 1, Pair = 1, Side = "A", Offset = Vector3.new(-1.9, 1.35, -4.1) },
-			{ Idx = 2, Pair = 1, Side = "B", Offset = Vector3.new(-1.9, 1.35, 4.1) },
-			{ Idx = 3, Pair = 2, Side = "A", Offset = Vector3.new(1.9, 1.35, -4.1) },
-			{ Idx = 4, Pair = 2, Side = "B", Offset = Vector3.new(1.9, 1.35, 4.1) },
-		}
-
-		local pairSeats = { [1] = {}, [2] = {} }
-		local pairSessions = { [1] = nil, [2] = nil }
-
-		local function getPlayerFromHumanoid(hum)
-			if not hum or not hum.Parent then
-				return nil
-			end
-			return Players:GetPlayerFromCharacter(hum.Parent)
-		end
-
-		local function refreshPairSession(pairId)
-			local seats = pairSeats[pairId]
-			local pA = getPlayerFromHumanoid(seats.A and seats.A.Occupant)
-			local pB = getPlayerFromHumanoid(seats.B and seats.B.Occupant)
-			local cur = pairSessions[pairId]
-
-			if not pA and not pB then
-				if cur then
-					cancelTradeSession(cur, "Hai ghế giao dịch đã trống.")
-					pairSessions[pairId] = nil
-				end
-				return
-			end
-
-			if pA and pB and pA ~= pB then
-				if cur and (cur.IsNPCCollector or cur.PlayerA ~= pA or cur.PlayerB ~= pB) then
-					cancelTradeSession(cur, "Người chơi mới tham gia bàn giao dịch.")
-					cur = nil
-				end
-				if not cur or cur.Closed then
-					local sid = string.format("CafeTable%d_Pair%d_%d", tIdx, pairId, math.floor(os.clock() * 100))
-					cur = {
-						Id = sid,
-						PlayerA = pA,
-						PlayerB = pB,
-						IsNPCCollector = false,
-						OfferA = {},
-						OfferB = {},
-						AcceptedA = false,
-						AcceptedB = false,
-						Countdown = 0,
-						StatusLabel = statusLbl,
-					}
-					pairSessions[pairId] = cur
-					ActiveTrades[sid] = cur
-					PlayerTradeMap[pA] = cur
-					PlayerTradeMap[pB] = cur
-					pA:SetAttribute("InTrade", true)
-					pB:SetAttribute("InTrade", true)
-					G.Notify(pA, "Đã kết nối Bàn Giao Dịch Lõi Aether với " .. pB.Name .. " (Khóa <= 40% giá trị)!")
-					G.Notify(pB, "Đã kết nối Bàn Giao Dịch Lõi Aether với " .. pA.Name .. " (Khóa <= 40% giá trị)!")
-					sendTradeSnapshot(cur, "TradeStarted", "Phiên giao dịch 2 người đã mở!")
-				end
-				return
-			end
-
-			-- Single-player seated: spawn interactive NPC Collector Trade Partner across the table after 1.0s!
-			local soloPlr = pA or pB
-			if soloPlr and (not cur or cur.Closed) then
-				task.delay(1.0, function()
-					local checkA = getPlayerFromHumanoid(seats.A and seats.A.Occupant)
-					local checkB = getPlayerFromHumanoid(seats.B and seats.B.Occupant)
-					if (checkA == soloPlr and not checkB) or (checkB == soloPlr and not checkA) then
-						if pairSessions[pairId] and not pairSessions[pairId].Closed then
-							return
-						end
-						local oppSeat = (checkA == soloPlr) and seats.B or seats.A
-						local npcModel = spawnNPCCollectorAtSeat(oppSeat.Position, center, tModel)
-						local sid = string.format("CafeSoloTable%d_Pair%d_%d", tIdx, pairId, math.floor(os.clock() * 100))
-						local soloSession = {
-							Id = sid,
-							PlayerA = soloPlr,
-							PlayerB = nil,
-							IsNPCCollector = true,
-							NPCModel = npcModel,
-							OfferA = {},
-							OfferB = {},
-							AcceptedA = false,
-							AcceptedB = false,
-							Countdown = 0,
-							StatusLabel = statusLbl,
-						}
-						pairSessions[pairId] = soloSession
-						ActiveTrades[sid] = soloSession
-						PlayerTradeMap[soloPlr] = soloSession
-						soloPlr:SetAttribute("InTrade", true)
-						G.Notify(soloPlr, "Nhà Sưu Tầm Hư Quang đã ngồi đối diện! Đặt Lõi Aether (AddFruit) để giao dịch (<= 40% Value Lock + 5s Countdown)!")
-						sendTradeSnapshot(soloSession, "TradeStarted", "Nhà Sưu Tầm Hư Quang sẵn sàng đổi lõi công bằng!")
-					end
-				end)
-			elseif cur and not cur.Closed and cur.PlayerA ~= soloPlr and cur.PlayerB ~= soloPlr then
-				cancelTradeSession(cur, "Người chơi đã đứng dậy rời ghế.")
-				pairSessions[pairId] = nil
-			end
-		end
-
-		for _, cs in ipairs(chairSpecs) do
-			local seatPos = center + cs.Offset
-			local lookAtTable = Vector3.new(center.X + cs.Offset.X, seatPos.Y, center.Z)
-			local seat = Instance.new("Seat")
-			seat.Name = "TradeChair_" .. tostring(cs.Idx)
-			seat.Size = Vector3.new(2.1, 0.55, 2.1)
-			seat.CFrame = CFrame.lookAt(seatPos, lookAtTable)
-			seat.Color = Color3.fromRGB(36, 48, 72)
-			seat.Material = Enum.Material.SmoothPlastic
-			seat.Anchored = true
-			seat.Parent = tModel
-
-			local back = Instance.new("Part")
-			back.Name = "ChairBack_" .. tostring(cs.Idx)
-			back.Size = Vector3.new(2.1, 1.8, 0.35)
-			back.CFrame = seat.CFrame * CFrame.new(0, 1.1, 0.95)
-			back.Color = Color3.fromRGB(52, 68, 98)
-			back.Material = Enum.Material.Metal
-			back.Anchored = true
-			back.Parent = tModel
-
-			local prompt = Instance.new("ProximityPrompt")
-			prompt.ActionText = "Ngồi Giao Dịch Lõi Aether (Ghế " .. tostring(cs.Idx) .. ")"
-			prompt.ObjectText = "Bàn Giao Dịch #" .. tostring(tIdx)
-			prompt.HoldDuration = 0
-			prompt.MaxActivationDistance = 10
-			prompt.RequiresLineOfSight = false
-			prompt.Parent = seat
-
-			prompt.Triggered:Connect(function(who)
-				local _, whum = getCharRoot(who)
-				if whum and not seat.Occupant then
-					seat:Sit(whum)
-				end
-			end)
-
-			pairSeats[cs.Pair][cs.Side] = seat
-			seat:GetPropertyChangedSignal("Occupant"):Connect(function()
-				if not seat.Occupant then
-					local cur = pairSessions[cs.Pair]
-					if cur and not cur.Closed then
-						local occA = getPlayerFromHumanoid(pairSeats[cs.Pair].A and pairSeats[cs.Pair].A.Occupant)
-						local occB = getPlayerFromHumanoid(pairSeats[cs.Pair].B and pairSeats[cs.Pair].B.Occupant)
-						if cur.IsNPCCollector and not occA and not occB then
-							cancelTradeSession(cur, "Đã rời ghế giao dịch.")
-							pairSessions[cs.Pair] = nil
-						elseif not cur.IsNPCCollector and (not occA or not occB) then
-							cancelTradeSession(cur, "Một bên đã rời ghế giao dịch.")
-							pairSessions[cs.Pair] = nil
-						end
-					end
-				end
-				refreshPairSession(cs.Pair)
-			end)
-		end
-	end
+	-- Duplicate blocky FruitTradingTable_1/2 props removed; Trade Station broker & UI handle fruit trading cleanly.
 end
 
 -- ============================================================================
 -- WATER / DENSE-CLOUD SEA HAZARD & ICE/MAGMA STEPPING PLATFORMS (#46)
 -- ============================================================================
-local function buildDockSeaWaterBasins()
-	local waterFolder = ensureWorldFolder("SeaWaterZones")
-	waterFolder:ClearAllChildren()
-
-	local basins = {
-		{ Name = "SkyHubSeaBasin", Pos = Vector3.new(-428, 18.5, 565), Size = Vector3.new(320, 1.4, 320) },
-		{ Name = "CyberportSeaBasin", Pos = Vector3.new(9400, 18.5, 2365), Size = Vector3.new(320, 1.4, 320) },
-	}
-	for _, b in ipairs(basins) do
-		local p = Instance.new("Part")
-		p.Name = b.Name
-		p.Size = b.Size
-		p.Position = b.Pos
-		p.Color = Color3.fromRGB(32, 118, 185)
-		p.Material = Enum.Material.Glass
-		p.Transparency = 0.38
-		p.Anchored = true
-		p.CanCollide = true
-		p:SetAttribute("IsSeaWaterZone", true)
-		p.Parent = waterFolder
-	end
-end
-
-local function spawnSteppingPlatform(p, pos, mode)
-	local lastPos = LastWaterPadPos[p]
-	if lastPos and (Vector3.new(pos.X - lastPos.X, 0, pos.Z - lastPos.Z).Magnitude < 3.4) then
-		return
-	end
-	LastWaterPadPos[p] = pos
-
-	local padFolder = ensureWorldFolder("ElementalWaterPads")
-	local pad = Instance.new("Part")
-	pad.Name = (mode == "Ice") and "GlacierStepPad" or "MagmaBasaltPad"
-	pad.Shape = Enum.PartType.Cylinder
-	pad.Size = Vector3.new(1.1, 11.5, 11.5)
-	pad.CFrame = CFrame.new(pos.X, pos.Y - 3.35, pos.Z) * CFrame.Angles(0, 0, math.pi * 0.5)
-	if mode == "Ice" then
-		pad.Color = Color3.fromRGB(132, 236, 255)
-		pad.Material = Enum.Material.Ice
-		pad.Transparency = 0.15
-	else
-		pad.Color = Color3.fromRGB(54, 42, 46)
-		pad.Material = Enum.Material.Basalt
-		pad.Transparency = 0
-	end
-	pad.Anchored = true
-	pad.CanCollide = true
-	pad.Parent = padFolder
-	Debris:AddItem(pad, 6.5)
-end
-
 local function tickPlayerWaterAndFury(p, dt)
 	local hrp, hum, ch = getCharRoot(p)
 	local rt = G.Runtime[p]
@@ -2869,50 +2399,68 @@ local function tickPlayerWaterAndFury(p, dt)
 	ensureExpansionProfile(profile)
 	ensureRuntimeFields(p, rt, profile)
 
-	-- #48: Fury Meter passive regen / transformation drain
+	-- #48: Fury Meter passive regen / transformation drain (authoritatively managed in CombatRuntimeOverrides when hooked)
 	local fid = CombatData.ResolveFruitId(profile.EquippedFruit)
 	local cat = CombatData.FruitCatalog[fid]
-	if (rt.DragonFormTier or 0) > 0 and ((p:GetAttribute("DragonFormTier") or 0) == 0 or (ch and (ch:GetAttribute("DragonFormTier") or 0) == 0)) then
+	local curTf = tostring((ch and ch:GetAttribute("FruitTransform")) or p:GetAttribute("FruitTransform") or "")
+	if (curTf == "SolarTitan" and fid ~= "SolarTitanCore")
+		or ((curTf == "AbyssalSovereign" or curTf == "AbyssalDragonHybrid" or (rt.DragonFormTier or 0) > 0) and fid ~= "AbyssalSovereignCore") then
+		rt.DragonFormTier = 0
+		p:SetAttribute("DragonFormTier", 0)
+		p:SetAttribute("FruitTransform", "")
+		if ch then
+			ch:SetAttribute("DragonFormTier", 0)
+			ch:SetAttribute("FruitTransform", "")
+		end
+		if not TRUE_FLIGHT_FRUITS[fid] then
+			rt.FreeFlightActive = false
+			p:SetAttribute("SkybreakFlightActive", false)
+			if ch then
+				ch:SetAttribute("SkybreakFlightActive", false)
+			end
+		end
+	elseif (rt.DragonFormTier or 0) > 0 and ((p:GetAttribute("DragonFormTier") or 0) == 0 or (ch and (ch:GetAttribute("DragonFormTier") or 0) == 0)) then
 		rt.DragonFormTier = 0
 		p:SetAttribute("FruitTransform", "")
 	end
-	if (rt.DragonFormTier or 0) > 0 then
-		local drain = (rt.DragonFormTier == 2) and 3.0 or 2.0
-		rt.FuryMeter = math.max(0, (rt.FuryMeter or 0) - drain * dt)
-		if rt.FuryMeter <= 0 then
-			rt.DragonFormTier = 0
-			p:SetAttribute("DragonFormTier", 0)
-			p:SetAttribute("FruitTransform", "")
-			if ch then
-				ch:SetAttribute("DragonFormTier", 0)
-				ch:SetAttribute("FruitTransform", "")
+	if not G._DragonDualFormsHooked then
+		local nowF = os.clock()
+		local inCombat = (nowF - math.max(tonumber(rt.LastCombatAt) or 0, tonumber(rt.LastHurt) or 0)) < 6.0
+		if (rt.DragonFormTier or 0) >= 2 and inCombat then
+			rt.FuryMeter = math.max(0, (tonumber(rt.FuryMeter) or 100) - 1.8 * dt)
+			if rt.FuryMeter <= 0 then
+				rt.DragonFormTier = 0
+				rt.FreeFlightActive = false
+				p:SetAttribute("DragonFormTier", 0)
+				p:SetAttribute("FruitTransform", "")
+				p:SetAttribute("SkybreakFlightActive", false)
+				if ch then
+					ch:SetAttribute("DragonFormTier", 0)
+					ch:SetAttribute("FruitTransform", "")
+					ch:SetAttribute("SkybreakFlightActive", false)
+				end
+				G.Notify(p, "Nộ Khí (Fury) đã cạn - Kết thúc trạng thái Thái Cổ Long Hoàng.")
+				G.Sync(p)
 			end
-			if R and R.CombatFX then
-				R.CombatFX:FireAllClients({
-					Kind = "DragonTransform",
-					DragonFormTier = 0,
-					TransformName = "",
-					FuryMeter = 0,
-					Radius = 12,
-					Position = hrp.Position,
-					Actor = p.UserId,
-				})
-			end
-			G.Notify(p, "Nộ Khí (Fury) đã cạn - Kết thúc trạng thái Hóa Rồng.")
+		elseif not inCombat then
+			rt.FuryMeter = math.min(100, (tonumber(rt.FuryMeter) or 100) + 3.0 * dt)
 		end
-	elseif cat and cat.MythicalZoan then
-		rt.FuryMeter = math.min(100, (rt.FuryMeter or 0) + 1.6 * dt)
 	end
-	p:SetAttribute("FuryMeter", math.floor((rt.FuryMeter or 0) + 0.5))
+	local furyInt = math.floor((tonumber(rt.FuryMeter) or 0) + 0.5)
+	rt.DragonFury = tonumber(rt.FuryMeter) or furyInt
+	p:SetAttribute("FuryMeter", furyInt)
+	p:SetAttribute("DragonFury", furyInt)
 	if ch then
-		ch:SetAttribute("FuryMeter", math.floor((rt.FuryMeter or 0) + 0.5))
+		ch:SetAttribute("FuryMeter", furyInt)
+		ch:SetAttribute("DragonFury", furyInt)
 	end
 
-	-- #52: Race V4 active passives & AwakeningMeter drain/regen
+	-- #52: Race V4 active passives & AwakeningMeter drain (charged via combat hits/damage taken!)
 	if profile.RaceV4Active then
 		local race = profile.Race or "Skyborn"
 		local now = os.clock()
 		profile.AwakeningMeter = math.max(0, (tonumber(profile.AwakeningMeter) or 100) - 2.2 * dt)
+		rt.AwakeningMeter = profile.AwakeningMeter
 		p:SetAttribute("AwakeningMeter", math.floor(profile.AwakeningMeter + 0.5))
 		if profile.AwakeningMeter <= 0 then
 			local prevPct = (hum.MaxHealth > 0) and math.clamp(hum.Health / hum.MaxHealth, 0.01, 1) or 1
@@ -2962,9 +2510,11 @@ local function tickPlayerWaterAndFury(p, dt)
 				end
 			end
 		end
-	elseif profile.RaceV4Unlocked or (tonumber(profile.Level) or 1) >= 1500 then
-		profile.AwakeningMeter = math.min(100, (tonumber(profile.AwakeningMeter) or 0) + 1.4 * dt)
-		p:SetAttribute("AwakeningMeter", math.floor(profile.AwakeningMeter + 0.5))
+	else
+		local curAwk = math.clamp(math.max(tonumber(profile.AwakeningMeter) or 0, tonumber(rt.AwakeningMeter) or 0), 0, 100)
+		profile.AwakeningMeter = curAwk
+		rt.AwakeningMeter = curAwk
+		p:SetAttribute("AwakeningMeter", math.floor(curAwk + 0.5))
 	end
 
 	-- #46: Water / Low-Sea Zone Detection
@@ -2980,14 +2530,14 @@ local function tickPlayerWaterAndFury(p, dt)
 		elseif cat and cat.WaterWalk then
 			-- GlacierIceCore ("Ice") or StarforgedMagmaCore ("Basalt") spawns solid 3D stepping platforms!
 			rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 0.8)
-			spawnSteppingPlatform(p, hrp.Position, cat.WaterWalk)
+			WildCoreService.SpawnSteppingPlatform(p, hrp.Position, cat.WaterWalk)
 		elseif fid ~= "" then
 			-- Gentle water-drain for non-Leviathan Devil Fruit users
 			local drainHP = math.max(1, hum.MaxHealth * 0.035 * dt)
 			if hum.Health > drainHP + 5 then
 				hum:TakeDamage(drainHP)
 			end
-			rt.Energy = math.max(0, (rt.Energy or 100) - 4 * dt)
+			rt.Energy = math.max(0, (tonumber(rt.Energy) or tonumber(rt.MaxEnergy) or 100) - 4 * dt)
 		end
 	end
 end
@@ -3049,30 +2599,59 @@ function Expansion.SelectOrLearnStyle(p, rawStyleId)
 	ensureExpansionProfile(profile)
 	local sid = CombatData.ResolveStyleId(rawStyleId)
 	local style = CombatData.MartialStyles[sid]
-	if not style then
+	local req = Helpers.GetMartialReq(sid) or Helpers.GetMartialReq(rawStyleId)
+	if not style and not req then
 		return false
 	end
+	local canonSid = (style and sid) or (req and req.Id) or sid
+	local dispName = (style and style.DisplayName) or (req and req.Name) or canonSid
 
-	if not profile.UnlockedStyles[sid] then
-		local needGold = style.PriceGold or 0
-		local needShards = style.PriceShards or 0
-		if (profile.Gold or 0) < needGold or (profile.CoreShards or 0) < needShards then
-			G.Notify(p, string.format("Cần %d Gold & %d Core Shards để lĩnh ngộ [%s]!", needGold, needShards, style.Name))
+	local alreadyUnlocked = profile.UnlockedStyles[canonSid] == true
+		or (req and req.Alias and profile.UnlockedStyles[req.Alias] == true)
+		or (canonSid == "SkyStep" and profile.UnlockedStyles.sky_step == true)
+		or (canonSid == "ChronoVoidPalm" and profile.UnlockedStyles.chrono_void_palm == true)
+	if not alreadyUnlocked then
+		local minLv = (req and (req.MinLevel or req.LevelReq)) or (style and (style.LevelReq or style.MinLevel)) or 1
+		local reqMas = (req and req.ReqMastery) or (style and style.ReqMastery) or 0
+		local needGold = (req and req.Gold) or (style and style.PriceGold) or 0
+		local needShards = (req and req.Shards) or (style and style.PriceShards) or 0
+		local curLv = tonumber(profile.Level) or 1
+		if curLv < minLv then
+			G.Notify(p, string.format("Lĩnh ngộ [%s] yêu cầu đạt Lv. %d+ (Hiện tại: Lv. %d)!", dispName, minLv, curLv))
 			return false
 		end
-		profile.Gold -= needGold
-		profile.CoreShards -= needShards
-		profile.UnlockedStyles[sid] = true
+		if reqMas > 0 then
+			local bestMas = Helpers.GetBestMartialMastery(profile)
+			if bestMas < reqMas then
+				G.Notify(p, string.format("Lĩnh ngộ [%s] yêu cầu Mastery Võ Thuật %d+ (Hiện tại cao nhất: %d)!", dispName, reqMas, bestMas))
+				return false
+			end
+		end
+		if (tonumber(profile.Gold) or 0) < needGold or (tonumber(profile.CoreShards) or 0) < needShards then
+			G.Notify(p, string.format("Cần %d Gold & %d Core Shards để lĩnh ngộ [%s]!", needGold, needShards, dispName))
+			return false
+		end
+		profile.Gold = (tonumber(profile.Gold) or 0) - needGold
+		profile.CoreShards = (tonumber(profile.CoreShards) or 0) - needShards
+		profile.UnlockedStyles[canonSid] = true
+		if req and req.Alias then
+			profile.UnlockedStyles[req.Alias] = true
+		end
+		if canonSid == "SkyStep" then
+			profile.UnlockedStyles.sky_step = true
+		elseif canonSid == "ChronoVoidPalm" then
+			profile.UnlockedStyles.chrono_void_palm = true
+		end
 	end
 
-	profile.FightingStyle = sid
+	profile.FightingStyle = canonSid
 	profile.ActiveSlot = 1
-	p:SetAttribute("FightingStyle", sid)
+	p:SetAttribute("FightingStyle", canonSid)
 	if p.Character then
-		p.Character:SetAttribute("FightingStyle", sid)
+		p.Character:SetAttribute("FightingStyle", canonSid)
 	end
 	evaluateAutoTitles(p, profile)
-	G.Notify(p, "Đã trang bị Võ Thuật [Slot 1]: " .. style.DisplayName .. "!")
+	G.Notify(p, "Đã trang bị Võ Thuật [Slot 1]: " .. dispName .. "!")
 	G.Sync(p)
 	return true
 end
@@ -3081,12 +2660,49 @@ local function startTempleRaceV4Trial(p, altarPos)
 	local profile = D.Get(p)
 	local hrp = getCharRoot(p)
 	if not profile or not hrp then
-		return
+		return false
 	end
 	ensureExpansionProfile(profile)
+
+	-- Strict Endgame Gate (D-A7): RaceTier >= 3 AND Level >= 1900 AND BlueResonanceGearFound == true required before Temple V4 Trial!
+	local curTier = math.clamp(tonumber(profile.RaceTier) or (profile.RaceV4Unlocked and 4 or 1), 1, 4)
+	local curLv = tonumber(profile.Level) or 1
+	if curTier < 3 or curLv < 1900 then
+		G.Notify(
+			p,
+			string.format(
+				"Khảo Thí Đền Thăng Hoa (Tộc V4) yêu cầu đạt Tộc V3 và Lv. 1900+ (Hiện tại: V%d • Lv. %d)! / Ancient Temple V4 Trial requires Race V3 and Lv. 1900+ (Current: V%d • Lv. %d)!",
+				curTier,
+				curLv,
+				curTier,
+				curLv
+			)
+		)
+		return false
+	end
+	if p:GetAttribute("BlueResonanceGearFound") == true then
+		profile.BlueResonanceGearFound = true
+	end
+	if profile.RaceV4Unlocked ~= true and profile.BlueResonanceGearFound ~= true then
+		G.Notify(
+			p,
+			"Khảo Thí Đền Thăng Hoa (Tộc V4) yêu cầu tìm được [Bánh Răng Cộng Hưởng Xanh / Blue Resonance Gear] trên Đảo Hư Quang (Mirage Sky Island) trước! / Requires finding the [Blue Resonance Gear] on Mirage Sky Island first!"
+		)
+		return false
+	end
+
+	if not altarPos then
+		local defaultTemple = ((C and C.FastTravel and C.FastTravel.TempleOfTheCore and C.FastTravel.TempleOfTheCore.Pos) or Vector3.new(-14600, 50.9, -1785)) + Vector3.new(0, -4, -12)
+		local sagePlaza = Vector3.new(-11685, 46.9, -106)
+		if (hrp.Position - sagePlaza).Magnitude <= 220 then
+			altarPos = sagePlaza
+		else
+			altarPos = defaultTemple
+		end
+	end
 	if TrialSessions[p] and TrialSessions[p].Active then
 		G.Notify(p, "Bạn đang trong Thử Thách Thăng Hoa (60s)!")
-		return
+		return true
 	end
 
 	local enemies = {}
@@ -3094,7 +2710,7 @@ local function startTempleRaceV4Trial(p, altarPos)
 	for _, off in ipairs(offsets) do
 		local e = G.SpawnEnemy("AbyssalKnight", altarPos + off, false, true)
 		if e then
-			e.MaxHP = math.max(900, math.floor((profile.Level or 100) * 14))
+			e.MaxHP = math.max(900, math.floor((profile.Level or 1900) * 14))
 			e.HP = e.MaxHP
 			table.insert(enemies, e)
 		end
@@ -3107,7 +2723,7 @@ local function startTempleRaceV4Trial(p, altarPos)
 	}
 	TrialSessions[p] = session
 	p:SetAttribute("InRaceTrial", true)
-	G.Notify(p, "THỬ THÁCH THĂNG HOA BẮT ĐẦU (60 GIÂY): Tiêu diệt 3 Hộ Vệ Đền Thăng Hoa để mở khóa vĩnh viễn THĂNG HOA & Core Gear!")
+	G.Notify(p, "THỬ THÁCH THĂNG HOA BẮT ĐẦU (60 GIÂY): Tiêu diệt 3 Hộ Vệ Đền Thăng Hoa để mở khóa vĩnh viễn TỘC V4 & Core Gear!")
 
 	task.spawn(function()
 		while session.Active and p.Parent and os.clock() < session.EndsAt do
@@ -3125,7 +2741,7 @@ local function startTempleRaceV4Trial(p, altarPos)
 					end
 				end
 				if p.Parent then
-					G.Notify(p, "Thử Thách Thăng Hoa kết thúc do bạn đã rời khỏi Đền Thăng Hoa. Hãy quay lại kéo Cần Gạt Cổ Đại!")
+					G.Notify(p, "Thử Thách Thăng Hoa kết thúc do bạn đã rời khỏi khu vực Tế Đàn!")
 				end
 				return
 			end
@@ -3149,10 +2765,15 @@ local function startTempleRaceV4Trial(p, altarPos)
 					prof.RaceTier = 4
 					prof.CoreGears = (prof.CoreGears or 0) + 1
 					prof.AwakeningMeter = 100
+					if G.Runtime and G.Runtime[p] then
+						G.Runtime[p].AwakeningMeter = 100
+					end
 					prof.CoreShards = (prof.CoreShards or 0) + 300
 					unlockTitle(p, prof, "core_gear_awakened", false)
 					p:SetAttribute("RaceV4Unlocked", true)
-					G.Notify(p, "HOÀN TẤT THỬ THÁCH THĂNG HOA! Đã mở khóa vĩnh viễn THĂNG HOA [" .. tostring(prof.Race) .. "] + 1 Core Gear + 300 Shards!")
+					p:SetAttribute("RaceTier", 4)
+					p:SetAttribute("AwakeningMeter", 100)
+					G.Notify(p, "HOÀN TẤT THỬ THÁCH THĂNG HOA! Đã mở khóa vĩnh viễn TỘC V4 [" .. tostring(prof.Race) .. "] + 1 Core Gear + 300 Shards!")
 					local curHrp = getCharRoot(p)
 					if curHrp and R and R.CombatFX then
 						R.CombatFX:FireAllClients({
@@ -3182,388 +2803,90 @@ local function startTempleRaceV4Trial(p, altarPos)
 				end
 			end
 			if p.Parent then
-				G.Notify(p, "Hết 60 giây Thử Thách Cổ Đại! Hãy kéo Cần Gạt Cổ Đại để thử lại.")
+				G.Notify(p, "Hết 60 giây Thử Thách Đền Thăng Hoa! Hãy gặp Hiền Triết Thăng Hoa để thử lại.")
 			end
 		end
 	end)
-end
-
-local function spawnNPCStation(folder, id, titleText, subText, rawPos, color, actionText, onTrigger)
-	local fy = groundYAt(rawPos, rawPos.Y - 2)
-	local base = Vector3.new(rawPos.X, fy, rawPos.Z)
-
-	local m = Instance.new("Model")
-	m.Name = "Station_" .. id
-
-	local dais = Instance.new("Part")
-	dais.Name = "Dais"
-	dais.Shape = Enum.PartType.Cylinder
-	dais.Size = Vector3.new(0.64, 4.6, 4.6)
-	dais.CFrame = CFrame.new(base + Vector3.new(0, 0.32, 0)) * CFrame.Angles(0, 0, math.pi * 0.5)
-	dais.Color = Color3.fromRGB(26, 34, 48)
-	dais.Material = Enum.Material.Metal
-	dais.Anchored = true
-	dais.Parent = m
-
-	local pillar = Instance.new("Part")
-	pillar.Name = "BodyPillar"
-	pillar.Size = Vector3.new(2.1, 4.2, 1.3)
-	pillar.Position = base + Vector3.new(0, 2.55, 0)
-	pillar.Color = color
-	pillar.Material = Enum.Material.SmoothPlastic
-	pillar.Anchored = true
-	pillar.Parent = m
-
-	local crest = Instance.new("Part")
-	crest.Name = "HoloCrest"
-	crest.Shape = Enum.PartType.Ball
-	crest.Size = Vector3.new(1.35, 1.35, 1.35)
-	crest.Position = base + Vector3.new(0, 5.3, 0)
-	crest.Color = color
-	crest.Material = Enum.Material.Neon
-	crest.Anchored = true
-	crest.CanCollide = false
-	crest.Parent = m
-
-	local bill = Instance.new("BillboardGui")
-	bill.Size = UDim2.fromOffset(230, 44)
-	bill.StudsOffset = Vector3.new(0, 2.6, 0)
-	bill.MaxDistance = 70
-	bill.LightInfluence = 0
-	bill.Parent = crest
-
-	local l1 = Instance.new("TextLabel")
-	l1.Size = UDim2.new(1, 0, 0, 22)
-	l1.BackgroundTransparency = 1
-	l1.Font = Enum.Font.GothamBlack
-	l1.TextSize = 13
-	l1.TextColor3 = color
-	l1.TextStrokeTransparency = 0.2
-	l1.Text = titleText
-	l1.Parent = bill
-
-	local l2 = Instance.new("TextLabel")
-	l2.Size = UDim2.new(1, 0, 0, 18)
-	l2.Position = UDim2.fromOffset(0, 22)
-	l2.BackgroundTransparency = 1
-	l2.Font = Enum.Font.GothamMedium
-	l2.TextSize = 11
-	l2.TextColor3 = Color3.fromRGB(224, 234, 248)
-	l2.TextStrokeTransparency = 0.25
-	l2.Text = subText
-	l2.Parent = bill
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = actionText
-	prompt.ObjectText = titleText
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 12
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = pillar
-
-	prompt.Triggered:Connect(function(plr)
-		if onTrigger then
-			onTrigger(plr, base)
-		end
-	end)
-
-	m.PrimaryPart = pillar
-	m.Parent = folder
-	return m
-end
-
-local function buildWorldNPCsAndAltars()
-	local npcFolder = ensureWorldFolder("InteractiveNPCs")
-	npcFolder:ClearAllChildren()
-
-	local skyPos = C.Spawn or Vector3.new(-317.4, 50.5, 527.8)
-	local cafePos = (C.FastTravel and C.FastTravel.CyberportCafe and C.FastTravel.CyberportCafe.Pos) or Vector3.new(9400, 50.9, 1785)
-	local templePos = (C.FastTravel and C.FastTravel.TempleOfTheCore and C.FastTravel.TempleOfTheCore.Pos) or Vector3.new(-14600, 50.9, -1785)
-
-	-- 1. Five Martial Arts Masters (#31)
-	for _, sid in ipairs(CombatData.StyleOrder) do
-		local st = CombatData.MartialStyles[sid]
-		local anchor = skyPos
-		if st.IslandId == "CyberportCafe" then
-			anchor = cafePos
-		elseif st.IslandId == "TempleOfTheCore" then
-			anchor = templePos
-		end
-		local priceTag = (st.PriceGold == 0) and "Miễn Phí" or string.format("%s Gold + %d Shards", formatBountyShort(st.PriceGold), st.PriceShards)
-		spawnNPCStation(
-			npcFolder,
-			st.MasterNPC,
-			st.MasterName,
-			st.Name .. " (" .. priceTag .. ")",
-			anchor + st.MasterOffset,
-			st.Color,
-			"Mở Võ Đường 3D • " .. st.Name,
-			function(plr)
-				G.SendDialogue(
-					plr,
-					st.MasterName,
-					"ĐẠI SƯ VÕ ĐẠO • MARTIAL DOJO",
-					"Ta truyền dạy [" .. st.Name .. "] cùng 7 tuyệt kỹ Thần Quyền 3 Tầng Trời! Hãy mở Võ Đường 3D để lĩnh ngộ hoặc chuyển đổi võ phái.",
-					"Mở Võ Đường 3D",
-					"OpenScreen:NPCShop:MartialDojo"
-				)
-			end
-		)
-	end
-
-	-- 2. Phantom Core Stock Dealers at Sky Hub & Trade Station (#43)
-	for idx, anchor in ipairs({ skyPos + Vector3.new(32, 0, -24), cafePos + Vector3.new(-24, 0, 6) }) do
-		spawnNPCStation(
-			npcFolder,
-			"MirageDealer_" .. tostring(idx),
-			"Thương Nhân Hư Quang",
-			"Xoay vòng mỗi giờ - Mua trực tiếp bằng Gold",
-			anchor,
-			Color3.fromRGB(255, 198, 78),
-			"Xem & Mua Kho Lõi Hư Quang",
-			function(plr)
-				refreshMirageStock()
-				G.SendDialogue(
-					plr,
-					"Thương Nhân Hư Quang",
-					"THƯƠNG NHÂN ĐẢO HƯ QUANG",
-					"Kho Lõi Aether Hư Quang xoay vòng mỗi giờ với tỉ lệ xuất hiện Lõi Thần Thoại gấp đôi! Hãy mở Cửa Hàng Hư Quang 3D để chọn mua trực tiếp bằng Gold.",
-					"Mở Kho Lõi Hư Quang",
-					"OpenScreen:NPCShop:MirageDealer"
-				)
-			end
-		)
-	end
-
-	-- 3. Dr. Vega Race Reroll NPC at Sky Hub & Trade Station (#59)
-	for idx, anchor in ipairs({ skyPos + Vector3.new(42, 0, -18), cafePos + Vector3.new(24, 0, 6) }) do
-		spawnNPCStation(
-			npcFolder,
-			"DrVega_" .. tostring(idx),
-			"Dr. Vega - Nhà Khoa Học Tộc Hệ",
-			"Tái Cấu Trúc Huyết Mạch (50 Core Shards) & Thăng Hoa",
-			anchor,
-			Color3.fromRGB(112, 242, 195),
-			"Mở Viện Nghiên Cứu Tộc Hệ & Thăng Hoa",
-			function(plr)
-				G.SendDialogue(
-					plr,
-					"Dr. Vega - Nhà Khoa Học Tộc Hệ",
-					"VIỆN NGHIÊN CỨU HUYẾT MẠCH & THĂNG HOA",
-					"Ta tái cấu trúc huyết mạch sang 6 Tộc Hệ Thượng Cổ và kết nối Đền Thăng Hoa!",
-					"Mở Phòng Nghiên Cứu Thăng Hoa",
-					"OpenScreen:NPCShop:DrVegaAndTempleV4"
-				)
-			end
-		)
-	end
-
-	-- 4. Ascension Shrine Ancient Gear Altar & Trial Lever (#51)
-	Expansion.StartTempleRaceV4Trial = startTempleRaceV4Trial
-	spawnNPCStation(
-		npcFolder,
-		"AncientGearTrialLever",
-		"Ancient Gear Altar & Trial Lever",
-		"Đền Thăng Hoa - Thử Thách Thăng Hoa (60s)",
-		templePos + Vector3.new(0, 0, -12),
-		Color3.fromRGB(255, 178, 72),
-		"Mở Đền Thăng Hoa & Thử Thách (60s)",
-		function(plr)
-			G.SendDialogue(
-				plr,
-				"Đài Bánh Răng Cổ Đại",
-				"THÁNH ĐIỆN ĐỀN THĂNG HOA • ASCENSION SHRINE",
-				"Cần Gạt Cổ Đại mở khóa Thử Thách Thăng Hoa (60 giây) và nâng cấp Core Gear! Hãy mở Bảng Đền Thăng Hoa để bắt đầu thử thách.",
-				"Mở Thử Thách Đền Thăng Hoa",
-				"OpenScreen:NPCShop:DrVegaAndTempleV4"
-			)
-		end
-	)
 end
 
 -- ============================================================================
--- 10M BOUNTY ALLIED SKY BEAST GUARDIAN SUMMON (#57)
+-- 10M RENOWN ALLIED SKY BEAST GUARDIAN SUMMON (#57)
 -- ============================================================================
 function Expansion.SummonAlliedSeaBeast(p)
-	local profile = D.Get(p)
-	local rt = G.Runtime[p]
-	local hrp = getCharRoot(p)
-	if not profile or not rt or not hrp then
-		return false
-	end
-	ensureExpansionProfile(profile)
-
-	if (profile.Bounty or 0) < CombatData.SeaBeastSummonBounty and p:GetAttribute("BypassBountyLock") ~= true then
-		G.Notify(p, string.format("Cần đạt >= 10,000,000 Bounty để Triệu Hồi Thú Trời Hộ Vệ (Hiện tại: %s)!", formatBountyShort(profile.Bounty)))
-		return false
-	end
-
-	local existing = AlliedSeaBeasts[p]
-	if existing and existing.Model and existing.Model.Parent then
-		existing.Model:Destroy()
-		AlliedSeaBeasts[p] = nil
-		G.Notify(p, "Đã thu hồi Thú Trời Hộ Vệ (Sky Beast Guardian).")
-		return true
-	end
-
-	local now = os.clock()
-	if now < (rt.Cooldowns.SummonSeaBeast or 0) then
-		G.Notify(p, string.format("Triệu Hồi Thú Trời đang hồi (%ds)!", math.ceil(rt.Cooldowns.SummonSeaBeast - now)))
-		return false
-	end
-	rt.Cooldowns.SummonSeaBeast = now + 45
-
-	local beastFolder = ensureWorldFolder("AlliedSeaBeasts")
-	local m = Instance.new("Model")
-	m.Name = "AlliedSkySeaBeast_" .. p.Name
-
-	local spawnPos = hrp.Position + Vector3.new(12, 5.5, 10)
-	local body = Instance.new("Part")
-	body.Name = "BeastCore"
-	body.Size = Vector3.new(6.2, 11.5, 6.2)
-	body.Position = spawnPos
-	body.Color = Color3.fromRGB(36, 138, 205)
-	body.Material = Enum.Material.Metal
-	body.Anchored = true
-	body.CanCollide = false
-	body.Parent = m
-
-	local head = Instance.new("Part")
-	head.Name = "BeastHead"
-	head.Size = Vector3.new(6.8, 5.2, 8.2)
-	head.Position = spawnPos + Vector3.new(0, 6.5, -2.5)
-	head.Color = Color3.fromRGB(72, 224, 255)
-	head.Material = Enum.Material.Neon
-	head.Anchored = true
-	head.CanCollide = false
-	head.Parent = m
-
-	for idx = 1, 2 do
-		local side = (idx == 1) and -1 or 1
-		local crest = Instance.new("Part")
-		crest.Name = "FinCrest_" .. tostring(idx)
-		crest.Size = Vector3.new(1.1, 5.4, 2.4)
-		crest.CFrame = CFrame.new(spawnPos + Vector3.new(side * 3.4, 8.4, -1.2)) * CFrame.Angles(-0.3, 0, side * 0.42)
-		crest.Color = Color3.fromRGB(115, 245, 255)
-		crest.Material = Enum.Material.Neon
-		crest.Anchored = true
-		crest.CanCollide = false
-		crest.Parent = m
-	end
-
-	local bill = Instance.new("BillboardGui")
-	bill.Size = UDim2.fromOffset(220, 36)
-	bill.StudsOffset = Vector3.new(0, 5.0, 0)
-	bill.MaxDistance = 95
-	bill.LightInfluence = 0
-	bill.Parent = head
-
-	local tl = Instance.new("TextLabel")
-	tl.Size = UDim2.fromScale(1, 1)
-	tl.BackgroundTransparency = 1
-	tl.Font = Enum.Font.GothamBlack
-	tl.TextSize = 13
-	tl.TextColor3 = Color3.fromRGB(95, 236, 255)
-	tl.TextStrokeTransparency = 0.2
-	tl.Text = "SKY BEAST GUARDIAN - " .. (p.DisplayName or p.Name)
-	tl.Parent = bill
-
-	m.PrimaryPart = body
-	m.Parent = beastFolder
-	Debris:AddItem(m, CombatData.SeaBeastDuration + 0.5)
-
-	local rec = {
-		Owner = p,
-		Model = m,
-		Body = body,
-		Head = head,
-		ExpiresAt = now + CombatData.SeaBeastDuration,
-		NextBeamAt = now + 1.0,
-	}
-	AlliedSeaBeasts[p] = rec
-	G.Notify(p, "TRIỆU HỒI THÚ TRỜI HỘ VỆ (35s): Bắn tia Hydro-Aether Beam 380% ATK mỗi 3.5s!")
-	return true
-end
-
-local function tickAlliedSeaBeasts(dt)
-	local now = os.clock()
-	for p, rec in pairs(AlliedSeaBeasts) do
-		if not p or not p.Parent or not rec.Model or not rec.Model.Parent or now >= rec.ExpiresAt then
-			if rec.Model and rec.Model.Parent then
-				rec.Model:Destroy()
-			end
-			AlliedSeaBeasts[p] = nil
-		else
-			local hrp = getCharRoot(p)
-			if hrp then
-				local bob = math.sin(now * 2.4) * 1.2
-				local goal = hrp.Position + Vector3.new(11, 5.2 + bob, 9)
-				local cur = rec.Body.Position
-				local nextPos = cur:Lerp(goal, math.min(1, dt * 5))
-				local nearest, bestDist = nil, 90
-				for _, e in ipairs(G.Enemies or {}) do
-					if e.Alive and e.Body then
-						local d = (e.Body.Position - hrp.Position).Magnitude
-						if d < bestDist then
-							bestDist = d
-							nearest = e
-						end
-					end
-				end
-				local lookTarget = (nearest and nearest.Body and nearest.Body.Position) or (nextPos + hrp.CFrame.LookVector * 12)
-				local cf = CFrame.lookAt(nextPos, Vector3.new(lookTarget.X, nextPos.Y, lookTarget.Z))
-				rec.Model:PivotTo(cf)
-
-				if nearest and now >= rec.NextBeamAt then
-					rec.NextBeamAt = now + CombatData.SeaBeastBeamInterval
-					local st = G.Stats(p)
-					local beamDmg = ((st and st.ATK) or 60) * CombatData.SeaBeastBeamAtkMultiplier
-					local impactPos = nearest.Body.Position
-					for _, e in ipairs(G.Enemies or {}) do
-						if e.Alive and e.Body and (e.Body.Position - impactPos).Magnitude <= 20 then
-							G.Hit(p, e, beamDmg, 24, "SkySeaBeastHydroBeam")
-						end
-					end
-					if R and R.CombatFX then
-						R.CombatFX:FireAllClients({
-							Kind = "SeaBeastBeam",
-							Origin = rec.Head.Position,
-							EndPos = impactPos,
-							Position = impactPos,
-							Radius = 20,
-							Owner = p.UserId,
-						})
-					end
-				end
-			end
-		end
-	end
+	return WildCoreService.SummonAlliedSeaBeast(p, ensureExpansionProfile, formatBountyShort)
 end
 
 -- ============================================================================
 -- WAVE 1 AUTHORITATIVE UI HANDLERS (#100 GIFTCODES, #104 STARS, #60 PRESETS)
 -- ============================================================================
-function Expansion.RefundAllStats(p, silent)
+function Expansion.RefundAllStats(p, silent, bypassCost)
 	local profile = D.Get(p)
+	local rt = G and G.Runtime and G.Runtime[p]
 	if not profile then
-		return 0
+		return 0, false
 	end
 	ensureExpansionProfile(profile)
+	if not bypassCost and rt and rt.LastStatRefundAt and (os.clock() - rt.LastStatRefundAt) < 0.25 then
+		return 0, true
+	end
 	profile.StatAlloc = type(profile.StatAlloc) == "table" and profile.StatAlloc or { Melee = 1, Defense = 1, Sword = 1, Gun = 1, Fruit = 1 }
-	local refunded = 0
+	local pendingRefund = 0
+	for _, v in pairs(profile.StatAlloc) do
+		local n = math.floor(tonumber(v) or 1)
+		if n > 1 then
+			pendingRefund += (n - 1)
+		end
+	end
+	if pendingRefund <= 0 then
+		if not silent then
+			G.Notify(p, "Chưa có điểm chỉ số nào đã cộng để hoàn trả! / No allocated stat points to reset!")
+		end
+		return 0, true
+	end
+
+	local costTag = ""
+	if not bypassCost then
+		local shardCost = (C and tonumber(C.StatRefundCostShards)) or 150
+		local tokens = math.max(0, math.floor(tonumber(profile.StatRefundTokens) or 0))
+		local shards = math.max(0, math.floor(tonumber(profile.CoreShards) or 0))
+		if tokens > 0 then
+			profile.StatRefundTokens = tokens - 1
+			costTag = " (-1 Thẻ Tẩy Điểm / Stat Refund Token)"
+		elseif shards >= shardCost then
+			profile.CoreShards = shards - shardCost
+			costTag = string.format(" (-%d Core Shards)", shardCost)
+		else
+			G.Notify(
+				p,
+				string.format(
+					"Cần 1 Thẻ Tẩy Điểm hoặc %d Core Shards để Tẩy Điểm Chỉ Số (Hiện có: %d Shards)! / Requires 1 Stat Refund Token or %d Core Shards (Current: %d Shards)!",
+					shardCost,
+					shards,
+					shardCost,
+					shards
+				)
+			)
+			return 0, false
+		end
+		if rt then
+			rt.LastStatRefundAt = os.clock()
+		end
+	end
+
 	for k, v in pairs(profile.StatAlloc) do
 		local n = math.floor(tonumber(v) or 1)
 		if n > 1 then
-			refunded += (n - 1)
 			profile.StatAlloc[k] = 1
 		end
 	end
-	profile.StatPoints = (tonumber(profile.StatPoints) or 0) + refunded
+	profile.StatPoints = (tonumber(profile.StatPoints) or 0) + pendingRefund
 	if not silent then
-		G.Notify(p, string.format("Đã hoàn trả toàn bộ chỉ số! Tổng Stat Points khả dụng: %d", profile.StatPoints))
+		G.Notify(p, string.format("Đã hoàn trả toàn bộ chỉ số%s! Tổng Stat Points khả dụng: %d", costTag, profile.StatPoints))
 	end
-	return refunded
+	return pendingRefund, true
 end
+
+Expansion.GetMaxCoreStorage = getMaxCoreStorage
 
 -- Ngay publish: lan dau mot server that (khong phai Studio) chay, ghi os.time() vao DataStore.
 -- Loi DataStore thi tra nil va giftcode tam khong tinh han, de khong khoa nham nguoi choi.
@@ -3656,6 +2979,33 @@ function Expansion.RedeemCode(p, rawCode)
 		return false
 	end
 
+	local grantFid = nil
+	if spec.StoredFruit then
+		grantFid = CombatData.ResolveFruitId(spec.StoredFruit)
+		if grantFid == "" then
+			grantFid = tostring(spec.StoredFruit)
+		end
+		profile.StoredFruits = type(profile.StoredFruits) == "table" and profile.StoredFruits or {}
+		local maxStore = (Expansion.GetMaxCoreStorage and Expansion.GetMaxCoreStorage(p, profile))
+			or math.max(1, math.floor(tonumber(profile.MaxFruitStorage) or 1))
+		local curCnt = tonumber(profile.StoredFruits[grantFid]) or 0
+		if curCnt >= maxStore then
+			G.Notify(
+				p,
+				string.format(
+					"Kho Lõi Aether [%s] đã đầy (%d/%d) — Hãy dọn kho trước khi nhập Giftcode [%s]! / Core Storage full (%d/%d)!",
+					grantFid,
+					curCnt,
+					maxStore,
+					cleaned,
+					curCnt,
+					maxStore
+				)
+			)
+			return false
+		end
+	end
+
 	profile.RedeemedCodes[cleaned] = true
 	if spec.Gold then
 		profile.Gold = (profile.Gold or 0) + spec.Gold
@@ -3664,17 +3014,17 @@ function Expansion.RedeemCode(p, rawCode)
 		profile.CoreShards = (profile.CoreShards or 0) + spec.CoreShards
 	end
 	if spec.DoubleExpSeconds then
-		local baseTime = math.max(os.time(), tonumber(profile.DoubleExpUntil) or 0)
-		profile.DoubleExpUntil = baseTime + spec.DoubleExpSeconds
+		profile.DoubleExpRemainingSec = math.max(0, math.floor(tonumber(profile.DoubleExpRemainingSec) or 0)) + spec.DoubleExpSeconds
+		profile.DoubleExpUntil = 0
 	end
-	if spec.StoredFruit then
-		profile.StoredFruits[spec.StoredFruit] = (profile.StoredFruits[spec.StoredFruit] or 0) + 1
+	if grantFid then
+		profile.StoredFruits[grantFid] = (tonumber(profile.StoredFruits[grantFid]) or 0) + 1
 	end
 	if spec.FreeFruitVouchers then
 		profile.FreeFruitVouchers = (profile.FreeFruitVouchers or 0) + spec.FreeFruitVouchers
 	end
 	if spec.FreeStatRefund then
-		Expansion.RefundAllStats(p, true)
+		Expansion.RefundAllStats(p, true, true)
 	end
 	if spec.StatRefundTokens then
 		profile.StatRefundTokens = (profile.StatRefundTokens or 0) + spec.StatRefundTokens
@@ -3762,35 +3112,59 @@ function Expansion.ApplyStatPreset(p, slotIdx, statsTable)
 	end
 	ensureExpansionProfile(profile)
 	local slot = math.clamp(math.floor(tonumber(slotIdx) or 1), 1, 3)
+	local maxSt = (C and C.MaxStat) or 2550
+	local maxAdd = maxSt - 1
 
 	local target = type(statsTable) == "table" and statsTable or profile.StatPresets[tostring(slot)] or profile.StatPresets[slot]
 	if type(target) ~= "table" then
-		-- Smart default build presets 1..3 when slot has no saved custom table yet
+		-- Focused 2-3 branch builds (Melee-Sword / Fruit-Defense / Marksman-Defense) with max-branch overflow
 		local totalPool = (tonumber(profile.StatPoints) or 0)
 		for _, v in pairs(profile.StatAlloc or {}) do
 			totalPool += math.max(0, (tonumber(v) or 1) - 1)
 		end
-		local half = math.floor(totalPool * 0.40)
-		local fifth = math.floor(totalPool * 0.20)
+		local function buildFocusedPreset(b1, w1, b2, w2, b3)
+			local out = { Melee = 0, Defense = 0, Sword = 0, Gun = 0, Fruit = 0 }
+			local p1 = math.min(maxAdd, math.floor(totalPool * w1))
+			local rem1 = totalPool - p1
+			local p2 = math.min(maxAdd, math.floor(rem1 * (w2 / math.max(0.01, 1 - w1))))
+			local p3 = math.min(maxAdd, rem1 - p2)
+			local extra = totalPool - (p1 + p2 + p3)
+			if extra > 0 and p2 < maxAdd then
+				local add2 = math.min(maxAdd - p2, extra)
+				p2 += add2
+				extra -= add2
+			end
+			if extra > 0 and p3 < maxAdd then
+				p3 += math.min(maxAdd - p3, extra)
+			end
+			out[b1] = p1
+			out[b2] = p2
+			out[b3] = p3
+			return out
+		end
 		if slot == 1 then
-			target = { Melee = fifth, Defense = half, Fruit = totalPool - half - fifth, Sword = 0, Gun = 0 }
+			-- Preset #1: Melee-Sword Hybrid (Sword 50%, Defense 30%, Melee 20%)
+			target = buildFocusedPreset("Sword", 0.50, "Defense", 0.30, "Melee")
 		elseif slot == 2 then
-			target = { Melee = fifth, Defense = half, Sword = totalPool - half - fifth, Fruit = 0, Gun = 0 }
+			-- Preset #2: Fruit-Defense Mage (Fruit 50%, Defense 35%, Melee 15%)
+			target = buildFocusedPreset("Fruit", 0.50, "Defense", 0.35, "Melee")
 		else
-			target = { Melee = fifth, Defense = half, Gun = totalPool - half - fifth, Sword = 0, Fruit = 0 }
+			-- Preset #3: Marksman-Defense Hybrid (Gun 45%, Defense 35%, Melee 20%)
+			target = buildFocusedPreset("Gun", 0.45, "Defense", 0.35, "Melee")
 		end
 	end
 
-	Expansion.RefundAllStats(p, true)
-	local maxSt = (C and C.MaxStat) or 2550
+	local _, okRef = Expansion.RefundAllStats(p, true, false)
+	if not okRef then
+		return false
+	end
 	for _, key in ipairs({ "Melee", "Defense", "Sword", "Gun", "Fruit" }) do
 		local rawWant = tonumber(target[key]) or 0
-		-- Support either additive points (0..2549) or absolute stat level (1..2550)
 		local addPts = rawWant
 		if target._isAbsolute then
 			addPts = math.max(0, rawWant - 1)
 		end
-		addPts = math.clamp(math.floor(addPts), 0, math.min(maxSt - 1, profile.StatPoints or 0))
+		addPts = math.clamp(math.floor(addPts), 0, math.min(maxAdd, profile.StatPoints or 0))
 		if addPts > 0 then
 			profile.StatAlloc[key] = 1 + addPts
 			profile.StatPoints -= addPts
@@ -3834,72 +3208,57 @@ function Expansion.TeleportToIsland(p, rawIslandId)
 	if not profile or not rt or not hrp then
 		return false
 	end
-	local id = tostring(rawIslandId or "SkyHub")
+	if isPlayerPvPCombatTagged(p, rt) then
+		G.Notify(p, "Đang trong Giao Tranh PvP — không thể Dịch Chuyển Nhanh lúc này! / Cannot Fast Travel while PvP combat-tagged!")
+		return false
+	end
 	if (G.Boss and G.Boss.Party and G.Boss.Party[p])
 		or PlayerTradeMap[p] ~= nil
 		or TrialSessions[p] ~= nil
 		or p:GetAttribute("RaidActive") == true
 		or p:GetAttribute("ColosseumActive") == true
 		or p:GetAttribute("InColosseum") == true
-		or p:GetAttribute("InColosseumDuel") == true then
-		G.Notify(p, "Không thể dịch chuyển khi đang trong Đấu Trường, Giao Dịch, Raid hoặc Thử Thách!")
+		or p:GetAttribute("InColosseumDuel") == true
+		or (tonumber(p:GetAttribute("SpireFloor")) or 0) > 0 then
+		G.Notify(p, "Không thể dịch chuyển khi đang trong Đấu Trường, Tháp Vô Tận, Giao Dịch, Raid hoặc Thử Thách!")
 		return false
 	end
 
-	local isl = (C.FastTravel and C.FastTravel[id]) or (not tonumber(id) and C.Islands and C.Islands[id])
-	if not isl then
-		for k, v in pairs(C.FastTravel or {}) do
-			if type(k) == "string" and string.lower(k) == string.lower(id) then
-				id = tostring((type(v) == "table" and v.Id) or k)
-				isl = v
-				break
-			end
-		end
+	local allowed, resolvedId = Helpers.CheckIslandTeleportGate(p, profile, C, tostring(rawIslandId or "SkyHub"), G)
+	if not allowed or not resolvedId then
+		return false
 	end
+
+	local isl = (C.FastTravel and C.FastTravel[resolvedId]) or (not tonumber(resolvedId) and C.Islands and C.Islands[resolvedId])
 	if not isl and C and C.Islands then
 		for _, v in ipairs(C.Islands) do
-			if type(v) == "table" and type(v.Id) == "string" and string.lower(v.Id) == string.lower(id) then
-				id = v.Id
+			if type(v) == "table" and type(v.Id) == "string" and string.lower(v.Id) == string.lower(resolvedId) then
 				isl = v
 				break
 			end
 		end
 	end
-	if not isl then
+	if not isl and resolvedId ~= "SkyHub" and resolvedId ~= "GoldenSky" then
 		return false
 	end
 
-	local canonId = (type(isl.Id) == "string" and isl.Id ~= "" and isl.Id) or id
-	local pos = isl.Pos or isl.Spawn or C.Spawn
-	local realm = isl.Realm or "GoldenSky"
+	local canonId = (isl and type(isl.Id) == "string" and isl.Id ~= "" and isl.Id) or resolvedId
+	local pos = (isl and (isl.Pos or isl.Spawn)) or C.Spawn
+	local realm = (isl and isl.Realm) or "GoldenSky"
 	profile.UnlockedWorlds = profile.UnlockedWorlds or {}
-	local realmMinLv = ({
-		FrozenCyber = 700,
-		ShadowRealm = 1500,
-		VerdantCrown = 2200,
-		EmberforgeWastes = 2270,
-		AbyssalTides = 2340,
-		ChronosBastion = 2410,
-		VeilsEnd = 2480,
-	})[realm] or 1
-	if realm ~= "GoldenSky" and realm ~= "SkyHub"
-		and not profile.UnlockedWorlds[realm]
-		and not profile.UnlockedWorlds[canonId]
-		and not DevGate.IsAllowed(p)
-		and (tonumber(profile.Level) or 1) < realmMinLv then
-		G.Notify(p, string.format("Cần đạt Level %d để mở khóa dịch chuyển tới %s!", realmMinLv, isl.Name or realm))
-		return false
-	end
 	if type(realm) == "string" and realm ~= "" then
 		profile.UnlockedWorlds[realm] = true
 	end
 	if type(canonId) == "string" and canonId ~= "" and not tonumber(canonId) then
 		profile.UnlockedWorlds[canonId] = true
 	end
+	profile.DiscoveredIslands = type(profile.DiscoveredIslands) == "table" and profile.DiscoveredIslands or {}
+	profile.DiscoveredIslands[canonId] = true
+
 	rt.JumpPadUntil = os.clock() + 3.0
 	p:SetAttribute("CurrentRealm", realm)
 	G.Teleport(p, pos + Vector3.new(0, 3, 0))
-	G.Notify(p, "Dịch chuyển nhanh -> " .. (isl.Name or canonId) .. "!")
+	G.Notify(p, "Dịch chuyển nhanh -> " .. ((isl and isl.Name) or canonId) .. "!")
 	G.Sync(p)
 	return true
 end
@@ -3937,13 +3296,30 @@ function Expansion.EquipTitle(p, rawTitleId)
 	return true
 end
 
+local HAKI_COLOR_ALIASES = {
+	gold = "solar_gold",
+	solar_gold = "solar_gold",
+	crimson = "crimson_conqueror",
+	rose = "crimson_conqueror",
+	crimson_conqueror = "crimson_conqueror",
+	cyan = "glacial_cyan",
+	glacial_cyan = "glacial_cyan",
+	violet = "abyssal_violet",
+	abyssal_violet = "abyssal_violet",
+	emerald = "verdant_emerald",
+	verdant_emerald = "verdant_emerald",
+	rainbow = "prismatic_aether",
+	prismatic_aether = "prismatic_aether",
+}
+
 function Expansion.EquipHakiColor(p, rawColorId)
 	local profile = D.Get(p)
 	if not profile then
 		return false
 	end
 	ensureExpansionProfile(profile)
-	local cid = tostring(rawColorId or "crimson_conqueror")
+	local rawStr = tostring(rawColorId or "crimson_conqueror")
+	local cid = HAKI_COLOR_ALIASES[string.lower(rawStr)] or rawStr
 	local spec = CombatData.HakiColors[cid]
 	if not spec then
 		return false
@@ -3967,18 +3343,6 @@ end
 -- ============================================================================
 -- UNIFIED UIREQUEST / FRUITACTION ROUTERS
 -- ============================================================================
--- Vong trai tu nhien o 3 Cay Aether (khop WILD_FRUIT_POOL trong Skybreak3DEquipment.lua phia client)
-local WILD_FRUIT_POOL_IDS = {
-	"SolarFlameCore",
-	"GlacierIceCore",
-	"CelestialLightCore",
-	"ThunderRumbleCore",
-	"DimensionalPortalCore",
-	"SolarTitanCore",
-	"AetherflowCore",
-	"AbyssalSovereignCore",
-}
-
 function Expansion.HandleFruitAction(p, actOrPayload, arg2)
 	if not consumeToken(p, 1) then
 		return
@@ -4003,68 +3367,9 @@ function Expansion.HandleFruitAction(p, actOrPayload, arg2)
 	elseif act == "DropHeldFruit" or act == "DropFruit" then
 		Expansion.DropHeldFruit(p, fid ~= "" and fid or nil)
 	elseif act == "ClaimWildFruit" then
-		if PlayerTradeMap[p] ~= nil or p:GetAttribute("InTrade") == true then
-			return
-		end
-		local rt = G.Runtime[p]
-		local profile = D.Get(p)
-		local hrp, hum = getCharRoot(p)
-		local cid = CombatData.ResolveFruitId(fid)
-		if rt and profile and hrp and hum and hum.Health > 0 and CombatData.FruitCatalog[cid] then
-			local now = os.clock()
-			if now < (rt.NextWildFruitClaimAt or 0) then
-				return
-			end
-			local validSource = false
-			local matchedDrop = nil
-			local dropFolder = workspace:FindFirstChild("DroppedDevilFruits") or (workspace:FindFirstChild("WorldObjects") and workspace.WorldObjects:FindFirstChild("DroppedDevilFruits"))
-			if dropFolder then
-				for _, m in ipairs(dropFolder:GetChildren()) do
-					if m:GetAttribute("FruitId") == cid then
-						local pp = m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
-						if pp and (pp.Position - hrp.Position).Magnitude <= 25 then
-							validSource = true
-							matchedDrop = m
-							break
-						end
-					end
-				end
-			end
-			if not validSource then
-				for _, tp in ipairs({ Vector3.new(105, 46.5, 58), Vector3.new(12095, 46.9, 65), Vector3.new(-11892, 46.9, 165) }) do
-					if Vector3.new(hrp.Position.X - tp.X, 0, hrp.Position.Z - tp.Z).Magnitude <= 45 then
-						validSource = true
-						break
-					end
-				end
-				if validSource then
-					-- Trai tu nhien o cay: server tu quyet dinh theo vong WILD_FRUIT_POOL (cung thu tu client),
-					-- khong tin fid client gui len (truoc day chon thang Mythic moi 22s).
-					local idx = math.max(1, math.floor(tonumber(rt.WildFruitCycle) or 1))
-					cid = WILD_FRUIT_POOL_IDS[((idx - 1) % #WILD_FRUIT_POOL_IDS) + 1]
-					rt.WildFruitCycle = idx + 1
-					if not CombatData.FruitCatalog[cid] then
-						return
-					end
-				end
-			end
-			if not validSource then
-				return
-			end
-			if matchedDrop and matchedDrop.Parent then
-				matchedDrop:Destroy()
-			end
-			rt.NextWildFruitClaimAt = now + 22
-			ensureExpansionProfile(profile)
-			profile.StoredFruits[cid] = (profile.StoredFruits[cid] or 0) + 1
-			profile.HeldFruit = cid
-			p:SetAttribute("HeldFruit", cid)
-			if p.Character then
-				p.Character:SetAttribute("HeldFruit", cid)
-			end
-			G.Notify(p, "Đã thu thập Lõi Aether Tự Nhiên: [" .. CombatData.FruitCatalog[cid].Name .. "] (Đã lưu kho & cầm trên tay 3D)!")
-			G.Sync(p)
-		end
+		WildCoreService.TryClaimWildCore(p, fid, ensureExpansionProfile, function(plr)
+			return PlayerTradeMap[plr] ~= nil
+		end)
 	elseif act == "AwakenFruit" then
 		local profile = D.Get(p)
 		if profile then
@@ -4072,17 +3377,15 @@ function Expansion.HandleFruitAction(p, actOrPayload, arg2)
 			local cid = CombatData.ResolveFruitId(fid ~= "" and fid or profile.EquippedFruit)
 			local cat = CombatData.FruitCatalog[cid]
 			if cat then
-				local cost = cat.AwakenShards or 500
 				if not profile.AwakenedFruits[cid] then
-					if (profile.CoreShards or 0) < cost then
-						G.Notify(p, string.format("Cần %d Core Shards (hoặc hoàn thành Awakening Raid) để Thức Tỉnh V2 [%s]!", cost, cat.Name))
+					if not Helpers.CanAwakenFruit(p, profile, cid, G) then
 						return
 					end
-					profile.CoreShards -= cost
+					profile.CoreShards = (tonumber(profile.CoreShards) or 0) - 1000
 				end
 				profile.AwakenedFruits[cid] = true
 				unlockTitle(p, profile, "awakened_ascendant", false)
-				G.Notify(p, "AWAKENED V2 MỞ KHÓA: [" .. cat.Name .. "] (+28%..42% DMG & Hiệu Ứng V2)!")
+				G.Notify(p, "AWAKENED V2 MỞ KHÓA: [" .. cat.Name .. "] (-1,000 Core Shards • +28%..42% DMG & Hiệu Ứng V2)!")
 				G.Sync(p)
 			end
 		end
@@ -4090,7 +3393,10 @@ function Expansion.HandleFruitAction(p, actOrPayload, arg2)
 		executePortalMoveC(p, type(data) == "table" and data or { targetIslandId = fid })
 	elseif act == "SummonSeaBeast" then
 		Expansion.SummonAlliedSeaBeast(p)
-	elseif act == "EatFruit" or act == "HoldFruit" or act == "RollFruit" then
+	elseif act == "RollFruit" or act == "RollFruitGold" or act == "RollFruitShards" then
+		local curMode = (act == "RollFruitShards" and "Shards") or (type(data) == "table" and data.currency) or "Gold"
+		G.Equipment(p, { action = "RollFruit", currency = curMode })
+	elseif act == "EatFruit" or act == "HoldFruit" or act == "StoreFruit" then
 		G.Equipment(p, { action = act, fruitId = CombatData.ResolveFruitId(fid) })
 	end
 end
@@ -4108,7 +3414,23 @@ function Expansion.HandleUIRequest(p, cmdOrPayload, arg2)
 	cmd = tostring(cmd or "")
 	payload = type(payload) == "table" and payload or { value = arg2 }
 
-	if cmd == "RedeemCode" then
+	if cmd == "ConfirmNPCAction" or cmd:sub(1, 17) == "ConfirmNPCAction:" then
+		return Helpers.HandleConfirmNPCAction(p, cmd == "ConfirmNPCAction" and nil or cmd, payload, G, D, C, Expansion)
+	elseif cmd == "EvolveRace" then
+		local prof = D.Get(p)
+		if prof then
+			return Helpers.EvolveRace(p, prof, G, C)
+		end
+		return false
+	elseif cmd == "StartTempleV4Trial" or cmd == "StartTempleRaceV4Trial" then
+		return startTempleRaceV4Trial(p)
+	elseif cmd == "SelectClass" then
+		G.ChooseAppearance(p, { ClassId = payload.classId or payload.ClassId or payload.id or payload.value })
+		return true
+	elseif cmd == "RollFruitGold" or cmd == "RollFruitShards" then
+		G.Equipment(p, { action = "RollFruit", currency = (cmd == "RollFruitShards" and "Shards") or payload.currency or "Gold" })
+		return true
+	elseif cmd == "RedeemCode" then
 		return Expansion.RedeemCode(p, payload.code or payload.Code or payload.value)
 	elseif cmd == "AscendStar" or cmd == "UpgradeStar" or cmd == "UpgradeWeaponStar" then
 		return Expansion.AscendWeaponStar(p, payload.itemId or payload.weaponId or payload.id)
@@ -4121,9 +3443,15 @@ function Expansion.HandleUIRequest(p, cmdOrPayload, arg2)
 		if rt and rt.PresetAppliedAt and (os.clock() - rt.PresetAppliedAt) < 0.12 then
 			return true
 		end
-		Expansion.RefundAllStats(p, false)
-		G.Sync(p)
-		return true
+		local _, okRef = Expansion.RefundAllStats(p, false, false)
+		if okRef then
+			G.Sync(p)
+		end
+		return okRef == true
+	elseif cmd == "ClaimWildFruit" then
+		return WildCoreService.TryClaimWildCore(p, payload.fruitId or payload.id or payload.value or "", ensureExpansionProfile, function(plr)
+			return PlayerTradeMap[plr] ~= nil
+		end)
 	elseif cmd == "TeleportIsland" or cmd == "FastTravel" then
 		return Expansion.TeleportToIsland(p, payload.islandId or payload.nodeId or payload.realmId or payload.id or payload.value)
 	elseif cmd == "BuyMirageFruit" then
@@ -4135,8 +3463,8 @@ function Expansion.HandleUIRequest(p, cmdOrPayload, arg2)
 		return Expansion.SelectOrLearnStyle(p, payload.styleId or payload.id or payload.value)
 	elseif cmd == "EquipTitle" then
 		return Expansion.EquipTitle(p, payload.titleId or payload.id or payload.value)
-	elseif cmd == "EquipHakiColor" then
-		return Expansion.EquipHakiColor(p, payload.colorId or payload.id or payload.value)
+	elseif cmd == "EquipHakiColor" or cmd == "SetHakiColor" then
+		return Expansion.EquipHakiColor(p, payload.colorId or payload.id or payload.color or payload.value)
 	elseif cmd == "RerollRace" then
 		return Expansion.RerollRace(p)
 	elseif cmd == "SummonSeaBeast" then
@@ -4146,11 +3474,23 @@ function Expansion.HandleUIRequest(p, cmdOrPayload, arg2)
 	elseif cmd == "AwakenFruit" then
 		Expansion.HandleFruitAction(p, "AwakenFruit", payload)
 		return true
-	elseif cmd == "RollFruit" or cmd == "EatFruit" or cmd == "HoldFruit" then
-		G.Equipment(p, { action = cmd, fruitId = CombatData.ResolveFruitId(payload.fruitId or payload.id or "") })
+	elseif cmd == "RollFruit" or cmd == "EatFruit" or cmd == "HoldFruit" or cmd == "StoreFruit" then
+		G.Equipment(p, { action = cmd, currency = payload.currency, fruitId = CombatData.ResolveFruitId(payload.fruitId or payload.id or "") })
 		return true
 	end
 	return false
+end
+
+Expansion.StartTempleRaceV4Trial = startTempleRaceV4Trial
+Expansion.AddMasteryXP = addMasteryXP
+
+function Expansion.DamagePlayersInPvPArea(attacker, centerPos, reach, rawDmg, skillName)
+	if not attacker or not G or not G.SocialEconomy or type(G.SocialEconomy.ApplyPvPHitCheck) ~= "function" then
+		return
+	end
+	local hrp = getCharRoot(attacker)
+	local dir = (hrp and hrp.CFrame.LookVector) or Vector3.new(0, 0, -1)
+	pcall(G.SocialEconomy.ApplyPvPHitCheck, attacker, centerPos, dir, reach, rawDmg, skillName)
 end
 
 -- ============================================================================
@@ -4170,7 +3510,36 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 
 	G.CombatData = CombatData
 	G.CombatExpansion = Expansion
-	G.HandleUIRequest = Expansion.HandleUIRequest
+	G.SkillMechanics = SkillMechanics
+	SkillMechanics.Init({
+		Config = C,
+		Data = D,
+		Game = G,
+		World = W,
+		Remotes = R,
+		CombatData = CombatData,
+		EnsureProfile = ensureExpansionProfile,
+		EnsureRuntime = ensureRuntimeFields,
+		CheckMastery = checkMoveMasteryUnlock,
+		GetMasteryLevel = getMasteryLevel,
+		AddMasteryXP = addMasteryXP,
+		ApplyCryoFreeze = applyCryoFreeze,
+		ApplyBurnOrDoT = applyBurnOrDoT,
+		PullEnemyToward = pullEnemyToward,
+		IsBossEnemy = isBossEnemy,
+		GroundYAt = groundYAt,
+		ClampAimRay = clampAimRay,
+		EnsureWorldFolder = ensureWorldFolder,
+		ExecutePortalMoveC = executePortalMoveC,
+		ExecuteDragonFuryMoveV = executeDragonFuryMoveV,
+	})
+	local prevHandleUI = G.HandleUIRequest
+	G.HandleUIRequest = function(p, cmd, payload)
+		if Expansion.HandleUIRequest(p, cmd, payload) then
+			return true
+		end
+		return (type(prevHandleUI) == "function" and prevHandleUI(p, cmd, payload)) or false
+	end
 	G.HandleFruitAction = Expansion.HandleFruitAction
 	G.HandleTradeAction = Expansion.HandleTradeAction
 	G.RedeemCode = Expansion.RedeemCode
@@ -4193,7 +3562,10 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		local fruitMastery = (fid ~= "" and getMasteryLevel(profile, fid)) or 1
 		local fruitAwk = (fid ~= "" and profile.AwakenedFruits[fid] == true) or false
 		local wepStar = (profile.Weapon and tonumber(profile.WeaponStars[profile.Weapon])) or 0
-		local expRem = math.max(0, (tonumber(profile.DoubleExpUntil) or 0) - os.time())
+		local expRem = math.max(
+			math.floor(tonumber(profile.DoubleExpRemainingSec) or 0),
+			math.max(0, (tonumber(profile.DoubleExpUntil) or 0) - os.time())
+		)
 
 		p:SetAttribute("FightingStyle", styleId)
 		p:SetAttribute("EquippedFruit", fid)
@@ -4203,6 +3575,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		p:SetAttribute("Title", (CombatData.Titles[profile.Title] or CombatData.Titles.sky_rookie).Name)
 		p:SetAttribute("Race", profile.Race or "Skyborn")
 		p:SetAttribute("RaceV4Unlocked", profile.RaceV4Unlocked == true)
+		p:SetAttribute("BlueResonanceGearFound", profile.BlueResonanceGearFound == true)
 		p:SetAttribute("EquippedWeaponStar", wepStar)
 		p:SetAttribute("DoubleExpSeconds", expRem)
 		if p.Character then
@@ -4219,6 +3592,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			statePayload.WeaponStars = profile.WeaponStars
 			statePayload.StarPity = profile.StarPity
 			statePayload.StatPresets = profile.StatPresets
+			statePayload.StatRefundTokens = profile.StatRefundTokens or 0
 			statePayload.RedeemedCodes = profile.RedeemedCodes
 			statePayload.HakiStage = profile.HakiStage
 			statePayload.HakiEXP = profile.HakiEXP
@@ -4233,8 +3607,10 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			statePayload.FuryMeter = math.floor((rt.FuryMeter or 0) + 0.5)
 			statePayload.DragonFormTier = rt.DragonFormTier or 0
 			statePayload.RaceV4Unlocked = profile.RaceV4Unlocked == true
+			statePayload.BlueResonanceGearFound = profile.BlueResonanceGearFound == true
 			statePayload.CoreGears = profile.CoreGears or 0
 			statePayload.DoubleExpSeconds = expRem
+			statePayload.DoubleExpRemainingSec = expRem
 			statePayload.MirageStock = CurrentMirageStock or refreshMirageStock()
 		end
 	end
@@ -4253,19 +3629,21 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 
 	-- 2. Wrap G.Stats with Haki Stage 0..5 (#53), Bounty Buff (#56), Star Ascension (#104), Dragon Fury (#48), Race V4 (#52)
 	local origStats = G.Stats
-	G.Stats = function(p)
-		local s = origStats(p)
+	G.Stats = function(p, slotOverride)
+		local s = origStats(p, slotOverride)
 		local profile = D.Get(p)
 		local rt = G.Runtime[p]
 		if not s or not profile then
 			return s
 		end
 		ensureExpansionProfile(profile)
+		local effSlot = math.clamp(math.floor(tonumber(slotOverride) or tonumber(profile.ActiveSlot) or 2), 1, 4)
 
-		-- Adjust Busoshoku Haki from flat 1.20/1.15 to authoritative Stage 0..5 (up to +22% ATK, +18% DEF at Stage 5)
+		-- Adjust Busoshoku Haki to authoritative Stage 0..5 (up to +22% ATK, +18% DEF at Stage 5)
 		if p.Character and p.Character:GetAttribute("HakiAura") then
 			local stInfo = CombatData.HakiStages[profile.HakiStage or 0] or CombatData.HakiStages[0]
-			s.ATK = math.floor((s.ATK / 1.20) * (1 + stInfo.AtkBonus))
+			local prevAuraMult = 1 + 0.14 + math.clamp(tonumber(profile.HakiStage) or tonumber(profile.Haki and profile.Haki.AuraStage) or 1, 1, 5) * 0.02
+			s.ATK = math.floor((s.ATK / prevAuraMult) * (1 + stInfo.AtkBonus))
 			s.DEF = math.floor((s.DEF / 1.15) * (1 + stInfo.DefBonus))
 			s.Break = (s.Break or 100) + (stInfo.BreakBonus or 0)
 		end
@@ -4277,12 +3655,17 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			s.DEF = math.floor(s.DEF * (1 + bountyPct))
 		end
 
-		-- Weapon Star Ascension (1..5 Stars) (#104)
-		local activeWep = (profile.ActiveSlot == 4 and profile.EquippedGun) or profile.Weapon
+		-- Weapon Star Ascension (1..5 Stars, slot-isolated to Sword Slot 3 or Gun Slot 4) (#104)
+		local activeWep = (effSlot == 4 and profile.EquippedGun) or (effSlot == 3 and profile.Weapon) or nil
 		local starLv = activeWep and tonumber(profile.WeaponStars[activeWep]) or 0
 		if starLv and starLv >= 1 and CombatData.StarAscension[starLv] then
 			local tier = CombatData.StarAscension[starLv]
 			s.ATK = math.floor(s.ATK * (1 + tier.AtkPct))
+			if effSlot == 3 and s.SwordATK then
+				s.SwordATK = math.floor(s.SwordATK * (1 + tier.AtkPct))
+			elseif effSlot == 4 and s.GunATK then
+				s.GunATK = math.floor(s.GunATK * (1 + tier.AtkPct))
+			end
 			s.CritRate = (s.CritRate or 5) + tier.CritRateBonus
 			s.StarSkillDmgPct = tier.SkillDmgPct
 		else
@@ -4300,11 +3683,11 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			end
 		end
 
-		-- Apply WalkSpeed modifiers (Mink V4 +45%, Skyborn V4 +28%, Dragon Hybrid +22% / Sovereign +32%)
+		-- Apply WalkSpeed modifiers (Race Tier V2/V3, Mink V4 +45%, Skyborn V4 +28%, Dragon Hybrid +22% / Sovereign +32%)
 		local _, hum = getCharRoot(p)
 		if hum then
 			local baseSpd = (C.Classes and C.Classes[profile.ClassId] and C.Classes[profile.ClassId].Speed) or 18
-			local spdMult = 1.0
+			local spdMult = tonumber(s.RaceWalkSpeedMult) or 1.0
 			if profile.RaceV4Active then
 				if profile.Race == "Mink" then
 					spdMult += CombatData.RaceV4Passives.Mink.WalkSpeedBonus -- +45%
@@ -4320,7 +3703,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			if rt and rt.InWaterZone and profile.Race == "Leviathan" then
 				spdMult += 0.35
 			end
-			hum.WalkSpeed = math.clamp(baseSpd * spdMult, 16, 46)
+			hum.WalkSpeed = math.clamp(baseSpd * spdMult, 16, 48)
 		end
 
 		return s
@@ -4350,7 +3733,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			local actStr = tostring(action or "")
 			if actStr ~= "" and actStr ~= "Attack" and actStr ~= "Light" and actStr ~= "M1"
 				and actStr ~= "DracoV4ThornReflect" and actStr ~= "CyborgV4ChainOrb" and actStr ~= "ChainVolt" then
-				local activeWep = (profile.ActiveSlot == 4 and profile.EquippedGun) or profile.Weapon
+				local activeWep = (profile.ActiveSlot == 4 and profile.EquippedGun) or (profile.ActiveSlot == 3 and profile.Weapon) or nil
 				local starLv = activeWep and tonumber(profile.WeaponStars[activeWep]) or 0
 				local starTier = starLv and CombatData.StarAscension[starLv]
 				if starTier and (starTier.SkillDmgPct or 0) > 0 then
@@ -4361,8 +3744,15 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 
 		local preHP = e.HP or 0
 		local preBreak = e.Break or 0
+		local preAwk = (profile and tonumber(profile.AwakeningMeter)) or (rt and tonumber(rt.AwakeningMeter)) or 0
 		origHit(p, e, (tonumber(damage) or 1) * mult, 0, action)
 		local dealt = math.max(0, preHP - (e.HP or 0))
+		if profile and profile.RaceV4Active then
+			profile.AwakeningMeter = preAwk
+			if rt then
+				rt.AwakeningMeter = preAwk
+			end
+		end
 
 		-- Authoritative Boss Break Gauge (#16)
 		local extraBreak = (tonumber(breakPower) or 0)
@@ -4370,17 +3760,23 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			local stInfo = CombatData.HakiStages[profile.HakiStage or 0]
 			extraBreak += (stInfo and stInfo.BreakBonus or 3)
 			addBusoHakiEXP(p, 3)
+			Helpers.CheckAndAutoUnlockConqueror(p, profile, G, nil)
 		end
 		e.Break = preBreak
 		updateBossBreakGauge(e, extraBreak)
 
 		if rt and dealt > 0 then
 			ensureRuntimeFields(p, rt, profile)
-			if (rt.DragonFormTier or 0) == 0 then
-				rt.FuryMeter = math.min(100, (rt.FuryMeter or 0) + 2.8)
+			rt.LastCombatAt = now
+			if not G._DragonDualFormsHooked then
+				rt.FuryMeter = math.min(100, (tonumber(rt.FuryMeter) or 100) + 4.0)
+				rt.DragonFury = rt.FuryMeter
 			end
-			if profile and not profile.RaceV4Active then
-				profile.AwakeningMeter = math.min(100, (tonumber(profile.AwakeningMeter) or 0) + 3.5)
+			if profile then
+				local syncedAwk = math.clamp(tonumber(profile.AwakeningMeter) or tonumber(rt.AwakeningMeter) or 0, 0, 100)
+				profile.AwakeningMeter = syncedAwk
+				rt.AwakeningMeter = syncedAwk
+				p:SetAttribute("AwakeningMeter", math.floor(syncedAwk + 0.5))
 			end
 		end
 
@@ -4406,7 +3802,8 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 					end
 				end
 				if rt and chained > 0 then
-					rt.Energy = math.min(100, (rt.Energy or 0) + CombatData.RaceV4Passives.Cyborg.EnergyRefundPerChain)
+					local maxE = tonumber(rt.MaxEnergy) or 100
+					rt.Energy = math.min(maxE, (tonumber(rt.Energy) or 0) + CombatData.RaceV4Passives.Cyborg.EnergyRefundPerChain)
 				end
 				inChainLightning = false
 			elseif race == "Mink" and not isBossEnemy(e) then
@@ -4455,40 +3852,9 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		ensureExpansionProfile(profile)
 		ensureRuntimeFields(p, rt, profile)
 
-		-- #45: 100% Authoritative Logia Elemental Reflex when playerLevel >= enemyLevel + 15 & non-Boss & lacks HasBusoHaki
-		local fid = CombatData.ResolveFruitId(profile.EquippedFruit)
-		local cat = CombatData.FruitCatalog[fid]
-		if cat and cat.Logia and attackerEnemy and not isBossEnemy(attackerEnemy) then
-			local enemyHasHaki = (attackerEnemy.Config and attackerEnemy.Config.HasBusoHaki == true)
-				or (attackerEnemy.Model and attackerEnemy.Model:GetAttribute("HasBusoHaki") == true)
-			local enemyLv = (attackerEnemy.Config and attackerEnemy.Config.Level) or 1
-			if not enemyHasHaki and (tonumber(profile.Level) or 1) >= (enemyLv + 15) then
-				if R and R.CombatFX then
-					R.CombatFX:FireAllClients({
-						Kind = "DamageNumber",
-						Position = hrp.Position + Vector3.new(0, 2.6, 0),
-						Amount = 0,
-						IsImmune = true,
-						Tag = "LOGIA!",
-						Text = "LOGIA!",
-						Element = cat.Element,
-						Target = p.Character,
-					})
-				end
-				G.FireCombatEvent({
-					kind = "DamageNumber",
-					pos = hrp.Position + Vector3.new(0, 2.6, 0),
-					amount = 0,
-					crit = false,
-					element = cat.Element,
-					Text = "LOGIA!",
-				})
-				return
-			end
-		end
-
-		-- #54: Track Kenbunshoku dodge EXP toward V2 unlock
+		-- #54: Track Kenbunshoku dodge EXP toward V2 unlock (Logia immunity & +5 AwakeningMeter are authoritatively handled inside origPlayerDamage)
 		local preDodges = profile.Haki and profile.Haki.InstinctDodges or 0
+		local preAwk = tonumber(profile.AwakeningMeter) or tonumber(rt.AwakeningMeter) or 0
 
 		-- #52: Draco V4 25% Primordial Thorn-Reflect
 		if profile.RaceV4Active and profile.Race == "Draco" and attackerEnemy and attackerEnemy.Alive then
@@ -4511,8 +3877,16 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			end
 		end
 
-		rt.FuryMeter = math.min(100, (rt.FuryMeter or 0) + 3.2)
+		rt.LastCombatAt = os.clock()
 		origPlayerDamage(p, incoming, attackerEnemy)
+		if profile.RaceV4Active then
+			profile.AwakeningMeter = preAwk
+			rt.AwakeningMeter = preAwk
+		end
+		local syncedAwk = math.clamp(tonumber(profile.AwakeningMeter) or tonumber(rt.AwakeningMeter) or 0, 0, 100)
+		profile.AwakeningMeter = syncedAwk
+		rt.AwakeningMeter = syncedAwk
+		p:SetAttribute("AwakeningMeter", math.floor(syncedAwk + 0.5))
 
 		local postDodges = profile.Haki and profile.Haki.InstinctDodges or 0
 		if postDodges < preDodges then
@@ -4540,7 +3914,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		return origTickEnemy(e, effDt)
 	end
 
-	-- 7. Wrap G.Action & G.UseSlotMove for 5 Martial Styles, Greatsword Crescent Slash, Guns, V2 Fruits, Dragon Fury & Portal Warp
+	-- 7. Wrap G.Action & G.UseSlotMove for 5 Martial Styles, Fast 4-Hit Sword Combo, Greatsword Crescent Slash, Guns, V2 Fruits, Dragon Fury & Portal Warp
 	local origAction = G.Action
 	G.Action = function(p, action, payload)
 		local profile = D.Get(p)
@@ -4558,6 +3932,9 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		if (act == "Attack" or act == "Shoot") and slot == 1 then
 			executeMartialStyleKata(p, payload)
 			return
+		elseif act == "Attack" and slot == 3 then
+			executeSwordComboM1(p, payload)
+			return
 		elseif (act == "Attack" or act == "Heavy" or act == "Shoot") and slot == 4 then
 			executeAimedGunShot(p, nil, payload)
 			return
@@ -4566,7 +3943,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 				return
 			end
 		end
-		return origAction(p, act)
+		return origAction(p, act, payload)
 	end
 
 	local origUseSlotMove = G.UseSlotMove
@@ -4579,73 +3956,23 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		ensureExpansionProfile(profile)
 		local key = string.upper(tostring(rawKey or "Z"))
 		local slot = math.clamp(tonumber(profile.ActiveSlot) or 2, 1, 4)
-		local masteryItemId, masteryXP = nil, 0
 
-		-- Slot 1: 5 Martial Arts Styles [Z][X][C] (#31-#33)
-		if slot == 1 and (key == "Z" or key == "X" or key == "C") then
-			if executeMartialStyleTechnique(p, key, payload) then
-				return
-			end
+		-- Stage 1 Mechanical Skill Engine across all 4 Slots (8 Martial Styles, 12 V1/V2/Dragon Cores, 5 Melee Archetypes, 5 Gun Archetypes)
+		if SkillMechanics.ExecuteSlotSkill(p, slot, key, payload) then
+			return
 		end
 
-		-- Slot 3: Charged [Z] on Noxar Greatsword when ChargeRatio is supplied (#35)
-		if slot == 3 and key == "Z" and type(payload) == "table" and (payload.ChargeRatio or payload.chargeRatio) and CombatData.IsChargedSlashWeapon(profile.Weapon) then
-			if executeChargedCrescentSlash(p, payload) then
-				return
-			end
+		-- Fallback when Slot 2 has no equipped Aether Core yet
+		local discId = getActiveDisciplineId(profile, slot)
+		if not checkMoveMasteryUnlock(p, profile, discId, key, slot) then
+			return
 		end
-
-		-- Slot 4: Aimed Raycast Gunplay [Z][X][C][V] (#36-#38)
-		if slot == 4 and (key == "Z" or key == "X" or key == "C" or key == "V") then
-			if executeAimedGunShot(p, key, payload) then
-				return
-			end
-		end
-
-		-- Slot 2: Devil Fruit Mastery Gate (#41), Portal [C] Warp (#49), Dragon Fury [V] (#48), Awakened V2 (#42)
-		if slot == 2 then
-			local fid = CombatData.ResolveFruitId(profile.EquippedFruit)
-			if fid ~= "" then
-				profile.EquippedFruit = fid
-				if fid == "DimensionalPortalCore" and key == "C" then
-					executePortalMoveC(p, payload)
-					return
-				end
-				local cat = CombatData.FruitCatalog[fid]
-				if cat and cat.DragonFury and key == "V" then
-					executeDragonFuryMoveV(p, fid)
-					return
-				end
-				if not checkMoveMasteryUnlock(p, profile, fid, key, 2) then
-					return
-				end
-				-- JumpPadUntil tat kiem tra dich chuyen/toc do cua server: chi gia han khi [F] het hoi chieu
-				-- (truoc day spam [F] qua AbilityRequest => JumpPad vinh vien => teleport/speed hack tu do).
-				if key == "F" and os.clock() >= (rt.Cooldowns.Slot_F or 0) then
-					local mLv = getMasteryLevel(profile, fid)
-					local boost = (mLv >= CombatData.MasteryConfig.FlightEnhancedLevel) and 1.35 or 1.0
-					rt.JumpPadUntil = math.max(rt.JumpPadUntil or 0, os.clock() + 3.0 * boost)
-				end
-				if executeAwakenedFruitV2Move(p, fid, key, payload) then
-					return
-				end
-				masteryItemId, masteryXP = fid, 16
-			end
-		else
-			local discId = getActiveDisciplineId(profile, slot)
-			if not checkMoveMasteryUnlock(p, profile, discId, key, slot) then
-				return
-			end
-			masteryItemId, masteryXP = discId, 14
-		end
-
-		-- Mastery XP chi cong khi chieu goc thuc su ra (cooldown Slot_ bi dat lai), khong cong khi dang hoi chieu
 		local baseKey = (key == "Z" or key == "X" or key == "C" or key == "V" or key == "F") and key or "Z"
 		local cdBefore = rt.Cooldowns["Slot_" .. baseKey]
-		local res = origUseSlotMove(p, key)
+		local res = origUseSlotMove(p, key, payload)
 		local rtAfter = G.Runtime[p]
-		if masteryItemId and rtAfter and rtAfter.Cooldowns and rtAfter.Cooldowns["Slot_" .. baseKey] ~= cdBefore then
-			addMasteryXP(p, masteryItemId, masteryXP)
+		if discId and rtAfter and rtAfter.Cooldowns and rtAfter.Cooldowns["Slot_" .. baseKey] ~= cdBefore then
+			addMasteryXP(p, discId, 14)
 		end
 		return res
 	end
@@ -4665,9 +3992,10 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			end
 		end
 		if act == "RedeemCode" or act == "UpgradeWeaponStar" or act == "AscendStar" or act == "UpgradeStar"
-			or act == "ApplyStatPreset" or act == "SaveStatPreset" or act == "BuyMirageFruit"
+			or act == "ApplyStatPreset" or act == "SaveStatPreset" or act == "RefundStats" or act == "ResetStats"
+			or act == "BuyMirageFruit"
 			or act == "SelectFightingStyle" or act == "SwitchFightingStyle" or act == "LearnFightingStyle"
-			or act == "EquipTitle" or act == "EquipHakiColor" or act == "RerollRace"
+			or act == "EquipTitle" or act == "EquipHakiColor" or act == "RerollRace" or act == "EvolveRace"
 			or act == "DropHeldFruit" or act == "DropFruit" or act == "SummonSeaBeast" then
 			Expansion.HandleUIRequest(p, act, payload)
 			return
@@ -4678,16 +4006,19 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			local prof = D.Get(p)
 			if prof then
 				ensureExpansionProfile(prof)
-				if not prof.RaceV4Unlocked and (tonumber(prof.Level) or 1) < 1500 then
-					G.Notify(p, "Hãy vượt qua Thử Thách Thăng Hoa tại Đền Thăng Hoa (Tầng Trời 3) để mở khóa THĂNG HOA!")
+				if prof.RaceV4Unlocked ~= true then
+					G.Notify(p, "Bạn cần hoàn thành Khảo Thí Đền Thăng Hoa (Sea 3 • Lv. 1900+) để mở khóa Tộc V4!")
 					return
 				end
 				if not prof.RaceV4Active then
-					if (tonumber(prof.AwakeningMeter) or 0) < 25 then
-						G.Notify(p, string.format("Cần tối thiểu 25%% Thanh Thức Tỉnh để kích hoạt THĂNG HOA (Hiện tại: %d%%)!", math.floor(prof.AwakeningMeter or 0)))
+					local curAwk = math.max(tonumber(rt and rt.AwakeningMeter) or 0, tonumber(prof.AwakeningMeter) or 0)
+					if curAwk < 100 then
+						G.Notify(p, string.format("Cần tích đầy 100%% Thanh Thức Tỉnh trong chiến đấu để kích hoạt Tộc V4 (Hiện tại: %d%%)!", math.floor(curAwk)))
 						return
 					end
+					prof.AwakeningMeter = 100
 					if rt then
+						rt.AwakeningMeter = 100
 						local _, hum = getCharRoot(p)
 						if prof.Race == "Leviathan" and hum then
 							rt.LeviathanShieldHP = math.floor(hum.MaxHealth * CombatData.RaceV4Passives.Leviathan.ShieldMaxHPPct)
@@ -4705,23 +4036,54 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 			local targetId = type(extraTbl) == "table" and (extraTbl.islandId or extraTbl.nodeId or extraTbl.id) or extraTbl
 			Expansion.TeleportToIsland(p, targetId)
 			return
-		elseif idOrAction == "DrVega" then
-			Expansion.RerollRace(p)
-			return
-		elseif idOrAction == "MirageDealer" then
-			local stock = refreshMirageStock()
-			if stock.Items[1] then
-				Expansion.BuyMirageFruit(p, stock.Items[1].Id, false)
+		elseif idOrAction == "DrVega" or idOrAction == "DrVega_Alchemist" then
+			local prof = D.Get(p)
+			if prof then
+				Helpers.OpenDrVegaDialogue(p, prof, G)
 			end
 			return
+		elseif idOrAction == "MirageDealer" then
+			refreshMirageStock()
+			G.SendDialogue(
+				p,
+				"Thương Nhân Hư Quang",
+				"THƯƠNG NHÂN ĐẢO HƯ QUANG",
+				"Kho Lõi Aether Hư Quang xoay vòng mỗi giờ! Hãy mở Cửa Hàng Hư Quang để xem giá và xác nhận mua bằng Gold.",
+				"[1] MỞ KHO LÕI HƯ QUANG",
+				"OpenScreen:NPCShop:MirageDealer"
+			)
+			return
 		end
-		return origInteract(p, idOrAction)
+		return origInteract(p, idOrAction, extraTbl)
 	end
 
 	G.HandleAbilityExtra = function(p, payload)
 		local id = tostring(payload.skillId or payload.action or "")
 		if id == "FreeFlight" then
-			local isFlying = (payload.active == true)
+			local wantFly = (payload.active == true)
+			local isFlying = false
+			local rt = G.Runtime and G.Runtime[p]
+			local profile = D.Get(p)
+			if wantFly and profile and rt then
+				local now = os.clock()
+				local notStunned = now >= (tonumber(rt.StunnedUntil) or 0)
+				local hasEnergy = (tonumber(rt.Energy) or 0) > 0
+				local isSlot2 = (tonumber(profile.ActiveSlot) == 2)
+				if isSlot2 and notStunned and hasEnergy then
+					local fid = CombatData.ResolveFruitId(profile.EquippedFruit or "")
+					local ch = p.Character
+					local dTier = tonumber(rt.DragonFormTier) or tonumber(ch and ch:GetAttribute("DragonFormTier")) or tonumber(p:GetAttribute("DragonFormTier")) or 0
+					local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or p:GetAttribute("FruitTransform") or "")
+					local canFruitFly = (TRUE_FLIGHT_FRUITS[fid] == true)
+						or (fid == "AbyssalSovereignCore" and (dTier >= 2 or tf == "AbyssalSovereign"))
+					if canFruitFly and checkMoveMasteryUnlock(p, profile, fid, "F", 2) then
+						isFlying = true
+					end
+				end
+			end
+			if rt then
+				rt.FreeFlightActive = isFlying
+			end
 			p:SetAttribute("SkybreakFlightActive", isFlying)
 			if p.Character then
 				p.Character:SetAttribute("SkybreakFlightActive", isFlying)
@@ -4759,7 +4121,7 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 	end
 	if R:FindFirstChild("StatAllocate") then
 		R.StatAllocate.OnServerEvent:Connect(function(p, statOrTbl, amount)
-			if not RemoteGuard.Allow(p, "UI") then
+			if not RemoteGuard.Allow(p, "StatAllocate") then
 				return
 			end
 			if type(statOrTbl) == "table" then
@@ -4808,7 +4170,8 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 
 	Players.PlayerRemoving:Connect(function(p)
 		TokenBuckets[p] = nil
-		LastWaterPadPos[p] = nil
+		WildCoreService.CleanupPlayer(p)
+		SkillMechanics.CleanupPlayer(p)
 		local ts = TrialSessions[p]
 		if ts then
 			ts.Active = false
@@ -4823,19 +4186,24 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 		if PlayerTradeMap[p] then
 			cancelTradeSession(PlayerTradeMap[p], p.Name .. " đã rời máy chủ.")
 		end
-		if AlliedSeaBeasts[p] then
-			if AlliedSeaBeasts[p].Model and AlliedSeaBeasts[p].Model.Parent then
-				AlliedSeaBeasts[p].Model:Destroy()
-			end
-			AlliedSeaBeasts[p] = nil
-		end
 	end)
 
-	-- Build 3D World Tables, NPCs, Trial Altar & Sea Water Basins
+	-- Build 3D World Tables, NPCs, Sea Water Basins & 45m Wild Core Spawner
 	refreshMirageStock()
 	pcall(buildCafeTradingTables)
-	pcall(buildWorldNPCsAndAltars)
-	pcall(buildDockSeaWaterBasins)
+	pcall(WildCoreService.Init, {
+		Config = C,
+		Data = D,
+		Game = G,
+		World = W,
+		Remotes = R,
+		Helpers = Helpers,
+		CombatData = CombatData,
+		EnsureProfile = ensureExpansionProfile,
+		IsInTrade = function(plr)
+			return PlayerTradeMap[plr] ~= nil
+		end,
+	})
 
 	-- Hydrate any already-connected players
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -4864,7 +4232,8 @@ function Expansion.Init(gameService, dataService, worldService, configModule)
 				refreshMirageStock()
 			end
 
-			tickAlliedSeaBeasts(dt)
+			WildCoreService.TickAlliedSeaBeasts(dt)
+			SkillMechanics.TickHazards(dt)
 
 			local doKen = false
 			if kenAccum >= 0.5 then

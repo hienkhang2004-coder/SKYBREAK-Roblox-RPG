@@ -27,25 +27,46 @@ local UIAssets = {
         Sword = "",
         Daggers = "",
         Staff = "",
+        Gun = "",
+        Fist = "",
+        Haki = "",
+        Fruit = "",
         Shield = "",
         Bolt = "",
+        Lightning = "",
         Frost = "",
+        Flame = "",
+        Wing = "",
         Bag = "",
+        Potion = "",
+        Ship = "",
+        Gift = "",
         Skill = "",
         Quest = "",
         Map = "",
+        Compass = "",
         Forge = "",
         Raid = "",
         Settings = "",
+        Volume = "",
         Close = "",
         Gold = "",
         CoreShard = "",
+        CoreShards = "",
         VoidEssence = "",
         Anchor = "",
         Lock = "",
         Check = "",
         Star = "",
         Heart = "",
+        -- Monetization & GamePasses (Un-uploaded IDs stay "" -> procedural vector emblems in UIFactory)
+        Crown = "",
+        PassExp = "",
+        PassGold = "",
+        PassStorage = "",
+        PassShip = "",
+        PassAura = "",
+        RobuxGem = "",
     },
 
     -- Rarity Border Frame Textures (Empty string = procedural UIStroke + UIGradient by RarityConfig)
@@ -85,6 +106,9 @@ function UIAssets.IsValidAssetId(assetId)
 end
 
 function UIAssets.GetIcon(iconName)
+    if type(iconName) ~= "string" or iconName == "" then
+        return nil
+    end
     local id = UIAssets.Icons[iconName]
     if UIAssets.IsValidAssetId(id) then
         return id

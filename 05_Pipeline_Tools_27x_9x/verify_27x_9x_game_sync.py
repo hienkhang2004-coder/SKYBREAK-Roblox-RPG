@@ -3,11 +3,11 @@ End-to-end 27x / 9x SKYBREAK Roblox Game Sync Audit.
 Verifies:
 1. All 13 runtime_v8 world folders exist, Header mesh_count <= 999, and 100% of MeshXXX.json chunks have AABB <= 1,750 < 2,048 studs.
 2. All 13 DelegatedV5Sources world folders in SKYBREAK_Playable_v12_PremiumUI.rbxlx match runtime_v8 Header.json.zstd.b64 SHA-256 and module counts.
-3. Workspace.SkyHub.SkybornSpawn == (-2484, 51.5, 4131) and Workspace.FallenPartsDestroyHeight == -4500 in .rbxlx.
-4. All .lua files in 04_Roblox/src are < 199,000 bytes and mirrored identically into .rbxlx + SKYBREAK_Visual_v2 + 06_Antigravity_Work.
+3. Workspace.SkyHub.SkybornSpawn == (-317.4, 50.5, 527.8) [Anchored/Neutral/CanCollide=true], Workspace.FallenPartsDestroyHeight == -4500, Lighting.Technology == 4 (Future, EnvironmentDiffuseScale=1.0, EnvironmentSpecularScale=1.0, GlobalShadows=true, ShadowSoftness=0.18, ClockTime=16.1, SunRaysEffect Intensity=0.14 Spread=0.65), StarterPlayer (R15 Standard, LoadCharacterAppearance=true, CharacterUseJumpPower=true, EnableMouseLockOption=false), Players (MaxPlayers=16, CharacterAutoLoads=true), TextChatService (ChatVersion=1), and SoundService (RespectFilteringEnabled=true) in .rbxlx.
+4. All .lua files in 04_Roblox/src are < 199,000 bytes, have 100% SHA-256 Source parity with .rbxlx (zero orphan scripts), and are mirrored identically into SKYBREAK_Visual_v2 + 06_Antigravity_Work.
 5. Zero leftover legacy 1x/3x world coordinates (8000, -8000, 1640, -1620, 6320, 9840, -9860, -9960, -8040, -620, 660) in Vector3/_V3 calls across 04_Roblox/src.
 6. Zero AABB overlaps across all 20 placed 3D world instances (3 Main Maps 27x + 10 Expansion Worlds 9x + 2 Shrines + 5 Expansion Realms 9x).
-7. Zero Part.Size components > 2,000 studs across all collider Luau modules.
+7. Zero Part.Size components > 2,048 studs across all collider Luau modules and scripts.
 """
 import hashlib
 import json
@@ -45,6 +45,9 @@ WORLD_13 = [
 ]
 
 
+SYNC_SERVICES = ("ReplicatedStorage", "ServerScriptService", "ServerStorage", "StarterPlayer")
+
+
 def get_name(it):
     p = it.find("Properties")
     if p is not None:
@@ -52,6 +55,25 @@ def get_name(it):
             if s.attrib.get("name") == "Name":
                 return s.text or ""
     return ""
+
+
+def get_typed_prop(it, tag: str, prop_name: str):
+    p = it.find("Properties")
+    if p is not None:
+        for el in p.findall(tag):
+            if el.attrib.get("name") == prop_name:
+                return (el.text or "").strip()
+    return None
+
+
+def classify_lua_file(rel_parts):
+    fname = rel_parts[-1]
+    if fname.endswith(".server.lua"):
+        return tuple(list(rel_parts[:-1]) + [fname[:-11]]), "Script"
+    elif fname.endswith(".client.lua"):
+        return tuple(list(rel_parts[:-1]) + [fname[:-11]]), "LocalScript"
+    else:
+        return tuple(list(rel_parts[:-1]) + [fname[:-4]]), "ModuleScript"
 
 
 def main():
@@ -149,6 +171,12 @@ def main():
     legacy_vec_re = re.compile(
         r"(?:Vector3\.new|_V3)\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)"
     )
+    collider_tuple_re = re.compile(
+        r"^\s*\{\s*(-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?){4,7})\s*\}\s*,?\s*$"
+    )
+    explicit_size_re = re.compile(
+        r"\bSize\s*=\s*(?:Vector3\.new|_V3)\s*\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*\)"
+    )
     banned_xz = {
         (8000, 0), (-8000, 0), (7890, 155), (-8070, 125),
         (1640, -40), (1640, -32), (-1620, 40), (-1620, 78),
@@ -159,6 +187,10 @@ def main():
     max_lua_bytes = 0
     max_lua_name = ""
     lua_count = 0
+    collider_tuples_checked = 0
+    max_collider_dim = 0.0
+    expected_src_scripts = {}
+
     for fpath in sorted(SRC_ROOT.rglob("*.lua")):
         rel = fpath.relative_to(SRC_ROOT).as_posix()
         raw = fpath.read_bytes()
@@ -170,6 +202,13 @@ def main():
         if sz >= 199000:
             failures.append(f"Script exceeds 199,000B cap: {rel} ({sz}B)")
         txt = raw.decode("utf-8")
+        rel_parts = fpath.relative_to(SRC_ROOT).parts
+        if rel_parts and rel_parts[0] in SYNC_SERVICES:
+            s_key = classify_lua_file(rel_parts)
+            norm_sha = hashlib.sha256(txt.replace("\r\n", "\n").encode("utf-8")).hexdigest()
+            expected_src_scripts[s_key] = (rel, norm_sha)
+
+        is_collider_mod = ("Collision" in rel) or ("Colliders" in rel)
         for idx, ln in enumerate(txt.splitlines(), 1):
             if ln.strip().startswith("--"):
                 continue
@@ -178,14 +217,29 @@ def main():
                 key = (int(round(vx)), int(round(vz)))
                 if key in banned_xz:
                     failures.append(f"Legacy 1x/3x coord {key} in {rel}:{idx}: {ln.strip()[:100]}")
-            if "Collision" in rel or "Colliders" in rel:
-                if "Vector3.new" in ln:
-                    for m in re.finditer(r"Vector3\.new\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*\)", ln):
-                        # Only flag if used as Size > 2048 (note Positions can exceed 2048!)
-                        pass
-    print(f"  Audited {lua_count} Luau scripts -> largest: {max_lua_name} ({max_lua_bytes} B < 199,000 B)")
+            for sm in explicit_size_re.finditer(ln):
+                s_dims = (float(sm.group(1)), float(sm.group(2)), float(sm.group(3)))
+                if max(s_dims) > 2048.0:
+                    failures.append(f"Part.Size > 2048 in {rel}:{idx}: {s_dims}")
+            if is_collider_mod:
+                tm = collider_tuple_re.match(ln)
+                if tm:
+                    nums = [float(x) for x in tm.group(1).split(",")]
+                    dims = nums[3:5] if len(nums) == 5 else nums[3:6]
+                    collider_tuples_checked += 1
+                    md = max(dims)
+                    if md > max_collider_dim:
+                        max_collider_dim = md
+                    if md > 2048.0:
+                        failures.append(f"Collider tuple Size > 2048 in {rel}:{idx}: {dims}")
+    if collider_tuples_checked == 0:
+        failures.append("Zero collider tuples parsed across Collision/Colliders modules!")
+    print(
+        f"  Audited {lua_count} Luau scripts -> largest: {max_lua_name} ({max_lua_bytes} B < 199,000 B); "
+        f"colliders={collider_tuples_checked} (max dim={max_collider_dim:.2f} <= 2048)"
+    )
 
-    print("\n=== 4. AUDITING .RBXLX PACKAGING & MIRRORS ===")
+    print("\n=== 4. AUDITING .RBXLX PACKAGING, SERVICES, SCRIPT SHA-256 PARITY & MIRRORS ===")
     for mp in (RBXLX_MAIN, RBXLX_06, RBXLX_V2):
         if not mp.exists():
             failures.append(f"Missing .rbxlx mirror: {mp}")
@@ -202,27 +256,166 @@ def main():
         root = tree.getroot()
         v5_map = {}
         spawn_xyz = None
+        spawn_flags = {}
+        top_services = {}
+
         for ch in root.findall("Item"):
+            cls = ch.attrib.get("class", "")
+            top_services[cls] = ch
             if get_name(ch) == "ReplicatedStorage":
                 for sub in ch.findall("Item"):
                     if get_name(sub) == "DelegatedV5Sources":
                         for af in sub.findall("Item"):
                             v5_map[get_name(af)] = af
-            elif ch.attrib.get("class") == "Workspace":
+            elif cls == "Workspace":
+                fpdh = get_typed_prop(ch, "float", "FallenPartsDestroyHeight")
+                if fpdh is None or abs(float(fpdh) - (-4500.0)) > 0.1:
+                    failures.append(f"Workspace.FallenPartsDestroyHeight mismatch: {fpdh}")
                 for sub in ch.findall("Item"):
                     if get_name(sub) == "SkyHub":
                         for sp in sub.findall("Item"):
                             if get_name(sp) == "SkybornSpawn":
                                 cf = sp.find("Properties").find("CoordinateFrame")
                                 spawn_xyz = (
-                                    float(cf.find("X").text),
-                                    float(cf.find("Y").text),
-                                    float(cf.find("Z").text),
+                                    round(float(cf.find("X").text), 1),
+                                    round(float(cf.find("Y").text), 1),
+                                    round(float(cf.find("Z").text), 1),
                                 )
-        if spawn_xyz != (-2484.0, 51.5, 4131.0):
-            failures.append(f"Workspace.SkyHub.SkybornSpawn mismatch: {spawn_xyz}")
+                                spawn_flags = {
+                                    "Anchored": get_typed_prop(sp, "bool", "Anchored"),
+                                    "Neutral": get_typed_prop(sp, "bool", "Neutral"),
+                                    "CanCollide": get_typed_prop(sp, "bool", "CanCollide"),
+                                }
+
+        if spawn_xyz != (-317.4, 50.5, 527.8):
+            failures.append(f"Workspace.SkyHub.SkybornSpawn mismatch: {spawn_xyz} (expected (-317.4, 50.5, 527.8))")
+        elif spawn_flags != {"Anchored": "true", "Neutral": "true", "CanCollide": "true"}:
+            failures.append(f"Workspace.SkyHub.SkybornSpawn property flags mismatch: {spawn_flags}")
         else:
-            print(f"  [OK] Workspace.SkyHub.SkybornSpawn = {spawn_xyz}")
+            print(f"  [OK] Workspace.SkyHub.SkybornSpawn = {spawn_xyz} {spawn_flags}")
+
+        # Verify top-level DataModel services & launch settings
+        svc_fail_before = len(failures)
+        lighting_el = top_services.get("Lighting")
+        if lighting_el is None:
+            failures.append("Missing top-level Lighting in .rbxlx")
+        else:
+            lighting_tech = get_typed_prop(lighting_el, "token", "Technology")
+            if lighting_tech != "4":
+                failures.append(f"Lighting.Technology expected '4' (Future), got {lighting_tech!r}")
+            if get_typed_prop(lighting_el, "bool", "GlobalShadows") != "true":
+                failures.append(
+                    f"Lighting.GlobalShadows expected 'true', got {get_typed_prop(lighting_el, 'bool', 'GlobalShadows')!r}"
+                )
+            for fname, fexp in (
+                ("EnvironmentDiffuseScale", 1.0),
+                ("EnvironmentSpecularScale", 1.0),
+                ("ShadowSoftness", 0.18),
+                ("ClockTime", 16.1),
+            ):
+                fraw = get_typed_prop(lighting_el, "float", fname)
+                if fraw is None or abs(float(fraw) - fexp) > 1e-3:
+                    failures.append(f"Lighting.{fname} expected {fexp}, got {fraw!r}")
+            sun_rays_el = None
+            for lch in lighting_el.findall("Item"):
+                if lch.attrib.get("class") == "SunRaysEffect":
+                    sun_rays_el = lch
+                    break
+            if sun_rays_el is None:
+                failures.append("Missing SunRaysEffect child under Lighting in .rbxlx")
+            else:
+                sr_en = get_typed_prop(sun_rays_el, "bool", "Enabled")
+                sr_int = get_typed_prop(sun_rays_el, "float", "Intensity")
+                sr_spr = get_typed_prop(sun_rays_el, "float", "Spread")
+                if sr_en != "true":
+                    failures.append(f"Lighting.SunRaysEffect.Enabled expected 'true', got {sr_en!r}")
+                if sr_int is None or abs(float(sr_int) - 0.14) > 1e-3:
+                    failures.append(f"Lighting.SunRaysEffect.Intensity expected 0.14, got {sr_int!r}")
+                if sr_spr is None or abs(float(sr_spr) - 0.65) > 1e-3:
+                    failures.append(f"Lighting.SunRaysEffect.Spread expected 0.65, got {sr_spr!r}")
+
+        sp_el = top_services.get("StarterPlayer")
+        if sp_el is None:
+            failures.append("Missing top-level StarterPlayer in .rbxlx")
+        else:
+            expected_sp = {
+                ("bool", "EnableMouseLockOption"): "false",
+                ("bool", "LoadCharacterAppearance"): "true",
+                ("bool", "CharacterUseJumpPower"): "true",
+                ("token", "GameSettingsAvatar"): "1",
+            }
+            for (ptag, pname), pval in expected_sp.items():
+                actual = get_typed_prop(sp_el, ptag, pname)
+                if actual != pval:
+                    failures.append(f"StarterPlayer.{pname} expected '{pval}', got '{actual}'")
+
+        players_el = top_services.get("Players")
+        if players_el is None:
+            failures.append("Missing top-level Players service in .rbxlx")
+        else:
+            if get_typed_prop(players_el, "int", "MaxPlayers") != "16":
+                failures.append(f"Players.MaxPlayers expected '16', got '{get_typed_prop(players_el, 'int', 'MaxPlayers')}'")
+            if get_typed_prop(players_el, "bool", "CharacterAutoLoads") != "true":
+                failures.append(
+                    f"Players.CharacterAutoLoads expected 'true', got '{get_typed_prop(players_el, 'bool', 'CharacterAutoLoads')}'"
+                )
+
+        tcs_el = top_services.get("TextChatService")
+        tcs_ver = get_typed_prop(tcs_el, "token", "ChatVersion") if tcs_el is not None else None
+        if tcs_ver != "1":
+            failures.append(f"TextChatService.ChatVersion expected '1' (TextChatService), got {tcs_ver!r}")
+
+        ss_el = top_services.get("SoundService")
+        ss_rfe = get_typed_prop(ss_el, "bool", "RespectFilteringEnabled") if ss_el is not None else None
+        if ss_rfe != "true":
+            failures.append(f"SoundService.RespectFilteringEnabled expected 'true', got {ss_rfe!r}")
+
+        if len(failures) == svc_fail_before:
+            print("  [OK] Verified Lighting (Future=4, EnvDiff/Spec=1.0, GlobalShadows=true, ClockTime=16.1, SunRaysEffect), StarterPlayer (R15=1), Players (MaxPlayers=16), TextChatService (1), SoundService")
+
+        # Verify 100% ProtectedString Source SHA-256 parity & zero orphan scripts in .rbxlx
+        script_fail_before = len(failures)
+        rbxlx_scripts = {}
+
+        def collect_rbxlx_scripts(parent_el, path_tuple):
+            for item in parent_el.findall("Item"):
+                nm = get_name(item)
+                icls = item.attrib.get("class", "")
+                cp = path_tuple + (nm,)
+                if cp == ("ReplicatedStorage", "DelegatedV5Sources"):
+                    continue
+                if icls in ("Script", "LocalScript", "ModuleScript"):
+                    src_txt = ""
+                    props = item.find("Properties")
+                    if props is not None:
+                        for ps in props.findall("ProtectedString"):
+                            if ps.attrib.get("name") == "Source":
+                                src_txt = ps.text or ""
+                                break
+                    src_sha = hashlib.sha256(src_txt.replace("\r\n", "\n").encode("utf-8")).hexdigest()
+                    rbxlx_scripts[(cp, icls)] = src_sha
+                collect_rbxlx_scripts(item, cp)
+
+        for top in root.findall("Item"):
+            tnm = get_name(top)
+            if tnm in SYNC_SERVICES:
+                collect_rbxlx_scripts(top, (tnm,))
+
+        for s_key, (rel_path, exp_sha) in sorted(expected_src_scripts.items()):
+            act_sha = rbxlx_scripts.get(s_key)
+            if act_sha is None:
+                failures.append(f"Missing synced script in .rbxlx: {'/'.join(s_key[0])} ({s_key[1]}) from {rel_path}")
+            elif act_sha != exp_sha:
+                failures.append(
+                    f"Source SHA-256 mismatch in .rbxlx for {'/'.join(s_key[0])} ({s_key[1]}): rbxlx={act_sha[:12]} vs src={exp_sha[:12]}"
+                )
+
+        for r_key in sorted(rbxlx_scripts.keys()):
+            if r_key not in expected_src_scripts:
+                failures.append(f"Orphan script inside .rbxlx not in 04_Roblox/src: {'/'.join(r_key[0])} ({r_key[1]})")
+
+        if len(failures) == script_fail_before:
+            print(f"  [OK] Verified {len(expected_src_scripts)}/{len(rbxlx_scripts)} Luau scripts in .rbxlx have 100% SHA-256 Source parity (0 orphans)")
 
         for wname in WORLD_13:
             if wname not in v5_map:

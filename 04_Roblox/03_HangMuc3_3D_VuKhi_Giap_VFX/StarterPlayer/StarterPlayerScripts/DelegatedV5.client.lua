@@ -1,10 +1,20 @@
 local Players = game:GetService('Players')
 local Run = game:GetService('RunService')
+local UserInputService = game:GetService('UserInputService')
 local Renderer = require(game.ReplicatedStorage:WaitForChild('DelegatedV5Renderer'))
 local Equipment3D = require(game.ReplicatedStorage:WaitForChild('Shared'):WaitForChild('Skybreak3DEquipment'))
 local player = Players.LocalPlayer
 
+local meshLoadedCount = 0
+workspace:SetAttribute('SkybreakMeshLoadedCount', 0)
+workspace:SetAttribute('SkybreakWorldReady', false)
+task.delay(6.0, function()
+    workspace:SetAttribute('SkybreakWorldReady', true)
+end)
+
 local function progress()
+    meshLoadedCount += 1
+    workspace:SetAttribute('SkybreakMeshLoadedCount', meshLoadedCount)
 end
 
 local states = {}
@@ -1826,6 +1836,8 @@ local function spawnWorld3DDevilFruits()
     end
 
     local t0 = os.clock()
+    local nextShrineStep = 0
+    local nextPedestalStep = 0
     world3DFruitOrbitConn = Run.RenderStepped:Connect(function()
         if not worldFolder.Parent then
             if world3DFruitOrbitConn then
@@ -1836,9 +1848,15 @@ local function spawnWorld3DDevilFruits()
         end
         local cam = workspace.CurrentCamera
         local camPos = cam and cam.CFrame.Position or nil
-        local elapsed = os.clock() - t0
+        local now = os.clock()
+        local elapsed = now - t0
+        local shrineDist = camPos and (camPos - shrineOrbitCenter).Magnitude or 0
+        local pedDist = camPos and (camPos - pedestalHubCenter).Magnitude or 0
 
-        if not camPos or (camPos - shrineOrbitCenter).Magnitude <= 1650 then
+        if shrineDist <= 480 and (shrineDist <= 180 or now >= nextShrineStep) then
+            if shrineDist > 180 then
+                nextShrineStep = now + 0.05
+            end
             for _, item in ipairs(orbitingEntries) do
                 if item.Model and item.Model.Parent then
                     local ang = item.BaseAngle + elapsed * 0.55
@@ -1860,7 +1878,10 @@ local function spawnWorld3DDevilFruits()
             end
         end
 
-        if not camPos or (camPos - pedestalHubCenter).Magnitude <= 1650 then
+        if pedDist <= 480 and (pedDist <= 180 or now >= nextPedestalStep) then
+            if pedDist > 180 then
+                nextPedestalStep = now + 0.05
+            end
             for _, item in ipairs(pedestalEntries) do
                 if item.Model and item.Model.Parent then
                     local bob = math.sin(elapsed * 2.4 + item.Index * 1.2) * 0.38
@@ -2014,13 +2035,13 @@ local function stepWorldGates3D(now, camPos)
         end
         local dist = camPos and (g.Center - camPos).Magnitude or 0
         if g.Initialized then
-            if dist > 2400 then
+            if dist > 750 then
                 continue
-            elseif dist > 850 then
+            elseif dist > 280 then
                 if now < (g.NextStep or 0) then
                     continue
                 end
-                g.NextStep = now + 0.06
+                g.NextStep = now + 0.08
             end
         else
             g.Initialized = true
@@ -2196,20 +2217,6 @@ end
 
 local function boot()
     local worldsFolder = workspace:FindFirstChild('Worlds')
-    local goldenSkyBase = nil
-    workspace:SetAttribute('Sea1IslandsReady', true)
-    task.spawn(function()
-        if not (worldsFolder and worldsFolder:FindFirstChild('GoldenSky_3D')) then
-            local map = Renderer.Build('GoldenSky', progress)
-            if map then
-                goldenSkyBase = map:Clone()
-                goldenSkyBase.Name = 'GoldenSky_ImportedArt'
-                goldenSkyBase:PivotTo(CFrame.new(0, 0, 0))
-                goldenSkyBase.Parent = workspace
-            end
-        end
-    end)
-
     local sources = game.ReplicatedStorage:WaitForChild('DelegatedV5Sources')
     local bossScale = 1.9
     local bossClips = nil
@@ -2237,84 +2244,130 @@ local function boot()
         MirageSkyIslandLeviathanAbyss = 0.0,
     }
 
-    local function placeGrandIsland(entry)
-        if not sources:FindFirstChild(entry.Asset) then
-            return
+    local DEFAULT_SPAWN = Vector3.new(-317.4, 50.5, 527.8)
+    local function getStreamDistances()
+        local streamDist = UserInputService.TouchEnabled and 4200 or 8500
+        return streamDist, streamDist + 1200
+    end
+    local function getStreamAnchorPos(realmCfg)
+        local ch = player and player.Character
+        local hrp = ch and ch:FindFirstChild('HumanoidRootPart')
+        if hrp then
+            return hrp.Position
         end
-        local instName = (entry.Name or entry.Asset) .. '_ImportedArt'
-        local existing = grandIslandsFolder:FindFirstChild(instName)
-        if existing then
-            existing:Destroy()
+        local curRealm = player and tostring(player:GetAttribute('CurrentRealm') or '') or ''
+        local rEntry = (curRealm ~= '' and realmCfg) and realmCfg[curRealm] or nil
+        if rEntry and typeof(rEntry.Origin) == 'Vector3' then
+            return rEntry.Origin
         end
-        local okIsl, islModel = pcall(Renderer.Build, entry.Asset)
-        if okIsl and islModel then
-            local placed = islModel:Clone()
-            placed.Name = instName
-            placed:SetAttribute('IslandAsset', entry.Asset)
-            placed:SetAttribute('Sea', entry.Sea)
-            local deckOffY = entry.DeckOffsetY ~= nil and entry.DeckOffsetY or (DECK_OFFSET_Y[entry.Asset] or 0)
-            placed:SetAttribute('DeckSurfaceY', entry.DeckY or entry.Origin.Y)
-            placed:PivotTo(CFrame.new(entry.Origin - Vector3.new(0, deckOffY, 0)))
-            placed.Parent = grandIslandsFolder
-        else
-            warn('[SKYBREAK Island Build]', entry.Asset, islModel)
-        end
+        return DEFAULT_SPAWN
     end
 
     local portal, portalClips, shadowPortal, shadowPortalClip
-    -- Stream Sea 1, Sea 2 & Sea 3 Gameplay3x Worlds + 5 Expansion Realms
+    workspace:SetAttribute('Sea1IslandsReady', true)
+    workspace:SetAttribute('GrandSkyIslandsV8Ready', true)
+
+    -- Distance-Gated EditableMesh Streaming & Eviction (Mobile OOM Fix: 4200 Touch / 8500 PC, Unload = +1200)
     task.spawn(function()
-        task.wait(0.35)
+        local realmCfg = require(game.ReplicatedStorage.Shared:WaitForChild('RealmConfig'))
+        local frozenOrigin = realmCfg.FrozenCyber.Origin
+        local shadowOrigin = realmCfg.ShadowRealm.Origin
 
-        local sea2And3Islands = {
-            -- Sea 1 Islands (around Gameplay3x GoldenSky = 0, 0, 0)
-            { Name = 'ZiolesGachaShrine', Asset = 'ZiolesGachaShrine', Origin = Vector3.new(-560.0, 48.5, 980.0), DeckY = 48.5, DeckOffsetY = 2.0, Sea = 1, StreamDist = 8500 },
-            { Name = 'AetherShrineIsland', Asset = 'ZiolesGachaShrine', Origin = Vector3.new(340.0, 48.5, 980.0), DeckY = 48.5, DeckOffsetY = 2.0, Sea = 1, StreamDist = 8500 },
-            { Name = 'WestGardenPirateBastion', Asset = 'WestGardenPirateBastion', Origin = Vector3.new(-2800.0, 0.0, 200.0), DeckY = 46.5, DeckOffsetY = 0.0, Sea = 1, StreamDist = 8500 },
-            { Name = 'SunshardSkySanctuary', Asset = 'SunshardSkySanctuary', Origin = Vector3.new(2800.0, 0.0, -200.0), DeckY = 46.5, DeckOffsetY = 0.0, Sea = 1, StreamDist = 8500 },
-            -- Sea 2 Gameplay3x Sub-Worlds (around FrozenCyber = 12000, 0, 0)
-            { Name = 'CyberportCafeTradingHub', Asset = 'CyberportCafeTradingHub', Origin = Vector3.new(9400.0, 0.0, 1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 2, StreamDist = 8500 },
-            { Name = 'PermafrostGarrisonFortress', Asset = 'PermafrostGarrisonFortress', Origin = Vector3.new(9400.0, 0.0, -1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 2, StreamDist = 8500 },
-            { Name = 'MicrochipAwakeningRaidLab', Asset = 'MicrochipAwakeningRaidLab', Origin = Vector3.new(14600.0, 0.0, 1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 2, StreamDist = 8500 },
-            { Name = 'GlacialWreckageDangerSea', Asset = 'GlacialWreckageDangerSea', Origin = Vector3.new(14600.0, 0.0, -1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 2, StreamDist = 8500 },
-            -- Sea 3 Gameplay3x Sub-Worlds (around ShadowRealm = -12000, 0, 0)
-            { Name = 'CastleOnTheVoidMansion', Asset = 'CastleOnTheVoidMansion', Origin = Vector3.new(-14600.0, 0.0, 1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 3, StreamDist = 8500 },
-            { Name = 'UmbralCrystalSanctumForest', Asset = 'UmbralCrystalSanctumForest', Origin = Vector3.new(-9400.0, 0.0, 1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 3, StreamDist = 8500 },
-            { Name = 'TempleOfTheCoreRaceV4', Asset = 'TempleOfTheCoreRaceV4', Origin = Vector3.new(-14600.0, 0.0, -1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 3, StreamDist = 8500 },
-            { Name = 'MirageSkyIslandLeviathanAbyss', Asset = 'MirageSkyIslandLeviathanAbyss', Origin = Vector3.new(-12000.0, 0.0, -3400.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 3, StreamDist = 8500 },
+        local streamZones = {
+            { Name = 'GoldenSky', Asset = 'GoldenSky', Origin = Vector3.new(0.0, 0.0, 0.0), Kind = 'BaseWorld', GuardWorld = 'GoldenSky_3D', InstName = 'GoldenSky_ImportedArt' },
+            { Name = 'FrozenPortal', Asset = 'FrozenPortal', Origin = Vector3.new(42.0, 46.5, -435.0), Kind = 'FrozenPortal', InstName = 'FrozenCyber_AnimatedPortal' },
+            { Name = 'ZiolesGachaShrine', Asset = 'ZiolesGachaShrine', Origin = Vector3.new(-560.0, 48.5, 980.0), DeckY = 48.5, DeckOffsetY = 2.0, Sea = 1, Kind = 'Island' },
+            { Name = 'AetherShrineIsland', Asset = 'ZiolesGachaShrine', Origin = Vector3.new(340.0, 48.5, 980.0), DeckY = 48.5, DeckOffsetY = 2.0, Sea = 1, Kind = 'Island' },
+            { Name = 'WestGardenPirateBastion', Asset = 'WestGardenPirateBastion', Origin = Vector3.new(-2800.0, 0.0, 200.0), DeckY = 46.5, DeckOffsetY = 0.0, Sea = 1, Kind = 'Island' },
+            { Name = 'SunshardSkySanctuary', Asset = 'SunshardSkySanctuary', Origin = Vector3.new(2800.0, 0.0, -200.0), DeckY = 46.5, DeckOffsetY = 0.0, Sea = 1, Kind = 'Island' },
+            -- Sea 2 Gameplay3x Worlds (around FrozenCyber = 12000, 0, 0)
+            { Name = 'FrozenCyber', Asset = 'FrozenCyber', Origin = frozenOrigin, Kind = 'BaseWorld', GuardWorld = 'FrozenCyber_3D', InstName = 'FrozenCyber_ImportedArt' },
+            { Name = 'ShadowPortal', Asset = 'ShadowPortal', Origin = Vector3.new(12610.0, 46.9, -475.0), Kind = 'ShadowPortal', InstName = 'ShadowRealm_AnimatedGate' },
+            { Name = 'CyberportCafeTradingHub', Asset = 'CyberportCafeTradingHub', Origin = Vector3.new(9400.0, 0.0, 1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 2, Kind = 'Island' },
+            { Name = 'PermafrostGarrisonFortress', Asset = 'PermafrostGarrisonFortress', Origin = Vector3.new(9400.0, 0.0, -1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 2, Kind = 'Island' },
+            { Name = 'MicrochipAwakeningRaidLab', Asset = 'MicrochipAwakeningRaidLab', Origin = Vector3.new(14600.0, 0.0, 1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 2, Kind = 'Island' },
+            { Name = 'GlacialWreckageDangerSea', Asset = 'GlacialWreckageDangerSea', Origin = Vector3.new(14600.0, 0.0, -1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 2, Kind = 'Island' },
+            -- Sea 3 Gameplay3x Worlds (around ShadowRealm = -12000, 0, 0)
+            { Name = 'ShadowRealm', Asset = 'ShadowRealm', Origin = shadowOrigin, Kind = 'BaseWorld', GuardWorld = 'ShadowRealm_3D', InstName = 'ShadowRealm_ImportedArt' },
+            { Name = 'CastleOnTheVoidMansion', Asset = 'CastleOnTheVoidMansion', Origin = Vector3.new(-14600.0, 0.0, 1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 3, Kind = 'Island' },
+            { Name = 'UmbralCrystalSanctumForest', Asset = 'UmbralCrystalSanctumForest', Origin = Vector3.new(-9400.0, 0.0, 1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 3, Kind = 'Island' },
+            { Name = 'TempleOfTheCoreRaceV4', Asset = 'TempleOfTheCoreRaceV4', Origin = Vector3.new(-14600.0, 0.0, -1800.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 3, Kind = 'Island' },
+            { Name = 'MirageSkyIslandLeviathanAbyss', Asset = 'MirageSkyIslandLeviathanAbyss', Origin = Vector3.new(-12000.0, 0.0, -3400.0), DeckY = 46.9, DeckOffsetY = 0.0, Sea = 3, Kind = 'Island' },
+            -- 5 Expansion Realms
+            { Name = 'VerdantCrown', Asset = 'UmbralCrystalSanctumForest', Origin = Vector3.new(0.0, 120.0, -9000.0), DeckY = 166.9, Kind = 'ExpansionRealm' },
+            { Name = 'EmberforgeWastes', Asset = 'WestGardenPirateBastion', Origin = Vector3.new(12000.0, 120.0, -9000.0), DeckY = 166.5, Kind = 'ExpansionRealm' },
+            { Name = 'AbyssalTides', Asset = 'MirageSkyIslandLeviathanAbyss', Origin = Vector3.new(-12000.0, 120.0, -9000.0), DeckY = 166.9, Kind = 'ExpansionRealm' },
+            { Name = 'ChronosBastion', Asset = 'TempleOfTheCoreRaceV4', Origin = Vector3.new(0.0, 180.0, -13500.0), DeckY = 226.9, Kind = 'ExpansionRealm' },
+            { Name = 'VeilsEnd', Asset = 'CastleOnTheVoidMansion', Origin = Vector3.new(0.0, 260.0, -18000.0), DeckY = 306.9, Kind = 'ExpansionRealm' },
         }
-        local expansionRealms = {
-            { Name = 'VerdantCrown', Asset = 'UmbralCrystalSanctumForest', Origin = Vector3.new(0.0, 120.0, -9000.0), DeckY = 166.9 },
-            { Name = 'EmberforgeWastes', Asset = 'WestGardenPirateBastion', Origin = Vector3.new(12000.0, 120.0, -9000.0), DeckY = 166.5 },
-            { Name = 'AbyssalTides', Asset = 'MirageSkyIslandLeviathanAbyss', Origin = Vector3.new(-12000.0, 120.0, -9000.0), DeckY = 166.9 },
-            { Name = 'ChronosBastion', Asset = 'TempleOfTheCoreRaceV4', Origin = Vector3.new(0.0, 180.0, -13500.0), DeckY = 226.9 },
-            { Name = 'VeilsEnd', Asset = 'CastleOnTheVoidMansion', Origin = Vector3.new(0.0, 260.0, -18000.0), DeckY = 306.9 },
-        }
-        workspace:SetAttribute('GrandSkyIslandsV8Ready', true)
 
-        local frozenOrigin = require(game.ReplicatedStorage.Shared:WaitForChild('RealmConfig')).FrozenCyber.Origin
-        local shadowOrigin = require(game.ReplicatedStorage.Shared:WaitForChild('RealmConfig')).ShadowRealm.Origin
-
-        if sources:FindFirstChild('FrozenCyber') then
-            local frozenBase = workspace:FindFirstChild('FrozenCyber_ImportedArt')
-            if not (worldsFolder and worldsFolder:FindFirstChild('FrozenCyber_3D')) and not frozenBase then
-                local okF, frozen = pcall(Renderer.Build, 'FrozenCyber', progress)
-                if okF and frozen then
-                    frozenBase = frozen:Clone()
-                    frozenBase.Name = 'FrozenCyber_ImportedArt'
-                    frozenBase:PivotTo(CFrame.new(frozenOrigin))
-                    frozenBase.Parent = workspace
+        local function isAssetStillLoaded(assetName, ignoreZone)
+            for _, other in ipairs(streamZones) do
+                if other ~= ignoreZone and other.Loaded and other.Asset == assetName then
+                    return true
                 end
             end
-            task.wait(0.06)
-            local okP, builtP = pcall(Renderer.Build, 'FrozenPortal', progress)
-            if okP and builtP then
-                portal = builtP:Clone()
-                portal.Name = 'FrozenCyber_AnimatedPortal'
-                portal.Parent = workspace
+            return false
+        end
+
+        local function unloadZone(z)
+            if z.Kind == 'FrozenPortal' then
+                portal = nil
+                portalClips = nil
+            elseif z.Kind == 'ShadowPortal' then
+                shadowPortal = nil
+                shadowPortalClip = nil
+            end
+            if z.Instance then
+                pcall(z.Instance.Destroy, z.Instance)
+                z.Instance = nil
+            end
+            z.Loaded = false
+            if not isAssetStillLoaded(z.Asset, z) and Renderer.EvictModel then
+                pcall(Renderer.EvictModel, z.Asset)
+            end
+        end
+
+        local function loadZone(z, distPrio)
+            if z.Loaded then
+                return
+            end
+            if z.Kind == 'BaseWorld' and worldsFolder and worldsFolder:FindFirstChild(z.GuardWorld) then
+                z.Loaded = true
+                return
+            end
+            if not sources:FindFirstChild(z.Asset) then
+                return
+            end
+            local okB, baseModel = pcall(Renderer.BuildPriority or Renderer.Build, z.Asset, distPrio or 50, progress)
+            if not okB or not baseModel then
+                warn('[SKYBREAK Stream Build]', z.Name, baseModel)
+                return
+            end
+            local _, curUnload = getStreamDistances()
+            if (z.Origin - getStreamAnchorPos(realmCfg)).Magnitude > curUnload then
+                if not isAssetStillLoaded(z.Asset, z) and Renderer.EvictModel then
+                    pcall(Renderer.EvictModel, z.Asset)
+                end
+                return
+            end
+            progress()
+            local instName = z.InstName or ((z.Name or z.Asset) .. '_ImportedArt')
+            local parentFolder = (z.Kind == 'Island' or z.Kind == 'ExpansionRealm') and grandIslandsFolder or workspace
+            local existing = parentFolder:FindFirstChild(instName)
+            if existing then
+                existing:Destroy()
+            end
+            local placed = baseModel:Clone()
+            placed.Name = instName
+            if z.Kind == 'BaseWorld' then
+                placed:PivotTo(CFrame.new(z.Origin))
+                placed.Parent = workspace
+            elseif z.Kind == 'FrozenPortal' then
+                placed.Parent = workspace
                 Equipment3D.AlignSeaTransitionPortal(
-                    portal,
-                    Vector3.new(42.0, 46.5, -435.0),
+                    placed,
+                    z.Origin,
                     'FrozenPortal',
                     '[E] Dịch Chuyển Sky 2 • Frozen Cyber',
                     '❄ Cổng Không Gian Sky 2 (Frozen Cyber)',
@@ -2322,30 +2375,12 @@ local function boot()
                 )
                 local okC, c = pcall(Renderer.Clips, 'FrozenPortal', 1)
                 if okC then portalClips = c end
-            end
-            task.wait(0.06)
-        end
-
-        if sources:FindFirstChild('ShadowRealm') then
-            local shadowBase = workspace:FindFirstChild('ShadowRealm_ImportedArt')
-            if not (worldsFolder and worldsFolder:FindFirstChild('ShadowRealm_3D')) and not shadowBase then
-                local okS, shadow = pcall(Renderer.Build, 'ShadowRealm', progress)
-                if okS and shadow then
-                    shadowBase = shadow:Clone()
-                    shadowBase.Name = 'ShadowRealm_ImportedArt'
-                    shadowBase:PivotTo(CFrame.new(shadowOrigin))
-                    shadowBase.Parent = workspace
-                end
-            end
-            task.wait(0.06)
-            local okSP, builtSP = pcall(Renderer.Build, 'ShadowPortal', progress)
-            if okSP and builtSP then
-                shadowPortal = builtSP:Clone()
-                shadowPortal.Name = 'ShadowRealm_AnimatedGate'
-                shadowPortal.Parent = workspace
+                portal = placed
+            elseif z.Kind == 'ShadowPortal' then
+                placed.Parent = workspace
                 Equipment3D.AlignSeaTransitionPortal(
-                    shadowPortal,
-                    Vector3.new(12610.0, 46.9, -475.0),
+                    placed,
+                    z.Origin,
                     'ShadowPortal',
                     'Dịch Chuyển Sky 3 • Shadow Realm',
                     'Cổng Không Gian Sky 3 (Shadow Realm)',
@@ -2356,37 +2391,67 @@ local function boot()
                     local _, clip = next(gateClips)
                     shadowPortalClip = clip
                 end
+                shadowPortal = placed
+            elseif z.Kind == 'Island' then
+                placed:SetAttribute('IslandAsset', z.Asset)
+                placed:SetAttribute('Sea', z.Sea)
+                local deckOffY = z.DeckOffsetY ~= nil and z.DeckOffsetY or (DECK_OFFSET_Y[z.Asset] or 0)
+                placed:SetAttribute('DeckSurfaceY', z.DeckY or z.Origin.Y)
+                placed:PivotTo(CFrame.new(z.Origin - Vector3.new(0, deckOffY, 0)))
+                placed.Parent = grandIslandsFolder
+            elseif z.Kind == 'ExpansionRealm' then
+                placed:SetAttribute('IslandAsset', z.Asset)
+                placed:SetAttribute('Realm', z.Name)
+                applyRealmElementalTheme(placed, z.Name)
+                local deckOffY = DECK_OFFSET_Y[z.Asset] or 0
+                placed:SetAttribute('DeckSurfaceY', z.DeckY or z.Origin.Y)
+                placed:PivotTo(CFrame.new(z.Origin - Vector3.new(0, deckOffY, 0)))
+                placed.Parent = grandIslandsFolder
             end
-            task.wait(0.06)
+            z.Instance = placed
+            z.Loaded = true
         end
 
-        task.spawn(Equipment3D.BootWorld, Renderer)
-
-        for _, entry in ipairs(sea2And3Islands) do
-            placeGrandIsland(entry)
-            task.wait(0.06)
-        end
-
-        for _, exp in ipairs(expansionRealms) do
-            if sources:FindFirstChild(exp.Asset) then
-                local okExp, baseModel = pcall(Renderer.Build, exp.Asset)
-                if okExp and baseModel then
-                    local oldExp = grandIslandsFolder:FindFirstChild(exp.Name .. '_ImportedArt')
-                    if oldExp then
-                        oldExp:Destroy()
+        local function stepWorldStreaming(isInitial)
+            local anchor = getStreamAnchorPos(realmCfg)
+            local streamDist, unloadDist = getStreamDistances()
+            if not isInitial then
+                for _, z in ipairs(streamZones) do
+                    if z.Loaded and (z.Origin - anchor).Magnitude > unloadDist then
+                        unloadZone(z)
+                        task.wait()
                     end
-                    local expClone = baseModel:Clone()
-                    expClone.Name = exp.Name .. '_ImportedArt'
-                    expClone:SetAttribute('IslandAsset', exp.Asset)
-                    expClone:SetAttribute('Realm', exp.Name)
-                    applyRealmElementalTheme(expClone, exp.Name)
-                    local deckOffY = DECK_OFFSET_Y[exp.Asset] or 0
-                    expClone:SetAttribute('DeckSurfaceY', exp.DeckY or exp.Origin.Y)
-                    expClone:PivotTo(CFrame.new(exp.Origin - Vector3.new(0, deckOffY, 0)))
-                    expClone.Parent = grandIslandsFolder
+                end
+            end
+            local pending = {}
+            for _, z in ipairs(streamZones) do
+                if not z.Loaded then
+                    local d = (z.Origin - anchor).Magnitude
+                    if d <= streamDist then
+                        table.insert(pending, { Zone = z, Dist = d })
+                    end
+                end
+            end
+            table.sort(pending, function(a, b)
+                return a.Dist < b.Dist
+            end)
+            for idx, item in ipairs(pending) do
+                loadZone(item.Zone, item.Dist)
+                if isInitial and idx == 1 then
+                    workspace:SetAttribute('SkybreakWorldReady', true)
+                    task.spawn(Equipment3D.BootWorld, Renderer)
                 end
                 task.wait(0.06)
             end
+            if isInitial and not workspace:GetAttribute('SkybreakWorldReady') then
+                workspace:SetAttribute('SkybreakWorldReady', true)
+                task.spawn(Equipment3D.BootWorld, Renderer)
+            end
+        end
+
+        stepWorldStreaming(true)
+        while task.wait(1.0) do
+            stepWorldStreaming(false)
         end
     end)
 
@@ -2407,6 +2472,15 @@ local function boot()
                 table.clear(s.Connections)
             end
             s.TransformFX = nil
+            if s.AccessoryFX and s.AccessoryFX.HiddenBackAccessories then
+                for _, h in ipairs(s.AccessoryFX.HiddenBackAccessories) do
+                    if h and h.Parent then
+                        h:SetAttribute('SkybreakHiddenBackAcc', nil)
+                        h.LocalTransparencyModifier = 0
+                    end
+                end
+            end
+            s.AccessoryFX = nil
             if s.Model then
                 if s.IsNativeAvatar or s.Model == ch then
                     for _, folderName in ipairs({ 'WeaponAwakeningAura', 'FruitTransformFX', 'HakiAuraFX', 'RaceV4FX', 'HeldFruit3D', 'EquippedWeapons3D', 'CharacterAccessories3D' }) do
@@ -2948,29 +3022,29 @@ local function boot()
         local primary, secondary, accent = resolveSkillElementColors(fx.element or fx.Element, fx.skillId or fx.Action)
         local activeRig = (s.TransformFX and s.TransformFX.V5Model and s.TransformFX.V5Model.Parent) and s.TransformFX.V5Model or s.Visual
         local fid = tostring(fx.activeId or fx.FruitId or fx.fruitId or '')
-        if fid == 'AbyssalSovereignCore' or s.FruitTransform == 'AbyssalSovereign' or s.FruitTransform == 'AbyssalDragonHybrid' then
+        if fid == 'AbyssalSovereignCore' or fid == 'Dragon' or s.FruitTransform == 'AbyssalSovereign' or s.FruitTransform == 'AbyssalDragonHybrid' then
             primary, secondary, accent = Color3.fromRGB(255, 46, 150), Color3.fromRGB(168, 38, 255), Color3.fromRGB(20, 12, 36)
-        elseif fid == 'GaleCore' then
+        elseif fid == 'GaleCore' or fid == 'Gale' then
             primary, secondary, accent = Color3.fromRGB(115, 255, 210), Color3.fromRGB(220, 255, 245), Color3.fromRGB(48, 205, 165)
-        elseif fid == 'SandstoneCore' then
+        elseif fid == 'SandstoneCore' or fid == 'Smoke' then
             primary, secondary, accent = Color3.fromRGB(238, 192, 92), Color3.fromRGB(255, 232, 152), Color3.fromRGB(168, 118, 42)
-        elseif fid == 'SolarFlameCore' then
+        elseif fid == 'SolarFlameCore' or fid == 'Flame' then
             primary, secondary, accent = Color3.fromRGB(255, 96, 36), Color3.fromRGB(255, 224, 72), Color3.fromRGB(210, 28, 38)
-        elseif fid == 'GlacierIceCore' then
+        elseif fid == 'GlacierIceCore' or fid == 'Ice' then
             primary, secondary, accent = Color3.fromRGB(82, 236, 255), Color3.fromRGB(220, 252, 255), Color3.fromRGB(28, 112, 232)
-        elseif fid == 'CelestialLightCore' then
+        elseif fid == 'CelestialLightCore' or fid == 'Light' then
             primary, secondary, accent = Color3.fromRGB(255, 238, 112), Color3.fromRGB(255, 255, 215), Color3.fromRGB(255, 188, 42)
-        elseif fid == 'StarforgedMagmaCore' then
+        elseif fid == 'StarforgedMagmaCore' or fid == 'Magma' then
             primary, secondary, accent = Color3.fromRGB(235, 38, 22), Color3.fromRGB(255, 142, 28), Color3.fromRGB(48, 18, 18)
-        elseif fid == 'ThunderRumbleCore' then
+        elseif fid == 'ThunderRumbleCore' or fid == 'Rumble' then
             primary, secondary, accent = Color3.fromRGB(58, 188, 255), Color3.fromRGB(182, 92, 255), Color3.fromRGB(230, 248, 255)
-        elseif fid == 'AstralGravityCore' then
+        elseif fid == 'AstralGravityCore' or fid == 'Gravity' then
             primary, secondary, accent = Color3.fromRGB(158, 52, 255), Color3.fromRGB(232, 118, 255), Color3.fromRGB(38, 14, 68)
-        elseif fid == 'DimensionalPortalCore' then
+        elseif fid == 'DimensionalPortalCore' or fid == 'Portal' then
             primary, secondary, accent = Color3.fromRGB(64, 242, 255), Color3.fromRGB(168, 72, 255), Color3.fromRGB(18, 32, 68)
-        elseif fid == 'SolarTitanCore' or s.FruitTransform == 'SolarTitan' then
+        elseif fid == 'SolarTitanCore' or fid == 'Buddha' or fid == 'Quake' or s.FruitTransform == 'SolarTitan' then
             primary, secondary, accent = Color3.fromRGB(255, 212, 64), Color3.fromRGB(255, 248, 178), Color3.fromRGB(235, 142, 28)
-        elseif fid == 'AetherflowCore' then
+        elseif fid == 'AetherflowCore' or fid == 'SweetDoughCore' or fid == 'Dough' then
             primary, secondary, accent = Color3.fromRGB(255, 242, 215), Color3.fromRGB(255, 38, 92), Color3.fromRGB(24, 14, 32)
         end
         local rHandBone = findBone(activeRig, { 'Paw_FR', 'Forearm_FR', 'RightHand', 'RightLowerArm', 'RightArm', 'RightBlade', 'Leg_FR', 'WingForearm_R', 'Wing_R_03', 'Wing_R_02', 'DragonWing_R_02' })
@@ -3351,7 +3425,8 @@ local function boot()
         local dt = math.clamp(stepDt or (1 / 60), 1 / 240, 0.15)
         for ch, s in states do
             if ch.Parent and s.Model and s.Model.Parent and s.IsNativeAvatar then
-                stepNativeAvatarAnimation(s, dt, now)
+                local hs = tonumber(ch:GetAttribute('HitstopUntil')) or 0
+                stepNativeAvatarAnimation(s, (now < hs) and 0 or dt, now)
             end
         end
     end)
@@ -3362,13 +3437,13 @@ local function boot()
         local cam = workspace.CurrentCamera
         local camPos = cam and cam.CFrame.Position or nil
 
-        if portal and portalClips then
+        if portal and portal.Parent and portalClips and (not camPos or (camPos - Vector3.new(42.0, 46.5, -435.0)).Magnitude <= 650) then
             local pClip = portalClips.PortalSurge or portalClips.WorldIdle_Loop or portalClips.FC_PortalIdle_Loop_4s_Export or portalClips.FC_PortalIdle_Loop_4s
             if pClip then
                 Renderer.Pose(portal, pClip, now)
             end
         end
-        if shadowPortal and shadowPortalClip then
+        if shadowPortal and shadowPortal.Parent and shadowPortalClip and (not camPos or (camPos - Vector3.new(12610.0, 46.9, -475.0)).Magnitude <= 650) then
             Renderer.Pose(shadowPortal, shadowPortalClip, now)
         end
 
@@ -3398,9 +3473,7 @@ local function boot()
                 continue
             end
 
-            if s.IsNativeAvatar then
-                stepNativeAvatarAnimation(s, dt, now)
-            else
+            if not s.IsNativeAvatar then
                 if s.H then
                     local animInst = s.H:FindFirstChildOfClass('Animator')
                     if animInst then
@@ -3607,48 +3680,72 @@ local function boot()
             end
 
             -- 0. Step Real Separated 3D Blender Weapons (Dual-Wield, Dynamic Trails & 0ms Slot Cache) & 3D Character Accessories
-            Equipment3D.StepCharacterWeapons(Renderer, s, now)
-            Equipment3D.StepCharacterAccessories(s, now, s.LastCapeWind or 0)
+            local hsUntil = tonumber(ch:GetAttribute('HitstopUntil')) or 0
+            if now < hsUntil then
+                if s.Start then s.Start += dt end
+                if s.Until then s.Until += dt end
+            end
+            local isLocalChar = (s.Owner == player)
+            local charDist = (not isLocalChar and camPos and s.Root) and (s.Root.Position - camPos).Magnitude or 0
+            local runCosmeticStep = isLocalChar or (charDist <= 180)
+            if not runCosmeticStep and charDist <= 420 and now >= (s.NextRemoteCosmeticStep or 0) then
+                s.NextRemoteCosmeticStep = now + 0.065
+                runCosmeticStep = true
+            end
+            if runCosmeticStep then
+                Equipment3D.StepCharacterWeapons(Renderer, s, now)
+                Equipment3D.StepCharacterAccessories(s, now, s.LastCapeWind or 0)
+            end
 
             -- 1. Monitor Weapon Awakening Aura (+1..+15) & Equipped Mythic Sword/Gun
             local currentEnhance = tonumber(s.Owner and s.Owner:GetAttribute('WeaponEnhance'))
                 or tonumber(ch:GetAttribute('WeaponEnhance'))
-                or (s.Owner == player and localEnhanceCache or 0)
+                or (isLocalChar and localEnhanceCache or 0)
                 or 0
             local currentSword = tostring(ch:GetAttribute('EquippedSword') or (s.Owner and s.Owner:GetAttribute('EquippedSword')) or '')
             local currentGun = tostring(ch:GetAttribute('EquippedGun') or (s.Owner and s.Owner:GetAttribute('EquippedGun')) or '')
             if currentEnhance ~= s.EnhanceLevel or currentSword ~= (s.EquippedSword or '') or currentGun ~= (s.EquippedGun or '') then
                 buildWeaponAwakeningAura(s)
             end
-            stepWeaponAwakeningAura(s, now)
+            if runCosmeticStep then
+                stepWeaponAwakeningAura(s, now)
+            end
 
             -- 2. Monitor Beast Fruit Transformations (SolarTitan / AbyssalSovereign)
             local currentTransform = tostring(ch:GetAttribute('FruitTransform') or (s.Owner and s.Owner:GetAttribute('FruitTransform')) or '')
             if currentTransform ~= s.FruitTransform then
                 buildFruitTransformFX(s, currentTransform)
             end
-            stepFruitTransformFX(s, now)
+            if runCosmeticStep then
+                stepFruitTransformFX(s, now)
+            end
 
             -- 3. Monitor Full-Body Busoshoku Haki Aura ([J])
             local currentHaki = (ch:GetAttribute('HakiAura') == true) or (s.Owner and s.Owner:GetAttribute('HakiAura') == true)
             if currentHaki ~= s.HakiAura then
                 buildHakiAuraFX(s, currentHaki)
             end
-            stepHakiAuraFX(s, now)
+            if runCosmeticStep then
+                stepHakiAuraFX(s, now)
+            end
 
             -- 4. Monitor Race V4 3D Wings & Cosmetics ([Y])
             local currentRaceV4 = tostring(ch:GetAttribute('RaceV4') or (s.Owner and s.Owner:GetAttribute('RaceV4')) or '')
             if currentRaceV4 ~= s.RaceV4 then
                 buildRaceV4FX(s, currentRaceV4)
             end
-            stepRaceV4FX(s, now)
+            if runCosmeticStep then
+                stepRaceV4FX(s, now)
+            end
 
             -- 4b. Monitor Separated 3D Devil Fruit Held in Right Hand
             local currentHeldFruit = tostring(ch:GetAttribute('HeldFruit') or (s.Owner and s.Owner:GetAttribute('HeldFruit')) or '')
             if currentHeldFruit ~= (s.HeldFruitId or '') then
                 buildHeldFruitFX(s, currentHeldFruit)
             end
-            stepHeldFruitFX(s, now)
+            if runCosmeticStep then
+                stepHeldFruitFX(s, now)
+            end
         end
         for owner, s in bosses do
             if not owner.Parent or not s.Model or not s.Model.Parent or not s.Root or not s.Root.Parent then

@@ -5,6 +5,8 @@
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("SkybreakShared")
 local Theme = require(Shared:WaitForChild("Config"):WaitForChild("Theme"))
@@ -20,9 +22,11 @@ local PremiumButton = require(script.Parent.Parent:WaitForChild("Components"):Wa
 
 local Settings = {
     Refs = {},
+    InputConnections = {},
     OnLowFXChanged = nil,
     LowFXDescendantConn = nil,
     CachedOrigShadows = nil,
+    _fpsGuardStarted = false,
 }
 
 -- #100: Canonical Giftcode Rewards Catalog
@@ -77,14 +81,75 @@ local function applyFXScaleToInstance(inst, enabled)
     end
 end
 
+function Settings.ResolveDefaultGraphicsTier()
+    return UserInputService.TouchEnabled and "Balanced" or "Ultra"
+end
+
+function Settings.NormalizeGraphicsTier(rawTier)
+    local s = tostring(rawTier or "")
+    if s == "Ultra" or s == "High" then
+        return "Ultra"
+    elseif s == "Balanced" or s == "Medium" then
+        return "Balanced"
+    elseif s == "Smooth" or s == "Low" then
+        return "Smooth"
+    end
+    return nil
+end
+
+function Settings.GetActiveGraphicsTier(viewSettings)
+    local lp = Players.LocalPlayer
+    local fromPlayer = lp and Settings.NormalizeGraphicsTier(lp:GetAttribute("GraphicsTier")) or nil
+    if fromPlayer then
+        return fromPlayer
+    end
+    local fromWs = Settings.NormalizeGraphicsTier(workspace:GetAttribute("GraphicsTier"))
+    if fromWs then
+        return fromWs
+    end
+    local fromView = viewSettings and Settings.NormalizeGraphicsTier(viewSettings.graphicsTier or viewSettings.fxQuality) or nil
+    if fromView then
+        return fromView
+    end
+    if (lp and lp:GetAttribute("LowFXMode") == true) or (viewSettings and viewSettings.lowFX == true) then
+        return "Smooth"
+    end
+    return Settings.ResolveDefaultGraphicsTier()
+end
+
 -- #123: Working Low FX Mode world-wide applier & exact 100% restorer
-function Settings.ApplyLowFXWorld(enabled)
+function Settings.ApplyLowFXWorld(enabled, skipTierSync)
     local isLow = (enabled == true)
     local lp = Players.LocalPlayer
     if lp then
         lp:SetAttribute("LowFXMode", isLow)
     end
     workspace:SetAttribute("LowFXMode", isLow)
+
+    if not skipTierSync then
+        local curTier = (lp and Settings.NormalizeGraphicsTier(lp:GetAttribute("GraphicsTier")))
+            or Settings.NormalizeGraphicsTier(workspace:GetAttribute("GraphicsTier"))
+        if isLow then
+            if lp then
+                pcall(function()
+                    lp:SetAttribute("GraphicsTier", "Smooth")
+                end)
+            end
+            pcall(function()
+                workspace:SetAttribute("GraphicsTier", "Smooth")
+            end)
+        elseif curTier == nil or curTier == "Smooth" then
+            local restored = Settings.ResolveDefaultGraphicsTier()
+            if lp then
+                pcall(function()
+                    lp:SetAttribute("GraphicsTier", restored)
+                end)
+            end
+            pcall(function()
+                workspace:SetAttribute("GraphicsTier", restored)
+            end)
+        end
+    end
 
     if Settings.CachedOrigShadows == nil then
         Settings.CachedOrigShadows = Lighting.GlobalShadows
@@ -113,6 +178,145 @@ function Settings.ApplyLowFXWorld(enabled)
         pcall(Settings.OnLowFXChanged, isLow)
     end
 end
+
+-- Stage 1: 3-Tier Graphics & VFX Mode ("Ultra" | "Balanced" | "Smooth")
+function Settings.ApplyGraphicsTier(rawTier)
+    local tier = Settings.NormalizeGraphicsTier(rawTier) or Settings.ResolveDefaultGraphicsTier()
+    local lp = Players.LocalPlayer
+    if lp then
+        pcall(function()
+            lp:SetAttribute("GraphicsTier", tier)
+        end)
+    end
+    pcall(function()
+        workspace:SetAttribute("GraphicsTier", tier)
+    end)
+    Settings.ApplyLowFXWorld(tier == "Smooth", true)
+    return tier
+end
+
+-- Initialize default audio, GraphicsTier & Auto Low-FX attributes + once-per-second FPS Guard monitor
+function Settings.InitFPSGuard()
+    if Settings._fpsGuardStarted then
+        return
+    end
+    Settings._fpsGuardStarted = true
+
+    local initPlr = Players.LocalPlayer
+    local bootTier = (initPlr and Settings.NormalizeGraphicsTier(initPlr:GetAttribute("GraphicsTier")))
+        or Settings.NormalizeGraphicsTier(workspace:GetAttribute("GraphicsTier"))
+    if not bootTier then
+        if initPlr and initPlr:GetAttribute("LowFXMode") == true then
+            bootTier = "Smooth"
+        else
+            bootTier = Settings.ResolveDefaultGraphicsTier()
+        end
+    end
+    pcall(function()
+        workspace:SetAttribute("GraphicsTier", bootTier)
+        if workspace:GetAttribute("LowFXMode") == nil then
+            workspace:SetAttribute("LowFXMode", bootTier == "Smooth")
+        end
+    end)
+    if initPlr then
+        pcall(function()
+            if initPlr:GetAttribute("GraphicsTier") == nil then
+                initPlr:SetAttribute("GraphicsTier", bootTier)
+            end
+            if initPlr:GetAttribute("LowFXMode") == nil then
+                initPlr:SetAttribute("LowFXMode", bootTier == "Smooth")
+            end
+            if initPlr:GetAttribute("MasterVolume") == nil then
+                initPlr:SetAttribute("MasterVolume", 0.80)
+            end
+            if initPlr:GetAttribute("BGMVolume") == nil then
+                initPlr:SetAttribute("BGMVolume", 0.80)
+            end
+            if initPlr:GetAttribute("SFXVolume") == nil then
+                initPlr:SetAttribute("SFXVolume", 0.85)
+            end
+            if initPlr:GetAttribute("AutoLowFXGuard") == nil then
+                initPlr:SetAttribute("AutoLowFXGuard", true)
+            end
+        end)
+    end
+    if bootTier == "Smooth" then
+        Settings.ApplyLowFXWorld(true, true)
+    end
+
+    if not RunService:IsClient() then
+        return
+    end
+
+    local clientStartClock = os.clock()
+    local frameCount = 0
+    local lastSampleClock = clientStartClock
+    local lowFpsStreak = 0
+    local lastAutoTriggerClock = -999
+    local isWindowFocused = true
+
+    UserInputService.WindowFocusReleased:Connect(function()
+        isWindowFocused = false
+        lowFpsStreak = 0
+    end)
+    UserInputService.WindowFocused:Connect(function()
+        isWindowFocused = true
+        lowFpsStreak = 0
+        frameCount = 0
+        lastSampleClock = os.clock()
+    end)
+
+    RunService.RenderStepped:Connect(function()
+        frameCount += 1
+    end)
+
+    task.spawn(function()
+        while true do
+            task.wait(1.0)
+            local now = os.clock()
+            local dt = math.max(0.25, now - lastSampleClock)
+            local avgFps = frameCount / dt
+            frameCount = 0
+            lastSampleClock = now
+
+            -- Ignore first 12s after client start while world meshes stream in
+            if (now - clientStartClock) < 12.0 or not isWindowFocused then
+                lowFpsStreak = 0
+            else
+                local lp = Players.LocalPlayer
+                local guardEnabled = (not lp) or (lp:GetAttribute("AutoLowFXGuard") ~= false)
+                local alreadyLow = (lp ~= nil) and (lp:GetAttribute("LowFXMode") == true)
+
+                if guardEnabled and (not alreadyLow) and avgFps < 28.0 then
+                    lowFpsStreak += 1
+                    if lowFpsStreak >= 5 and (now - lastAutoTriggerClock) >= 120.0 then
+                        lastAutoTriggerClock = now
+                        lowFpsStreak = 0
+                        Settings.ApplyGraphicsTier("Smooth")
+                        local curView = Store.GetView()
+                        local nextSettings = table.clone((curView and curView.settings) or {})
+                        nextSettings.graphicsTier = "Smooth"
+                        nextSettings.lowFX = true
+                        nextSettings.fxQuality = "Low"
+                        Store.SetView({ settings = nextSettings })
+                        Store.ShowToast(
+                            I18n.Pick(
+                                string.format("FPS tụt thấp (%.0f FPS): Đã tự động BẬT Low FX Mode để mượt máy! (Đổi tại Cài Đặt [O])", avgFps),
+                                string.format("Low FPS (< 28, %.0f FPS): Auto-enabled Low FX Mode to protect frame rate! (Toggle in [O] Settings)", avgFps)
+                            ),
+                            "warning",
+                            5.0
+                        )
+                    end
+                else
+                    lowFpsStreak = 0
+                end
+            end
+        end
+    end)
+end
+
+Settings.InitFPSGuard()
 
 -- #100: Redeem Giftcode handler
 local function redeemGiftcode(rawInput, codeBox)
@@ -284,8 +488,10 @@ function Settings.Build(parent, responsiveState)
         textSize = 12,
         minTextSize = 10,
         onActivated = function()
-            Store.SetView({ settings = { language = "vi" } })
             I18n.SetLanguage("vi")
+            local nextSettings = cloneCurrentSettings()
+            nextSettings.language = "vi"
+            Store.SetView({ settings = nextSettings })
             Store.ShowToast("Đã chuyển giao diện sang Tiếng Việt!", "success", 2.0)
         end,
     })
@@ -300,8 +506,10 @@ function Settings.Build(parent, responsiveState)
         textSize = 12,
         minTextSize = 10,
         onActivated = function()
-            Store.SetView({ settings = { language = "en" } })
             I18n.SetLanguage("en")
+            local nextSettings = cloneCurrentSettings()
+            nextSettings.language = "en"
+            Store.SetView({ settings = nextSettings })
             Store.ShowToast("Switched UI language to English!", "success", 2.0)
         end,
     })
@@ -352,82 +560,168 @@ function Settings.Build(parent, responsiveState)
         })
     end
 
-    -- 2. #123: Dedicated Working Low FX Mode Toggle
+    -- 2. Stage 1: 3-Tier Graphics & VFX Mode Selector ("Ultra" | "Balanced" | "Smooth")
+    local activeGraphicsTier = Settings.GetActiveGraphicsTier(s)
+    isLowFX = (activeGraphicsTier == "Smooth")
+
+    local GRAPHICS_TIERS = {
+        {
+            id = "Ultra",
+            labelKey = "settings.gfx_ultra",
+            descKey = "settings.gfx_desc_ultra",
+            legacyFx = "High",
+            variant = "gold",
+        },
+        {
+            id = "Balanced",
+            labelKey = "settings.gfx_balanced",
+            descKey = "settings.gfx_desc_balanced",
+            legacyFx = "Medium",
+            variant = "primary",
+        },
+        {
+            id = "Smooth",
+            labelKey = "settings.gfx_smooth",
+            descKey = "settings.gfx_desc_smooth",
+            legacyFx = "Low",
+            variant = "primary",
+        },
+    }
+
+    local activeTierDef = GRAPHICS_TIERS[1]
+    for _, td in ipairs(GRAPHICS_TIERS) do
+        if td.id == activeGraphicsTier then
+            activeTierDef = td
+            break
+        end
+    end
+
+    local gfxBox = UIFactory.Create("Frame", listLeft, {
+        Name = "GraphicsTierBox",
+        Size = UDim2.new(1, -4, 0, 92),
+        BackgroundColor3 = colors.BG_900,
+        BorderSizePixel = 0,
+        LayoutOrder = 2,
+    })
+    UIFactory.Corner(gfxBox, Theme.Radius.Medium)
+    UIFactory.Stroke(
+        gfxBox,
+        activeGraphicsTier == "Ultra" and colors.ACCENT_GOLD or colors.ACCENT_SAPPHIRE,
+        1.3,
+        0.22
+    )
+
+    UIFactory.Label(gfxBox, {
+        Name = "Title",
+        Text = I18n.T("settings.gfx_title") .. "  •  " .. I18n.T(activeTierDef.labelKey),
+        Position = UDim2.fromOffset(14, 6),
+        Size = UDim2.new(1, -28, 0, 18),
+        TextSize = 12,
+        TextColor = activeGraphicsTier == "Ultra" and colors.ACCENT_GOLD_BRIGHT or colors.ACCENT_SAPPHIRE,
+        Bold = true,
+        Truncate = Enum.TextTruncate.AtEnd,
+    })
+
+    local gfxRow = UIFactory.Create("Frame", gfxBox, {
+        Name = "GraphicsTierButtons",
+        Position = UDim2.fromOffset(14, 27),
+        Size = UDim2.new(1, -28, 0, 32),
+        BackgroundTransparency = 1,
+    })
+    UIFactory.ListLayout(gfxRow, Enum.FillDirection.Horizontal, 6)
+
+    for idx, td in ipairs(GRAPHICS_TIERS) do
+        local isSel = (activeGraphicsTier == td.id)
+        PremiumButton.Create(gfxRow, {
+            name = "GfxTier_" .. td.id,
+            label = I18n.T(td.labelKey),
+            variant = isSel and td.variant or "secondary",
+            selected = isSel,
+            size = UDim2.new(0.333, -4, 1, 0),
+            textSize = 11,
+            minTextSize = 8,
+            layoutOrder = idx,
+            onActivated = function()
+                local applied = Settings.ApplyGraphicsTier(td.id)
+                local nextSettings = cloneCurrentSettings()
+                nextSettings.graphicsTier = applied
+                nextSettings.fxQuality = td.legacyFx
+                nextSettings.lowFX = (applied == "Smooth")
+                Store.SetView({ settings = nextSettings })
+                Store.ShowToast(
+                    I18n.Pick(
+                        "Đồ họa & VFX: " .. I18n.T(td.labelKey),
+                        "Graphics & VFX Mode: " .. I18n.T(td.labelKey)
+                    ),
+                    "success",
+                    2.2
+                )
+            end,
+        })
+    end
+
+    UIFactory.Label(gfxBox, {
+        Name = "TierDesc",
+        Text = I18n.T(activeTierDef.descKey),
+        Position = UDim2.fromOffset(14, 63),
+        Size = UDim2.new(1, -28, 0, 24),
+        TextSize = 10,
+        TextColor = colors.TEXT_SECONDARY,
+        Truncate = Enum.TextTruncate.AtEnd,
+    })
+
+    -- 3. #123: Dedicated Working Low FX Mode Toggle (Synced with "Smooth" GraphicsTier)
     createToggleRow(
-        2,
+        3,
         I18n.Pick("Chế Độ Giảm Hiệu Ứng (Low FX Mode)", "Low FX Performance Mode"),
-        I18n.Pick("Tắt bóng đổ GlobalShadows, giảm 65% hạt ParticleEmitter và rút ngắn vệt kiếm Trail để tăng FPS.", "Disables GlobalShadows, scales ParticleEmitters to 35% & shortens Trails for smooth FPS."),
+        I18n.Pick("Tắt bóng đổ GlobalShadows, giảm 65% hạt ParticleEmitter và đồng bộ cấp độ Mượt Nhẹ (Smooth).", "Disables GlobalShadows, scales ParticleEmitters to 35% & syncs Mobile Smooth tier."),
         isLowFX,
         function(nextVal)
-            Settings.ApplyLowFXWorld(nextVal)
+            local targetTier = nextVal and "Smooth" or Settings.ResolveDefaultGraphicsTier()
+            local applied = Settings.ApplyGraphicsTier(targetTier)
             local nextSettings = cloneCurrentSettings()
-            nextSettings.lowFX = nextVal
-            nextSettings.fxQuality = nextVal and "Low" or "High"
+            nextSettings.graphicsTier = applied
+            nextSettings.lowFX = (applied == "Smooth")
+            nextSettings.fxQuality = (applied == "Ultra" and "High") or (applied == "Balanced" and "Medium") or "Low"
             Store.SetView({ settings = nextSettings })
             Store.ShowToast(
                 nextVal
-                    and I18n.Pick("Đã BẬT Chế Độ Low FX (Tăng tốc FPS & Giảm 65% hạt hiệu ứng)!", "Enabled Low FX Mode (Shadows OFF & 35% Particle Rate)!")
-                    or I18n.Pick("Đã TẮT Low FX Mode (Khôi phục 100% hiệu ứng ánh sáng & hạt)!", "Disabled Low FX Mode (Restored 100% Shadows & Particles)!"),
+                    and I18n.Pick("Đã BẬT Chế Độ Low FX (Mượt Nhẹ • Giảm 65% hạt hiệu ứng)!", "Enabled Low FX Mode (Mobile Smooth • 35% Particle Rate)!")
+                    or I18n.Pick("Đã TẮT Low FX Mode (Khôi phục chế độ " .. I18n.T(applied == "Ultra" and "settings.gfx_ultra" or "settings.gfx_balanced") .. ")!", "Disabled Low FX Mode (Restored " .. applied .. " tier)!"),
                 "info",
                 2.4
             )
         end
     )
 
-    -- 3. FX Quality Tier Selector (Low / Medium / High)
-    local fxQuality = isLowFX and "Low" or (s.fxQuality or "High")
-    local fxBox = UIFactory.Create("Frame", listLeft, {
-        Name = "FXQualityBox",
-        Size = UDim2.new(1, -4, 0, 70),
-        BackgroundColor3 = colors.BG_900,
-        BorderSizePixel = 0,
-        LayoutOrder = 3,
-    })
-    UIFactory.Corner(fxBox, Theme.Radius.Medium)
-    UIFactory.Stroke(fxBox, colors.STROKE_STEEL, 1, 0.35)
-
-    UIFactory.Label(fxBox, {
-        Name = "Title",
-        Text = I18n.Pick("MỨC CHẤT LƯỢNG HIỆU ỨNG  •  Hiện tại: ", "FX QUALITY TIER  •  Current: ") .. UIFactory.Upper(fxQuality),
-        Position = UDim2.fromOffset(14, 7),
-        Size = UDim2.new(1, -28, 0, 18),
-        TextSize = 12,
-        TextColor = colors.ACCENT_GOLD,
-        Bold = true,
-    })
-
-    local fxRow = UIFactory.Create("Frame", fxBox, {
-        Name = "FXButtons",
-        Position = UDim2.fromOffset(14, 30),
-        Size = UDim2.new(1, -28, 0, 32),
-        BackgroundTransparency = 1,
-    })
-    UIFactory.ListLayout(fxRow, Enum.FillDirection.Horizontal, 8)
-
-    for idx, tier in ipairs({ "Low", "Medium", "High" }) do
-        PremiumButton.Create(fxRow, {
-            name = "FX_" .. tier,
-            label = UIFactory.Upper(tier),
-            variant = fxQuality == tier and "primary" or "secondary",
-            selected = fxQuality == tier,
-            size = UDim2.new(0.333, -6, 1, 0),
-            textSize = 12,
-            minTextSize = 10,
-            layoutOrder = idx,
-            onActivated = function()
-                local lowOn = (tier == "Low")
-                Settings.ApplyLowFXWorld(lowOn)
-                local nextSettings = cloneCurrentSettings()
-                nextSettings.fxQuality = tier
-                nextSettings.lowFX = lowOn
-                Store.SetView({ settings = nextSettings })
-            end,
-        })
-    end
-
-    -- 4. Show Celestial Minimap & Core Notifier Toggle (#92, #50)
+    -- 4. Auto Low-FX FPS Guard Toggle (< 28 FPS for 5s)
+    local autoGuardAttr = lp and lp:GetAttribute("AutoLowFXGuard")
+    local isAutoLowFXGuard = (autoGuardAttr ~= nil) and (autoGuardAttr ~= false) or (s.autoLowFXGuard ~= false)
     createToggleRow(
         4,
+        I18n.Pick("Tự gợi ý Low FX khi tụt FPS < 28", "Auto-Suggest Low FX (< 28 FPS)"),
+        I18n.Pick("Tự động chuyển sang Mượt Nhẹ (Low FX) kèm thông báo khi FPS trung bình dưới 28 trong 5 giây.", "Automatically switches to Mobile Smooth (Low FX) if average FPS stays below 28 for 5s."),
+        isAutoLowFXGuard,
+        function(nextVal)
+            if lp then
+                lp:SetAttribute("AutoLowFXGuard", nextVal)
+            end
+            local nextSettings = cloneCurrentSettings()
+            nextSettings.autoLowFXGuard = nextVal
+            Store.SetView({ settings = nextSettings })
+            Store.ShowToast(
+                nextVal
+                    and I18n.Pick("Đã BẬT bảo vệ khung hình Tự Động Low FX (< 28 FPS)!", "Enabled Auto Low-FX FPS Guard (< 28 FPS)!")
+                    or I18n.Pick("Đã TẮT tự động bật Low FX khi tụt FPS.", "Disabled Auto Low-FX FPS Guard."),
+                "info",
+                2.2
+            )
+        end
+    )
+
+    -- 5. Show Celestial Minimap & Core Notifier Toggle (#92, #50)
+    createToggleRow(
+        5,
         I18n.Pick("Hiển Thị Minimap La Bàn & Radar Lõi Tự Nhiên", "Show Celestial Minimap & Core Radar"),
         I18n.Pick("Bật la bàn radar 148x148 góc phải trên HUD kèm định vị Boss, NPC và Lõi Aether.", "Displays the 148x148 circular compass radar and Natural Core Notifier on HUD."),
         s.showMinimap ~= false,
@@ -438,9 +732,9 @@ function Settings.Build(parent, responsiveState)
         end
     )
 
-    -- 5. Reduced Motion Toggle
+    -- 6. Reduced Motion Toggle
     createToggleRow(
-        5,
+        6,
         I18n.Pick("Giảm Chuyển Động UI (Reduced Motion)", "Reduced UI Motion"),
         I18n.Pick("Tắt hiệu ứng nhịp thở và chuyển cảnh để thao tác tức thì.", "Switches UI transitions and ambient pulses to instant updates."),
         s.reducedMotion == true,
@@ -452,11 +746,10 @@ function Settings.Build(parent, responsiveState)
         end
     )
 
-    -- 6. Disable View Lock & Free Mouse Cursor Toggle (Prevents Shift-Lock / Action Cam / Lock-On Camera Pull)
-    local lp = Players.LocalPlayer
+    -- 7. Disable View Lock & Free Mouse Cursor Toggle (Prevents Shift-Lock / Action Cam / Lock-On Camera Pull)
     local camLockOff = (lp and lp:GetAttribute("DisableCameraLock") == true) or (s.disableCameraLock == true)
     createToggleRow(
-        6,
+        7,
         I18n.Pick("Tắt Khóa Góc Nhìn & Mở Khóa Chuột Tự Do", "Disable View Lock & Free Mouse Cursor"),
         I18n.Pick("Tắt hẳn khóa tâm chuột Action Cam / Shift-Lock & không kéo xoay góc nhìn camera (Phím mở khóa nhanh: LeftCtrl).", "Disables Action Cam / Shift-Lock cursor lock & stops Target Lock from rotating camera (Quick unlock: LeftCtrl)."),
         camLockOff,
@@ -482,13 +775,13 @@ function Settings.Build(parent, responsiveState)
         end
     )
 
-    -- 7. Layout Override Selector (Auto / Desktop / Mobile Touch Arc #125)
+    -- 8. Layout Override Selector (Auto / Desktop / Mobile Touch Arc #125)
     local layoutBox = UIFactory.Create("Frame", listLeft, {
         Name = "LayoutModeBox",
         Size = UDim2.new(1, -4, 0, 70),
         BackgroundColor3 = colors.BG_900,
         BorderSizePixel = 0,
-        LayoutOrder = 7,
+        LayoutOrder = 8,
     })
     UIFactory.Corner(layoutBox, Theme.Radius.Medium)
     UIFactory.Stroke(layoutBox, colors.STROKE_STEEL, 1, 0.35)
@@ -530,33 +823,46 @@ function Settings.Build(parent, responsiveState)
         })
     end
 
-    -- Right Column: Giftcode Redemption (#100), UI Scale, Audio & Updated Keybind Reference (#91)
+    -- Right Column: Giftcode Redemption (#100), UI Scale, 3-Channel Audio Mixer & Keybind Reference (#91)
     local rightCard = PremiumPanel.Create(root, {
         name = "AudioKeybindCard",
         variant = "gold",
-        title = I18n.Pick("NHẬP GIFTCODE, TỈ LỆ UI & PHÍM TẮT", "GIFTCODE REDEMPTION, AUDIO & KEYBINDS"),
-        subtitle = I18n.Pick("Nhận quà Tân Thủ • Chỉnh cỡ chữ • Bảng phím tắt chuẩn", "Redeem Rewards • UI Scale • Updated PC/Gamepad Controls"),
+        title = I18n.Pick("GIFTCODE, BỘ TRỘN ÂM THANH 3 KÊNH & PHÍM TẮT", "GIFTCODES, 3-CHANNEL AUDIO MIXER & KEYBINDS"),
+        subtitle = I18n.Pick("Nhận quà Tân Thủ • Tổng / BGM / SFX riêng biệt • Tỉ lệ UI & Phím tắt", "Redeem Codes • Master / BGM / SFX Volume • UI Scale & Shortcuts"),
         position = isPortrait and UDim2.new(0, 16, 0.52, 36) or UDim2.new(0.5, 6, 0, 74),
         size = isPortrait and UDim2.new(1, -32, 0.48, -50) or UDim2.new(0.5, -22, 1, -88),
     })
 
+    local listRight = UIFactory.Create("ScrollingFrame", rightCard, {
+        Name = "RightList",
+        Position = UDim2.fromOffset(16, 56),
+        Size = UDim2.new(1, -32, 1, -68),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 4,
+        ScrollBarImageColor3 = colors.ACCENT_GOLD,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        CanvasSize = UDim2.fromOffset(0, 0),
+    })
+    UIFactory.ListLayout(listRight, Enum.FillDirection.Vertical, 7)
+
     -- #100: Giftcode Redemption Box
-    local giftBox = UIFactory.Create("Frame", rightCard, {
+    local giftBox = UIFactory.Create("Frame", listRight, {
         Name = "GiftcodeRedemptionCard",
-        Position = UDim2.fromOffset(16, 58),
-        Size = UDim2.new(1, -32, 0, 108),
+        Size = UDim2.new(1, -4, 0, 102),
         BackgroundColor3 = colors.BG_900,
         BorderSizePixel = 0,
+        LayoutOrder = 1,
     })
     UIFactory.Corner(giftBox, Theme.Radius.Medium)
     UIFactory.Stroke(giftBox, colors.ACCENT_GOLD, 1.4, 0.2)
 
-    UIFactory.Icon(giftBox, "Gift", UDim2.fromOffset(12, 8), 18, colors.ACCENT_GOLD_BRIGHT)
+    UIFactory.Icon(giftBox, "Gift", UDim2.fromOffset(12, 7), 17, colors.ACCENT_GOLD_BRIGHT)
     UIFactory.Label(giftBox, {
         Name = "GiftHeader",
         Text = I18n.Pick("NHẬP MÃ QUÀ TẶNG (GIFTCODE REDEMPTION)", "REDEEM CELESTIAL GIFTCODE"),
-        Position = UDim2.fromOffset(36, 7),
-        Size = UDim2.new(1, -48, 0, 20),
+        Position = UDim2.fromOffset(35, 6),
+        Size = UDim2.new(1, -46, 0, 19),
         TextSize = 12,
         TextColor = colors.ACCENT_GOLD_BRIGHT,
         Bold = true,
@@ -564,12 +870,12 @@ function Settings.Build(parent, responsiveState)
 
     local codeInput = UIFactory.Create("TextBox", giftBox, {
         Name = "GiftcodeInput",
-        Position = UDim2.fromOffset(12, 32),
-        Size = UDim2.new(1, -152, 0, 36),
+        Position = UDim2.fromOffset(12, 29),
+        Size = UDim2.new(1, -152, 0, 34),
         Text = "",
-        PlaceholderText = I18n.Pick("Nhập mã (VD: SKYBREAK2026, AETHERV2, SKYBREAKLAUNCH)...", "Enter code (e.g. SKYBREAK2026, AETHERV2, SKYBREAKLAUNCH)..."),
+        PlaceholderText = I18n.Pick("Nhập mã Giftcode chính thức...", "Enter official Giftcode..."),
         Font = Theme.Fonts.Bold,
-        TextSize = 13,
+        TextSize = 12,
         TextColor3 = colors.TEXT_PRIMARY,
         PlaceholderColor3 = colors.TEXT_SECONDARY,
         BackgroundColor3 = colors.BG_800,
@@ -585,8 +891,8 @@ function Settings.Build(parent, responsiveState)
         name = "RedeemCodeBtn",
         label = I18n.Pick("NHẬN QUÀ", "REDEEM"),
         variant = "gold",
-        position = UDim2.new(1, -132, 0, 32),
-        size = UDim2.fromOffset(120, 36),
+        position = UDim2.new(1, -132, 0, 29),
+        size = UDim2.fromOffset(120, 34),
         textSize = 12,
         minTextSize = 10,
         onActivated = function()
@@ -594,54 +900,47 @@ function Settings.Build(parent, responsiveState)
         end,
     })
 
-    -- Quick-tap active code chips for effortless testing & player convenience
-    local chipRow = UIFactory.Create("Frame", giftBox, {
-        Name = "ActiveCodeChips",
-        Position = UDim2.fromOffset(12, 74),
+    UIFactory.Label(giftBox, {
+        Name = "CommunityCodeHint",
+        Text = I18n.Pick(
+            "✦ Theo dõi Nhóm Roblox & Kênh Cộng Đồng SKYBREAK để nhận mã Giftcode sự kiện mới!",
+            "✦ Join the official SKYBREAK Roblox Group & Community channels for event Giftcodes!"
+        ),
+        Position = UDim2.fromOffset(12, 69),
         Size = UDim2.new(1, -24, 0, 26),
-        BackgroundTransparency = 1,
+        TextSize = 10,
+        TextColor = colors.TEXT_SECONDARY,
+        Wrapped = true,
     })
-    UIFactory.GridLayout(chipRow, UDim2.new(0.25, -5, 0, 24), UDim2.fromOffset(6, 4))
 
-    local chipApis = {}
-    for cIdx, sampleCode in ipairs({ "SKYBREAK2026", "AETHERV2", "SKYBREAKLAUNCH", "FREESTAT" }) do
-        local used = (snap and snap.redeemedCodes and snap.redeemedCodes[sampleCode] == true)
-            or (Store.Session.redeemedCodes and Store.Session.redeemedCodes[sampleCode] == true)
-        local _, cApi = PremiumButton.Create(chipRow, {
-            name = "Chip_" .. sampleCode,
-            label = used and ("[x] " .. sampleCode) or sampleCode,
-            variant = used and "secondary" or "primary",
-            disabled = used,
-            layoutOrder = cIdx,
-            textSize = 9,
-            minTextSize = 8,
-            onActivated = function()
-                codeInput.Text = sampleCode
-                redeemGiftcode(sampleCode, codeInput)
-                Settings.Update(Store.GetSnapshot())
-            end,
-        })
-        chipApis[sampleCode] = cApi
-    end
+    -- UI Scale Multiplier Box
+    local scaleCard = UIFactory.Create("Frame", listRight, {
+        Name = "UIScaleCard",
+        Size = UDim2.new(1, -4, 0, 62),
+        BackgroundColor3 = colors.BG_900,
+        BorderSizePixel = 0,
+        LayoutOrder = 2,
+    })
+    UIFactory.Corner(scaleCard, Theme.Radius.Medium)
+    UIFactory.Stroke(scaleCard, colors.STROKE_STEEL, 1, 0.35)
 
-    -- Text Scale & Volume Controls
-    UIFactory.Label(rightCard, {
+    UIFactory.Label(scaleCard, {
         Name = "ScaleHeader",
         Text = I18n.Pick(
             string.format("TỈ LỆ PHÓNG ĐẠI GIAO DIỆN  •  Hiện tại: %d%%", math.floor((s.textScale or 1.0) * 100)),
             string.format("UI SCALE MULTIPLIER  •  Current: %d%%", math.floor((s.textScale or 1.0) * 100))
         ),
-        Position = UDim2.fromOffset(16, 174),
-        Size = UDim2.new(1, -32, 0, 18),
-        TextSize = 12,
+        Position = UDim2.fromOffset(12, 5),
+        Size = UDim2.new(1, -24, 0, 17),
+        TextSize = 11,
         TextColor = colors.ACCENT_GOLD,
         Bold = true,
     })
 
-    local scaleRow = UIFactory.Create("Frame", rightCard, {
+    local scaleRow = UIFactory.Create("Frame", scaleCard, {
         Name = "ScaleRow",
-        Position = UDim2.fromOffset(16, 196),
-        Size = UDim2.new(1, -32, 0, 34),
+        Position = UDim2.fromOffset(12, 25),
+        Size = UDim2.new(1, -24, 0, 30),
         BackgroundTransparency = 1,
     })
     UIFactory.ListLayout(scaleRow, Enum.FillDirection.Horizontal, 8)
@@ -669,88 +968,298 @@ function Settings.Build(parent, responsiveState)
         })
     end
 
-    local curVolPct = tonumber(s.masterVolume)
-    if curVolPct == nil then
-        local attrV = lp and tonumber(lp:GetAttribute("MasterVolume"))
-        curVolPct = attrV and math.floor(attrV * 100 + 0.5) or 80
-    end
-    local volHeaderLbl = UIFactory.Label(rightCard, {
-        Name = "VolHeader",
-        Text = string.format(
-            "%s: %d%%   •   SFX / BGM: %d%%",
-            I18n.Pick("ÂM LƯỢNG TỔNG", "MASTER VOLUME"),
-            curVolPct,
-            curVolPct
-        ),
-        Position = UDim2.fromOffset(16, 238),
-        Size = UDim2.new(1, -32, 0, 18),
-        TextSize = 12,
-        TextColor = colors.ACCENT_SAPPHIRE,
-        Bold = true,
-    })
-
-    local volRow = UIFactory.Create("Frame", rightCard, {
-        Name = "VolumeRow",
-        Position = UDim2.fromOffset(16, 260),
-        Size = UDim2.new(1, -32, 0, 34),
-        BackgroundTransparency = 1,
-    })
-    UIFactory.ListLayout(volRow, Enum.FillDirection.Horizontal, 6)
-
-    local volApis = {}
-    local function applyVolumePreset(volPct)
-        local clamped = math.clamp(tonumber(volPct) or 80, 0, 100)
-        if lp then
-            lp:SetAttribute("AudioMuted", clamped <= 0)
-            lp:SetAttribute("MasterVolume", clamped / 100)
-            lp:SetAttribute("SFXVolume", 1.0)
-            lp:SetAttribute("BGMVolume", 1.0)
-        end
-        local nextSettings = cloneCurrentSettings()
-        nextSettings.masterVolume = clamped
-        nextSettings.sfxVolume = clamped
-        nextSettings.bgmVolume = clamped
-        Store.SetView({ settings = nextSettings })
-        volHeaderLbl.Text = string.format(
-            "%s: %d%%   •   SFX / BGM: %d%%",
-            I18n.Pick("ÂM LƯỢNG TỔNG", "MASTER VOLUME"),
-            clamped,
-            clamped
-        )
-        for presetVal, api in pairs(volApis) do
-            local sel = (presetVal == clamped)
-            api:Update({
-                variant = sel and "primary" or "secondary",
-                selected = sel,
-            })
-        end
-    end
-
-    for idx, vol in ipairs({ 0, 25, 50, 80, 100 }) do
-        local isSel = (curVolPct == vol)
-        local _, vApi = PremiumButton.Create(volRow, {
-            name = "Vol_" .. vol,
-            label = (vol == 0) and I18n.Pick("TẮT", "MUTE") or (tostring(vol) .. "%"),
-            variant = isSel and "primary" or "secondary",
-            selected = isSel,
-            size = UDim2.new(0.20, -5, 1, 0),
-            textSize = 11,
-            minTextSize = 9,
-            layoutOrder = idx,
-            onActivated = function()
-                applyVolumePreset(vol)
-            end,
-        })
-        volApis[vol] = vApi
-    end
-
-    -- #91: Complete Updated Keybind Reference Card ([L] Quests, [J] Busoshoku Haki, [G] Devil Fruits)
-    local keyCard = UIFactory.Create("Frame", rightCard, {
-        Name = "KeybindReference",
-        Position = UDim2.fromOffset(16, 304),
-        Size = UDim2.new(1, -32, 1, -318),
+    -- 3-Channel Interactive Volume Mixer (Master / BGM / SFX: 0%..100% via [-]/[+], Draggable Bar & Preset Pills)
+    local audioCard = UIFactory.Create("Frame", listRight, {
+        Name = "AudioMixerCard",
+        Size = UDim2.new(1, -4, 0, 206),
         BackgroundColor3 = colors.BG_900,
         BorderSizePixel = 0,
+        LayoutOrder = 3,
+    })
+    UIFactory.Corner(audioCard, Theme.Radius.Medium)
+    UIFactory.Stroke(audioCard, colors.ACCENT_SAPPHIRE, 1.3, 0.22)
+
+    UIFactory.Icon(audioCard, "Volume", UDim2.fromOffset(12, 6), 16, colors.ACCENT_SAPPHIRE)
+    UIFactory.Label(audioCard, {
+        Name = "AudioMixerHeader",
+        Text = I18n.Pick("BỘ ĐIỀU KHIỂN ÂM LƯỢNG 3 KÊNH (KÉO THANH / [-][+] / MỨC NHANH)", "3-CHANNEL VOLUME MIXER (DRAG BAR / [-][+] / PRESETS)"),
+        Position = UDim2.fromOffset(33, 5),
+        Size = UDim2.new(1, -44, 0, 18),
+        TextSize = 11,
+        TextColor = colors.ACCENT_SAPPHIRE,
+        Bold = true,
+        Truncate = Enum.TextTruncate.AtEnd,
+    })
+
+    local function resolveInitialPct(attrKey, viewKey, defaultPct)
+        if lp then
+            if attrKey == "MasterVolume" and lp:GetAttribute("AudioMuted") == true then
+                return 0
+            end
+            local rawAttr = tonumber(lp:GetAttribute(attrKey))
+            if rawAttr ~= nil then
+                if rawAttr > 1.5 then
+                    return math.clamp(math.floor(rawAttr + 0.5), 0, 100)
+                end
+                return math.clamp(math.floor(rawAttr * 100 + 0.5), 0, 100)
+            end
+        end
+        if tonumber(s[viewKey]) ~= nil then
+            return math.clamp(math.floor(tonumber(s[viewKey]) + 0.5), 0, 100)
+        end
+        return defaultPct
+    end
+
+    local PRESET_LEVELS = { 0, 25, 50, 75, 100 }
+
+    local function buildVolumeChannelRow(rowIndex, cfg)
+        local curPct = resolveInitialPct(cfg.attrKey, cfg.viewKey, cfg.defaultPct)
+        local yOffset = 26 + (rowIndex - 1) * 58
+
+        local chBox = UIFactory.Create("Frame", audioCard, {
+            Name = "Channel_" .. cfg.attrKey,
+            Position = UDim2.fromOffset(10, yOffset),
+            Size = UDim2.new(1, -20, 0, 54),
+            BackgroundColor3 = colors.BG_800,
+            BackgroundTransparency = 0.20,
+            BorderSizePixel = 0,
+        })
+        UIFactory.Corner(chBox, Theme.Radius.Small)
+        UIFactory.Stroke(chBox, cfg.accent, 1.0, 0.55)
+
+        local titleLbl = UIFactory.Label(chBox, {
+            Name = "ChannelLabel",
+            Text = "",
+            Position = UDim2.fromOffset(10, 3),
+            Size = UDim2.new(1, -236, 0, 20),
+            TextSize = 11,
+            TextColor = colors.TEXT_PRIMARY,
+            Bold = true,
+            Truncate = Enum.TextTruncate.AtEnd,
+        })
+
+        local pillsWrap = UIFactory.Create("Frame", chBox, {
+            Name = "PresetPills",
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -8, 0, 4),
+            Size = UDim2.fromOffset(216, 18),
+            BackgroundTransparency = 1,
+        })
+        UIFactory.ListLayout(pillsWrap, Enum.FillDirection.Horizontal, 4, Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Center)
+
+        local pillRefs = {}
+        local applyChannelPct
+
+        for pIdx, pVal in ipairs(PRESET_LEVELS) do
+            local pillBtn = UIFactory.Create("TextButton", pillsWrap, {
+                Name = "Preset_" .. pVal,
+                Size = UDim2.fromOffset(40, 18),
+                BackgroundColor3 = colors.BG_900,
+                BorderSizePixel = 0,
+                AutoButtonColor = true,
+                Font = Theme.Fonts.Bold,
+                TextSize = 9,
+                TextColor3 = colors.TEXT_SECONDARY,
+                Text = (pVal == 0) and I18n.Pick("TẮT", "0%") or (tostring(pVal) .. "%"),
+                LayoutOrder = pIdx,
+            })
+            UIFactory.Corner(pillBtn, 4)
+            local pStroke = UIFactory.Stroke(pillBtn, colors.STROKE_STEEL, 1, 0.45)
+            pillBtn.Activated:Connect(function()
+                applyChannelPct(pVal)
+            end)
+            pillRefs[pVal] = { Button = pillBtn, Stroke = pStroke }
+        end
+
+        local minusBtn = UIFactory.Create("TextButton", chBox, {
+            Name = "StepMinus",
+            Position = UDim2.fromOffset(8, 27),
+            Size = UDim2.fromOffset(30, 22),
+            BackgroundColor3 = colors.BG_900,
+            BorderSizePixel = 0,
+            AutoButtonColor = true,
+            Font = Theme.Fonts.Bold,
+            TextSize = 14,
+            TextColor3 = cfg.accent,
+            Text = "-",
+        })
+        UIFactory.Corner(minusBtn, 5)
+        UIFactory.Stroke(minusBtn, cfg.accent, 1.1, 0.35)
+
+        local plusBtn = UIFactory.Create("TextButton", chBox, {
+            Name = "StepPlus",
+            AnchorPoint = Vector2.new(1, 0),
+            Position = UDim2.new(1, -8, 0, 27),
+            Size = UDim2.fromOffset(30, 22),
+            BackgroundColor3 = colors.BG_900,
+            BorderSizePixel = 0,
+            AutoButtonColor = true,
+            Font = Theme.Fonts.Bold,
+            TextSize = 14,
+            TextColor3 = cfg.accent,
+            Text = "+",
+        })
+        UIFactory.Corner(plusBtn, 5)
+        UIFactory.Stroke(plusBtn, cfg.accent, 1.1, 0.35)
+
+        local sliderHit = UIFactory.Create("TextButton", chBox, {
+            Name = "SliderHitbox",
+            Position = UDim2.fromOffset(46, 26),
+            Size = UDim2.new(1, -92, 0, 24),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            AutoButtonColor = false,
+            Text = "",
+        })
+
+        local track = UIFactory.Create("Frame", sliderHit, {
+            Name = "Track",
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.fromScale(0, 0.5),
+            Size = UDim2.new(1, 0, 0, 9),
+            BackgroundColor3 = colors.BG_900,
+            BorderSizePixel = 0,
+        })
+        UIFactory.PillCorner(track)
+        UIFactory.Stroke(track, colors.STROKE_STEEL, 1, 0.40)
+
+        local fill = UIFactory.Create("Frame", track, {
+            Name = "Fill",
+            Size = UDim2.fromScale(curPct / 100, 1),
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            BorderSizePixel = 0,
+        })
+        UIFactory.PillCorner(fill)
+        UIFactory.Gradient(fill, cfg.gradTop, cfg.gradBot, 0)
+
+        local knob = UIFactory.Create("Frame", track, {
+            Name = "Knob",
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(curPct / 100, 0.5),
+            Size = UDim2.fromOffset(15, 15),
+            BackgroundColor3 = Color3.fromRGB(248, 251, 255),
+            BorderSizePixel = 0,
+            ZIndex = track.ZIndex + 2,
+        })
+        UIFactory.PillCorner(knob)
+        UIFactory.Stroke(knob, cfg.accent, 2.0, 0.05)
+
+        local function refreshRowVisuals()
+            local statusStr = (curPct <= 0)
+                and I18n.Pick("TẮT (0%)", "MUTE (0%)")
+                or (tostring(curPct) .. "%")
+            titleLbl.Text = string.format("%s:  %s", cfg.label, statusStr)
+            titleLbl.TextColor3 = (curPct <= 0) and colors.TEXT_MUTED or colors.TEXT_PRIMARY
+
+            local ratio = math.clamp(curPct / 100, 0, 1)
+            fill.Size = UDim2.fromScale(ratio, 1)
+            knob.Position = UDim2.fromScale(ratio, 0.5)
+
+            for pVal, pRef in pairs(pillRefs) do
+                local active = (curPct == pVal)
+                pRef.Button.BackgroundColor3 = active and cfg.accent or colors.BG_900
+                pRef.Button.TextColor3 = active and colors.BG_900 or colors.TEXT_SECONDARY
+                pRef.Stroke.Color = active and colors.ACCENT_GOLD_BRIGHT or colors.STROKE_STEEL
+                pRef.Stroke.Transparency = active and 0.05 or 0.45
+            end
+        end
+
+        applyChannelPct = function(nextPct)
+            local clamped = math.clamp(math.floor((tonumber(nextPct) or 0) + 0.5), 0, 100)
+            curPct = clamped
+            local norm = clamped / 100
+            if lp then
+                lp:SetAttribute(cfg.attrKey, norm)
+                if cfg.attrKey == "MasterVolume" then
+                    lp:SetAttribute("AudioMuted", clamped <= 0)
+                end
+            end
+            local viewObj = Store.GetView()
+            if viewObj then
+                viewObj.settings = viewObj.settings or {}
+                viewObj.settings[cfg.viewKey] = clamped
+            end
+            refreshRowVisuals()
+        end
+
+        minusBtn.Activated:Connect(function()
+            applyChannelPct(curPct - 5)
+        end)
+        plusBtn.Activated:Connect(function()
+            applyChannelPct(curPct + 5)
+        end)
+
+        local isDragging = false
+        local function updateFromInputX(screenX)
+            local absX = sliderHit.AbsolutePosition.X
+            local absW = math.max(1, sliderHit.AbsoluteSize.X)
+            local alpha = math.clamp((screenX - absX) / absW, 0, 1)
+            applyChannelPct(alpha * 100)
+        end
+
+        sliderHit.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                isDragging = true
+                updateFromInputX(input.Position.X)
+            end
+        end)
+
+        table.insert(Settings.InputConnections, UserInputService.InputChanged:Connect(function(input)
+            if not isDragging then
+                return
+            end
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                updateFromInputX(input.Position.X)
+            end
+        end))
+
+        table.insert(Settings.InputConnections, UserInputService.InputEnded:Connect(function(input)
+            if isDragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+                isDragging = false
+            end
+        end))
+
+        -- Sync attribute on build so audio engine matches UI immediately
+        applyChannelPct(curPct)
+    end
+
+    buildVolumeChannelRow(1, {
+        attrKey = "MasterVolume",
+        viewKey = "masterVolume",
+        defaultPct = 80,
+        label = I18n.Pick("Âm Lượng Tổng", "Master Volume"),
+        accent = colors.ACCENT_GOLD_BRIGHT,
+        gradTop = Color3.fromRGB(228, 184, 99),
+        gradBot = Color3.fromRGB(255, 228, 138),
+    })
+
+    buildVolumeChannelRow(2, {
+        attrKey = "BGMVolume",
+        viewKey = "bgmVolume",
+        defaultPct = 80,
+        label = I18n.Pick("Nhạc Nền (BGM)", "BGM Volume"),
+        accent = colors.ACCENT_SAPPHIRE,
+        gradTop = Color3.fromRGB(36, 128, 232),
+        gradBot = Color3.fromRGB(112, 214, 255),
+    })
+
+    buildVolumeChannelRow(3, {
+        attrKey = "SFXVolume",
+        viewKey = "sfxVolume",
+        defaultPct = 85,
+        label = I18n.Pick("Hiệu Ứng Chiêu (SFX)", "SFX Volume"),
+        accent = colors.SUCCESS,
+        gradTop = Color3.fromRGB(32, 182, 132),
+        gradBot = Color3.fromRGB(122, 242, 192),
+    })
+
+    -- #91: Complete Updated Keybind Reference Card ([L] Quests, [J] Busoshoku Haki, [G] Devil Fruits)
+    local keyCard = UIFactory.Create("Frame", listRight, {
+        Name = "KeybindReference",
+        Size = UDim2.new(1, -4, 0, 136),
+        BackgroundColor3 = colors.BG_900,
+        BorderSizePixel = 0,
+        LayoutOrder = 4,
     })
     UIFactory.Corner(keyCard, Theme.Radius.Medium)
     UIFactory.Stroke(keyCard, colors.STROKE_STEEL, 1, 0.35)
@@ -758,9 +1267,9 @@ function Settings.Build(parent, responsiveState)
     UIFactory.Label(keyCard, {
         Name = "KeyHeader",
         Text = I18n.Pick("BẢNG PHÍM TẮT CHIẾN ĐẤU & ĐIỀU HƯỚNG CHUẨN", "KEYBOARD & GAMEPAD SHORTCUTS"),
-        Position = UDim2.fromOffset(14, 8),
+        Position = UDim2.fromOffset(14, 6),
         Size = UDim2.new(1, -28, 0, 18),
-        TextSize = 12,
+        TextSize = 11,
         TextColor = colors.ACCENT_GOLD,
         Bold = true,
     })
@@ -769,22 +1278,22 @@ function Settings.Build(parent, responsiveState)
         "• [Chuột Trái] Combo 4 đòn  |  [1]-[4] Đổi Võ / Lõi Aether / Kiếm / Súng",
         "• [Z] [X] [C] [V] [F] Bộ 5 chiêu thức  |  [LeftShift / Q] Thuấn Bộ  |  [Space x2] Bộ Không",
         "• [LeftCtrl] TẮT Khóa Góc Nhìn & Mở Khóa Chuột  |  [LeftAlt] Action Cam  |  [Tab] Khóa Mục Tiêu",
-        "• [J] Giáp Ý Chí  |  [U] Thấu Ý  |  [H] Bá Ý  |  [Y] Thăng Hoa",
-        "• [G] Lõi Aether 3D  |  [I] Túi  |  [K] Chỉ Số  |  [L] Nhật Ký  |  [M] Bản Đồ  |  [P] Raid  |  [O] Cài Đặt",
+        "• [J] Giáp Ý Chí  |  [U] Thấu Ý  |  [H] Bá Ý  |  [Y] Thăng Hoa  |  [E] Tương Tác NPC (Shop/Rèn/Gacha/Raid)",
+        "• [I] Túi  |  [K] Kỹ Năng  |  [G] Kho Lõi  |  [L] Nhật Ký  |  [M] Bản Đồ  |  [B] Tổ Đội & Quà  |  [O] Cài Đặt",
     }
     local keyLinesEn = {
         "• [LMB] 4-Hit Combo  |  [1]-[4] Switch Melee / Aether Core / Sword / Gun",
         "• [Z] [X] [C] [V] [F] Active Skills  |  [LeftShift / Q] Blink Dash  |  [Space x2] Sky Step",
         "• [LeftCtrl] UNLOCK View & Mouse Cursor  |  [LeftAlt] Action Cam  |  [Tab] Target Lock",
-        "• [J] Will Armor  |  [U] Will Sense  |  [H] Sovereign Will  |  [Y] Ascension",
-        "• [G] 3D Aether Cores  |  [I] Bag  |  [K] Stats  |  [L] Quests  |  [M] Map  |  [P] Raid  |  [O] Settings",
+        "• [J] Will Armor  |  [U] Will Sense  |  [H] Sovereign Will  |  [Y] Ascension  |  [E] Talk NPC (Shop/Forge/Gacha)",
+        "• [I] Bag  |  [K] Skills  |  [G] Core Vault  |  [L] Quests  |  [M] Map  |  [B] Party & Gifts  |  [O] Settings",
     }
 
     UIFactory.Label(keyCard, {
         Name = "KeyBody",
         Text = table.concat(curLang == "en" and keyLinesEn or keyLinesVi, "\n"),
-        Position = UDim2.fromOffset(14, 30),
-        Size = UDim2.new(1, -28, 1, -36),
+        Position = UDim2.fromOffset(14, 26),
+        Size = UDim2.new(1, -28, 1, -32),
         TextSize = 11,
         TextColor = colors.TEXT_SECONDARY,
         YAlign = Enum.TextYAlignment.Top,
@@ -793,7 +1302,6 @@ function Settings.Build(parent, responsiveState)
     Settings.Refs = {
         Root = root,
         HeaderRefs = headerRefs,
-        ChipApis = chipApis,
     }
     return root
 end
@@ -803,20 +1311,15 @@ function Settings.Update(snap)
     if Settings.Refs.HeaderRefs and Settings.Refs.HeaderRefs.UpdateCurrencies then
         Settings.Refs.HeaderRefs.UpdateCurrencies(snap)
     end
-    if Settings.Refs.ChipApis then
-        for code, cApi in pairs(Settings.Refs.ChipApis) do
-            local used = (snap and snap.redeemedCodes and snap.redeemedCodes[code] == true)
-                or (Store.Session.redeemedCodes and Store.Session.redeemedCodes[code] == true)
-            cApi:Update({
-                label = used and ("[x] " .. code) or code,
-                variant = used and "secondary" or "primary",
-                disabled = used,
-            })
-        end
-    end
 end
 
 function Settings.Cleanup()
+    for _, conn in ipairs(Settings.InputConnections or {}) do
+        if conn and conn.Connected then
+            conn:Disconnect()
+        end
+    end
+    Settings.InputConnections = {}
     Settings.Refs = {}
 end
 

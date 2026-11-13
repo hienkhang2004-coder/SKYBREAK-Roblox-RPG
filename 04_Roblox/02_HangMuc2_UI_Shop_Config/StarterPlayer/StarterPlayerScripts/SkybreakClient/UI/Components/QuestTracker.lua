@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("SkybreakShared")
 local Theme = require(Shared:WaitForChild("Config"):WaitForChild("Theme"))
+local WorldConfig = require(Shared:WaitForChild("Config"):WaitForChild("WorldConfig"))
 
 local UIFactory = require(script.Parent.Parent:WaitForChild("UIFactory"))
 local I18n = require(script.Parent.Parent:WaitForChild("I18n"))
@@ -127,7 +128,7 @@ function QuestTracker.Create(parent, props)
     -- Quest Title Line (Champagne Gold bold)
     local questTitle = UIFactory.Label(card, {
         Name = "Name",
-        Text = "Q01 • Lời Gọi Skyborn",
+        Text = I18n.Pick("Q01 • Lời Gọi Skyborn", "Q01 • Call of the Skyborn"),
         Position = UDim2.fromOffset(12, 20),
         Size = UDim2.new(1, -24, 0, 20),
         TextSize = 13,
@@ -252,10 +253,10 @@ function QuestTracker.Create(parent, props)
 
         local q = questState.activeQuest or questState
         if not q or not q.name then
-            questTitle.Text = I18n.Pick("Chương I Hoàn Tất", "Chapter I Complete")
+            questTitle.Text = I18n.Pick("Hoàn Tất Cốt Truyện Q01–Q30", "Story Campaign Q01–Q30 Complete")
             objectivesLabel.Text = I18n.Pick(
-                "Đã thu hồi Core of Light. Tiến tới cổng Frozen Cyber [M].",
-                "Core of Light recovered. Proceed to Frozen Cyber [M]."
+                "Mở Nhật Ký [L] hoặc Bản Đồ [M] để chinh phục các đảo mới.",
+                "Open Journal [L] or Map [M] to explore new realms."
             )
             progFill.Size = UDim2.fromScale(1, 1)
             progText.Text = "DONE"
@@ -263,13 +264,22 @@ function QuestTracker.Create(parent, props)
             return
         end
 
-        questTitle.Text = (q.activeId and (q.activeId .. " • ") or "") .. tostring(q.name)
-        rewardText.Text = formatCompactGold(q.rewardGold or (q.rewards and q.rewards.gold) or 1200)
+        local cfgQ = (q.activeId and WorldConfig.QuestById and WorldConfig.QuestById[q.activeId]) or nil
+        local qLv = tonumber(q.level or (cfgQ and (cfgQ.LevelReq or cfgQ.Level))) or 1
+        local lvPrefix = qLv > 0 and string.format("[Lv.%d] ", qLv) or ""
+        local dispTitle = I18n.QuestTitle(cfgQ, q.name)
+        questTitle.Text = (q.activeId and (q.activeId .. " • ") or "") .. lvPrefix .. dispTitle
+        local resolvedGold = q.rewardGold
+            or (q.rewards and q.rewards.gold)
+            or (cfgQ and ((cfgQ.Rewards and cfgQ.Rewards.Gold) or cfgQ.Gold))
+            or 1200
+        rewardText.Text = formatCompactGold(resolvedGold)
 
         if q.accepted == false then
+            local giverName = (cfgQ and (cfgQ.Giver or cfgQ.NPC)) or I18n.Pick("NPC Chỉ Huy", "Commander")
             objectivesLabel.Text = I18n.Pick(
-                "Gặp Lyra tại Sky Hub để nhận nhiệm vụ này.",
-                "Speak with Lyra at the Sky Hub to accept this quest."
+                string.format("Gặp %s [E] hoặc bấm Theo Dõi trong [L] để nhận nhiệm vụ.", tostring(giverName)),
+                string.format("Speak with %s [E] or click Track in [L] to accept.", tostring(giverName))
             )
             progFill.Size = UDim2.fromScale(0, 1)
             progText.Text = "0 / 1"
@@ -278,29 +288,34 @@ function QuestTracker.Create(parent, props)
 
         local objs = q.objectives or {}
         if #objs > 0 then
-            local first = objs[1]
-            local cur = tonumber(first.current or first.Count) or 0
-            local tgt = math.max(1, tonumber(first.target or first.Goal) or 1)
-            local ratio = math.clamp(cur / tgt, 0, 1)
+            local sumCur, sumTgt = 0, 0
+            for _, obj in ipairs(objs) do
+                local c = tonumber(obj.current or obj.Count) or 0
+                local t = math.max(1, tonumber(obj.target or obj.Goal) or 1)
+                sumCur += math.min(c, t)
+                sumTgt += t
+            end
+            sumTgt = math.max(1, sumTgt)
+            local ratio = math.clamp(sumCur / sumTgt, 0, 1)
             progFill.Size = UDim2.fromScale(ratio, 1)
-            progText.Text = string.format("%d / %d", cur, tgt)
+            progText.Text = string.format("%d / %d", sumCur, sumTgt)
 
             local lines = {}
             for idx, obj in ipairs(objs) do
                 if idx <= 2 then
-                    local lbl = tostring(obj.label or obj.Label or "Objective")
-                    if idx == 1 then
+                    local lbl = I18n.QuestObjectiveLabel(cfgQ, obj, idx)
+                    local c2 = tonumber(obj.current or obj.Count) or 0
+                    local t2 = math.max(1, tonumber(obj.target or obj.Goal) or 1)
+                    if #objs == 1 then
                         table.insert(lines, lbl)
                     else
-                        local c2 = tonumber(obj.current or obj.Count) or 0
-                        local t2 = math.max(1, tonumber(obj.target or obj.Goal) or 1)
                         table.insert(lines, string.format("%s (%d/%d)", lbl, c2, t2))
                     end
                 end
             end
             objectivesLabel.Text = table.concat(lines, "\n")
         else
-            objectivesLabel.Text = tostring(q.text or "")
+            objectivesLabel.Text = I18n.QuestDesc(cfgQ, q.text)
             progFill.Size = UDim2.fromScale(0.5, 1)
             progText.Text = "1 / 1"
         end

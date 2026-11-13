@@ -7,6 +7,7 @@ local Theme = {}
 Theme.Colors = {
     -- Canonical Design Tokens (from SKYBREAK_PREMIUM_UI_UX_BUILD_GUIDE.md Section 02)
     BG_900 = Color3.fromRGB(8, 15, 29),          -- #080F1D Deepest Obsidian Background
+    BG_850 = Color3.fromRGB(11, 20, 36),         -- #0B1424 Elevated Obsidian Modal Surface
     BG_800 = Color3.fromRGB(14, 25, 43),         -- #0E192B Dark Glass Panel
     BG_700 = Color3.fromRGB(19, 35, 57),         -- #132339 Elevated / Hover Panel
     SURFACE_GLASS = Color3.fromRGB(25, 46, 71),  -- #192E47 Translucent Glass Surface
@@ -44,6 +45,7 @@ Theme.Colors = {
 Theme.Fonts = {
     Regular = Enum.Font.Gotham,
     Medium = Enum.Font.GothamMedium,
+    SemiBold = Enum.Font.GothamSemibold,
     Bold = Enum.Font.GothamBold,
     Heading = Enum.Font.GothamBold,
     Title = Enum.Font.GothamBold,

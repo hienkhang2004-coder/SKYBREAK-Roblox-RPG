@@ -10,6 +10,9 @@ local TweenService = game:GetService('TweenService')
 local Debris = game:GetService('Debris')
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local Expansion3D = require(ReplicatedStorage:WaitForChild('Shared'):WaitForChild('SkybreakExpansion3DAndVFX'))
+local ChoreoOk, CombatChoreo = pcall(function()
+	return require(ReplicatedStorage:WaitForChild('Shared'):WaitForChild('SkybreakCombatChoreography'))
+end)
 
 local M = {}
 
@@ -831,7 +834,7 @@ function M.StepCharacterWeapons(Renderer, s, now)
 	local torsoCF = getBoneWorldCF(s, s._EquipTorso, CFrame.new(0, 0.85, 0))
 	local torsoAligned = torsoCF * (s._TorsoModelBasis or CFrame.identity)
 
-	local isSwinging = (now < (s.Until or 0))
+	local isSwinging = (now < (s.Until or 0)) or (s._ChoreoActive == true)
 	local velMag = s.Root.AssemblyLinearVelocity.Magnitude
 	local trailActive = (activeSlot == 3) and (isSwinging or velMag > 14)
 
@@ -846,12 +849,12 @@ function M.StepCharacterWeapons(Renderer, s, now)
 	if activeSlot == 3 then
 		if rSword and rSword.Model then
 			setWeaponEntryVisible(rSword, true, trailActive, lowFX)
-			local gripCF = rHandCF * (s._RightSwordRot or CFrame.identity) * CFrame.new(0, -0.12 * scaleRatio, 0)
+			local gripCF = rHandCF * (s._RightSwordRot or CFrame.identity) * (s._ChoreoRightWepCF or CFrame.identity) * CFrame.new(0, -0.12 * scaleRatio, 0)
 			pivotWeaponEntry(rSword, gripCF, now)
 		end
 		if lSword and lSword.Model then
 			setWeaponEntryVisible(lSword, true, trailActive, lowFX)
-			local gripL = lHandCF * (s._LeftSwordRot or CFrame.identity) * CFrame.new(0, -0.12 * scaleRatio, 0)
+			local gripL = lHandCF * (s._LeftSwordRot or CFrame.identity) * (s._ChoreoLeftWepCF or CFrame.identity) * CFrame.new(0, -0.12 * scaleRatio, 0)
 			pivotWeaponEntry(lSword, gripL, now)
 		end
 		setWeaponEntryVisible(gunEntry, false, false, lowFX)
@@ -892,11 +895,11 @@ function M.StepCharacterWeapons(Renderer, s, now)
 			else
 				extraAlign = CFrame.identity
 			end
-			pivotWeaponEntry(gunEntry, rHandCF * gunRot * extraAlign, now)
+			pivotWeaponEntry(gunEntry, rHandCF * gunRot * extraAlign * (s._ChoreoRightWepCF or CFrame.identity), now)
 			if lGunEntry and lGunEntry.Model then
 				setWeaponEntryVisible(lGunEntry, true, false, lowFX)
 				local lGunRot = s._LeftGunRot or CFrame.identity
-				pivotWeaponEntry(lGunEntry, lHandCF * lGunRot * extraAlign, now)
+				pivotWeaponEntry(lGunEntry, lHandCF * lGunRot * extraAlign * (s._ChoreoLeftWepCF or CFrame.identity), now)
 			end
 		else
 			setWeaponEntryVisible(gunEntry, false, false, lowFX)
@@ -1358,22 +1361,6 @@ local HIDDEN_SERVER_PARTS = {
 	CrimsonCape = true,
 }
 
-local STUDIO_OUTFIT_PALETTES = {
-	{ Torso = Color3.fromRGB(26, 28, 36), Leg = Color3.fromRGB(20, 22, 28) },
-	{ Torso = Color3.fromRGB(28, 52, 96), Leg = Color3.fromRGB(20, 30, 52) },
-	{ Torso = Color3.fromRGB(88, 28, 38), Leg = Color3.fromRGB(28, 22, 28) },
-	{ Torso = Color3.fromRGB(24, 68, 58), Leg = Color3.fromRGB(18, 34, 32) },
-	{ Torso = Color3.fromRGB(58, 34, 86), Leg = Color3.fromRGB(26, 20, 38) },
-	{ Torso = Color3.fromRGB(76, 56, 28), Leg = Color3.fromRGB(32, 26, 20) },
-}
-
-local function colorDist(a, b)
-	if not a or not b then
-		return 1
-	end
-	return math.abs(a.R - b.R) + math.abs(a.G - b.G) + math.abs(a.B - b.B)
-end
-
 function M.EnsureStarterCharacterForm(ch)
 	if not ch or not ch.Parent then
 		return
@@ -1392,11 +1379,7 @@ function M.EnsureStarterCharacterForm(ch)
 		return
 	end
 
-	-- In unpublished local .rbxlx Studio (PlaceId == 0), Roblox assetdelivery returns HTTP 401 (customErrorCode 11)
-	-- for FileMesh DynamicHeads (e.g. 11163789916 -> 109475967782707) and classic Shirt/Pants textures,
-	-- which makes FileMesh/MeshPart Head invisible and triggers the purple Roblox-logo Modesty Layer on skin-colored torsos.
 	if game.PlaceId == 0 then
-		local plr = Players:GetPlayerFromCharacter(ch)
 		local head = ch:FindFirstChild('Head')
 		if head and head:IsA('BasePart') then
 			local sm = head:FindFirstChildOfClass('SpecialMesh')
@@ -1443,49 +1426,16 @@ function M.EnsureStarterCharacterForm(ch)
 				face.Face = Enum.NormalId.Front
 				face.Texture = 'rbxasset://textures/face.png'
 				face.Parent = faceTarget
-			elseif face.Texture == '' or face.Texture:find('rbxassetid://') or face.Texture:find('roblox.com/asset') then
+			elseif face.Texture == '' then
 				face.Texture = 'rbxasset://textures/face.png'
 			end
 			face.Transparency = 0
 		end
-		for _, inst in ipairs(ch:GetChildren()) do
-			if inst:IsA('Shirt') or inst:IsA('Pants') then
-				inst:Destroy()
-			end
-		end
-		local bc = ch:FindFirstChildOfClass('BodyColors')
-		if bc then
-			local uid = plr and tonumber(plr.UserId) or 0
-			local palIdx = (uid == 2701044645 or uid == 0) and 1 or ((math.abs(uid) % #STUDIO_OUTFIT_PALETTES) + 1)
-			local pal = STUDIO_OUTFIT_PALETTES[palIdx] or STUDIO_OUTFIT_PALETTES[1]
-			local headCol = (head and head.Color) or bc.HeadColor3
-			if colorDist(bc.TorsoColor3, headCol) < 0.18 then
-				bc.TorsoColor3 = pal.Torso
-			end
-			if colorDist(bc.LeftLegColor3, headCol) < 0.18 then
-				bc.LeftLegColor3 = pal.Leg
-			end
-			if colorDist(bc.RightLegColor3, headCol) < 0.18 then
-				bc.RightLegColor3 = pal.Leg
-			end
-			for _, tName in ipairs({ 'UpperTorso', 'Torso' }) do
-				local tp = ch:FindFirstChild(tName)
-				if tp and tp:IsA('BasePart') and colorDist(tp.Color, headCol) < 0.18 then
-					tp.Color = bc.TorsoColor3
-				end
-			end
-			for _, lName in ipairs({ 'LowerTorso', 'LeftUpperLeg', 'RightUpperLeg', 'LeftLowerLeg', 'RightLowerLeg', 'LeftFoot', 'RightFoot', 'Left Leg', 'Right Leg' }) do
-				local lp = ch:FindFirstChild(lName)
-				if lp and lp:IsA('BasePart') and colorDist(lp.Color, headCol) < 0.18 then
-					lp.Color = bc.LeftLegColor3
-				end
-			end
-		end
 	end
 
 	-- Preserve 100% of the player's real outside Roblox Avatar (Body, Head, Face, Hair, Hats, Accessories, 2D/3D Clothes)
-	-- while overriding CosmeticService.Guardian's server-side Transparency = 1 hiding.
-	-- Khi người chơi đang zoom sát, LocalTransparencyModifier do camera của Roblox quản lý.
+	-- while overriding CosmeticService.Guardian's server-side Transparency = 1 hiding (Rule 4).
+	-- Khi người chơi đang zoom sát, LocalTransparencyModifier do camera quản lý.
 	local ownerPlayer = Players.LocalPlayer
 	local keepCameraFade = ownerPlayer ~= nil and ownerPlayer.Character == ch and ownerPlayer:GetAttribute('SkybreakFirstPerson') == true
 	for _, desc in ipairs(ch:GetDescendants()) do
@@ -1499,7 +1449,7 @@ function M.EnsureStarterCharacterForm(ch)
 					if desc.Transparency ~= 0 then
 						desc.Transparency = 0
 					end
-					if desc.LocalTransparencyModifier ~= 0 and not keepCameraFade then
+					if desc.LocalTransparencyModifier ~= 0 and not keepCameraFade and not desc:GetAttribute('SkybreakHiddenBackAcc') then
 						desc.LocalTransparencyModifier = 0
 					end
 					if not desc:GetAttribute('SkybreakVisGuard') then
@@ -1838,6 +1788,9 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
 		s.Name = 'Dash'
 		s.Start = now
 		s.Until = now + math.max(0.38, tonumber(ch:GetAttribute('DashDuration')) or 0.42)
+		if ChoreoOk and CombatChoreo then
+			CombatChoreo.CancelCharacter(ch)
+		end
 	end
 
 	local lastAirJump = tonumber(ch:GetAttribute('LastAirJumpAt')) or 0
@@ -1911,8 +1864,25 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
 		LeftAnkle = CFrame.identity,
 	}
 
-	local inAction = now < (s.Until or 0)
-	if inAction then
+	local choreoTargets, choreoRWep, choreoLWep, choreoBlend, choreoLockLegs
+	if not isBeastNow and ChoreoOk and CombatChoreo then
+		choreoTargets, choreoRWep, choreoLWep, choreoBlend, choreoLockLegs =
+			CombatChoreo.StepCharacter(s, ch, stepDt, now, flightActive, isBeastNow)
+	end
+	local inAction = (choreoTargets ~= nil) or (now < (s.Until or 0))
+	if choreoTargets then
+		s._ChoreoActive = true
+		s._ChoreoRightWepCF = choreoRWep
+		s._ChoreoLeftWepCF = choreoLWep
+		for role, cfVal in pairs(choreoTargets) do
+			targets[role] = cfVal
+		end
+	else
+		s._ChoreoActive = false
+		s._ChoreoRightWepCF = nil
+		s._ChoreoLeftWepCF = nil
+	end
+	if not choreoTargets and inAction then
 		local dur = math.max(0.16, (s.Until or now) - (s.Start or now))
 		local p = math.clamp((now - (s.Start or now)) / dur, 0, 1)
 		local env = math.sin(p * math.pi)
@@ -2269,18 +2239,33 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
 		targets.Neck = targets.Neck * CFrame.fromEulerAnglesYXZ((s.HeadLookPitch or 0) * 0.65, (s.HeadLookYaw or 0) * 0.75, 0)
 	end
 
-	local blendSpeed = inAction and 24 or 15
+	local blendSpeed = choreoBlend or (inAction and 24 or 15)
 	local alpha = 1 - math.exp(-blendSpeed * stepDt)
 	-- Trong so lop procedural: 1 khi dang danh/skill/dash/bay, ve 0 de Animator (locomotion) hien thi.
 	local procActive = inAction or s.Name == 'Fly'
 	local wGoal = procActive and 1 or 0
-	local wRate = procActive and 18 or 7
+	local wRate = choreoTargets and 38 or (procActive and 18 or 7)
 	s.ProcWeight = (s.ProcWeight or 0) + (wGoal - (s.ProcWeight or 0)) * math.min(1, stepDt * wRate)
 	if not procActive and s.ProcWeight < 0.01 then
 		s.ProcWeight = 0
 	end
-	local hasAnimator = s.H:FindFirstChildOfClass('Animator') ~= nil
-	local legsFromLoco = hasAnimator and hSpeed > 1.2 and not airborne and s.Name ~= 'Dash'
+	local animator = s.LocoAnimator or s.H:FindFirstChildOfClass('Animator')
+	local hasActiveLoco = false
+	if animator and animator.Parent then
+		if s.LocoTracks and s.LocoCurrent then
+			local curTr = s.LocoTracks[s.LocoCurrent]
+			hasActiveLoco = curTr ~= nil and curTr.IsPlaying and curTr.Length > 0
+		end
+		if not hasActiveLoco then
+			for _, tr in ipairs(animator:GetPlayingAnimationTracks()) do
+				if tr.IsPlaying and tr.Length > 0 then
+					hasActiveLoco = true
+					break
+				end
+			end
+		end
+	end
+	local legsFromLoco = hasActiveLoco and hSpeed > 1.2 and not airborne and s.Name ~= 'Dash' and not choreoLockLegs
 	for role, entry in pairs(joints) do
 		local j = entry.Joint
 		if j and j.Parent then
@@ -2290,7 +2275,7 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
 			s.NativeJointOffsets[role] = nextOff
 			local baseC0 = (entry.RigAtt0 and entry.RigAtt0.Parent and entry.RigAtt0.CFrame) or entry.BaseC0
 			local poseC0 = CFrame.new(baseC0.Position + nextOff.Position) * nextOff.Rotation * baseC0.Rotation
-			local w = hasAnimator and s.ProcWeight or 1
+			local w = hasActiveLoco and s.ProcWeight or 1
 			if legsFromLoco and LOCO_LEG_ROLES[role] then
 				-- Dang chay ma danh: giu nhip chan cua animation chay, chi hoa nhe tu the tan cong
 				w = w * 0.3
@@ -2300,8 +2285,13 @@ function M.StepStarterCharacterAnimation(Renderer, s, dt, now, restoreVisFn)
 				local procT = baseC0:Inverse() * poseC0
 				if w >= 0.999 then
 					j.Transform = procT
+					entry.HadProc = true
 				elseif w > 0.001 then
 					j.Transform = j.Transform:Lerp(procT, w)
+					entry.HadProc = true
+				elseif entry.HadProc then
+					entry.HadProc = false
+					j.Transform = CFrame.identity
 				end
 			else
 				if w >= 0.999 then
@@ -2618,7 +2608,19 @@ function M.BuildCharacterAccessories(s, rawKey)
 	if s.AccessoryFX and s.AccessoryFX.HiddenBackAccessories then
 		for _, h in ipairs(s.AccessoryFX.HiddenBackAccessories) do
 			if h.Parent then
+				h:SetAttribute('SkybreakHiddenBackAcc', nil)
 				h.LocalTransparencyModifier = 0
+			end
+		end
+	end
+	if s.Character then
+		for _, acc in ipairs(s.Character:GetChildren()) do
+			if acc:IsA('Accessory') then
+				local h = acc:FindFirstChild('Handle')
+				if h and h:IsA('BasePart') and h:GetAttribute('SkybreakHiddenBackAcc') then
+					h:SetAttribute('SkybreakHiddenBackAcc', nil)
+					h.LocalTransparencyModifier = 0
+				end
 			end
 		end
 	end
@@ -3166,8 +3168,13 @@ function M.StepCharacterAccessories(s, now, capeWind)
 	end
 	if fx.HiddenBackAccessories then
 		for _, h in ipairs(fx.HiddenBackAccessories) do
-			if h.Parent and h.LocalTransparencyModifier < 1 then
-				h.LocalTransparencyModifier = 1
+			if h.Parent then
+				if not h:GetAttribute('SkybreakHiddenBackAcc') then
+					h:SetAttribute('SkybreakHiddenBackAcc', true)
+				end
+				if h.LocalTransparencyModifier < 1 then
+					h.LocalTransparencyModifier = 1
+				end
 			end
 		end
 	end

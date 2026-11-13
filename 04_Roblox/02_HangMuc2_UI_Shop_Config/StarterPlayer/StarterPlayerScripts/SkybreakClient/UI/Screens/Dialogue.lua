@@ -22,9 +22,35 @@ local QuestController = require(script.Parent.Parent:WaitForChild("Controllers")
 
 local Dialogue = {}
 
-function Dialogue.DispatchActionCommand(cmd)
-    if type(cmd) ~= "string" or #cmd == 0 then
+local function getUIRequestRemote()
+    local sharedRemotes = Shared:FindFirstChild("Remotes")
+    if sharedRemotes then
+        local r = sharedRemotes:FindFirstChild("UIRequest") or sharedRemotes:FindFirstChild("UICommand")
+        if r then
+            return r
+        end
+    end
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if remotes then
+        return remotes:FindFirstChild("UIRequest") or remotes:FindFirstChild("UICommand")
+    end
+    return nil
+end
+
+local function formatChoiceLabel(rawLabel, badgeKey)
+    local clean = tostring(rawLabel or ""):gsub("^%s*%[[1-4]%]%s*", ""):gsub("^%s*%[[ZXC]%]%s*", "")
+    if badgeKey and #badgeKey > 0 and not clean:find("^%[ESC%]") then
+        return "[" .. badgeKey .. "] " .. clean
+    end
+    return clean
+end
+
+function Dialogue.DispatchActionCommand(cmd, payload)
+    if type(cmd) ~= "string" or #cmd == 0 or cmd == "Close" then
         return
+    end
+    if payload == nil and Store.View and Store.View.dialogue then
+        payload = Store.View.dialogue.actionPayload
     end
     if cmd:sub(1, 19) == "OpenScreen:NPCShop:" then
         local mode = cmd:sub(20)
@@ -43,6 +69,33 @@ function Dialogue.DispatchActionCommand(cmd)
         else
             ScreenRouter.Navigate(targetScreen)
         end
+    elseif cmd == "ConfirmNPCAction" or cmd:sub(1, 17) == "ConfirmNPCAction:" then
+        local sendPayload = {}
+        if type(payload) == "table" then
+            for k, v in pairs(payload) do
+                sendPayload[k] = v
+            end
+        end
+        if cmd:sub(1, 17) == "ConfirmNPCAction:" then
+            local sub = cmd:sub(18)
+            if sub == "Close" or sub == "" then
+                return
+            end
+            sendPayload.subAction = sendPayload.subAction or sub
+            sendPayload.action = sendPayload.action or sub
+        end
+        if tostring(sendPayload.subAction or sendPayload.action or "") == "Close" then
+            return
+        end
+        local rem = getUIRequestRemote()
+        if rem then
+            rem:FireServer("ConfirmNPCAction", sendPayload)
+        end
+    else
+        local rem = getUIRequestRemote()
+        if rem then
+            rem:FireServer(cmd, type(payload) == "table" and payload or {})
+        end
     end
 end
 
@@ -50,6 +103,8 @@ end
 local SPEAKER_PRESETS = {
     zioles = {
         Short = "HIỀN GIẢ",
+        ShortEn = "SAGE",
+        TitleEn = "AETHER SAGE • GRAND CORE ORACLE",
         V5 = "ZiolesGachaNPC",
         Accent = Color3.fromRGB(204, 108, 255),
         Archetype = "mage_hood",
@@ -57,39 +112,43 @@ local SPEAKER_PRESETS = {
         RoleEn = "GACHA SHRINE • SKY HUB",
         C1Vi = "[1] MỞ ĐÀI TRIỆU HỒI GACHA",
         C1En = "[1] OPEN GACHA SHRINE",
-        C1Cmd = "OpenScreen:Fruits",
+        C1Cmd = "OpenScreen:Fruits:Gacha",
         C1Icon = "Star",
-        C2Vi = "[2] XEM KHO LÕI & THỨC TỈNH [G]",
-        C2En = "[2] CORE VAULT & AWAKEN [G]",
+        C2Vi = "[2] KỆ LÕI HƯ QUANG 1 GIỜ",
+        C2En = "[2] 1H PHANTOM CORE STOCK",
         C2Cmd = "OpenScreen:NPCShop:MirageDealer",
         C2Icon = "Fruit",
         C3Vi = "[3] TỶ LỆ RƠI & BẢO HIỂM PITY",
         C3En = "[3] DROP RATES & PITY INFO",
-        LoreVi = "\"Tỷ lệ minh bạch 6 phẩm cấp: Common 42% • Uncommon 25% • Rare 18% • Epic 9% • Legendary 4.5% • Mythic 1.5%! Đủ 50 lượt kích hoạt Bảo Hiểm Pity chắc chắn nhận Lõi Huyền Thoại hoặc Thần Thoại 3D!\"",
-        LoreEn = "\"Transparent 6-tier odds: Common 42% • Uncommon 25% • Rare 18% • Epic 9% • Legendary 4.5% • Mythic 1.5%! At 50 rolls, Mythic Pity guarantees a Legendary or Mythic 3D Core!\"",
+        LoreVi = "\"Tỷ lệ minh bạch 6 phẩm cấp: Common 32% • Uncommon 29% • Rare 18% • Epic 12% • Legendary 6.6% • Mythic 2.4%! Đủ 50 lượt kích hoạt Bảo Hiểm Pity chắc chắn nhận Lõi Thần Thoại 3D (Kim Thân, Tinh Lưu hoặc Long Đế)!\"",
+        LoreEn = "\"Transparent 6-tier odds: Common 32% • Uncommon 29% • Rare 18% • Epic 12% • Legendary 6.6% • Mythic 2.4%! At 50 rolls, Mythic Pity guarantees a Mythic 3D Core (Solar Titan, Aetherflow, or Abyssal Sovereign)!\"",
     },
     mirage = {
         Short = "HƯ QUANG",
+        ShortEn = "PHANTOM",
+        TitleEn = "PHANTOM CORE DEALER • ROTATING STOCK",
         V5 = "ZiolesGachaNPC",
         Accent = Color3.fromRGB(252, 211, 77),
         Archetype = "mage_hood",
-        RoleVi = "KHO LÕI 2 GIỜ • ĐẢO HƯ QUANG",
-        RoleEn = "2H ROTATING STOCK • PHANTOM ISLE",
-        C1Vi = "[1] MỞ KỆ LÕI HƯ QUANG 2 GIỜ",
-        C1En = "[1] OPEN 2H PHANTOM STOCK",
+        RoleVi = "KHO LÕI 1 GIỜ • ĐẢO HƯ QUANG",
+        RoleEn = "1H ROTATING STOCK • PHANTOM ISLE",
+        C1Vi = "[1] MỞ KỆ LÕI HƯ QUANG 1 GIỜ",
+        C1En = "[1] OPEN 1H PHANTOM STOCK",
         C1Cmd = "OpenScreen:NPCShop:MirageDealer",
         C1Icon = "Gold",
-        C2Vi = "[2] ĐÀI GACHA HIỀN GIẢ AETHER [G]",
-        C2En = "[2] AETHER ORACLE GACHA [G]",
-        C2Cmd = "OpenScreen:Fruits",
+        C2Vi = "[2] KHO LÕI CÁ NHÂN [G]",
+        C2En = "[2] PERSONAL CORE VAULT [G]",
+        C2Cmd = "OpenScreen:Fruits:Vault",
         C2Icon = "Fruit",
         C3Vi = "[3] CƠ CHẾ ĐẢO HƯ QUANG",
         C3En = "[3] PHANTOM ISLE LORE",
-        LoreVi = "\"Kệ hàng của ta làm mới mỗi 2 giờ trên toàn máy chủ! Nếu bắt gặp ta trên Đảo Hư Quang (tồn tại 15 phút), tỷ lệ xuất hiện Lõi Thần Thoại Kim Thân & Hắc Long tăng gấp 3 lần!\"",
-        LoreEn = "\"My core shelves refresh every 2 hours! Find me on Phantom Isle during its 15-minute window for 3x Mythic stock odds!\"",
+        LoreVi = "\"Kệ hàng của ta làm mới mỗi 1 giờ trên toàn máy chủ! Nếu bắt gặp ta trên Đảo Hư Quang (tồn tại 15 phút), tỷ lệ xuất hiện Lõi Thần Thoại Kim Thân & Hắc Long tăng gấp 3 lần!\"",
+        LoreEn = "\"My core shelves refresh every 1 hour! Find me on Phantom Isle during its 15-minute window for 3x Mythic stock odds!\"",
     },
     sword = {
         Short = "KIẾM SƯ",
+        ShortEn = "BLADES",
+        TitleEn = "MASTER RYU • CELESTIAL BLADESMITH",
         V5 = "GoldenKnight",
         Accent = Color3.fromRGB(252, 211, 77),
         Archetype = "samurai_kabuto",
@@ -99,10 +158,10 @@ local SPEAKER_PRESETS = {
         C1En = "[1] 3D MASTER SWORD SHOP",
         C1Cmd = "OpenScreen:NPCShop:SwordDealer",
         C1Icon = "Sword",
-        C2Vi = "[2] LÒ RÈN THẦN KHÍ KAEL",
-        C2En = "[2] CELESTIAL FORGE",
-        C2Cmd = "OpenScreen:Forge",
-        C2Icon = "Forge",
+        C2Vi = "[2] MỞ HÀNH TRANG 3D [I]",
+        C2En = "[2] 3D INVENTORY [I]",
+        C2Cmd = "OpenScreen:Inventory",
+        C2Icon = "Bag",
         C3Vi = "[3] BÍ KÍP SONG KIẾM NGUYỆT THỰC",
         C3En = "[3] ECLIPSE TWINBLADES LORE",
         LoreVi = "\"Mỗi thanh Danh Kiếm 3D sở hữu 2 tuyệt kỹ [Z] và [X] riêng biệt! Đạt Thông Thạo Lv.350 trên Song Đao Stormfang và Yêu Đao Yamo để rèn mở khóa Song Kiếm Nguyệt Thực!\"",
@@ -110,6 +169,8 @@ local SPEAKER_PRESETS = {
     },
     gun = {
         Short = "XẠ THỦ",
+        ShortEn = "ARMORY",
+        TitleEn = "ARCANE MARKSMAN • GUNS & RELIC ARMOR",
         V5 = "LightArcher",
         Accent = Color3.fromRGB(56, 189, 248),
         Archetype = "tactical_goggles",
@@ -130,6 +191,8 @@ local SPEAKER_PRESETS = {
     },
     monk = {
         Short = "ĐẠI SƯ",
+        ShortEn = "MASTER",
+        TitleEn = "ANCIENT GRANDMASTER • MARTIAL SANCTUM",
         V5 = "AncientMonkNPC",
         Accent = Color3.fromRGB(52, 211, 153),
         Archetype = "monk_halo",
@@ -145,11 +208,13 @@ local SPEAKER_PRESETS = {
         C2Icon = "Bolt",
         C3Vi = "[3] ĐIỀU KIỆN ASCENDANT",
         C3En = "[3] ASCENDANT REQUIREMENTS",
-        LoreVi = "\"Tu luyện thông thạo 4 hệ quyền pháp cơ bản lên Lv.400 để lĩnh hội Thiên Thần Tuyệt Kỹ Godhuman và Chưởng Pháp Thời Không Hư Không Lv.2450!\"",
-        LoreEn = "\"Master the foundational martial styles to Lv.400 to awaken Celestial Godhuman and Chrono Void Palm!\"",
+        LoreVi = "\"Tu luyện thông thạo 4 hệ quyền pháp cơ bản lên Lv.400 để lĩnh hội Thiên Cực Thần Quyền và Chưởng Pháp Thời Không Hư Không Lv.2450!\"",
+        LoreEn = "\"Master the foundational martial styles to Lv.400 to awaken Celestial Sovereign Fist and Chrono Void Palm!\"",
     },
     enchant = {
         Short = "PHÙ PHÉP",
+        ShortEn = "RUNES",
+        TitleEn = "ARCANE ENCHANTER • RUNE INSCRIBER",
         V5 = "ZiolesGachaNPC",
         Accent = Color3.fromRGB(192, 132, 252),
         Archetype = "rune_hood",
@@ -159,17 +224,19 @@ local SPEAKER_PRESETS = {
         C1En = "[1] INSCRIBE WEAPON RUNES",
         C1Cmd = "OpenScreen:NPCShop:EnchanterAndChronos",
         C1Icon = "CoreShards",
-        C2Vi = "[2] LÒ RÈN NÂNG CẤP SAO",
-        C2En = "[2] STAR UPGRADE FORGE",
-        C2Cmd = "OpenScreen:Forge",
-        C2Icon = "Forge",
+        C2Vi = "[2] MỞ HÀNH TRANG 3D [I]",
+        C2En = "[2] 3D INVENTORY [I]",
+        C2Cmd = "OpenScreen:Inventory",
+        C2Icon = "Bag",
         C3Vi = "[3] 5 DÒNG PHÙ PHÉP THẦN",
         C3En = "[3] MYTHIC BLESSING ODDS",
-        LoreVi = "\"Dùng Cuộn Cổ Ngữ hoặc Core Shards để khắc 5 dòng phù phép Huyền Thoại: Hút Máu Vampiric, Giảm Hồi Chiêu ChronoHaste, Lôi Điện ChainVolt, Bạo Kích SolarCrit và Kỳ Điểm Veyr!\"",
-        LoreEn = "\"Use Enchant Scrolls or Core Shards to roll Vampiric, ChronoHaste, ChainVolt, SolarCrit, or Mythic Veyr Singularity!\"",
+        LoreVi = "\"Dùng Cuộn Cổ Ngữ hoặc Core Shards để khắc 5 dòng phù phép (20% mỗi dòng, khắc lại 25% không trùng): Hút Máu Vampiric, Gia Tốc ChronoHaste, Lôi Điện ChainVolt, Nhật Bạo SolarCrit và Phá Giáp ArmorBreaker!\"",
+        LoreEn = "\"Use Enchant Scrolls or Core Shards to roll 5 Weapon Runes (20% each, 25% non-duplicate reroll): Vampiric, ChronoHaste, ChainVolt, SolarCrit, and ArmorBreaker!\"",
     },
     chronos = {
         Short = "CHRONOS",
+        ShortEn = "CHRONOS",
+        TitleEn = "CHRONOS • VOID CONTRABAND BROKER",
         V5 = "ZiolesGachaNPC",
         Accent = Color3.fromRGB(168, 85, 247),
         Archetype = "void_horns",
@@ -190,6 +257,8 @@ local SPEAKER_PRESETS = {
     },
     shipwright = {
         Short = "ĐÓNG TÀU",
+        ShortEn = "DOCKS",
+        TitleEn = "MASTER SHIPWRIGHT • SKY FLEET DOCKYARD",
         V5 = "ShipwrightNPC",
         Accent = Color3.fromRGB(56, 189, 248),
         Archetype = "captain_tricorn",
@@ -209,27 +278,31 @@ local SPEAKER_PRESETS = {
         LoreEn = "\"The Abyss Serpent Hunter Dreadnought mounts an Abyssal Harpoon to haul the Abyss Serpent Heart back to port!\"",
     },
     vega = {
-        Short = "DR. VEGA",
+        Short = "HỌC GIẢ AETHER",
+        ShortEn = "SCHOLAR",
+        TitleEn = "DR. VEGA • LINEAGE & RAID SCIENTIST",
         V5 = "ShipwrightNPC",
         Accent = Color3.fromRGB(45, 212, 191),
         Archetype = "scientist_visor",
-        RoleVi = "PHÒNG THÍ NGHIỆM TỘC & RAID V2",
-        RoleEn = "RACE LAB & RAID V2",
-        C1Vi = "[1] ĐỔI 6 TỘC & ĐỀN THĂNG HOA",
-        C1En = "[1] 6-RACE LAB & ASCENSION ALTAR",
+        RoleVi = "VIỆN NGHIÊN CỨU HUYẾT THỐNG & LÕI",
+        RoleEn = "LINEAGE & AETHER CORE LAB",
+        C1Vi = "[1] ĐỔI 6 HUYẾT THỐNG & ĐỀN THĂNG HOA",
+        C1En = "[1] 6-LINEAGE LAB & ASCENSION ALTAR",
         C1Cmd = "OpenScreen:NPCShop:DrVegaAndTempleV4",
         C1Icon = "Wing",
-        C2Vi = "[2] ĐỘT KÍCH RAID LÕI V2 [P]",
-        C2En = "[2] AWAKENED CORE RAID V2 [P]",
+        C2Vi = "[2] PHÒNG ĐỘT KÍCH RAID LÕI V2",
+        C2En = "[2] AWAKENED CORE RAID LAB",
         C2Cmd = "OpenScreen:Raid",
         C2Icon = "Raid",
         C3Vi = "[3] TỶ LỆ 6 HUYẾT THỐNG",
         C3En = "[3] 6 LINEAGE REROLL ODDS",
-        LoreVi = "\"Tỷ lệ tái cấu trúc 6 Huyết Thống: Skyborn 25% • Mink 25% • Thủy Xà Vực Thẳm 20% • Cyborg 12% • Ghoul 12% • Cổ Long Draco 6%! Vượt 5 đảo Raid V2 nhận +1,000 Core Shards!\"",
-        LoreEn = "\"Lineage odds: Skyborn 25% • Mink 25% • Abyss Serpent 20% • Cyborg 12% • Ghoul 12% • Ancient Draco 6%!\"",
+        LoreVi = "\"Tỷ lệ tái cấu trúc 6 Huyết Thống: Skyborn 25% • Tộc Linh Vũ (Azurefang) 25% • Tộc Hải Vương (Tideborn) 20% • Cyborg 12% • Tộc Dạ Ảnh (Umbral) 12% • Cổ Long Draco 6%! Vượt 5 đảo Raid nhận +1,000 Core Shards!\"",
+        LoreEn = "\"Lineage odds: Skyborn 25% • Azurefang 25% • Tideborn 20% • Cyborg 12% • Umbral 12% • Ancient Draco 6%!\"",
     },
     temple = {
         Short = "THĂNG HOA",
+        ShortEn = "ASCENSION",
+        TitleEn = "ASCENSION KEEPER • TEMPLE OF THE CORE",
         V5 = "AncientMonkNPC",
         Accent = Color3.fromRGB(251, 191, 36),
         Archetype = "temple_crown",
@@ -241,7 +314,7 @@ local SPEAKER_PRESETS = {
         C1Icon = "Wing",
         C2Vi = "[2] KÍCH HOẠT THĂNG HOA [G]",
         C2En = "[2] ACTIVATE ASCENSION [G]",
-        C2Cmd = "OpenScreen:Fruits",
+        C2Cmd = "OpenScreen:Fruits:Vault",
         C2Icon = "Bolt",
         C3Vi = "[3] 4 BƯỚC CẦN GẠT CỔ ĐẠI",
         C3En = "[3] 4 ANCIENT LEVER STEPS",
@@ -250,6 +323,8 @@ local SPEAKER_PRESETS = {
     },
     collector = {
         Short = "SƯU TẬP",
+        ShortEn = "COLLECTOR",
+        TitleEn = "GRAND COLLECTOR • 4X4 CORE EXCHANGE",
         V5 = "LightArcher",
         Accent = Color3.fromRGB(245, 158, 11),
         Archetype = "collector_tophat",
@@ -261,15 +336,17 @@ local SPEAKER_PRESETS = {
         C1Icon = "Trade",
         C2Vi = "[2] KHO LÕI VĨNH VIỄN [G]",
         C2En = "[2] STORED CORES [G]",
-        C2Cmd = "OpenScreen:Fruits",
+        C2Cmd = "OpenScreen:Fruits:Vault",
         C2Icon = "Fruit",
         C3Vi = "[3] LUẬT CHỐNG LỪA ĐẢO 40%",
         C3En = "[3] 40% ANTI-SCAM RULE",
-        LoreVi = "\"Bàn Giao Dịch 4 ô tự động khóa nếu chênh lệch giá trị vượt quá 40%! Đặc biệt khi chơi đơn (Solo), ta sẵn sàng trao đổi trực tiếp 4 Khế Ước Lõi Thần Thoại công bằng!\"",
-        LoreEn = "\"Our 4x4 Anti-Scam Scale locks trades above 40% value gap, and offers fair Solo Mythic Collector Pacts!\"",
+        LoreVi = "\"Bàn Giao Dịch 4 ô tự động khóa nếu chênh lệch giá trị vượt quá 40%! Giao dịch P2P yêu cầu Lv.700+ tại Trạm Giao Thương Cyberport Cafe!\"",
+        LoreEn = "\"Our 4x4 Anti-Scam Scale locks trades above a 40% value gap! Player-to-player Core trading unlocks at Lv.700+ inside Cyberport Cafe!\"",
     },
     warden = {
         Short = "QUẢN ĐẤU",
+        ShortEn = "WARDEN",
+        TitleEn = "ARENA WARDEN • COLOSSEUM & 50F SPIRE",
         V5 = "GoldenKnight",
         Accent = Color3.fromRGB(251, 113, 133),
         Archetype = "valkyrie_crest",
@@ -279,17 +356,19 @@ local SPEAKER_PRESETS = {
         C1En = "[1] 1V1 ARENA & 50F SPIRE",
         C1Cmd = "OpenScreen:NPCShop:ColosseumAndSpire",
         C1Icon = "Trophy",
-        C2Vi = "[2] BẢNG XẾP HẠNG BOUNTY [B]",
-        C2En = "[2] TOP BOUNTY BOARD [B]",
+        C2Vi = "[2] BẢNG XẾP HẠNG DANH VỌNG [B]",
+        C2En = "[2] TOP RENOWN BOARD [B]",
         C2Cmd = "OpenScreen:SocialRewards",
         C2Icon = "Crown",
         C3Vi = "[3] PHẦN THƯỞNG TẦNG 50",
         C3En = "[3] FLOOR 50 REWARDS",
-        LoreVi = "\"Luận võ 1v1 công bằng không mất Bounty, tự hồi 100% HP! Chinh phục đỉnh Tháp Vô Tận tầng 50 nhận Danh Hiệu [Bá Chủ Tháp Trời], Lõi Nguyên Thủy Veyr và 1,000 Shards!\"",
-        LoreEn = "\"Duel fairly in 1v1 Colosseum with zero Bounty loss, or climb all 50 Sky Spire floors for Mythic Veyr Relics!\"",
+        LoreVi = "\"Luận võ 1v1 công bằng không mất Điểm Danh Vọng, tự hồi 100% HP! Chinh phục đỉnh Tháp Vô Tận tầng 50 nhận Danh Hiệu [Bá Chủ Tháp Trời], Lõi Nguyên Thủy Veyr và 1,000 Shards!\"",
+        LoreEn = "\"Duel fairly in 1v1 Colosseum with zero Renown loss, or climb all 50 Sky Spire floors for Mythic Veyr Relics!\"",
     },
     kael = {
         Short = "THỢ RÈN KAEL",
+        ShortEn = "SMITH KAEL",
+        TitleEn = "MASTER KAEL • CELESTIAL FORGESMITH",
         V5 = "GoldenKnight",
         Accent = Color3.fromRGB(251, 191, 36),
         Archetype = "smith_pauldrons",
@@ -299,17 +378,19 @@ local SPEAKER_PRESETS = {
         C1En = "[1] OPEN CELESTIAL FORGE",
         C1Cmd = "OpenScreen:Forge",
         C1Icon = "Forge",
-        C2Vi = "[2] KHẮC PHÙ PHÉP CỔ NGỮ",
-        C2En = "[2] ARCANE ENCHANTER",
-        C2Cmd = "OpenScreen:NPCShop:EnchanterAndChronos",
-        C2Icon = "CoreShards",
-        C3Vi = "[3] BÍ QUYẾT CƯỜNG HÓA +5 SAO",
-        C3En = "[3] 5-STAR FORGE TIPS",
-        LoreVi = "\"Thu thập Mảnh Lõi Aether và nguyên liệu Boss để cường hóa Thần Khí lên 5 Sao Hoàng Kim, mở khóa chỉ số cộng thêm vượt giới hạn và hào quang rực sáng!\"",
-        LoreEn = "\"Gather Boss materials and Core Shards to ascend your weapons and armor to 5 Golden Stars!\"",
+        C2Vi = "[2] MỞ HÀNH TRANG 3D [I]",
+        C2En = "[2] 3D INVENTORY [I]",
+        C2Cmd = "OpenScreen:Inventory",
+        C2Icon = "Bag",
+        C3Vi = "[3] BÍ QUYẾT CƯỜNG HÓA +15",
+        C3En = "[3] +15 FORGE ENHANCE TIPS",
+        LoreVi = "\"Thu thập Vàng, Mảnh Lõi Aether và nguyên liệu Boss để rèn Thần Khí và cường hóa tới +15, mở khóa chỉ số cộng thêm vượt giới hạn và hào quang rực sáng!\"",
+        LoreEn = "\"Gather Gold, Core Shards, and Boss materials to forge Mythic relics and enhance weapons up to +15!\"",
     },
     lyra = {
         Short = "CHỈ HUY LYRA",
+        ShortEn = "CMDR LYRA",
+        TitleEn = "COMMANDER LYRA • LOREKEEPER OF THE CORE",
         V5 = "LightArcher",
         Accent = Color3.fromRGB(252, 211, 77),
         Archetype = "halo_crown",
@@ -576,7 +657,7 @@ function Dialogue.CreateOverlay(parent)
         visible = false,
         zIndex = 30,
     })
-    UIFactory.SizeConstraint(card, Vector2.new(580, 214), Vector2.new(980, 214))
+    UIFactory.SizeConstraint(card, Vector2.new(340, 214), Vector2.new(980, 214))
 
     -- Left (14, 16, 136 x 178): Framed Live 3D NPC Bust Card
     local portraitFrame = UIFactory.Create("Frame", card, {
@@ -743,7 +824,7 @@ function Dialogue.CreateOverlay(parent)
     local _, choice1Api = PremiumButton.Create(actionRow, {
         name = "Choice1GoldBtn",
         icon = "Star",
-        label = "[1] MỞ ĐÀI TRIỆU HỒI GACHA",
+        label = "[Z] MỞ ĐÀI TRIỆU HỒI GACHA",
         variant = "gold",
         size = UDim2.new(0.285, -6, 1, 0),
         textSize = 12,
@@ -760,7 +841,7 @@ function Dialogue.CreateOverlay(parent)
     local _, choice2Api = PremiumButton.Create(actionRow, {
         name = "Choice2PrimaryBtn",
         icon = "Bag",
-        label = "[2] XEM KHO TRÁI & THỨC TỈNH [G]",
+        label = "[X] XEM KHO TRÁI & THỨC TỈNH [G]",
         variant = "primary",
         size = UDim2.new(0.275, -6, 1, 0),
         textSize = 12,
@@ -776,7 +857,7 @@ function Dialogue.CreateOverlay(parent)
 
     local _, choice3Api = PremiumButton.Create(actionRow, {
         name = "Choice3SecondaryBtn",
-        label = "[3] TỶ LỆ RƠI & BẢO HIỂM PITY",
+        label = "[C] TỶ LỆ RƠI & BẢO HIỂM PITY",
         variant = "secondary",
         size = UDim2.new(0.24, -6, 1, 0),
         textSize = 11,
@@ -806,18 +887,18 @@ function Dialogue.CreateOverlay(parent)
         end,
     })
 
-    -- [1]-[4] Keyboard Choice Support while Dialogue is open
+    -- [Z] / [X] / [C] Keyboard Choice Support while Dialogue is open (NEVER bind 1-4 so Weapon Slots 1-4 never clash!)
     local keyConn = UserInputService.InputBegan:Connect(function(input, processed)
-        if processed or not card.Visible or UserInputService:GetFocusedTextBox() then
+        if not card.Visible or UserInputService:GetFocusedTextBox() then
             return
         end
-        if input.KeyCode == Enum.KeyCode.One and choiceHandlers[1] then
+        if input.KeyCode == Enum.KeyCode.Z and choiceHandlers[1] then
             choiceHandlers[1]()
-        elseif input.KeyCode == Enum.KeyCode.Two and choiceHandlers[2] then
+        elseif input.KeyCode == Enum.KeyCode.X and choiceHandlers[2] then
             choiceHandlers[2]()
-        elseif input.KeyCode == Enum.KeyCode.Three and choiceHandlers[3] then
+        elseif input.KeyCode == Enum.KeyCode.C and choiceHandlers[3] then
             choiceHandlers[3]()
-        elseif input.KeyCode == Enum.KeyCode.Four and choiceHandlers[4] then
+        elseif input.KeyCode == Enum.KeyCode.Escape and choiceHandlers[4] then
             choiceHandlers[4]()
         end
     end)
@@ -919,13 +1000,14 @@ function Dialogue.CreateOverlay(parent)
     end
 
     local function mountSpeaker3DPortrait(keyword, preset)
-        applyAccentStyling(preset.Accent, preset.Short)
+        local shortTag = (I18n.GetLanguage() == "en") and (preset.ShortEn or preset.Short) or preset.Short
+        applyAccentStyling(preset.Accent, shortTag)
         if activeSpeakerSig == keyword and activeWorldModel ~= nil then
             return
         end
         cleanupPortrait3D()
         activeSpeakerSig = keyword
-        applyAccentStyling(preset.Accent, preset.Short)
+        applyAccentStyling(preset.Accent, shortTag)
         local myTicket = portraitTicket
 
         local liveClone = cloneLiveWorkspaceNPC(keyword)
@@ -994,7 +1076,15 @@ function Dialogue.CreateOverlay(parent)
         local spk = tostring(dialogueState.speaker or "HIỀN GIẢ AETHER • ĐẠI THƯƠNG NHÂN LÕI AETHER")
         local keyword, preset = classifySpeaker(spk)
 
-        speakerLabel.Text = UIFactory.Upper(spk)
+        local displaySpeaker = spk
+        if isEn then
+            if type(dialogueState.speakerEn) == "string" and #dialogueState.speakerEn > 0 then
+                displaySpeaker = dialogueState.speakerEn
+            elseif preset and preset.TitleEn and (dialogueState.speaker == nil or spk:byte(1) ~= nil and spk:find("[\128-\255]") ~= nil) then
+                displaySpeaker = preset.TitleEn
+            end
+        end
+        speakerLabel.Text = UIFactory.Upper(displaySpeaker)
         local rawRole = dialogueState.role
         if type(rawRole) == "string" and #rawRole > 0 then
             roleLabel.Text = UIFactory.Upper(rawRole)
@@ -1009,51 +1099,70 @@ function Dialogue.CreateOverlay(parent)
             bodyLabel.Text = rawBody
         end
 
-        local primaryCmd = dialogueState.actionCommand or preset.C1Cmd
-        local primaryLabel = dialogueState.actionLabel
-        if type(primaryLabel) == "string" and #primaryLabel > 0 then
-            if not primaryLabel:find("%[1%]") then
-                primaryLabel = "[1] " .. primaryLabel
-            end
-        else
-            primaryLabel = isEn and preset.C1En or preset.C1Vi
-        end
-
-        -- Keep Store.View.dialogue.actionCommand synchronized so [Space] in App.lua dispatches Choice 1
-        if Store.View and Store.View.dialogue and not Store.View.dialogue.actionCommand then
-            Store.View.dialogue.actionCommand = primaryCmd
-        end
-
         local customChoices = type(dialogueState.choices) == "table" and dialogueState.choices or nil
-        local c2Label = (customChoices and customChoices[2] and customChoices[2].label) or (isEn and preset.C2En or preset.C2Vi)
-        local c2Cmd = (customChoices and customChoices[2] and customChoices[2].command) or preset.C2Cmd
-        local c3Label = (customChoices and customChoices[3] and customChoices[3].label) or (isEn and preset.C3En or preset.C3Vi)
-        local c3Cmd = customChoices and customChoices[3] and customChoices[3].command or nil
+        local c1Entry = customChoices and customChoices[1] or nil
+        local c2Entry = customChoices and customChoices[2] or nil
+        local c3Entry = customChoices and customChoices[3] or nil
+        local c4Entry = customChoices and customChoices[4] or nil
+
+        local primaryCmd = (c1Entry and (c1Entry.Command or c1Entry.command)) or dialogueState.actionCommand or preset.C1Cmd
+        local primaryPayload = c1Entry and (c1Entry.Payload or c1Entry.payload) or nil
+        local rawPrimaryLabel = (c1Entry and (c1Entry.Label or c1Entry.label)) or dialogueState.actionLabel
+        local primaryLabel = (type(rawPrimaryLabel) == "string" and #rawPrimaryLabel > 0)
+            and formatChoiceLabel(rawPrimaryLabel, "Z")
+            or formatChoiceLabel(isEn and preset.C1En or preset.C1Vi, "Z")
+
+        -- Keep Store.View.dialogue.actionCommand & actionPayload synchronized so [Space] in App.lua dispatches Choice 1
+        if Store.View and Store.View.dialogue then
+            Store.View.dialogue.actionCommand = primaryCmd
+            Store.View.dialogue.actionPayload = primaryPayload
+        end
+
+        local rawC2Lbl = (c2Entry and (c2Entry.Label or c2Entry.label)) or (isEn and preset.C2En or preset.C2Vi)
+        local c2Label = formatChoiceLabel(rawC2Lbl, "X")
+        local c2Cmd = (c2Entry and (c2Entry.Command or c2Entry.command)) or preset.C2Cmd
+        local c2Payload = c2Entry and (c2Entry.Payload or c2Entry.payload) or nil
+
+        local rawC3Lbl = (c3Entry and (c3Entry.Label or c3Entry.label)) or (isEn and preset.C3En or preset.C3Vi)
+        local c3Label = formatChoiceLabel(rawC3Lbl, "C")
+        local c3Cmd = c3Entry and (c3Entry.Command or c3Entry.command) or nil
+        local c3Payload = c3Entry and (c3Entry.Payload or c3Entry.payload) or nil
+
+        local rawC4Lbl = c4Entry and (c4Entry.Label or c4Entry.label) or nil
+        local c4Label = (type(rawC4Lbl) == "string" and #rawC4Lbl > 0)
+            and formatChoiceLabel(rawC4Lbl, nil)
+            or I18n.Pick("[ESC] TẠM BIỆT", "[ESC] FAREWELL")
+        local c4Cmd = c4Entry and (c4Entry.Command or c4Entry.command) or nil
+        local c4Payload = c4Entry and (c4Entry.Payload or c4Entry.payload) or nil
+
         local loreReply = isEn and preset.LoreEn or preset.LoreVi
 
         choice1Api:Update({ label = primaryLabel })
         choice2Api:Update({ label = c2Label })
         choice3Api:Update({ label = c3Label })
-        exitBtnApi:Update({ label = I18n.Pick("[ESC] TẠM BIỆT", "[ESC] FAREWELL") })
+        exitBtnApi:Update({ label = c4Label })
 
         choiceHandlers[1] = function()
             QuestController.CloseDialogue()
-            Dialogue.DispatchActionCommand(primaryCmd)
+            Dialogue.DispatchActionCommand(primaryCmd, primaryPayload)
         end
         choiceHandlers[2] = function()
             QuestController.CloseDialogue()
-            Dialogue.DispatchActionCommand(c2Cmd)
+            Dialogue.DispatchActionCommand(c2Cmd, c2Payload)
         end
         choiceHandlers[3] = function()
             if type(c3Cmd) == "string" and #c3Cmd > 0 then
                 QuestController.CloseDialogue()
-                Dialogue.DispatchActionCommand(c3Cmd)
+                Dialogue.DispatchActionCommand(c3Cmd, c3Payload)
             else
                 bodyLabel.Text = loreReply
             end
         end
         choiceHandlers[4] = function()
             QuestController.CloseDialogue()
+            if type(c4Cmd) == "string" and #c4Cmd > 0 and c4Cmd ~= "Close" then
+                Dialogue.DispatchActionCommand(c4Cmd, c4Payload)
+            end
         end
 
         mountSpeaker3DPortrait(keyword, preset)

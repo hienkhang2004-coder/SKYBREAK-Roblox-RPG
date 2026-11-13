@@ -118,7 +118,7 @@ def sync_runtime_v8_assets(root):
     for asset_name in SYNC_RUNTIME_V8_ASSETS:
         asset_dir = runtime_v8_dir / asset_name
         if not asset_dir.is_dir() or not (asset_dir / "Header.json.zstd.b64").exists():
-            print(f"   [!] Skipping missing runtime_v8 asset: {asset_name}")
+            print(f"   [i] Preserving embedded .rbxlx DelegatedV5Sources asset (no external runtime_v8 override): {asset_name}")
             continue
         asset_folder = find_or_create_path(root, ["ReplicatedStorage", "DelegatedV5Sources", asset_name], "Folder")
         for old_ch in list(asset_folder.findall("Item")):
@@ -179,24 +179,100 @@ def set_cframe_xyz(item, x: float, y: float, z: float):
             return
 
 
-def enforce_datamodel_properties(root):
+def ensure_top_service(root, cls_name: str):
     for item in root.findall("Item"):
-        cls = item.attrib.get("class")
-        if cls == "Lighting":
-            set_typed_prop(item, "float", "Brightness", "1.35")
-            set_typed_prop(item, "float", "ExposureCompensation", "-0.22")
-            set_typed_prop(item, "float", "FogStart", "1800")
-            set_typed_prop(item, "float", "FogEnd", "18000")
-        elif cls == "StarterPlayer":
-            set_typed_prop(item, "bool", "EnableMouseLockOption", "false")
-        elif cls == "Workspace":
-            set_typed_prop(item, "float", "FallenPartsDestroyHeight", "-4500")
-            for sub in item.findall("Item"):
-                if get_name(sub) == "SkyHub":
-                    for sp in sub.findall("Item"):
-                        if get_name(sp) == "SkybornSpawn":
-                            set_cframe_xyz(sp, -2484.0, 51.5, 4131.0)
-                            print("   [+] Updated Workspace.SkyHub.SkybornSpawn -> (-2484.0, 51.5, 4131.0)")
+        if item.attrib.get("class") == cls_name:
+            return item
+    svc = create_item(root, cls_name, cls_name)
+    print(f"   [+] Created top-level service: {cls_name}")
+    return svc
+
+
+def enforce_datamodel_properties(root):
+    lighting = ensure_top_service(root, "Lighting")
+    set_typed_prop(lighting, "token", "Technology", "4")
+    set_typed_prop(lighting, "float", "Brightness", "1.35")
+    set_typed_prop(lighting, "float", "ClockTime", "16.1")
+    set_typed_prop(lighting, "float", "ExposureCompensation", "-0.22")
+    set_typed_prop(lighting, "float", "EnvironmentDiffuseScale", "1.0")
+    set_typed_prop(lighting, "float", "EnvironmentSpecularScale", "1.0")
+    set_typed_prop(lighting, "bool", "GlobalShadows", "true")
+    set_typed_prop(lighting, "float", "ShadowSoftness", "0.18")
+    set_typed_prop(lighting, "float", "FogStart", "1800")
+    set_typed_prop(lighting, "float", "FogEnd", "18000")
+
+    sun_rays = None
+    for ch in list(lighting.findall("Item")):
+        if ch.attrib.get("class") == "SunRaysEffect":
+            if sun_rays is None:
+                sun_rays = ch
+            else:
+                lighting.remove(ch)
+    if sun_rays is None:
+        sun_rays = create_item(lighting, "SunRaysEffect", "SkybreakSunRays")
+    else:
+        set_typed_prop(sun_rays, "string", "Name", "SkybreakSunRays")
+    set_typed_prop(sun_rays, "bool", "Enabled", "true")
+    set_typed_prop(sun_rays, "float", "Intensity", "0.14")
+    set_typed_prop(sun_rays, "float", "Spread", "0.65")
+
+    starter_player = ensure_top_service(root, "StarterPlayer")
+    set_typed_prop(starter_player, "bool", "EnableMouseLockOption", "false")
+    set_typed_prop(starter_player, "bool", "LoadCharacterAppearance", "true")
+    set_typed_prop(starter_player, "bool", "CharacterUseJumpPower", "true")
+    set_typed_prop(starter_player, "token", "GameSettingsAvatar", "1")
+
+    players_svc = ensure_top_service(root, "Players")
+    set_typed_prop(players_svc, "int", "MaxPlayers", "16")
+    set_typed_prop(players_svc, "int", "MaxPlayersInternal", "16")
+    set_typed_prop(players_svc, "bool", "CharacterAutoLoads", "true")
+
+    text_chat_svc = ensure_top_service(root, "TextChatService")
+    set_typed_prop(text_chat_svc, "token", "ChatVersion", "1")
+
+    sound_svc = ensure_top_service(root, "SoundService")
+    set_typed_prop(sound_svc, "bool", "RespectFilteringEnabled", "true")
+
+    ws = ensure_top_service(root, "Workspace")
+    set_typed_prop(ws, "float", "FallenPartsDestroyHeight", "-4500")
+    for sub in ws.findall("Item"):
+        if get_name(sub) == "SkyHub":
+            for sp in sub.findall("Item"):
+                if get_name(sp) == "SkybornSpawn":
+                    set_cframe_xyz(sp, -317.4, 50.5, 527.8)
+                    set_typed_prop(sp, "bool", "Anchored", "true")
+                    set_typed_prop(sp, "bool", "Neutral", "true")
+                    set_typed_prop(sp, "bool", "CanCollide", "true")
+                    print("   [+] Updated Workspace.SkyHub.SkybornSpawn -> (-317.4, 50.5, 527.8) [Anchored/Neutral/CanCollide=true]")
+
+
+def prune_orphan_scripts_in_rbxlx(root, synced_script_keys: set):
+    pruned = 0
+
+    def walk_and_prune(parent_el, path_tuple):
+        nonlocal pruned
+        for ch in list(parent_el.findall("Item")):
+            nm = get_name(ch) or ""
+            cls = ch.attrib.get("class", "")
+            cp = path_tuple + (nm,)
+            # NEVER touch ReplicatedStorage/DelegatedV5Sources (98 embedded 3D runtime assets)
+            if cp == ("ReplicatedStorage", "DelegatedV5Sources"):
+                continue
+            walk_and_prune(ch, cp)
+            if cls in ("Script", "LocalScript", "ModuleScript"):
+                if (cp, cls) not in synced_script_keys and len(ch.findall("Item")) == 0:
+                    parent_el.remove(ch)
+                    pruned += 1
+                    print(f"   [-] Pruned orphan {cls} from .rbxlx: {'/'.join(cp)}")
+            elif cls == "Folder" and len(cp) >= 2 and len(ch.findall("Item")) == 0:
+                parent_el.remove(ch)
+                print(f"   [-] Pruned empty Folder from .rbxlx: {'/'.join(cp)}")
+
+    for top in root.findall("Item"):
+        nm = get_name(top) or ""
+        if nm in SYNC_SERVICES:
+            walk_and_prune(top, (nm,))
+    return pruned
 
 
 def sync_three_category_folders():
@@ -206,12 +282,19 @@ def sync_three_category_folders():
         roblox_dir / "02_HangMuc2_UI_Shop_Config",
         roblox_dir / "03_HangMuc3_3D_VuKhi_Giap_VFX",
     )
+    canonical_mirrors = {
+        "ReplicatedStorage/Shared/DelegatedV5Renderer.lua",
+        "ReplicatedStorage/SkybreakShared/WorldConfig.lua",
+        "ReplicatedStorage/SkybreakShared/UIState.lua",
+    }
+    valid_cat_rels = set(canonical_mirrors)
     pulled_from_cats = 0
     for cat_dir in cat_dirs:
         if not cat_dir.exists():
             continue
         for cat_file in sorted(cat_dir.rglob("*.lua")):
             rel = cat_file.relative_to(cat_dir)
+            valid_cat_rels.add(rel.as_posix())
             src_file = src_04_root / rel
             src_file.parent.mkdir(parents=True, exist_ok=True)
             if not src_file.exists() or cat_file.read_bytes() != src_file.read_bytes():
@@ -219,6 +302,19 @@ def sync_three_category_folders():
                 pulled_from_cats += 1
     if pulled_from_cats:
         print(f"   [+] Synced {pulled_from_cats} modified files from 3 Category Folders -> local build src/")
+
+    for svc in SYNC_SERVICES:
+        svc_dir = src_04_root / svc
+        if not svc_dir.exists():
+            continue
+        for stale_src in sorted(svc_dir.rglob("*.lua")):
+            rel_posix = stale_src.relative_to(src_04_root).as_posix()
+            if rel_posix not in valid_cat_rels:
+                stale_src.unlink()
+                print(f"   [-] Removed stale src script not in HangMuc1-3: {rel_posix}")
+                v2_stale = src_v2_root / stale_src.relative_to(src_04_root)
+                if v2_stale.exists():
+                    v2_stale.unlink()
 
 
 def main():
@@ -246,6 +342,7 @@ def main():
     sync_runtime_v8_assets(root)
 
     manifest = []
+    synced_script_keys = set()
     synced_count = 0
     max_sz = 0
     max_rel = ""
@@ -265,6 +362,7 @@ def main():
                 max_rel = rel_posix
 
             inst_parts, cls_name = classify_lua_file(fpath.relative_to(src_04_root).parts)
+            synced_script_keys.add((tuple(inst_parts), cls_name))
             el = find_or_create_path(root, inst_parts, cls_name)
             set_source(el, code)
             synced_count += 1
@@ -276,8 +374,10 @@ def main():
                 v2_target.write_text(code, encoding="utf-8", newline="\n")
 
             # Also keep luau_v8 mirror updated if same filename exists there
+            # Guard SkybreakServer/PlayerDataService.lua (356B stub) from overwriting Services/PlayerDataService.lua
             luau_copy = luau_dir / fpath.name
-            if luau_copy.exists() and fpath.name != "Theme.lua" and fpath.name != "PlayerDataService.lua":
+            is_canonical_pds = (fpath.name != "PlayerDataService.lua") or ("Services" in fpath.parts)
+            if luau_copy.exists() and fpath.name != "Theme.lua" and is_canonical_pds:
                 luau_copy.write_text(code, encoding="utf-8", newline="\n")
 
             manifest.append({
@@ -286,6 +386,8 @@ def main():
                 "url": rel_posix,
                 "bytes": b_len,
             })
+
+    prune_orphan_scripts_in_rbxlx(root, synced_script_keys)
 
     manifest_path = src_04_root / "studio_sync_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8", newline="\n")

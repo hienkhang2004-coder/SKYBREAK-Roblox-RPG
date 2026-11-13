@@ -55,62 +55,197 @@ function PartyController.RequestClassOrGenderChange(classId, gender)
     })
 end
 
+function PartyController.GetUIRequestRemote()
+    local sharedRemotes = Shared:FindFirstChild("Remotes")
+    if sharedRemotes then
+        local r = sharedRemotes:FindFirstChild("UIRequest") or sharedRemotes:FindFirstChild("UICommand")
+        if r then
+            return r
+        end
+    end
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    if remotes then
+        return remotes:FindFirstChild("UIRequest") or remotes:FindFirstChild("UICommand")
+    end
+    return nil
+end
+
+function PartyController.FirePartyAction(payload)
+    payload = type(payload) == "table" and payload or {}
+    local rem = PartyController.GetUIRequestRemote()
+    if rem then
+        rem:FireServer("PartyAction", payload)
+        return true
+    end
+    return false
+end
+
+function PartyController.CreateParty()
+    PartyController.FirePartyAction({
+        subAction = "CreateParty",
+        mode = "CreateParty",
+    })
+end
+
+function PartyController.InvitePlayer(targetUserId, targetName)
+    PartyController.FirePartyAction({
+        subAction = "Invite",
+        mode = "InviteParty",
+        targetUserId = tonumber(targetUserId) or nil,
+        targetName = targetName and tostring(targetName) or nil,
+    })
+    if targetName and targetName ~= "" then
+        Store.ShowToast(I18n.Pick("Đã gửi lời mời Tổ Đội tới " .. tostring(targetName) .. "!", "Sent Party invite to " .. tostring(targetName) .. "!"), "info")
+    end
+end
+
+function PartyController.AcceptInvite(partyId, inviterId)
+    local snap = Store.GetSnapshot()
+    local pid = partyId or (snap.party and snap.party.pendingPartyId) or ""
+    local invId = inviterId or (snap.party and snap.party.pendingInviterId) or nil
+    if Store.MergedServerExtras then
+        Store.MergedServerExtras.PendingPartyInvite = nil
+        if type(Store.MergedServerExtras.PartyData) == "table" then
+            Store.MergedServerExtras.PartyData.PendingInviteFrom = nil
+            Store.MergedServerExtras.PartyData.PendingInvite = nil
+        end
+    end
+    if snap.party then
+        snap.party.pendingInviteFrom = nil
+        snap.party.pendingPartyId = nil
+    end
+    PartyController.FirePartyAction({
+        subAction = "Accept",
+        mode = "JoinParty",
+        partyAction = "JoinParty",
+        partyId = pid,
+        inviterId = invId,
+    })
+    Store.Notify()
+end
+
+function PartyController.DeclineInvite(partyId)
+    local snap = Store.GetSnapshot()
+    local pid = partyId or (snap.party and snap.party.pendingPartyId) or ""
+    if Store.MergedServerExtras then
+        Store.MergedServerExtras.PendingPartyInvite = nil
+        if type(Store.MergedServerExtras.PartyData) == "table" then
+            Store.MergedServerExtras.PartyData.PendingInviteFrom = nil
+            Store.MergedServerExtras.PartyData.PendingInvite = nil
+        end
+    end
+    if snap.party then
+        snap.party.pendingInviteFrom = nil
+        snap.party.pendingPartyId = nil
+    end
+    PartyController.FirePartyAction({
+        subAction = "Decline",
+        mode = "DeclineParty",
+        partyAction = "Decline",
+        partyId = pid,
+    })
+    Store.ShowToast(I18n.Pick("Đã từ chối lời mời Tổ Đội.", "Declined Party invitation."), "info")
+    Store.Notify()
+end
+
+function PartyController.LeaveParty()
+    if Store.MergedServerExtras then
+        Store.MergedServerExtras.PartyId = ""
+        Store.MergedServerExtras.PartyMembers = nil
+        Store.MergedServerExtras.PartyData = nil
+    end
+    PartyController.FirePartyAction({
+        subAction = "Leave",
+        mode = "LeaveParty",
+        partyAction = "LeaveParty",
+    })
+    Store.Notify()
+end
+
+function PartyController.IsIslandUnlockedForTravel(destId, snapshot)
+    local snap = snapshot or Store.GetSnapshot()
+    local id = tostring(destId or "")
+    if id == "" then
+        return false, 1, false, "Unknown"
+    end
+    local isl = (WorldConfig.FastTravel and WorldConfig.FastTravel[id])
+        or (WorldConfig.IslandById and WorldConfig.IslandById[id])
+        or (WorldConfig.RealmById and WorldConfig.RealmById[id])
+    local name = (isl and (isl.NameVi or isl.Name)) or id
+    local parentRealm = (isl and (isl.RealmId or isl.Realm)) or id
+    local sea = tonumber(isl and isl.Sea) or 1
+    local recLv = (isl and type(isl.RecommendedLevel) == "table" and tonumber(isl.RecommendedLevel[1])) or nil
+    local rawMin = tonumber((isl and (isl.MinLevel or isl.UnlockLevel)) or recLv) or 1
+    local realmFloor = (sea == 2 or parentRealm == "FrozenCyber") and 700
+        or ((sea == 3 or parentRealm == "ShadowRealm") and 1500)
+        or 1
+    local minLv = math.max(realmFloor, rawMin)
+    if id == "SkyHub" or id == "GoldenSky" then
+        return true, 1, true, name
+    end
+    local disc = (snap.discoveredIslands and snap.discoveredIslands[id] == true)
+        or (isl and isl.FastTravelUnlockedByDefault == true)
+        or (snap.world and snap.world.unlocked and snap.world.unlocked[id] == true)
+        or false
+    local lvOk = (tonumber(snap.player and snap.player.level) or 1) >= minLv
+    return (disc and lvOk), minLv, disc, name
+end
+
 function PartyController.RequestFastTravel(realmId)
     local snap = Store.GetSnapshot()
-    local realm = WorldConfig.RealmById[realmId] or (WorldConfig.IslandById and WorldConfig.IslandById[realmId])
+    local realm = (WorldConfig.FastTravel and WorldConfig.FastTravel[realmId])
+        or (WorldConfig.IslandById and WorldConfig.IslandById[realmId])
+        or WorldConfig.RealmById[realmId]
     if not realm then
         Store.ShowToast(I18n.Pick("Không tìm thấy đảo hoặc cõi đích.", "Unknown destination realm or island."), "error")
         return
     end
 
-    local isUnlocked = (realmId == "SkyHub")
-        or (realmId == "GoldenSky")
-        or (realm.FastTravelUnlockedByDefault == true)
-        or (WorldConfig.IslandById and WorldConfig.IslandById[realmId] ~= nil)
-        or (snap.world and snap.world.unlocked and snap.world.unlocked[realmId] == true)
-
-    if not isUnlocked then
-        Store.ShowToast(
-            I18n.Pick(
-                string.format("%s đang khóa. %s", realm.Name, realm.UnlockConditionText or "Hãy hoàn thành chương trước."),
-                string.format("%s is locked. %s", realm.Name, realm.UnlockConditionText or "Complete prior chapter first.")
-            ),
-            "warning"
-        )
+    local canTravel, minLv, isDiscovered, dispName = PartyController.IsIslandUnlockedForTravel(realmId, snap)
+    if not canTravel then
+        if not isDiscovered then
+            Store.ShowToast(
+                I18n.Pick(
+                    string.format("Chưa khám phá [%s]! Hãy lái Tàu Bay tới đảo hoặc làm Nhiệm Vụ Chính (Lv. %d+) để mở Dịch Chuyển Nhanh.", dispName, minLv),
+                    string.format("[%s] not yet discovered! Sail by Sky Ship or advance Main Quests (Lv. %d+) to unlock Fast Travel.", dispName, minLv)
+                ),
+                "warning"
+            )
+        else
+            Store.ShowToast(
+                I18n.Pick(
+                    string.format("Cần đạt Lv. %d+ để Dịch Chuyển Nhanh tới [%s]!", minLv, dispName),
+                    string.format("Requires Lv. %d+ to Fast Travel to [%s]!", minLv, dispName)
+                ),
+                "warning"
+            )
+        end
         return
     end
 
-    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-    if remotes and not snap.isDemoMode then
-        local eqRemote = remotes:FindFirstChild("EquipmentRequest")
-        local uiCmd = remotes:FindFirstChild("UICommand")
-        if eqRemote then
-            eqRemote:FireServer({
-                action = "FastTravel",
-                nodeId = realmId,
-                islandId = realmId,
-            })
-        elseif uiCmd then
-            uiCmd:FireServer({
+    if not snap.isDemoMode then
+        local uiRem = PartyController.GetUIRequestRemote()
+        if uiRem then
+            uiRem:FireServer("FastTravel", {
                 command = "FastTravel",
+                islandId = realmId,
+                nodeId = realmId,
                 realmId = realmId,
             })
-        end
-        if eqRemote or uiCmd then
             if snap.world then
-                snap.world.current = realm.RealmId or realmId
+                snap.world.current = realm.RealmId or realm.Realm or realmId
             end
             Store.ShowToast(
-                I18n.Pick("Đang dịch chuyển tới " .. realm.Name .. "...", "Fast Traveling to " .. realm.Name .. "..."),
+                I18n.Pick("Đang dịch chuyển tới " .. dispName .. "...", "Fast Traveling to " .. dispName .. "..."),
                 "info"
             )
             return
         end
     end
 
-    snap.world.current = realm.RealmId or realmId
+    snap.world.current = realm.RealmId or realm.Realm or realmId
     Store.ShowToast(
-        I18n.Pick("[DEMO] Đã dịch chuyển tới " .. realm.Name, "[DEMO] Fast Travel preview: arrived at " .. realm.Name),
+        I18n.Pick("[DEMO] Đã dịch chuyển tới " .. dispName, "[DEMO] Fast Travel preview: arrived at " .. dispName),
         "success"
     )
 end

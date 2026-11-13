@@ -82,6 +82,42 @@ def main() -> int:
         "P0-07 (D9): hydrate() does not force-unlock crimson_conqueror or CelestialAetherGalleon",
     )
 
+    # 4. Phase 2 Launch Persistence, Gacha Pity, Online-Only 2x EXP & BadgeConfig checks
+    for field in (
+        "FruitPity",
+        "FreeFruitVouchers",
+        "StatRefundTokens",
+        "StarterCoreVoucherGranted",
+        "BlueResonanceGearFound",
+        "DoubleExpRemainingSec",
+        "UnlockedBadges",
+        "HighestBossDPS",
+    ):
+        check(
+            field in data,
+            f"Phase 2 Persistence: PlayerDataService tracks & sanitizes {field}",
+        )
+    check(
+        re.search(r"C\.GachaCostGold\s*=\s*25000\b", config) is not None
+        and re.search(r"C\.FruitGachaCooldown\s*=\s*60\b", config) is not None
+        and re.search(r"C\.FruitPityMax\s*=\s*50\b", config) is not None
+        and re.search(r"C\.StatRefundCostShards\s*=\s*150\b", config) is not None,
+        "Phase 2 Config: GachaCostGold=25000, Cooldown=60s, FruitPityMax=50, StatRefundCostShards=150",
+    )
+    badge_path = resolve_luau_path("ReplicatedStorage/SkybreakShared/BadgeConfig.lua")
+    badge_text = badge_path.read_text(encoding="utf-8")
+    for bkey in (
+        "welcome_skyborn",
+        "first_aether_core",
+        "aureon_slayer",
+        "sea2_cyberport",
+        "cryon_slayer",
+        "awakened_core_v2",
+        "leviathan_slayer",
+        "apex_architect_2550",
+    ):
+        check(bkey in badge_text, f"Phase 2 Badges: BadgeConfig defines {bkey}")
+
     # 4. Optional live Luau VM execution when luau CLI is installed
     luau_bin = shutil.which(os.environ.get("LUAU_CLI", "luau"))
     if luau_bin:

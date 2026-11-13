@@ -38,10 +38,25 @@ function SkillService.HandleClassSwitch(player, payload)
     if type(payload) ~= "table" then
         return false, nil
     end
+    local profile = PlayerDataService.Get(player)
+    if not profile then
+        return false, "Profile unavailable."
+    end
+    local reqClass = payload.classId or payload.ClassId or payload.value or profile.ClassId
+    if type(reqClass) ~= "string" or not WorldConfig.Classes[reqClass] then
+        return false, "Hệ phái không hợp lệ."
+    end
+    if GameService.Boss and GameService.Boss.Party and GameService.Boss.Party[player] then
+        return false, "Không thể đổi Hệ Phái khi đang đánh Boss."
+    end
+    local reqGender = payload.gender or payload.Gender or profile.Gender or "Male"
     GameService.ChooseAppearance(player, {
-        ClassId = payload.classId or payload.ClassId,
-        Gender = payload.gender or payload.Gender,
+        ClassId = reqClass,
+        Gender = reqGender,
     })
+    profile.ClassChosen = true
+    player:SetAttribute("ClassChosen", true)
+    GameService.Sync(player)
     return true, nil
 end
 

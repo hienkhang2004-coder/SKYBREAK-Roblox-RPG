@@ -19,9 +19,80 @@ local Services = script.Parent
 local W = require(Services:WaitForChild("WorldService"))
 local D = require(Services:WaitForChild("PlayerDataService"))
 local G = require(Services:WaitForChild("GameService"))
+local DevGate = require(Services:WaitForChild("DevGate"))
+local Helpers = require(Services:WaitForChild("GameExperienceHelpers"))
+local LiveOps = require(Services:WaitForChild("SkybreakLiveOpsService"))
 
 local SkybreakServer = Services.Parent:WaitForChild("SkybreakServer")
 local InventoryService = require(SkybreakServer:WaitForChild("InventoryService"))
+
+local FRUIT_CANONICAL_ALIASES = {
+	galecore = "GaleCore",
+	gale = "GaleCore",
+	aetherwindcore = "GaleCore",
+	sandstonecore = "SandstoneCore",
+	smoke = "SandstoneCore",
+	smokecore = "SandstoneCore",
+	solarflamecore = "SolarFlameCore",
+	flame = "SolarFlameCore",
+	flamecore = "SolarFlameCore",
+	cyberphoenixcore = "SolarFlameCore",
+	glaciericecore = "GlacierIceCore",
+	ice = "GlacierIceCore",
+	icecore = "GlacierIceCore",
+	thunderrumblecore = "ThunderRumbleCore",
+	rumble = "ThunderRumbleCore",
+	rumblecore = "ThunderRumbleCore",
+	celestiallightcore = "CelestialLightCore",
+	light = "CelestialLightCore",
+	lightcore = "CelestialLightCore",
+	starforgedmagmacore = "StarforgedMagmaCore",
+	magma = "StarforgedMagmaCore",
+	magmacore = "StarforgedMagmaCore",
+	magmaburstcore = "StarforgedMagmaCore",
+	astralgravitycore = "AstralGravityCore",
+	gravity = "AstralGravityCore",
+	gravitycore = "AstralGravityCore",
+	dimensionalportalcore = "DimensionalPortalCore",
+	portal = "DimensionalPortalCore",
+	portalcore = "DimensionalPortalCore",
+	solartitancore = "SolarTitanCore",
+	buddha = "SolarTitanCore",
+	quake = "SolarTitanCore",
+	quakecore = "SolarTitanCore",
+	starlightquakecore = "SolarTitanCore",
+	aetherflowcore = "AetherflowCore",
+	sweetdoughcore = "AetherflowCore",
+	dough = "AetherflowCore",
+	doughcore = "AetherflowCore",
+	abyssalsovereigncore = "AbyssalSovereignCore",
+	dragon = "AbyssalSovereignCore",
+	dragoncore = "AbyssalSovereignCore",
+	abyssaldarkcore = "AbyssalSovereignCore",
+}
+
+local function resolveCanonicalFruitId(raw)
+	if type(raw) ~= "string" or raw == "" then
+		return ""
+	end
+	local clean = string.lower((string.gsub(raw, "%s+", "")))
+	if FRUIT_CANONICAL_ALIASES[clean] then
+		return FRUIT_CANONICAL_ALIASES[clean]
+	end
+	if D.NormalizeFruitId then
+		local norm = D.NormalizeFruitId(raw)
+		if norm ~= "" and C.AetherFruits and C.AetherFruits[norm] then
+			return norm
+		end
+	end
+	if CombatData.ResolveFruitId then
+		local resolved = CombatData.ResolveFruitId(raw)
+		if type(resolved) == "string" and resolved ~= "" then
+			return resolved
+		end
+	end
+	return raw
+end
 
 local VendorService = {}
 local started = false
@@ -243,6 +314,25 @@ function VendorService.HandleEquipItem(player, payload)
 
 	local rItem = ArsenalExpansionConfig.Items[itemId] or RarityConfig.Items[itemId]
 	local cItem = C.Items[itemId]
+	local isStyle = (C.FightingStyles and C.FightingStyles[itemId] ~= nil)
+		or (CombatData.Styles and CombatData.Styles[itemId] ~= nil)
+		or (CombatData.FightingStyles and CombatData.FightingStyles[itemId] ~= nil)
+	if isStyle then
+		prof.UnlockedStyles = type(prof.UnlockedStyles) == "table" and prof.UnlockedStyles or { skyborn_combat = true }
+		if not prof.UnlockedStyles[itemId] and itemId ~= "SkybornCombat" and itemId ~= "skyborn_combat" then
+			return false, LiveOps.Pick(player, "Bạn chưa lĩnh ngộ Võ Thuật này!", "You have not unlocked this Fighting Style yet!")
+		end
+		prof.UnlockedStyles[itemId] = true
+		prof.FightingStyle = itemId
+		prof.DisplayFightingStyle = itemId
+		prof.ActiveSlot = 1
+		player:SetAttribute("FightingStyle", itemId)
+		if player.Character then
+			player.Character:SetAttribute("FightingStyle", itemId)
+		end
+		G.Sync(player)
+		return true, LiveOps.Pick(player, "Đã trang bị Võ Thuật: " .. itemId, "Equipped Fighting Style: " .. itemId)
+	end
 	local isGun = (rItem and (rItem.WeaponType == "Gun" or rItem.Icon == "Gun"))
 		or (cItem and cItem.Slot == "Gun")
 		or (C.Guns and C.Guns[itemId] ~= nil)
@@ -294,19 +384,28 @@ function VendorService.HandleEquipItem(player, payload)
 end
 
 -- ============================================================================
--- 3. SCULPTED 3D NPC VENDOR STATIONS (Sea 1, Sea 2 & Sea 3)
+-- 3. SCULPTED 3D NPC VENDOR STATIONS (Sea 1, Sea 2, Sea 3 & Realm 7)
 -- ============================================================================
-local function buildSculptedVendorNPC(stationModel, basePos, accentColor, vendorKind, visualAsset)
+local onTradeTableSeatChanged = nil
+local onTradeTablePromptTriggered = nil
+
+local function buildSculptedVendorNPC(stationModel, basePos, lookTarget, accentColor, vendorKind, visualAsset)
 	local darkNavy = Color3.fromRGB(24, 34, 56)
 	local goldTrim = Color3.fromRGB(232, 186, 82)
 	local skinTone = Color3.fromRGB(238, 212, 188)
+
+	local flatLook = lookTarget and Vector3.new(lookTarget.X, basePos.Y, lookTarget.Z) or (basePos + Vector3.new(0, 0, -10))
+	if (flatLook - basePos).Magnitude < 0.5 then
+		flatLook = basePos + Vector3.new(0, 0, -10)
+	end
+	local baseCF = CFrame.lookAt(basePos, flatLook)
 
 	-- Dais pedestal
 	local dais = Instance.new("Part")
 	dais.Name = "VendorDais"
 	dais.Shape = Enum.PartType.Cylinder
 	dais.Size = Vector3.new(0.64, 5.8, 5.8)
-	dais.CFrame = CFrame.new(basePos + Vector3.new(0, 0.32, 0)) * CFrame.Angles(0, 0, math.pi * 0.5)
+	dais.CFrame = baseCF * CFrame.new(0, 0.32, 0) * CFrame.Angles(0, 0, math.pi * 0.5)
 	dais.Color = darkNavy
 	dais.Material = Enum.Material.Metal
 	dais.Anchored = true
@@ -316,7 +415,7 @@ local function buildSculptedVendorNPC(stationModel, basePos, accentColor, vendor
 		stationModel,
 		"VendorAuraRing",
 		Vector3.new(0.14, 6.3, 6.3),
-		CFrame.new(basePos + Vector3.new(0, 0.66, 0)) * CFrame.Angles(0, 0, math.pi * 0.5),
+		baseCF * CFrame.new(0, 0.66, 0) * CFrame.Angles(0, 0, math.pi * 0.5),
 		accentColor,
 		Enum.Material.Neon,
 		Enum.PartType.Cylinder,
@@ -328,7 +427,7 @@ local function buildSculptedVendorNPC(stationModel, basePos, accentColor, vendor
 	local rootPart = Instance.new("Part")
 	rootPart.Name = "HumanoidRootPart"
 	rootPart.Size = Vector3.new(2.0, 4.4, 1.4)
-	rootPart.Position = basePos + Vector3.new(0, 2.85, 0)
+	rootPart.CFrame = baseCF * CFrame.new(0, 2.85, 0)
 	rootPart.Color = darkNavy
 	rootPart.Material = Enum.Material.Metal
 	rootPart.Transparency = 1
@@ -336,28 +435,28 @@ local function buildSculptedVendorNPC(stationModel, basePos, accentColor, vendor
 	rootPart.CanCollide = true
 	rootPart.Parent = stationModel
 
-	makeAnchoredPart(stationModel, "LowerTunic", Vector3.new(1.75, 1.85, 1.05), CFrame.new(basePos + Vector3.new(0, 1.55, 0)), darkNavy, Enum.Material.SmoothPlastic)
-	makeAnchoredPart(stationModel, "UpperTorso", Vector3.new(1.85, 1.75, 1.02), CFrame.new(basePos + Vector3.new(0, 3.25, 0)), darkNavy, Enum.Material.Metal)
-	makeAnchoredPart(stationModel, "ChestEmblem", Vector3.new(0.75, 0.75, 0.16), CFrame.new(basePos + Vector3.new(0, 3.35, -0.52)), accentColor, Enum.Material.Neon)
-	makeAnchoredPart(stationModel, "VendorCape", Vector3.new(2.05, 2.95, 0.14), CFrame.new(basePos + Vector3.new(0, 2.45, 0.58)) * CFrame.Angles(math.rad(8), 0, 0), accentColor:Lerp(darkNavy, 0.52), Enum.Material.SmoothPlastic)
+	makeAnchoredPart(stationModel, "LowerTunic", Vector3.new(1.75, 1.85, 1.05), baseCF * CFrame.new(0, 1.55, 0), darkNavy, Enum.Material.SmoothPlastic)
+	makeAnchoredPart(stationModel, "UpperTorso", Vector3.new(1.85, 1.75, 1.02), baseCF * CFrame.new(0, 3.25, 0), darkNavy, Enum.Material.Metal)
+	makeAnchoredPart(stationModel, "ChestEmblem", Vector3.new(0.75, 0.75, 0.16), baseCF * CFrame.new(0, 3.35, -0.52), accentColor, Enum.Material.Neon)
+	makeAnchoredPart(stationModel, "VendorCape", Vector3.new(2.05, 2.95, 0.14), baseCF * CFrame.new(0, 2.45, 0.58) * CFrame.Angles(math.rad(8), 0, 0), accentColor:Lerp(darkNavy, 0.52), Enum.Material.SmoothPlastic)
 
 	for _, side in ipairs({ -1, 1 }) do
 		makeAnchoredPart(
 			stationModel,
 			"Pauldron_" .. side,
 			Vector3.new(0.72, 0.44, 1.08),
-			CFrame.new(basePos + Vector3.new(side * 1.18, 3.98, 0)) * CFrame.Angles(0, 0, math.rad(-side * 16)),
+			baseCF * CFrame.new(side * 1.18, 3.98, 0) * CFrame.Angles(0, 0, math.rad(-side * 16)),
 			goldTrim,
 			Enum.Material.Metal
 		)
 	end
 
-	local head = makeAnchoredPart(stationModel, "Head", Vector3.new(1.22, 1.26, 1.22), CFrame.new(basePos + Vector3.new(0, 4.78, 0)), skinTone, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+	local head = makeAnchoredPart(stationModel, "Head", Vector3.new(1.22, 1.26, 1.22), baseCF * CFrame.new(0, 4.78, 0), skinTone, Enum.Material.SmoothPlastic, Enum.PartType.Ball)
 	makeAnchoredPart(
 		stationModel,
 		"HaloCrown",
 		Vector3.new(0.12, 1.68, 1.68),
-		CFrame.new(basePos + Vector3.new(0, 5.32, 0.12)) * CFrame.Angles(0, math.pi * 0.5, math.rad(16)),
+		baseCF * CFrame.new(0, 5.32, 0.12) * CFrame.Angles(0, math.pi * 0.5, math.rad(16)),
 		accentColor,
 		Enum.Material.Neon,
 		Enum.PartType.Cylinder
@@ -365,19 +464,69 @@ local function buildSculptedVendorNPC(stationModel, basePos, accentColor, vendor
 
 	-- Signature 3D Shop Props beside the Vendor
 	if vendorKind == "SwordDealer" then
-		makeAnchoredPart(stationModel, "AnvilStand", Vector3.new(1.6, 1.2, 1.0), CFrame.new(basePos + Vector3.new(1.9, 1.24, -0.4)), darkNavy, Enum.Material.Metal)
-		makeAnchoredPart(stationModel, "DisplayBladeA", Vector3.new(0.16, 3.2, 0.34), CFrame.new(basePos + Vector3.new(1.75, 2.95, -0.4)) * CFrame.Angles(0, 0, math.rad(-14)), accentColor, Enum.Material.Neon)
-		makeAnchoredPart(stationModel, "DisplayBladeB", Vector3.new(0.16, 3.0, 0.32), CFrame.new(basePos + Vector3.new(2.12, 2.85, -0.4)) * CFrame.Angles(0, 0, math.rad(14)), goldTrim, Enum.Material.Neon)
+		makeAnchoredPart(stationModel, "AnvilStand", Vector3.new(1.6, 1.2, 1.0), baseCF * CFrame.new(1.9, 1.24, -0.4), darkNavy, Enum.Material.Metal)
+		makeAnchoredPart(stationModel, "DisplayBladeA", Vector3.new(0.16, 3.2, 0.34), baseCF * CFrame.new(1.75, 2.95, -0.4) * CFrame.Angles(0, 0, math.rad(-14)), accentColor, Enum.Material.Neon)
+		makeAnchoredPart(stationModel, "DisplayBladeB", Vector3.new(0.16, 3.0, 0.32), baseCF * CFrame.new(2.12, 2.85, -0.4) * CFrame.Angles(0, 0, math.rad(14)), goldTrim, Enum.Material.Neon)
 	elseif vendorKind == "GunDealer" then
-		makeAnchoredPart(stationModel, "OrdnanceCrate", Vector3.new(1.7, 1.25, 1.2), CFrame.new(basePos + Vector3.new(1.95, 1.26, -0.35)), darkNavy, Enum.Material.Metal)
-		makeAnchoredPart(stationModel, "DisplayCannon", Vector3.new(2.2, 0.54, 0.54), CFrame.new(basePos + Vector3.new(1.95, 2.25, -0.35)) * CFrame.Angles(0, math.rad(65), math.rad(22)), accentColor, Enum.Material.Neon, Enum.PartType.Cylinder)
+		makeAnchoredPart(stationModel, "OrdnanceCrate", Vector3.new(1.7, 1.25, 1.2), baseCF * CFrame.new(1.95, 1.26, -0.35), darkNavy, Enum.Material.Metal)
+		makeAnchoredPart(stationModel, "DisplayCannon", Vector3.new(2.2, 0.54, 0.54), baseCF * CFrame.new(1.95, 2.25, -0.35) * CFrame.Angles(0, math.rad(65), math.rad(22)), accentColor, Enum.Material.Neon, Enum.PartType.Cylinder)
 	elseif vendorKind == "TradingTable" then
-		makeAnchoredPart(stationModel, "HoloTradeTable", Vector3.new(0.85, 3.4, 3.4), CFrame.new(basePos + Vector3.new(0, 1.15, -2.35)) * CFrame.Angles(0, 0, math.pi * 0.5), darkNavy, Enum.Material.Metal, Enum.PartType.Cylinder)
-		makeAnchoredPart(stationModel, "HoloScaleGrid", Vector3.new(0.12, 2.8, 2.8), CFrame.new(basePos + Vector3.new(0, 1.62, -2.35)) * CFrame.Angles(0, 0, math.pi * 0.5), accentColor, Enum.Material.Neon, Enum.PartType.Cylinder, "Part", 0.2)
+		local tableCenterCF = baseCF * CFrame.new(0, 0, -5.2)
+		local holoTable = makeAnchoredPart(stationModel, "HoloTradeTable", Vector3.new(1.05, 4.4, 4.4), tableCenterCF * CFrame.new(0, 1.15, 0) * CFrame.Angles(0, 0, math.pi * 0.5), darkNavy, Enum.Material.Metal, Enum.PartType.Cylinder)
+		holoTable.CanCollide = true
+		makeAnchoredPart(stationModel, "HoloScaleGrid", Vector3.new(0.14, 3.7, 3.7), tableCenterCF * CFrame.new(0, 1.72, 0) * CFrame.Angles(0, 0, math.pi * 0.5), accentColor, Enum.Material.Neon, Enum.PartType.Cylinder, "Part", 0.18)
+		makeAnchoredPart(stationModel, "HoloCenterPrism", Vector3.new(0.65, 1.05, 0.65), tableCenterCF * CFrame.new(0, 2.55, 0) * CFrame.Angles(math.rad(35), math.rad(45), 0), goldTrim, Enum.Material.Neon)
+
+		local seatOffsets = {
+			Vector3.new(-2.85, 0.95, -1.55),
+			Vector3.new(2.85, 0.95, -1.55),
+			Vector3.new(-2.85, 0.95, 1.55),
+			Vector3.new(2.85, 0.95, 1.55),
+		}
+		local seatsList = {}
+		for sIdx, sOff in ipairs(seatOffsets) do
+			local seatWorldPos = (tableCenterCF * CFrame.new(sOff)).Position
+			local seatLookPos = Vector3.new(tableCenterCF.Position.X, seatWorldPos.Y, tableCenterCF.Position.Z)
+			local seatCF = CFrame.lookAt(seatWorldPos, seatLookPos)
+			local seat = Instance.new("Seat")
+			seat.Name = "TradeSeat_" .. tostring(sIdx)
+			seat.Size = Vector3.new(1.85, 0.46, 1.85)
+			seat.CFrame = seatCF
+			seat.Color = darkNavy
+			seat.Material = Enum.Material.Metal
+			seat.Anchored = true
+			seat.CanCollide = true
+			seat.Parent = stationModel
+			makeAnchoredPart(stationModel, "SeatTrim_" .. tostring(sIdx), Vector3.new(1.92, 0.12, 1.92), seatCF * CFrame.new(0, 0.24, 0), accentColor, Enum.Material.Neon, nil, "Part", 0.28)
+			makeAnchoredPart(stationModel, "SeatBack_" .. tostring(sIdx), Vector3.new(1.75, 1.25, 0.24), seatCF * CFrame.new(0, 0.72, 0.84), goldTrim, Enum.Material.Metal)
+			table.insert(seatsList, seat)
+		end
+		for _, seat in ipairs(seatsList) do
+			seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+				if type(onTradeTableSeatChanged) == "function" then
+					onTradeTableSeatChanged(stationModel, seatsList, seat)
+				end
+			end)
+		end
+
+		local tablePrompt = Instance.new("ProximityPrompt")
+		tablePrompt.Name = "PhantomTradeTablePrompt"
+		tablePrompt.ActionText = "Giao Dịch (P2P / Collector)"
+		tablePrompt.ObjectText = "Bàn Giao Dịch 4 Ghế • P2P & Collector"
+		tablePrompt.KeyboardKeyCode = Enum.KeyCode.E
+		tablePrompt.HoldDuration = 0
+		tablePrompt.MaxActivationDistance = 12
+		tablePrompt.RequiresLineOfSight = false
+		tablePrompt.Parent = holoTable
+		tablePrompt.Triggered:Connect(function(plr)
+			if type(onTradeTablePromptTriggered) == "function" then
+				onTradeTablePromptTriggered(plr, stationModel, seatsList)
+			end
+		end)
 	elseif vendorKind == "ColosseumAndSpire" then
 		for _, side in ipairs({ -1, 1 }) do
-			makeAnchoredPart(stationModel, "SpirePillar_" .. side, Vector3.new(0.55, 4.8, 0.55), CFrame.new(basePos + Vector3.new(side * 2.15, 3.0, 0.45)), goldTrim, Enum.Material.Metal)
-			makeAnchoredPart(stationModel, "SpireOrb_" .. side, Vector3.new(0.75, 0.75, 0.75), CFrame.new(basePos + Vector3.new(side * 2.15, 5.65, 0.45)), accentColor, Enum.Material.Neon, Enum.PartType.Ball)
+			makeAnchoredPart(stationModel, "SpirePillar_" .. side, Vector3.new(0.55, 4.8, 0.55), baseCF * CFrame.new(side * 2.15, 3.0, 0.45), goldTrim, Enum.Material.Metal)
+			makeAnchoredPart(stationModel, "SpireOrb_" .. side, Vector3.new(0.75, 0.75, 0.75), baseCF * CFrame.new(side * 2.15, 5.65, 0.45), accentColor, Enum.Material.Neon, Enum.PartType.Ball)
 		end
 	end
 
@@ -401,7 +550,7 @@ local function spawnVendorStation(folder, spec)
 	local m = Instance.new("Model")
 	m.Name = spec.Id
 
-	local rootPart, headPart = buildSculptedVendorNPC(m, base, spec.Color, spec.VendorMode, spec.VisualAsset)
+	local rootPart, headPart = buildSculptedVendorNPC(m, base, spec.LookAt, spec.Color, spec.VendorMode, spec.VisualAsset)
 
 	local bill = Instance.new("BillboardGui")
 	bill.Name = "VendorOverheadTag"
@@ -434,28 +583,30 @@ local function spawnVendorStation(folder, spec)
 	roleLbl.Text = spec.RoleTag
 	roleLbl.Parent = bill
 
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "VendorShopPrompt"
-	prompt.ActionText = spec.ActionText
-	prompt.ObjectText = spec.Title .. " • " .. spec.RoleTag
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = rootPart
+	if spec.VendorMode ~= "TradingTable" then
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "VendorShopPrompt"
+		prompt.ActionText = spec.ActionText
+		prompt.ObjectText = spec.Title .. " • " .. spec.RoleTag
+		prompt.KeyboardKeyCode = Enum.KeyCode.E
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 14
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = rootPart
 
-	prompt.Triggered:Connect(function(plr)
-		m:SetAttribute("NPCTalkAt", workspace:GetServerTimeNow())
-		fireVendorModeHint(plr, spec.VendorMode)
-		G.SendDialogue(
-			plr,
-			spec.Title,
-			spec.DialogueRole,
-			spec.DialogueBody,
-			spec.ButtonLabel,
-			"OpenScreen:NPCShop:" .. spec.VendorMode
-		)
-	end)
+		prompt.Triggered:Connect(function(plr)
+			m:SetAttribute("NPCTalkAt", workspace:GetServerTimeNow())
+			fireVendorModeHint(plr, spec.VendorMode)
+			G.SendDialogue(
+				plr,
+				spec.Title,
+				spec.DialogueRole,
+				spec.DialogueBody,
+				spec.ButtonLabel,
+				"OpenScreen:NPCShop:" .. spec.VendorMode
+			)
+		end)
+	end
 
 	m.Parent = folder
 	return m
@@ -468,9 +619,10 @@ local function buildAllVendorStations()
 	local skyPos = C.Spawn or Vector3.new(-317.4, 50.5, 527.8)
 	local cafePos = (C.FastTravel and C.FastTravel.CyberportCafe and C.FastTravel.CyberportCafe.Pos) or Vector3.new(9400, 50.9, 1785)
 	local castlePos = (C.FastTravel and C.FastTravel.CastleOnTheVoid and C.FastTravel.CastleOnTheVoid.Pos) or Vector3.new(-14600, 50.9, 2173.1)
+	local chronoPos = (C.FastTravel and C.FastTravel.ChronosBastion and C.FastTravel.ChronosBastion.Pos) or Vector3.new(0, 230.9, -13485)
 
 	local specs = {
-		-- 1. Master Sword Dealers (Sky 1, Sky 2, Sky 3)
+		-- 1. Master Sword Dealers (Sky 1, Sky 2, Sky 3 & Realm 7 Chronos Bastion)
 		{
 			Id = "MasterSwordDealer_Sea1",
 			Title = "Kiếm Sư Thương Nhân",
@@ -479,7 +631,8 @@ local function buildAllVendorStations()
 			VendorMode = "SwordDealer",
 			VisualAsset = "GoldenKnight",
 			Color = Color3.fromRGB(244, 193, 78),
-			RawPos = skyPos + Vector3.new(-22, 0, -16),
+			RawPos = Vector3.new(-348, skyPos.Y, 540),
+			LookAt = skyPos,
 			DialogueRole = "ĐẠI SƯ VŨ KHÍ CẬN CHIẾN",
 			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Tầng Trời! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
 			ButtonLabel = "Mở Cửa Hàng Kiếm 3D",
@@ -492,7 +645,8 @@ local function buildAllVendorStations()
 			VendorMode = "SwordDealer",
 			VisualAsset = "GoldenKnight",
 			Color = Color3.fromRGB(244, 193, 78),
-			RawPos = cafePos + Vector3.new(-18, 0, -14),
+			RawPos = Vector3.new(9374, cafePos.Y, 1764),
+			LookAt = cafePos,
 			DialogueRole = "ĐẠI SƯ VŨ KHÍ CẬN CHIẾN",
 			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Tầng Trời! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
 			ButtonLabel = "Mở Cửa Hàng Kiếm 3D",
@@ -505,9 +659,24 @@ local function buildAllVendorStations()
 			VendorMode = "SwordDealer",
 			VisualAsset = "GoldenKnight",
 			Color = Color3.fromRGB(244, 193, 78),
-			RawPos = castlePos + Vector3.new(-18, 0, -14),
+			RawPos = Vector3.new(-14580, castlePos.Y, 2160),
+			LookAt = castlePos,
 			DialogueRole = "ĐẠI SƯ VŨ KHÍ CẬN CHIẾN",
 			DialogueBody = "Ta rèn và tuyển chọn 18 thanh Thần Kiếm, Đại Đao, Kích và Lưỡi Hái Thời Không mạnh nhất 3 Tầng Trời! Hãy chọn vũ khí phù hợp với cấp độ của ngươi.",
+			ButtonLabel = "Mở Cửa Hàng Kiếm 3D",
+		},
+		{
+			Id = "MasterSwordDealer_Sea4",
+			Title = "Kiếm Sư Thương Nhân",
+			RoleTag = "< CỬA HÀNG THẦN KIẾM 3D >",
+			ActionText = "Giao Dịch Thần Kiếm 3D",
+			VendorMode = "SwordDealer",
+			VisualAsset = "GoldenKnight",
+			Color = Color3.fromRGB(244, 193, 78),
+			RawPos = Vector3.new(22, chronoPos.Y, -13472),
+			LookAt = chronoPos,
+			DialogueRole = "ĐẠI SƯ VŨ KHÍ CẬN CHIẾN",
+			DialogueBody = "Tại Pháo Đài Thời Gian Chronos, ta mở khóa những Thần Kiếm và Lưỡi Hái Thời Không tối thượng! Hãy chọn vũ khí xứng tầm của ngươi.",
 			ButtonLabel = "Mở Cửa Hàng Kiếm 3D",
 		},
 
@@ -520,7 +689,8 @@ local function buildAllVendorStations()
 			VendorMode = "GunDealer",
 			VisualAsset = "LightArcher",
 			Color = Color3.fromRGB(56, 189, 248),
-			RawPos = skyPos + Vector3.new(-28, 0, -6),
+			RawPos = Vector3.new(-324, skyPos.Y, 566),
+			LookAt = skyPos,
 			DialogueRole = "BẬC THẦY PHÁP KHÍ & XẠ KÍCH",
 			DialogueBody = "Từ Súng Lục Aether, Cung Tinh Linh Sylvaris đến Pháo Kỳ Điểm Veyr — 10 Pháp Khí tầm xa và Bộ Thần Giáp 3D mạnh nhất đều có mặt tại xưởng của ta!",
 			ButtonLabel = "Mở Xưởng Pháp Khí 3D",
@@ -533,7 +703,8 @@ local function buildAllVendorStations()
 			VendorMode = "GunDealer",
 			VisualAsset = "LightArcher",
 			Color = Color3.fromRGB(56, 189, 248),
-			RawPos = cafePos + Vector3.new(18, 0, -14),
+			RawPos = Vector3.new(9396, cafePos.Y, 1756),
+			LookAt = cafePos,
 			DialogueRole = "BẬC THẦY PHÁP KHÍ & XẠ KÍCH",
 			DialogueBody = "Từ Súng Lục Aether, Cung Tinh Linh Sylvaris đến Pháo Kỳ Điểm Veyr — 10 Pháp Khí tầm xa và Bộ Thần Giáp 3D mạnh nhất đều có mặt tại xưởng của ta!",
 			ButtonLabel = "Mở Xưởng Pháp Khí 3D",
@@ -546,38 +717,55 @@ local function buildAllVendorStations()
 			VendorMode = "GunDealer",
 			VisualAsset = "LightArcher",
 			Color = Color3.fromRGB(56, 189, 248),
-			RawPos = castlePos + Vector3.new(18, 0, -14),
+			RawPos = Vector3.new(-14624, castlePos.Y, 2184),
+			LookAt = castlePos,
 			DialogueRole = "BẬC THẦY PHÁP KHÍ & XẠ KÍCH",
 			DialogueBody = "Từ Súng Lục Aether, Cung Tinh Linh Sylvaris đến Pháo Kỳ Điểm Veyr — 10 Pháp Khí tầm xa và Bộ Thần Giáp 3D mạnh nhất đều có mặt tại xưởng của ta!",
 			ButtonLabel = "Mở Xưởng Pháp Khí 3D",
 		},
 
-		-- 3. Phantom 4x4 Trading Tables & Collector (Sky 1, Sky 2)
+		-- 3. 4-Seat Phantom P2P & Collector Trading Tables (Sky Hub, Cyberport Cafe & Castle on the Void)
 		{
 			Id = "PhantomTradingTable_Sea1",
-			Title = "Bàn Giao Dịch Lõi 4x4 & Nhà Sưu Tập",
-			RoleTag = "< GIAO DỊCH CHỐNG LỪA ĐẢO <=40% >",
-			ActionText = "Mở Bàn Giao Dịch Lõi 4x4",
+			Title = "Bàn Giao Dịch 4 Ghế • P2P & Nhà Sưu Tập",
+			RoleTag = "< GIAO DỊCH P2P & COLLECTOR <=40% >",
+			ActionText = "Giao Dịch (P2P / Collector)",
 			VendorMode = "TradingTable",
 			VisualAsset = "ZiolesGachaNPC",
 			Color = Color3.fromRGB(192, 132, 252),
-			RawPos = skyPos + Vector3.new(18, 0, -18),
-			DialogueRole = "NHÀ SƯU TẬP ẢO ẢNH & BÀN TRAO ĐỔI 4X4",
-			DialogueBody = "Đặt tối đa 4 Lõi Aether lên bàn cân chống lừa đảo (khóa nghiêm ngặt chênh lệch <= 40%), hoặc ký ngay các Khế Ước Thần Thoại công bằng với Nhà Sưu Tập!",
-			ButtonLabel = "Mở Bàn Giao Dịch 4x4",
+			RawPos = Vector3.new(-352, skyPos.Y, 568),
+			LookAt = skyPos,
+			DialogueRole = "BÀN GIAO DỊCH P2P 4 GHẾ & NHÀ SƯU TẬP",
+			DialogueBody = "Ngồi vào ghế cùng người chơi khác để Giao Dịch P2P trực tiếp (khóa an toàn chênh lệch <= 40%), hoặc đổi Lõi Aether công bằng với Nhà Sưu Tập!",
+			ButtonLabel = "Mở Bàn Giao Dịch P2P / 4x4",
+		},
+		{
+			Id = "PhantomTradingTable_Cafe",
+			Title = "Bàn Giao Dịch 4 Ghế • P2P & Nhà Sưu Tập",
+			RoleTag = "< GIAO DỊCH P2P & COLLECTOR <=40% >",
+			ActionText = "Giao Dịch (P2P / Collector)",
+			VendorMode = "TradingTable",
+			VisualAsset = "ZiolesGachaNPC",
+			Color = Color3.fromRGB(192, 132, 252),
+			RawPos = Vector3.new(9424, cafePos.Y, 1756),
+			LookAt = cafePos,
+			DialogueRole = "BÀN GIAO DỊCH P2P 4 GHẾ & NHÀ SƯU TẬP",
+			DialogueBody = "Ngồi vào ghế cùng người chơi khác để Giao Dịch P2P trực tiếp (khóa an toàn chênh lệch <= 40%), hoặc đổi Lõi Aether công bằng với Nhà Sưu Tập!",
+			ButtonLabel = "Mở Bàn Giao Dịch P2P / 4x4",
 		},
 		{
 			Id = "PhantomTradingTable_Sea2",
-			Title = "Bàn Giao Dịch Lõi 4x4 & Nhà Sưu Tập",
-			RoleTag = "< GIAO DỊCH CHỐNG LỪA ĐẢO <=40% >",
-			ActionText = "Mở Bàn Giao Dịch Lõi 4x4",
+			Title = "Bàn Giao Dịch 4 Ghế • P2P & Nhà Sưu Tập",
+			RoleTag = "< GIAO DỊCH P2P & COLLECTOR <=40% >",
+			ActionText = "Giao Dịch (P2P / Collector)",
 			VendorMode = "TradingTable",
 			VisualAsset = "ZiolesGachaNPC",
 			Color = Color3.fromRGB(192, 132, 252),
-			RawPos = cafePos + Vector3.new(0, 0, 14),
-			DialogueRole = "NHÀ SƯU TẬP ẢO ẢNH & BÀN TRAO ĐỔI 4X4",
-			DialogueBody = "Đặt tối đa 4 Lõi Aether lên bàn cân chống lừa đảo (khóa nghiêm ngặt chênh lệch <= 40%), hoặc ký ngay các Khế Ước Thần Thoại công bằng với Nhà Sưu Tập!",
-			ButtonLabel = "Mở Bàn Giao Dịch 4x4",
+			RawPos = Vector3.new(-14576, castlePos.Y, 2188),
+			LookAt = castlePos,
+			DialogueRole = "BÀN GIAO DỊCH P2P 4 GHẾ & NHÀ SƯU TẬP",
+			DialogueBody = "Ngồi vào ghế cùng người chơi khác để Giao Dịch P2P trực tiếp (khóa an toàn chênh lệch <= 40%), hoặc đổi Lõi Aether công bằng với Nhà Sưu Tập!",
+			ButtonLabel = "Mở Bàn Giao Dịch P2P / 4x4",
 		},
 
 		-- 4. Colosseum & 50F Sky Spire Wardens (Sea 1, Sea 2)
@@ -589,7 +777,8 @@ local function buildAllVendorStations()
 			VendorMode = "ColosseumAndSpire",
 			VisualAsset = "AncientMonkNPC",
 			Color = Color3.fromRGB(244, 63, 94),
-			RawPos = skyPos + Vector3.new(26, 0, -8),
+			RawPos = Vector3.new(-306, skyPos.Y, 484),
+			LookAt = skyPos,
 			DialogueRole = "CHỦ QUẢN ĐẤU TRƯỜNG & THÁP BẦU TRỜI",
 			DialogueBody = "Chọn trận tuyến Hải Tặc Bầu Trời hoặc Hải Quân Thiên Không, luận võ 1v1 công bằng, hoặc chinh phục Tháp Bầu Trời 50 Tầng nhận Thánh Vật & Thần Giáp 3D!",
 			ButtonLabel = "Mở Đấu Trường & Tháp 50F",
@@ -602,7 +791,8 @@ local function buildAllVendorStations()
 			VendorMode = "ColosseumAndSpire",
 			VisualAsset = "AncientMonkNPC",
 			Color = Color3.fromRGB(244, 63, 94),
-			RawPos = cafePos + Vector3.new(-16, 0, 16),
+			RawPos = Vector3.new(9374, cafePos.Y, 1786),
+			LookAt = cafePos,
 			DialogueRole = "CHỦ QUẢN ĐẤU TRƯỜNG & THÁP BẦU TRỜI",
 			DialogueBody = "Chọn trận tuyến Hải Tặc Bầu Trời hoặc Hải Quân Thiên Không, luận võ 1v1 công bằng, hoặc chinh phục Tháp Bầu Trời 50 Tầng nhận Thánh Vật & Thần Giáp 3D!",
 			ButtonLabel = "Mở Đấu Trường & Tháp 50F",
@@ -719,7 +909,8 @@ local function handleBuyVendorItem(player, payload)
 		if stEntry.Id == itemId or stEntry.StyleId == itemId then
 			prof.UnlockedStyles = type(prof.UnlockedStyles) == "table" and prof.UnlockedStyles or { skyborn_combat = true }
 			local sKey = stEntry.Id
-			if not prof.UnlockedStyles[sKey] then
+			local preferredId = stEntry.StyleId or sKey
+			if not prof.UnlockedStyles[sKey] and not prof.UnlockedStyles[preferredId] then
 				if levelBlocked(stEntry, stEntry.NameVi) then
 					return false
 				end
@@ -737,12 +928,19 @@ local function handleBuyVendorItem(player, payload)
 				prof.CoreShards -= needS
 				prof.UnlockedStyles[sKey] = true
 			end
-			local combatId = stEntry.FallbackCombatStyleId or stEntry.StyleId or sKey
+			local hasDirectStyle = (C.FightingStyles and C.FightingStyles[preferredId] ~= nil)
+				or (CombatData and CombatData.Styles and CombatData.Styles[preferredId] ~= nil)
+				or (CombatData and CombatData.FightingStyles and CombatData.FightingStyles[preferredId] ~= nil)
+			local combatId = hasDirectStyle and preferredId or (stEntry.FallbackCombatStyleId or preferredId)
+			prof.UnlockedStyles[sKey] = true
+			prof.UnlockedStyles[preferredId] = true
 			prof.UnlockedStyles[combatId] = true
 			prof.FightingStyle = combatId
 			prof.DisplayFightingStyle = sKey
 			prof.ActiveSlot = 1
-			player:SetAttribute("FightingStyle", combatId)
+			if type(player.SetAttribute) == "function" then
+				player:SetAttribute("FightingStyle", combatId)
+			end
 			if player.Character and type(player.Character.SetAttribute) == "function" then
 				player.Character:SetAttribute("FightingStyle", combatId)
 			end
@@ -822,7 +1020,7 @@ local function handleBuyVendorItem(player, payload)
 end
 
 local function getTradeItemValue(id)
-	local cid = (CombatData.ResolveFruitId and CombatData.ResolveFruitId(id)) or tostring(id or "")
+	local cid = resolveCanonicalFruitId(tostring(id or ""))
 	if cid ~= "" and C.AetherFruits and C.AetherFruits[cid] then
 		return tonumber(C.AetherFruits[cid].Price) or 100000, cid, true
 	end
@@ -842,11 +1040,67 @@ local function getTradeItemValue(id)
 	return 0, rawId, false
 end
 
+local function reconcileDepletedItem(prof, iid)
+	if type(prof) ~= "table" or type(iid) ~= "string" or iid == "" then
+		return
+	end
+	if (tonumber(prof.Inventory and prof.Inventory[iid]) or 0) > 0 then
+		return
+	end
+	if type(prof.UnlockedWeapons) == "table" then
+		prof.UnlockedWeapons[iid] = nil
+	end
+	if type(prof.UnlockedGuns) == "table" then
+		prof.UnlockedGuns[iid] = nil
+	end
+	if prof.Weapon == iid then
+		prof.Weapon = "starter_sword"
+	end
+	if prof.EquippedGun == iid then
+		prof.EquippedGun = "aether_flintlock"
+	end
+	if type(prof.Equipped) == "table" then
+		for slotKey, eqId in pairs(prof.Equipped) do
+			if eqId == iid then
+				if slotKey == "Weapon" then
+					prof.Equipped[slotKey] = "starter_sword"
+				elseif slotKey == "Gun" or slotKey == "Offhand" then
+					prof.Equipped[slotKey] = "aether_flintlock"
+				else
+					prof.Equipped[slotKey] = nil
+				end
+			end
+		end
+	end
+end
+
+local function syncGrantedEquipmentUnlock(prof, iid)
+	if type(prof) ~= "table" or type(iid) ~= "string" or iid == "" then
+		return
+	end
+	local itemDef = ArsenalExpansionConfig.Items[iid] or RarityConfig.Items[iid]
+	local cItem = C.Items[iid]
+	local isGun = (itemDef and (itemDef.WeaponType == "Gun" or itemDef.Icon == "Gun"))
+		or (cItem and cItem.Slot == "Gun")
+		or (C.Guns and C.Guns[iid] ~= nil)
+	if isGun then
+		prof.UnlockedGuns = type(prof.UnlockedGuns) == "table" and prof.UnlockedGuns or {}
+		prof.UnlockedGuns[iid] = true
+	elseif (itemDef and itemDef.Slot == "Weapon") or (cItem and cItem.Slot == "Weapon") or (C.Swords and C.Swords[iid] ~= nil) then
+		prof.UnlockedWeapons = type(prof.UnlockedWeapons) == "table" and prof.UnlockedWeapons or {}
+		prof.UnlockedWeapons[iid] = true
+	end
+end
+
 local function handleTradeWithCollector(player, payload)
 	payload = type(payload) == "table" and payload or { offerId = payload }
 	local prof = D.Get(player)
 	if not prof then
 		return false
+	end
+	if prof._ReadOnlyFallback == true or (D.Sessions and D.Sessions[player] and D.Sessions[player].ReadOnlyFallback == true) then
+		G.Notify(player, "Không thể giao dịch khi dữ liệu đang ở chế độ Bảo Vệ (ReadOnly)!")
+		return true
 	end
 	prof.StoredFruits = type(prof.StoredFruits) == "table" and prof.StoredFruits or {}
 	prof.Inventory = type(prof.Inventory) == "table" and prof.Inventory or {}
@@ -906,17 +1160,22 @@ local function handleTradeWithCollector(player, payload)
 		end
 	end
 
-	-- Auto-match a fair Collector fruit within <= 40% if receiveList wasn't explicitly specified
+	local maxAllowedReceiveValue = math.floor(giveValue * 1.05)
+
+	-- Auto-match a fair Collector fruit within <= 40% and <= 105% of giveValue if receiveList wasn't explicitly specified
 	if type(receiveList) ~= "table" or #receiveList == 0 then
 		local bestFruitId = nil
 		local bestDiff = math.huge
 		for fid, fDef in pairs(C.AetherFruits or {}) do
-			if not needCounts[fid] then
+			local canonFid = resolveCanonicalFruitId(fid)
+			if not needCounts[canonFid] then
 				local pVal = tonumber(fDef.Price) or 0
+				local mVal = math.max(giveValue, pVal, 1)
+				local dRatio = math.abs(giveValue - pVal) / mVal
 				local d = math.abs(pVal - giveValue)
-				if pVal > 0 and d < bestDiff then
+				if pVal > 0 and pVal <= maxAllowedReceiveValue and dRatio <= 0.4001 and d < bestDiff then
 					bestDiff = d
-					bestFruitId = fid
+					bestFruitId = canonFid
 				end
 			end
 		end
@@ -926,7 +1185,7 @@ local function handleTradeWithCollector(player, payload)
 	end
 
 	if type(receiveList) ~= "table" or #receiveList == 0 or #receiveList > 4 then
-		G.Notify(player, "Nhà Sưu Tập chưa tìm thấy vật phẩm đối ứng phù hợp!")
+		G.Notify(player, "Nhà Sưu Tập chưa tìm thấy vật phẩm đối ứng tương đương giá trị!")
 		return true
 	end
 
@@ -937,6 +1196,10 @@ local function handleTradeWithCollector(player, payload)
 		-- Client tu chon do nhan: chi cho phep Loi Aether (khong cho lay do vendor bo qua LevelReq/Sea).
 		if val <= 0 or normId == "" or (clientChosenReceive and not isFruit) then
 			G.Notify(player, "Vật phẩm nhận không hợp lệ: " .. tostring(raw))
+			return true
+		end
+		if needCounts[normId] then
+			G.Notify(player, "Không thể đặt trùng cùng một Lõi/vật phẩm ở cả bên đưa và bên nhận!")
 			return true
 		end
 		receiveValue += val
@@ -955,6 +1218,39 @@ local function handleTradeWithCollector(player, payload)
 		)
 		return true
 	end
+	if receiveValue > maxAllowedReceiveValue then
+		G.Notify(
+			player,
+			string.format(
+				"Nhà Sưu Tập chỉ đổi vật phẩm giá trị tương đương (tối đa 105%% = %d Gold, hiện nhận %d Gold)!",
+				maxAllowedReceiveValue,
+				receiveValue
+			)
+		)
+		return true
+	end
+
+	-- Verify Core Storage Cap before mutating inventory
+	local maxCap = Helpers.GetMaxCoreStorage(player, prof)
+	local recvFruitTally = {}
+	for _, rec in ipairs(normalizedReceives) do
+		if rec.IsFruit then
+			recvFruitTally[rec.Id] = (recvFruitTally[rec.Id] or 0) + 1
+		end
+	end
+	for fid, addCnt in pairs(recvFruitTally) do
+		local curOwned = math.max(0, (tonumber(prof.StoredFruits[fid]) or 0) - (isFruitMap[fid] and (needCounts[fid] or 0) or 0))
+		if curOwned + addCnt > maxCap then
+			local fName = (C.AetherFruits and C.AetherFruits[fid] and C.AetherFruits[fid].Name) or fid
+			LiveOps.Notify(
+				G,
+				player,
+				string.format("Kho Lõi Aether đã đầy (%d/%d)! Không thể nhận thêm [%s]!", curOwned, maxCap, fName),
+				string.format("Core Storage full (%d/%d)! Cannot store more [%s]!", curOwned, maxCap, fName)
+			)
+			return true
+		end
+	end
 
 	-- Deduct player's offered items
 	for normId, reqCount in pairs(needCounts) do
@@ -964,6 +1260,7 @@ local function handleTradeWithCollector(player, payload)
 		else
 			local rem = math.max(0, (tonumber(prof.Inventory[normId]) or 0) - reqCount)
 			prof.Inventory[normId] = rem > 0 and rem or nil
+			reconcileDepletedItem(prof, normId)
 		end
 	end
 
@@ -976,11 +1273,14 @@ local function handleTradeWithCollector(player, payload)
 			table.insert(receivedNames, (fDef and fDef.Name) or rec.Id)
 		else
 			prof.Inventory[rec.Id] = (tonumber(prof.Inventory[rec.Id]) or 0) + 1
+			syncGrantedEquipmentUnlock(prof, rec.Id)
 			local iDef = ArsenalExpansionConfig.Items[rec.Id] or RarityConfig.Items[rec.Id]
 			table.insert(receivedNames, (iDef and (iDef.VietnameseName or iDef.Name)) or rec.Id)
 		end
 	end
+	VendorService.SyncCharacterArmorAttributes(player, prof)
 
+	task.spawn(D.Save, player, false)
 	G.Notify(
 		player,
 		string.format(
@@ -992,6 +1292,750 @@ local function handleTradeWithCollector(player, payload)
 	)
 	G.Sync(player)
 	return true
+end
+
+-- ============================================================================
+-- 4B. REAL 2-PLAYER P2P TRADING AT 4-SEAT PHANTOM TABLES (<=40% Anti-Scam)
+-- ============================================================================
+local activeP2PSessionsByPlayer = {}
+local pendingP2PRequests = {} -- [targetPlayer] = { From = senderPlayer, At = os.clock() }
+local nextP2PSessionSeq = 0
+
+local function getItemDisplayLabel(normId, isFruit)
+	if isFruit then
+		local fDef = C.AetherFruits and C.AetherFruits[normId]
+		return (fDef and fDef.Name) or normId
+	end
+	local iDef = ArsenalExpansionConfig.Items[normId] or RarityConfig.Items[normId] or C.Items[normId]
+	return (iDef and (iDef.VietnameseName or iDef.Name)) or normId
+end
+
+local function findTargetPlayer(payload)
+	if type(payload) ~= "table" then
+		return nil
+	end
+	local uid = tonumber(payload.targetUserId or payload.userId or payload.partnerUserId or payload.targetId)
+	if uid then
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr.UserId == uid then
+				return plr
+			end
+		end
+	end
+	local rawName = tostring(payload.targetName or payload.playerName or payload.target or "")
+	if rawName ~= "" then
+		local lower = string.lower(rawName)
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if string.lower(plr.Name) == lower or string.lower(plr.DisplayName) == lower then
+				return plr
+			end
+		end
+	end
+	return nil
+end
+
+local function computeSessionMetrics(session)
+	local valA, valB = 0, 0
+	for _, entry in ipairs(session.Offers[session.PlayerA] or {}) do
+		valA += (tonumber(entry.Value) or 0)
+	end
+	for _, entry in ipairs(session.Offers[session.PlayerB] or {}) do
+		valB += (tonumber(entry.Value) or 0)
+	end
+	local maxVal = math.max(valA, valB, 1)
+	local diffRatio = (valA == 0 and valB == 0) and 0 or (math.abs(valA - valB) / maxVal)
+	local diffPct = math.floor(diffRatio * 1000 + 0.5) / 10
+	local isFair = (diffRatio <= 0.4001)
+	local fairWarning = nil
+	if not isFair and (valA > 0 or valB > 0) then
+		fairWarning = string.format("Chênh lệch giá trị %.1f%% (> 40%%)! Cần cân bằng lại để khóa giao dịch.", diffPct)
+	end
+	return valA, valB, diffPct, isFair, fairWarning
+end
+
+local function getNearbyPlayersList(player)
+	local list = {}
+	local ch = player and player.Character
+	local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		return list
+	end
+	for _, other in ipairs(Players:GetPlayers()) do
+		if other ~= player then
+			local och = other.Character
+			local ohrp = och and och:FindFirstChild("HumanoidRootPart")
+			local ohum = och and och:FindFirstChildOfClass("Humanoid")
+			if ohrp then
+				local dist = (ohrp.Position - hrp.Position).Magnitude
+				if dist <= 65 then
+					local seatPart = ohum and ohum.SeatPart
+					local atTable = seatPart ~= nil and string.find(seatPart.Name, "TradeSeat_") ~= nil
+					table.insert(list, {
+						UserId = other.UserId,
+						Name = other.Name,
+						DisplayName = other.DisplayName,
+						Distance = math.floor(dist + 0.5),
+						SeatedAtTable = atTable,
+						InTrade = activeP2PSessionsByPlayer[other] ~= nil,
+					})
+				end
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.Distance < b.Distance
+	end)
+	return list
+end
+
+local function buildP2PStateForPlayer(player, extraFields)
+	local session = activeP2PSessionsByPlayer[player]
+	local req = pendingP2PRequests[player]
+	local pendingInfo = nil
+	if req and req.From and req.From.Parent == Players and (os.clock() - (req.At or 0)) <= 60 then
+		pendingInfo = {
+			FromUserId = req.From.UserId,
+			FromName = req.From.Name,
+			FromDisplayName = req.From.DisplayName,
+		}
+	end
+	if not session then
+		local state = {
+			Active = false,
+			PendingInvite = pendingInfo,
+			NearbyPlayers = getNearbyPlayersList(player),
+		}
+		if type(extraFields) == "table" then
+			for k, v in pairs(extraFields) do
+				state[k] = v
+			end
+		end
+		return state
+	end
+	local partner = (session.PlayerA == player) and session.PlayerB or session.PlayerA
+	local valA, valB, diffPct, isFair, fairWarning = computeSessionMetrics(session)
+	local myVal = (session.PlayerA == player) and valA or valB
+	local partnerVal = (session.PlayerA == player) and valB or valA
+	local state = {
+		Active = true,
+		SessionId = session.Id,
+		TableId = session.TableId,
+		PartnerUserId = partner and partner.UserId or 0,
+		PartnerName = partner and partner.Name or "",
+		PartnerDisplayName = partner and partner.DisplayName or "",
+		MyOffers = session.Offers[player] or {},
+		PartnerOffers = (partner and session.Offers[partner]) or {},
+		MyValue = myVal,
+		PartnerValue = partnerVal,
+		DiffPct = diffPct,
+		IsFair = isFair,
+		FairWarning = fairWarning,
+		MyReady = session.Ready[player] == true,
+		PartnerReady = (partner and session.Ready[partner] == true) or false,
+		MyConfirmed = session.Confirmed[player] == true,
+		PartnerConfirmed = (partner and session.Confirmed[partner] == true) or false,
+		PendingInvite = pendingInfo,
+		NearbyPlayers = getNearbyPlayersList(player),
+	}
+	if type(extraFields) == "table" then
+		for k, v in pairs(extraFields) do
+			state[k] = v
+		end
+	end
+	return state
+end
+
+local function pushP2PState(player, extraFields, openShop)
+	if not player or player.Parent ~= Players then
+		return
+	end
+	local ev = getUIStateUpdatedRemote()
+	if ev then
+		local payload = {
+			P2PTrade = buildP2PStateForPlayer(player, extraFields),
+		}
+		if openShop then
+			payload.OpenVendorMode = "TradingTable"
+			payload.ActiveVendorMode = "TradingTable"
+		end
+		ev:FireClient(player, payload)
+	end
+end
+
+local function cancelP2PSession(session, reasonMsg, extraFields)
+	if not session or session.Closed then
+		return
+	end
+	session.Closed = true
+	local pA, pB = session.PlayerA, session.PlayerB
+	if pA then
+		activeP2PSessionsByPlayer[pA] = nil
+		pcall(function()
+			pA:SetAttribute("InTrade", false)
+		end)
+	end
+	if pB then
+		activeP2PSessionsByPlayer[pB] = nil
+		pcall(function()
+			pB:SetAttribute("InTrade", false)
+		end)
+	end
+	if pA and pA.Parent == Players then
+		if reasonMsg then
+			G.Notify(pA, reasonMsg)
+		end
+		pushP2PState(pA, extraFields or { Cancelled = true }, false)
+	end
+	if pB and pB.Parent == Players then
+		if reasonMsg then
+			G.Notify(pB, reasonMsg)
+		end
+		pushP2PState(pB, extraFields or { Cancelled = true }, false)
+	end
+end
+
+local function arePlayersAtSameTradingTable(pA, pB)
+	if not pA or not pB then
+		return false, nil
+	end
+	local rA = pA.Character and pA.Character:FindFirstChild("HumanoidRootPart")
+	local rB = pB.Character and pB.Character:FindFirstChild("HumanoidRootPart")
+	if not rA or not rB then
+		return false, nil
+	end
+	local vendorFolder = workspace:FindFirstChild("SkybreakExpansionWorld")
+		and workspace.SkybreakExpansionWorld:FindFirstChild("VendorNPCs")
+	if vendorFolder then
+		for _, st in ipairs(vendorFolder:GetChildren()) do
+			if st:GetAttribute("VendorMode") == "TradingTable" then
+				local tbl = st:FindFirstChild("HoloTradeTable") or st.PrimaryPart
+				if tbl and (rA.Position - tbl.Position).Magnitude <= 28 and (rB.Position - tbl.Position).Magnitude <= 28 then
+					return true, st.Name
+				end
+			end
+		end
+	end
+	for _, fb in ipairs({
+		{ Id = "PhantomTradingTable_Cafe", Pos = Vector3.new(9424, 50.9, 1756) },
+		{ Id = "PhantomTradingTable_Sea2", Pos = Vector3.new(-14576, 50.9, 2188) },
+	}) do
+		if (rA.Position - fb.Pos).Magnitude <= 28 and (rB.Position - fb.Pos).Magnitude <= 28 then
+			return true, fb.Id
+		end
+	end
+	return false, nil
+end
+
+local function checkP2PEligibility(pA, pB, notifyPlr)
+	local profA, profB = D.Get(pA), D.Get(pB)
+	if not profA or not profB then
+		return false, nil
+	end
+	local lvA, lvB = tonumber(profA.Level) or 1, tonumber(profB.Level) or 1
+	if lvA < 700 or lvB < 700 then
+		if notifyPlr then
+			LiveOps.Notify(
+				G,
+				notifyPlr,
+				"BÀN GIAO DỊCH P2P: Cả 2 người chơi đều phải đạt tối thiểu Level 700 (Tầng Trời 2 - Cyberport Cafe)!",
+				"P2P TRADING: Both players must reach Level 700+ (Sea 2 - Cyberport Cafe)!"
+			)
+		end
+		return false, nil
+	end
+	local nowUnix = os.time()
+	if (tonumber(pA:GetAttribute("PvPCombatUntil")) or 0) > nowUnix or (tonumber(pB:GetAttribute("PvPCombatUntil")) or 0) > nowUnix then
+		if notifyPlr then
+			LiveOps.Notify(G, notifyPlr, "Không thể Giao Dịch P2P khi đang trong trạng thái Giao Tranh PvP!", "Cannot P2P trade while PvP combat-tagged!")
+		end
+		return false, nil
+	end
+	local nearTbl, tblName = arePlayersAtSameTradingTable(pA, pB)
+	if not nearTbl then
+		if notifyPlr then
+			LiveOps.Notify(
+				G,
+				notifyPlr,
+				"Cả 2 người chơi phải đứng trong bán kính 28m quanh Bàn Giao Dịch Cyberport Cafe để giao dịch!",
+				"Both players must stand within 28 studs of a Trading Table (Cyberport Cafe) to trade!"
+			)
+		end
+		return false, nil
+	end
+	return true, tblName
+end
+
+local function startP2PSession(pA, pB, tableId, openUI)
+	if not pA or not pB or pA == pB or pA.Parent ~= Players or pB.Parent ~= Players then
+		return false
+	end
+	if activeP2PSessionsByPlayer[pA] or activeP2PSessionsByPlayer[pB] then
+		return false
+	end
+	local profA, profB = D.Get(pA), D.Get(pB)
+	if not profA or not profB then
+		return false
+	end
+	if profA._ReadOnlyFallback == true or profB._ReadOnlyFallback == true then
+		G.Notify(pA, "Không thể giao dịch P2P khi dữ liệu đang ở chế độ Bảo Vệ (ReadOnly)!")
+		G.Notify(pB, "Không thể giao dịch P2P khi dữ liệu đang ở chế độ Bảo Vệ (ReadOnly)!")
+		return false
+	end
+	local okElig, resolvedTableId = checkP2PEligibility(pA, pB, pA)
+	if not okElig then
+		return false
+	end
+	tableId = resolvedTableId or tableId
+
+	pendingP2PRequests[pA] = nil
+	pendingP2PRequests[pB] = nil
+	nextP2PSessionSeq += 1
+	local session = {
+		Id = "P2P_" .. tostring(nextP2PSessionSeq),
+		TableId = tableId or "DirectP2P",
+		PlayerA = pA,
+		PlayerB = pB,
+		Offers = { [pA] = {}, [pB] = {} },
+		Ready = { [pA] = false, [pB] = false },
+		Confirmed = { [pA] = false, [pB] = false },
+		StartedAt = os.clock(),
+	}
+	activeP2PSessionsByPlayer[pA] = session
+	activeP2PSessionsByPlayer[pB] = session
+	pA:SetAttribute("InTrade", true)
+	pB:SetAttribute("InTrade", true)
+
+	G.Notify(pA, "BÀN GIAO DỊCH P2P: Đã kết nối phiên trao đổi trực tiếp với " .. pB.DisplayName .. "!")
+	G.Notify(pB, "BÀN GIAO DỊCH P2P: Đã kết nối phiên trao đổi trực tiếp với " .. pA.DisplayName .. "!")
+	pushP2PState(pA, nil, openUI == true)
+	pushP2PState(pB, nil, openUI == true)
+	return true
+end
+
+onTradeTableSeatChanged = function(stationModel, seatsList, changedSeat)
+	local seatedPlayers = {}
+	for _, seat in ipairs(seatsList) do
+		local occ = seat.Occupant
+		local char = occ and occ.Parent
+		local plr = char and Players:GetPlayerFromCharacter(char)
+		if plr and plr.Parent == Players then
+			table.insert(seatedPlayers, plr)
+		end
+	end
+	if changedSeat and changedSeat.Occupant then
+		local occPlr = Players:GetPlayerFromCharacter(changedSeat.Occupant.Parent)
+		if occPlr and not activeP2PSessionsByPlayer[occPlr] then
+			pushP2PState(occPlr, nil, true)
+		end
+	end
+	if #seatedPlayers >= 2 then
+		local p1, p2 = nil, nil
+		for _, sp in ipairs(seatedPlayers) do
+			if not activeP2PSessionsByPlayer[sp] then
+				if not p1 then
+					p1 = sp
+				elseif sp ~= p1 then
+					p2 = sp
+					break
+				end
+			end
+		end
+		if p1 and p2 then
+			startP2PSession(p1, p2, stationModel.Name, true)
+		end
+	end
+end
+
+onTradeTablePromptTriggered = function(plr, stationModel, seatsList)
+	stationModel:SetAttribute("NPCTalkAt", workspace:GetServerTimeNow())
+	-- Check if another free player is sitting at this table right now
+	if not activeP2PSessionsByPlayer[plr] then
+		for _, seat in ipairs(seatsList or {}) do
+			local occ = seat.Occupant
+			local other = occ and occ.Parent and Players:GetPlayerFromCharacter(occ.Parent)
+			if other and other ~= plr and not activeP2PSessionsByPlayer[other] then
+				startP2PSession(plr, other, stationModel.Name, true)
+				return
+			end
+		end
+	end
+	pushP2PState(plr, nil, true)
+	G.SendDialogue(
+		plr,
+		"Bàn Giao Dịch 4 Ghế • P2P & Nhà Sưu Tập",
+		"GIAO DỊCH P2P TRỰC TIẾP & NHÀ SƯU TẬP 4X4",
+		"Ngồi vào ghế cùng người chơi khác để tự động ghép đôi Giao Dịch P2P (chống lừa đảo <= 40%), gửi lời mời P2P, hoặc giao dịch trực tiếp với Nhà Sưu Tập!",
+		"Mở Bàn Giao Dịch P2P / Collector",
+		"OpenScreen:NPCShop:TradingTable"
+	)
+end
+
+local function resetSessionLocks(session)
+	session.Ready[session.PlayerA] = false
+	session.Ready[session.PlayerB] = false
+	session.Confirmed[session.PlayerA] = false
+	session.Confirmed[session.PlayerB] = false
+end
+
+local function countOfferedById(offerList, normId, isFruit)
+	local n = 0
+	for _, item in ipairs(offerList) do
+		if item.Id == normId and (item.IsFruit == true) == (isFruit == true) then
+			n += 1
+		end
+	end
+	return n
+end
+
+local function executeAtomicP2PSwap(session)
+	local pA, pB = session.PlayerA, session.PlayerB
+	if not pA or not pB or pA.Parent ~= Players or pB.Parent ~= Players then
+		cancelP2PSession(session, "Giao dịch P2P đã hủy do người chơi rời máy chủ.")
+		return false
+	end
+	local profA, profB = D.Get(pA), D.Get(pB)
+	if not profA or not profB or profA._ReadOnlyFallback == true or profB._ReadOnlyFallback == true then
+		cancelP2PSession(session, "Không thể hoàn tất giao dịch P2P do trạng thái hồ sơ thay đổi!")
+		return false
+	end
+	local okElig = checkP2PEligibility(pA, pB, pA)
+	if not okElig then
+		cancelP2PSession(session, LiveOps.Pick(pA, "Giao dịch P2P bị hủy: cả hai phải đạt Lv.700+, đứng cạnh Bàn Giao Dịch (<=28m) và không trong PvP!", "P2P trade cancelled: both players must be Lv.700+, within 28m of the Trading Table, and out of PvP!"))
+		return false
+	end
+	profA.StoredFruits = type(profA.StoredFruits) == "table" and profA.StoredFruits or {}
+	profA.Inventory = type(profA.Inventory) == "table" and profA.Inventory or {}
+	profB.StoredFruits = type(profB.StoredFruits) == "table" and profB.StoredFruits or {}
+	profB.Inventory = type(profB.Inventory) == "table" and profB.Inventory or {}
+
+	local offersA = session.Offers[pA] or {}
+	local offersB = session.Offers[pB] or {}
+	if #offersA == 0 and #offersB == 0 then
+		G.Notify(pA, "Cần đặt ít nhất 1 vật phẩm hoặc Lõi Aether để giao dịch!")
+		return true
+	end
+
+	local _, _, diffPct, isFair = computeSessionMetrics(session)
+	if not isFair then
+		resetSessionLocks(session)
+		local msg = string.format("CHỐNG LỪA ĐẢO 40%%: Chênh lệch %.1f%% (> 40%%)! Khóa an toàn đã kích hoạt.", diffPct)
+		G.Notify(pA, msg)
+		G.Notify(pB, msg)
+		pushP2PState(pA)
+		pushP2PState(pB)
+		return true
+	end
+
+	-- Aggregate required counts for atomic ownership verification
+	local reqA_Fruits, reqA_Items = {}, {}
+	for _, entry in ipairs(offersA) do
+		if entry.IsFruit then
+			reqA_Fruits[entry.Id] = (reqA_Fruits[entry.Id] or 0) + 1
+		else
+			reqA_Items[entry.Id] = (reqA_Items[entry.Id] or 0) + 1
+		end
+	end
+	local reqB_Fruits, reqB_Items = {}, {}
+	for _, entry in ipairs(offersB) do
+		if entry.IsFruit then
+			reqB_Fruits[entry.Id] = (reqB_Fruits[entry.Id] or 0) + 1
+		else
+			reqB_Items[entry.Id] = (reqB_Items[entry.Id] or 0) + 1
+		end
+	end
+
+	for fid, cnt in pairs(reqA_Fruits) do
+		if (tonumber(profA.StoredFruits[fid]) or 0) < cnt then
+			cancelP2PSession(session, pA.DisplayName .. " không còn đủ [" .. getItemDisplayLabel(fid, true) .. "] trong kho!")
+			return true
+		end
+	end
+	for iid, cnt in pairs(reqA_Items) do
+		if (tonumber(profA.Inventory[iid]) or 0) < cnt then
+			cancelP2PSession(session, pA.DisplayName .. " không còn đủ [" .. getItemDisplayLabel(iid, false) .. "] trong túi đồ!")
+			return true
+		end
+	end
+	for fid, cnt in pairs(reqB_Fruits) do
+		if (tonumber(profB.StoredFruits[fid]) or 0) < cnt then
+			cancelP2PSession(session, pB.DisplayName .. " không còn đủ [" .. getItemDisplayLabel(fid, true) .. "] trong kho!")
+			return true
+		end
+	end
+	for iid, cnt in pairs(reqB_Items) do
+		if (tonumber(profB.Inventory[iid]) or 0) < cnt then
+			cancelP2PSession(session, pB.DisplayName .. " không còn đủ [" .. getItemDisplayLabel(iid, false) .. "] trong túi đồ!")
+			return true
+		end
+	end
+
+	-- Enforce Core Storage Cap for both receivers before any mutation
+	local maxCapA = Helpers.GetMaxCoreStorage(pA, profA)
+	local maxCapB = Helpers.GetMaxCoreStorage(pB, profB)
+	for fid, cnt in pairs(reqA_Fruits) do
+		local afterB = math.max(0, (tonumber(profB.StoredFruits[fid]) or 0) - (reqB_Fruits[fid] or 0)) + cnt
+		if afterB > maxCapB then
+			resetSessionLocks(session)
+			local msg = string.format("%s đã đầy Kho Lõi Aether (%d/%d) cho [%s]!", pB.DisplayName, afterB - cnt, maxCapB, getItemDisplayLabel(fid, true))
+			G.Notify(pA, msg)
+			G.Notify(pB, msg)
+			pushP2PState(pA)
+			pushP2PState(pB)
+			return true
+		end
+	end
+	for fid, cnt in pairs(reqB_Fruits) do
+		local afterA = math.max(0, (tonumber(profA.StoredFruits[fid]) or 0) - (reqA_Fruits[fid] or 0)) + cnt
+		if afterA > maxCapA then
+			resetSessionLocks(session)
+			local msg = string.format("%s đã đầy Kho Lõi Aether (%d/%d) cho [%s]!", pA.DisplayName, afterA - cnt, maxCapA, getItemDisplayLabel(fid, true))
+			G.Notify(pA, msg)
+			G.Notify(pB, msg)
+			pushP2PState(pA)
+			pushP2PState(pB)
+			return true
+		end
+	end
+
+	-- Atomic Swap (zero yields between deduction and grant)
+	for fid, cnt in pairs(reqA_Fruits) do
+		local rem = math.max(0, (tonumber(profA.StoredFruits[fid]) or 0) - cnt)
+		profA.StoredFruits[fid] = rem > 0 and rem or nil
+		profB.StoredFruits[fid] = (tonumber(profB.StoredFruits[fid]) or 0) + cnt
+	end
+	for iid, cnt in pairs(reqA_Items) do
+		local rem = math.max(0, (tonumber(profA.Inventory[iid]) or 0) - cnt)
+		profA.Inventory[iid] = rem > 0 and rem or nil
+		reconcileDepletedItem(profA, iid)
+		profB.Inventory[iid] = (tonumber(profB.Inventory[iid]) or 0) + cnt
+		syncGrantedEquipmentUnlock(profB, iid)
+	end
+	for fid, cnt in pairs(reqB_Fruits) do
+		local rem = math.max(0, (tonumber(profB.StoredFruits[fid]) or 0) - cnt)
+		profB.StoredFruits[fid] = rem > 0 and rem or nil
+		profA.StoredFruits[fid] = (tonumber(profA.StoredFruits[fid]) or 0) + cnt
+	end
+	for iid, cnt in pairs(reqB_Items) do
+		local rem = math.max(0, (tonumber(profB.Inventory[iid]) or 0) - cnt)
+		profB.Inventory[iid] = rem > 0 and rem or nil
+		reconcileDepletedItem(profB, iid)
+		profA.Inventory[iid] = (tonumber(profA.Inventory[iid]) or 0) + cnt
+		syncGrantedEquipmentUnlock(profA, iid)
+	end
+
+	session.Closed = true
+	activeP2PSessionsByPlayer[pA] = nil
+	activeP2PSessionsByPlayer[pB] = nil
+	pA:SetAttribute("InTrade", false)
+	pB:SetAttribute("InTrade", false)
+
+	VendorService.SyncCharacterArmorAttributes(pA, profA)
+	VendorService.SyncCharacterArmorAttributes(pB, profB)
+	task.spawn(D.Save, pA, false)
+	task.spawn(D.Save, pB, false)
+
+	G.Notify(pA, string.format("GIAO DỊCH P2P THÀNH CÔNG với %s (Chênh lệch %.1f%% <= 40%%)!", pB.DisplayName, diffPct))
+	G.Notify(pB, string.format("GIAO DỊCH P2P THÀNH CÔNG với %s (Chênh lệch %.1f%% <= 40%%)!", pA.DisplayName, diffPct))
+	G.Sync(pA)
+	G.Sync(pB)
+	pushP2PState(pA, { Completed = true, LastResult = "Success" }, false)
+	pushP2PState(pB, { Completed = true, LastResult = "Success" }, false)
+	return true
+end
+
+local function handleP2PTradeAction(player, payload)
+	payload = type(payload) == "table" and payload or { subAction = tostring(payload or "") }
+	local sub = tostring(payload.subAction or payload.action or payload.mode or "GetState")
+	local prof = D.Get(player)
+	if not prof then
+		return false
+	end
+
+	if sub == "GetState" or sub == "Refresh" or sub == "" then
+		pushP2PState(player)
+		return true
+	end
+
+	if sub == "Cancel" or sub == "Close" then
+		local session = activeP2PSessionsByPlayer[player]
+		if session then
+			cancelP2PSession(session, player.DisplayName .. " đã hủy phiên Giao Dịch P2P.")
+		else
+			pendingP2PRequests[player] = nil
+			pushP2PState(player, { Cancelled = true }, false)
+		end
+		return true
+	end
+
+	if sub == "Decline" or sub == "DeclineRequest" then
+		local req = pendingP2PRequests[player]
+		pendingP2PRequests[player] = nil
+		if req and req.From and req.From.Parent == Players then
+			G.Notify(req.From, player.DisplayName .. " đã từ chối lời mời Giao Dịch P2P.")
+			pushP2PState(req.From)
+		end
+		pushP2PState(player)
+		return true
+	end
+
+	if sub == "RequestTrade" or sub == "Invite" or sub == "StartWithPlayer" or sub == "Accept" or sub == "AcceptRequest" then
+		if activeP2PSessionsByPlayer[player] then
+			G.Notify(player, "Bạn đang ở trong một phiên Giao Dịch P2P!")
+			pushP2PState(player)
+			return true
+		end
+		local target = findTargetPlayer(payload)
+		if not target and (sub == "Accept" or sub == "AcceptRequest") then
+			local req = pendingP2PRequests[player]
+			if req and req.From and req.From.Parent == Players then
+				target = req.From
+			end
+		end
+		if not target or target == player then
+			G.Notify(player, "Không tìm thấy người chơi đối tác để giao dịch!")
+			pushP2PState(player)
+			return true
+		end
+		if activeP2PSessionsByPlayer[target] then
+			G.Notify(player, target.DisplayName .. " hiện đang bận giao dịch với người khác!")
+			return true
+		end
+		local okElig, tableId = checkP2PEligibility(player, target, player)
+		if not okElig then
+			pushP2PState(player)
+			return true
+		end
+
+		local reqFromTarget = pendingP2PRequests[player]
+		local hasMutualReq = reqFromTarget and reqFromTarget.From == target and (os.clock() - (reqFromTarget.At or 0)) <= 60
+		if hasMutualReq or sub == "StartWithPlayer" then
+			startP2PSession(target, player, tableId or "DirectP2P", true)
+			return true
+		end
+
+		pendingP2PRequests[target] = { From = player, At = os.clock() }
+		G.Notify(player, "Đã gửi lời mời Giao Dịch P2P tới " .. target.DisplayName .. "!")
+		G.Notify(target, player.DisplayName .. " mời bạn Giao Dịch P2P! Mở Bàn Giao Dịch để Chấp Nhận.")
+		pushP2PState(player)
+		pushP2PState(target)
+		return true
+	end
+
+	local session = activeP2PSessionsByPlayer[player]
+	if not session then
+		G.Notify(player, "Chưa có phiên Giao Dịch P2P nào đang hoạt động!")
+		pushP2PState(player)
+		return true
+	end
+	local partner = (session.PlayerA == player) and session.PlayerB or session.PlayerA
+
+	if sub == "AddFruit" or sub == "AddItem" then
+		local myOffers = session.Offers[player]
+		if #myOffers >= 4 then
+			G.Notify(player, "Mỗi bên chỉ có thể đặt tối đa 4 vật phẩm/Lõi Aether!")
+			return true
+		end
+		local rawId = tostring(payload.itemId or payload.fruitId or payload.id or "")
+		local val, normId, isFruit = getTradeItemValue(rawId)
+		if sub == "AddFruit" and not isFruit then
+			G.Notify(player, "Lõi Aether không hợp lệ: " .. rawId)
+			return true
+		end
+		if val <= 0 or normId == "" then
+			G.Notify(player, "Vật phẩm này không thể đưa lên bàn Giao Dịch P2P!")
+			return true
+		end
+		prof.StoredFruits = type(prof.StoredFruits) == "table" and prof.StoredFruits or {}
+		prof.Inventory = type(prof.Inventory) == "table" and prof.Inventory or {}
+		local alreadyOffered = countOfferedById(myOffers, normId, isFruit)
+		local owned = isFruit and (tonumber(prof.StoredFruits[normId]) or 0) or (tonumber(prof.Inventory[normId]) or 0)
+		if owned < alreadyOffered + 1 then
+			G.Notify(player, "Bạn không đủ [" .. getItemDisplayLabel(normId, isFruit) .. "] trong kho!")
+			return true
+		end
+		table.insert(myOffers, {
+			Id = normId,
+			Name = getItemDisplayLabel(normId, isFruit),
+			IsFruit = isFruit == true,
+			Value = val,
+		})
+		resetSessionLocks(session)
+		pushP2PState(player)
+		pushP2PState(partner)
+		return true
+	elseif sub == "RemoveOffer" or sub == "RemoveItem" or sub == "RemoveFruit" or sub == "ClearOffer" then
+		local myOffers = session.Offers[player]
+		if sub == "ClearOffer" then
+			table.clear(myOffers)
+		else
+			local slotIdx = tonumber(payload.slotIndex or payload.index)
+			if slotIdx and myOffers[slotIdx] then
+				table.remove(myOffers, slotIdx)
+			else
+				local rawId = tostring(payload.itemId or payload.fruitId or payload.id or "")
+				local _, normId = getTradeItemValue(rawId)
+				local targetId = (normId ~= "" and normId) or rawId
+				for idx = #myOffers, 1, -1 do
+					if myOffers[idx].Id == targetId or myOffers[idx].Id == rawId then
+						table.remove(myOffers, idx)
+						break
+					end
+				end
+			end
+		end
+		resetSessionLocks(session)
+		pushP2PState(player)
+		pushP2PState(partner)
+		return true
+	elseif sub == "ToggleReady" or sub == "SetReady" or sub == "Ready" then
+		local nextReady = (type(payload.ready) == "boolean") and payload.ready or (not session.Ready[player])
+		if nextReady then
+			local offersA = session.Offers[session.PlayerA] or {}
+			local offersB = session.Offers[session.PlayerB] or {}
+			if #offersA == 0 and #offersB == 0 then
+				G.Notify(player, "Hãy đặt ít nhất 1 vật phẩm lên bàn trước khi Sẵn Sàng!")
+				return true
+			end
+			local _, _, diffPct, isFair = computeSessionMetrics(session)
+			if not isFair then
+				G.Notify(player, string.format("CHỐNG LỪA ĐẢO 40%%: Chênh lệch %.1f%% (> 40%%) — hãy cân bằng giá trị trước!", diffPct))
+				return true
+			end
+		else
+			session.Confirmed[session.PlayerA] = false
+			session.Confirmed[session.PlayerB] = false
+		end
+		session.Ready[player] = nextReady
+		pushP2PState(player)
+		pushP2PState(partner)
+		return true
+	elseif sub == "Confirm" or sub == "AcceptFinal" then
+		if not (session.Ready[session.PlayerA] and session.Ready[session.PlayerB]) then
+			G.Notify(player, "Cả hai người chơi cần nhấn [Sẵn Sàng] trước khi Xác Nhận Giao Dịch!")
+			return true
+		end
+		local _, _, diffPct, isFair = computeSessionMetrics(session)
+		if not isFair then
+			resetSessionLocks(session)
+			G.Notify(player, string.format("CHỐNG LỪA ĐẢO 40%%: Chênh lệch %.1f%% (> 40%%)!", diffPct))
+			pushP2PState(player)
+			pushP2PState(partner)
+			return true
+		end
+		session.Confirmed[player] = true
+		if session.Confirmed[session.PlayerA] and session.Confirmed[session.PlayerB] then
+			return executeAtomicP2PSwap(session)
+		end
+		G.Notify(player, "Đã khóa xác nhận! Đang chờ đối phương xác nhận bước cuối...")
+		if partner and partner.Parent == Players then
+			G.Notify(partner, player.DisplayName .. " đã Xác Nhận giao dịch! Nhấn [Xác Nhận] để hoàn tất hoán đổi.")
+		end
+		pushP2PState(player)
+		pushP2PState(partner)
+		return true
+	end
+
+	return false
 end
 
 local function handleSetFaction(player, payload)
@@ -1026,9 +2070,47 @@ local function handleStartTempleV4Trial(player)
 	if not prof then
 		return false
 	end
+	if (tonumber(player:GetAttribute("PvPCombatUntil")) or 0) > os.time() then
+		LiveOps.Notify(G, player, "Đang trong trạng thái Giao Tranh PvP! Không thể dịch chuyển vào Đền Thăng Hoa!", "Cannot enter the Ascension Temple while PvP combat-tagged!")
+		return false
+	end
+	local isDev = DevGate.IsAllowed(player)
+	local playerLv = tonumber(prof.Level) or 1
+	if playerLv < 1900 and not isDev then
+		LiveOps.Notify(G, player, "ĐỀN THĂNG HOA: Yêu cầu đạt tối thiểu Level 1900 để bước vào Thử Thách Thăng Hoa V4!", "ASCENSION TEMPLE: Requires Level 1900+ to start the Race V4 Trial!")
+		return false
+	end
+	local raceTier = tonumber(prof.RaceTier) or 1
+	if raceTier < 3 and not isDev then
+		LiveOps.Notify(G, player, "ĐỀN THĂNG HOA: Bạn cần tiến hóa Huyết Thống lên Bậc V3 trước khi mở Thử Thách V4!", "ASCENSION TEMPLE: Evolve your Race to Tier V3 before challenging the V4 Trial!")
+		return false
+	end
+	local hasBlueGear = (prof.BlueResonanceGearFound == true)
+		or (prof.BlueGearFound == true)
+		or (type(prof.Inventory) == "table" and (tonumber(prof.Inventory.BlueResonanceGear) or 0) > 0)
+		or (prof.RaceV4Unlocked == true)
+	if not hasBlueGear and not isDev then
+		LiveOps.Notify(G, player, "ĐỀN THĂNG HOA: Bạn cần tìm thấy Bánh Răng Cộng Hưởng Xanh trên Đảo Ảo Ảnh trước khi mở Thử Thách V4!", "ASCENSION TEMPLE: Find the Blue Resonance Gear on Mirage Sky Island before unlocking the V4 Trial!")
+		return false
+	end
+	local rt = G.Runtime and G.Runtime[player]
+	if (rt and (rt.InRaid or rt.InDuel or rt.InTrial)) or (tonumber(player:GetAttribute("SpireFloor")) or 0) > 0 then
+		G.Notify(player, "Không thể bước vào Đền Thăng Hoa khi đang ở trong phó bản/đấu trường!")
+		return false
+	end
+
+	local expMod = Services:FindFirstChild("SkybreakCombatExpansion")
+	local okExp, expSvc = pcall(function()
+		return expMod and require(expMod) or nil
+	end)
+	if not (okExp and expSvc and type(expSvc.StartTempleRaceV4Trial) == "function") then
+		G.Notify(player, "ĐỀN THĂNG HOA: Hệ thống Thử Thách đang khởi tạo, vui lòng thử lại sau giây lát!")
+		return false
+	end
+
 	local templePos = (C.FastTravel and C.FastTravel.TempleOfTheCore and C.FastTravel.TempleOfTheCore.Pos) or Vector3.new(-14600, 50.9, -1785)
-	local fy = groundYAt(templePos + Vector3.new(0, 0, -12), templePos.Y - 4)
-	local altarPos = Vector3.new(templePos.X, fy, templePos.Z - 12)
+	local fy = groundYAt(templePos + Vector3.new(0, 0, -18), templePos.Y - 4)
+	local altarPos = Vector3.new(templePos.X, fy, templePos.Z - 18)
 
 	local ch = player.Character
 	local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
@@ -1037,23 +2119,7 @@ local function handleStartTempleV4Trial(player)
 		G.Teleport(player, altarPos + Vector3.new(0, 3.2, 8))
 	end
 
-	local expMod = Services:FindFirstChild("SkybreakCombatExpansion")
-	local okExp, expSvc = pcall(function()
-		return expMod and require(expMod) or nil
-	end)
-	if okExp and expSvc and type(expSvc.StartTempleRaceV4Trial) == "function" then
-		expSvc.StartTempleRaceV4Trial(player, altarPos)
-		G.Sync(player)
-		return true
-	end
-
-	-- Safe fallback if trial helper isn't bound yet
-	prof.RaceV4Unlocked = true
-	prof.RaceTier = 4
-	prof.CoreGears = (tonumber(prof.CoreGears) or 0) + 1
-	prof.AwakeningMeter = 100
-	player:SetAttribute("RaceV4Unlocked", true)
-	G.Notify(player, "ĐỀN THĂNG HOA: Đã kích hoạt Thăng Hoa [" .. tostring(prof.Race or "Skyborn") .. "] + 1 Core Gear!")
+	expSvc.StartTempleRaceV4Trial(player, altarPos)
 	G.Sync(player)
 	return true
 end
@@ -1062,10 +2128,10 @@ function VendorService.HandleUIRequest(player, cmd, payload)
 	if type(cmd) ~= "string" then
 		return false
 	end
-	if cmd == "BuyVendorItem" or cmd == "TradeWithCollector" or cmd == "SetFaction" or cmd == "StartTempleV4Trial" then
+	if cmd == "BuyVendorItem" or cmd == "TradeWithCollector" or cmd == "P2PTradeAction" or cmd == "P2PTrade" or cmd == "SetFaction" or cmd == "StartTempleV4Trial" then
 		local now = os.clock()
 		local key = tostring(player.UserId) .. ":" .. cmd
-		if cmdDebounce[key] and (now - cmdDebounce[key]) < 0.12 then
+		if cmdDebounce[key] and (now - cmdDebounce[key]) < 0.08 then
 			return true
 		end
 		cmdDebounce[key] = now
@@ -1075,6 +2141,8 @@ function VendorService.HandleUIRequest(player, cmd, payload)
 		return handleBuyVendorItem(player, payload)
 	elseif cmd == "TradeWithCollector" then
 		return handleTradeWithCollector(player, payload)
+	elseif cmd == "P2PTradeAction" or cmd == "P2PTrade" then
+		return handleP2PTradeAction(player, payload)
 	elseif cmd == "SetFaction" then
 		return handleSetFaction(player, payload)
 	elseif cmd == "StartTempleV4Trial" then
@@ -1120,6 +2188,16 @@ function VendorService.Start()
 	end
 	Players.PlayerAdded:Connect(bindPlayerArmorSync)
 	Players.PlayerRemoving:Connect(function(plr)
+		local sess = activeP2PSessionsByPlayer[plr]
+		if sess then
+			cancelP2PSession(sess, plr.DisplayName .. " đã rời máy chủ — hủy phiên Giao Dịch P2P.")
+		end
+		pendingP2PRequests[plr] = nil
+		for targetPlr, req in pairs(pendingP2PRequests) do
+			if req.From == plr then
+				pendingP2PRequests[targetPlr] = nil
+			end
+		end
 		local prefix = tostring(plr.UserId) .. ":"
 		for k in pairs(cmdDebounce) do
 			if string.sub(k, 1, #prefix) == prefix then

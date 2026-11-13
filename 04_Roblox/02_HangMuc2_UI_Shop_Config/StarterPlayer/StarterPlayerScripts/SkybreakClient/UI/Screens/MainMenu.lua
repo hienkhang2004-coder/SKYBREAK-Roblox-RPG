@@ -64,8 +64,8 @@ local CLASS_HERO_SPECS = {
         AuraDark = Color3.fromRGB(78, 28, 138),
         RoleVi = "Pháp Sư Tinh Cầu • Sát Thương Phép AoE",
         RoleEn = "Astral Arcanist • Cataclysmic AoE Spellcraft",
-        SpecVi = "Quyền Trượng Tinh Vân • Mưa Thiên Thạch • Cộng Hưởng Trái 3D",
-        SpecEn = "Astral Scepter • Starfall AoE • 3D Fruit Synergy",
+        SpecVi = "Quyền Trượng Tinh Vân • Mưa Thiên Thạch • Cộng Hưởng Lõi Aether",
+        SpecEn = "Astral Scepter • Starfall AoE • 3D Core Synergy",
         StatsVi = "PHÉP: 99  •  DIỆN RỘNG: 97  •  ĐỘ KHÓ: PHÁP THUẬT",
         StatsEn = "MAG: 99  •  AOE: 97  •  DIFFICULTY: SPELLCASTER",
     },
@@ -327,12 +327,13 @@ function MainMenu.Build(parent, _responsiveState)
     local statusLabel = UIFactory.Label(topHeader, {
         Name = "StatusText",
         Text = string.format(
-            "%s: %s  •  Skyborn Lv.%d  •  %s  •  Gold: %s  •  DIORAMA 3D SKY HUB TRỰC TIẾP",
+            "%s: %s  •  Skyborn Lv.%d  •  %s  •  Gold: %s  •  %s",
             I18n.Pick("TRẠNG THÁI", "STATUS"),
             snap.saveStatus or "Connected",
             (snap.player and snap.player.level) or 1,
             activeClassId,
-            UIFactory.FormatNumber(snap.currency and snap.currency.gold or 0)
+            UIFactory.FormatNumber(snap.currency and snap.currency.gold or 0),
+            I18n.Pick("DIORAMA 3D SKY HUB TRỰC TIẾP", "LIVE 3D SKY HUB DIORAMA")
         ),
         Position = UDim2.fromOffset(62, 30),
         Size = UDim2.new(1, -304, 0, 18),
@@ -674,15 +675,15 @@ function MainMenu.Build(parent, _responsiveState)
             Icon = "Skull",
             Variant = "danger",
             Pos = UDim2.fromOffset(0, 0),
-            Vi = "PHE KHÔNG TẶC (SKY PIRATE • SĂN BOUNTY)",
-            En = "SKY PIRATE FACTION (BOUNTY HUNTERS)",
+            Vi = "PHE KHÔNG TẶC (SKY PIRATE • SĂN DANH VỌNG)",
+            En = "SKY PIRATE FACTION (RENOWN HUNTERS)",
         },
         {
             Id = "Marine",
             Icon = "Shield",
             Variant = "primary",
             Pos = UDim2.new(0.5, 7, 0, 0),
-            Vi = "PHE THÁNH VỆ QUÂN (AETHER MARINE • BẮT TỘI PHẠM)",
+            Vi = "PHE THÁNH VỆ QUÂN (AETHER MARINE • BẢO VỆ THIÊN GIỚI)",
             En = "AETHER MARINE FACTION (PEACEKEEPERS)",
         },
     }
@@ -697,7 +698,7 @@ function MainMenu.Build(parent, _responsiveState)
                 api:Update({
                     variant = fDef.Variant,
                     selected = isActiveF,
-                    label = isActiveF and ("[ĐANG CHỌN] " .. baseLbl) or baseLbl,
+                    label = isActiveF and (I18n.Pick("[ĐANG CHỌN] ", "[SELECTED] ") .. baseLbl) or baseLbl,
                 })
             end
         end
@@ -709,7 +710,7 @@ function MainMenu.Build(parent, _responsiveState)
         local _, fApi = PremiumButton.Create(factionBar, {
             name = "FactionCard_" .. fDef.Id,
             icon = fDef.Icon,
-            label = isActiveF and ("[ĐANG CHỌN] " .. baseLbl) or baseLbl,
+            label = isActiveF and (I18n.Pick("[ĐANG CHỌN] ", "[SELECTED] ") .. baseLbl) or baseLbl,
             variant = fDef.Variant,
             selected = isActiveF,
             position = fDef.Pos,
@@ -749,11 +750,11 @@ function MainMenu.Build(parent, _responsiveState)
 
     local dockItems = {
         { Name = "DockMap", Icon = "Map", Vi = "BẢN ĐỒ 20 ĐẢO [M]", En = "20-ISLAND MAP [M]", Screen = UIState.Screens.WorldMap, Variant = "primary" },
-        { Name = "DockShops", Icon = "Gold", Vi = "11 CỬA HÀNG NPC 3D [N]", En = "11 3D NPC SHOPS [N]", Screen = UIState.Screens.NPCShop, Variant = "secondary" },
-        { Name = "DockFruits", Icon = "Fruit", Vi = "KHO TRÁI GACHA [G]", En = "3D FRUIT GACHA [G]", Screen = UIState.Screens.Fruits, Variant = "secondary" },
         { Name = "DockInv", Icon = "Bag", Vi = "HÀNH TRANG 3D [I]", En = "3D INVENTORY [I]", Screen = UIState.Screens.Inventory, Variant = "secondary" },
+        { Name = "DockSkills", Icon = "Skill", Vi = "KỸ NĂNG & CHỈ SỐ [K]", En = "SKILLS & STATS [K]", Screen = UIState.Screens.Skills, Variant = "secondary" },
+        { Name = "DockFruits", Icon = "Fruit", Vi = "KHO LÕI AETHER [G]", En = "AETHER CORE VAULT [G]", Screen = "Fruits:Vault", Variant = "secondary" },
         { Name = "DockSocial", Icon = "Crown", Vi = "TỔ ĐỘI & QUÀ 7 NGÀY [B]", En = "PARTY & 7-DAY GIFTS [B]", Screen = UIState.Screens.SocialRewards, Variant = "secondary" },
-        { Name = "DockSettings", Icon = "Settings", Vi = "CÀI ĐẶT", En = "SETTINGS", Screen = UIState.Screens.Settings, Variant = "secondary" },
+        { Name = "DockSettings", Icon = "Settings", Vi = "CÀI ĐẶT [O]", En = "SETTINGS [O]", Screen = UIState.Screens.Settings, Variant = "secondary" },
     }
 
     for dIdx, dItem in ipairs(dockItems) do
@@ -802,12 +803,13 @@ function MainMenu.Update(snapshot)
     local clsId = (snapshot.player and snapshot.player.classId) or "SkyGuardian"
     if refs.StatusLabel then
         refs.StatusLabel.Text = string.format(
-            "%s: %s  •  Skyborn Lv.%d  •  %s  •  Gold: %s  •  DIORAMA 3D SKY HUB TRỰC TIẾP",
+            "%s: %s  •  Skyborn Lv.%d  •  %s  •  Gold: %s  •  %s",
             I18n.Pick("TRẠNG THÁI", "STATUS"),
             snapshot.saveStatus or "Connected",
             (snapshot.player and snapshot.player.level) or 1,
             clsId,
-            UIFactory.FormatNumber(snapshot.currency and snapshot.currency.gold or 0)
+            UIFactory.FormatNumber(snapshot.currency and snapshot.currency.gold or 0),
+            I18n.Pick("DIORAMA 3D SKY HUB TRỰC TIẾP", "LIVE 3D SKY HUB DIORAMA")
         )
     end
     if refs.RefreshClasses then

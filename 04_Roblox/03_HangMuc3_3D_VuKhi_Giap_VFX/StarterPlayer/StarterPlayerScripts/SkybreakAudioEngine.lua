@@ -49,7 +49,7 @@ Audio.SFX_Specs = {
     boss_telegraph = { Id = "rbxassetid://9114024787", Fallback = "rbxassetid://9114024708", Vol = 0.60, Speed = 1.0 },
     boss_roar = { Id = "rbxassetid://9113980319", Fallback = "rbxassetid://9113980507", Vol = 0.85, Speed = 0.86, Reverb = 0.55 },
     level_up = { Id = "rbxassetid://1836473422", Fallback = "rbxassetid://1836473398", Vol = 0.76, Speed = 1.0, Reverb = 0.35 },
-    quest_complete = { Id = "rbxassetid://112234886947497", Fallback = "rbxassetid://1836473422", Vol = 0.74, Speed = 1.0, Reverb = 0.35 },
+    quest_complete = { Id = "rbxassetid://1836473422", Fallback = "rbxassetid://1836473398", Vol = 0.74, Speed = 1.0, Reverb = 0.35 },
     forge_anvil = { Id = "rbxassetid://9113447467", Fallback = "rbxassetid://9113447116", Vol = 0.76, Speed = 1.02, Reverb = 0.30 },
     potion_heal = { Id = "rbxassetid://9114369623", Fallback = "rbxassetid://9116394876", Vol = 0.66, Speed = 1.12, Reverb = 0.32 },
     chest_open = { Id = "rbxassetid://9114776898", Fallback = "rbxassetid://1836473422", Vol = 0.74, Speed = 1.05, Reverb = 0.35 },
@@ -295,7 +295,7 @@ end
 
 local function isAudioMuted()
     local lp = Players.LocalPlayer
-    if lp and lp:GetAttribute("AudioMuted") == true then
+    if lp and (lp:GetAttribute("AudioMuted") == true or lp:GetAttribute("MuteAudio") == true) then
         return true
     end
     local mVol = lp and tonumber(lp:GetAttribute("MasterVolume"))
@@ -310,10 +310,32 @@ local function normalizeVolumeMul(raw, defaultMul)
     if v == nil then
         return defaultMul or 1.0
     end
-    if v > 1.5 then
+    if v > 1.0 then
         v = v / 100.0
     end
-    return math.clamp(v, 0, 1.5)
+    return math.clamp(v, 0, 1.0)
+end
+
+local function computeSfxGain(lp)
+    return normalizeVolumeMul(lp and lp:GetAttribute("MasterVolume"), 1.0)
+        * normalizeVolumeMul(lp and lp:GetAttribute("SFXVolume"), 1.0)
+end
+
+local function refreshPlayingSfxPoolVolumes()
+    local lp = Players.LocalPlayer
+    local muted = isAudioMuted() or (lp ~= nil and lp:GetAttribute("MuteSFX") == true)
+    local gain = muted and 0 or computeSfxGain(lp)
+    for _, pool in ipairs({ spatialPool, uiSoundPool }) do
+        for _, node in ipairs(pool) do
+            if node and node.Sound and node.Sound.Parent and node.Sound.IsPlaying then
+                if gain <= 0.0005 then
+                    node.Sound.Volume = 0
+                else
+                    node.Sound.Volume = math.clamp((tonumber(node.BaseVolume) or 0.55) * gain, 0, 2.0)
+                end
+            end
+        end
+    end
 end
 
 local function computeNaturalPitchAndVolume(spec, pitchJitter, isSpatial)
@@ -383,6 +405,16 @@ function Audio.PlaySFX(sfxName, worldPos, pitchJitter)
     if isAudioMuted() then
         return
     end
+    local lp = Players.LocalPlayer
+    if lp and lp:GetAttribute("MuteSFX") == true then
+        return
+    end
+    local sfxGain = normalizeVolumeMul(lp and lp:GetAttribute("MasterVolume"), 1.0)
+        * normalizeVolumeMul(lp and lp:GetAttribute("SFXVolume"), 1.0)
+    if sfxGain <= 0.0005 then
+        return
+    end
+
     local key = tostring(sfxName or "ui_click")
     local spec = Audio.SFX_Specs[key] or Audio.SFX_Specs.ui_click
     local now = os.clock()
@@ -392,11 +424,10 @@ function Audio.PlaySFX(sfxName, worldPos, pitchJitter)
     end
     lastSfxTime[key] = now
 
-    local player = Players.LocalPlayer
     local isSpatial = (typeof(worldPos) == "Vector3")
     if isSpatial then
         local listenerPos = nil
-        local ch = player and player.Character
+        local ch = lp and lp.Character
         local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
         if hrp then
             listenerPos = hrp.Position
@@ -408,10 +439,8 @@ function Audio.PlaySFX(sfxName, worldPos, pitchJitter)
         end
     end
 
-    local masterMul = normalizeVolumeMul(player and player:GetAttribute("MasterVolume"), 1.0)
-    local sfxMul = normalizeVolumeMul(player and player:GetAttribute("SFXVolume"), 1.0)
     local speed, jitteredVol = computeNaturalPitchAndVolume(spec, pitchJitter, isSpatial)
-    local finalVolume = math.clamp(jitteredVol * masterMul * sfxMul, 0, 2.0)
+    local finalVolume = math.clamp(jitteredVol * sfxGain, 0, 2.0)
 
     local node
     if isSpatial then
@@ -435,6 +464,7 @@ function Audio.PlaySFX(sfxName, worldPos, pitchJitter)
     node.Token += 1
     local token = node.Token
     node.BusyUntil = now + 2.4
+    node.BaseVolume = jitteredVol
 
     local s = node.Sound
     if s.IsPlaying then
@@ -451,7 +481,17 @@ function Audio.PlaySFX(sfxName, worldPos, pitchJitter)
         if node.Token ~= token or not s.Parent or isAudioMuted() then
             return
         end
+        local curLp = Players.LocalPlayer
+        if curLp and curLp:GetAttribute("MuteSFX") == true then
+            return
+        end
+        local curGain = normalizeVolumeMul(curLp and curLp:GetAttribute("MasterVolume"), 1.0)
+            * normalizeVolumeMul(curLp and curLp:GetAttribute("SFXVolume"), 1.0)
+        if curGain <= 0.0005 then
+            return
+        end
         if not s.IsLoaded and spec.Fallback and spec.Fallback ~= spec.Id then
+            s.Volume = math.clamp(jitteredVol * curGain, 0, 2.0)
             s.SoundId = spec.Fallback
             s:Play()
         end
@@ -467,14 +507,29 @@ function Audio.PlaySFX(sfxName, worldPos, pitchJitter)
     end
 end
 
-local function resolveRealmExplorationTrack()
-    local lp = Players.LocalPlayer
-    local realm = lp and tostring(lp:GetAttribute("CurrentRealm") or "") or ""
-    if realm == "SkyHub" or realm == "" then
-        realm = "GoldenSky"
+local lastExplicitTrack = nil
+local lastExplicitTrackAt = -10
+
+local function normalizeRealmTrackName(raw)
+    local r = tostring(raw or "")
+    if r == "SkyHub" or r == "" then
+        return "GoldenSky"
     end
+    return r
+end
+
+local function resolveRealmExplorationTrack()
+    local now = os.clock()
+    if lastExplicitTrack and Audio.BGM_Specs[lastExplicitTrack] and (now - lastExplicitTrackAt) < 1.5 then
+        return lastExplicitTrack
+    end
+    local lp = Players.LocalPlayer
+    local realm = normalizeRealmTrackName(lp and lp:GetAttribute("CurrentRealm") or "")
     if Audio.BGM_Specs[realm] and realm ~= "BossBattle" then
         return realm
+    end
+    if lastExplicitTrack and Audio.BGM_Specs[lastExplicitTrack] then
+        return lastExplicitTrack
     end
     return desiredExplorationTrack or "GoldenSky"
 end
@@ -678,8 +733,10 @@ local function applyBgmCrossfade(targetTrack)
 end
 
 function Audio.UpdateBGM(trackKey)
-    local requested = tostring(trackKey or "")
+    local requested = normalizeRealmTrackName(trackKey)
     if requested ~= "" and requested ~= "BossBattle" and Audio.BGM_Specs[requested] then
+        lastExplicitTrack = requested
+        lastExplicitTrackAt = os.clock()
         desiredExplorationTrack = requested
     else
         desiredExplorationTrack = resolveRealmExplorationTrack()
@@ -688,6 +745,9 @@ function Audio.UpdateBGM(trackKey)
     local now = os.clock()
     local inBossCombat = scanBossProximityAndCombat(now)
     local resolvedTrack = inBossCombat and "BossBattle" or desiredExplorationTrack
+    if currentBgmTrack == resolvedTrack and activeBgmSound and activeBgmSound.Parent then
+        return
+    end
     applyBgmCrossfade(resolvedTrack)
 end
 
@@ -729,6 +789,47 @@ RunService.Heartbeat:Connect(function(dt)
         applyBgmCrossfade(target)
     end
 end)
+
+do
+    local lp = Players.LocalPlayer
+    if lp then
+        local function onSfxAttrChanged()
+            refreshPlayingSfxPoolVolumes()
+        end
+        local function onBgmAttrChanged()
+            local muted = isAudioMuted()
+            local masterMul = normalizeVolumeMul(lp:GetAttribute("MasterVolume"), 1.0)
+            local bgmMul = muted and 0 or (normalizeVolumeMul(lp:GetAttribute("BGMVolume"), 1.0) * masterMul)
+            lastAppliedBgmGain = bgmMul
+            local track = (currentBgmTrack ~= "" and currentBgmTrack) or resolveRealmExplorationTrack()
+            local spec = Audio.BGM_Specs[track] or Audio.BGM_Specs.GoldenSky
+            if activeBgmSound and activeBgmSound.Parent then
+                activeBgmSound.Volume = spec.Vol * bgmMul
+            end
+            if activeWindSound and activeWindSound.Parent then
+                activeWindSound.Volume = ((track == "BossBattle") and 0.045 or 0.078) * bgmMul
+            end
+            if activeHarmonicSound and activeHarmonicSound.Parent then
+                activeHarmonicSound.Volume = ((track == "BossBattle") and 0.008 or 0.032) * bgmMul
+            end
+        end
+        lp:GetAttributeChangedSignal("SFXVolume"):Connect(onSfxAttrChanged)
+        lp:GetAttributeChangedSignal("MuteSFX"):Connect(onSfxAttrChanged)
+        lp:GetAttributeChangedSignal("BGMVolume"):Connect(onBgmAttrChanged)
+        lp:GetAttributeChangedSignal("MasterVolume"):Connect(function()
+            onSfxAttrChanged()
+            onBgmAttrChanged()
+        end)
+        lp:GetAttributeChangedSignal("AudioMuted"):Connect(function()
+            onSfxAttrChanged()
+            onBgmAttrChanged()
+        end)
+        lp:GetAttributeChangedSignal("MuteAudio"):Connect(function()
+            onSfxAttrChanged()
+            onBgmAttrChanged()
+        end)
+    end
+end
 
 task.spawn(function()
     ensureSpatialPool()

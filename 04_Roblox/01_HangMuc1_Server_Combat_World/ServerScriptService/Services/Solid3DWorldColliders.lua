@@ -638,6 +638,15 @@ local function isBlockedInAsset(data, lx, gy, lz, clear)
 end
 
 function M.IsBlockedByMainBox(x, y, z, minClearance)
+	if typeof(x) == "Vector3" or (type(x) == "table" and x.X ~= nil and x.Z ~= nil) then
+		minClearance = y
+		z = x.Z
+		y = x.Y
+		x = x.X
+	end
+	x = tonumber(x) or 0
+	z = tonumber(z) or 0
+	y = tonumber(y)
 	local clear = tonumber(minClearance) or 3.5
 	for _, b in ipairs(M.MAIN_BOXES) do
 		local bx, by, bz, bsx, bsy, bsz = b[1], b[2], b[3], b[4], b[5], b[6]

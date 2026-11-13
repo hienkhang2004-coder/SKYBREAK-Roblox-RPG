@@ -463,22 +463,22 @@ RarityConfig.Items = {
     },
     aether_flintlock = {
         Id = "aether_flintlock", Name = "Aether Flintlock", Category = "Weapons", Slot = "Offhand",
-        Rarity = "Common", LevelReq = 1, Icon = "Sword",
+        Rarity = "Common", LevelReq = 1, Icon = "Gun",
         Stats = { ATK = 35, CRIT = 5 }, Description = "Súng lục Aether cơ bản của thợ săn bầu trời.",
     },
     solar_kabucha = {
         Id = "solar_kabucha", Name = "Sunwind Sling • Ná Gió Mặt Trời", VietnameseName = "Ná Gió Mặt Trời", Category = "Weapons", Slot = "Offhand",
-        Rarity = "Rare", LevelReq = 1, Icon = "Sword",
+        Rarity = "Rare", LevelReq = 1, Icon = "Gun",
         Stats = { ATK = 78, CRIT = 12 }, Description = "Ná thần bắn đạn mặt trời phá giáp (+78 ATK, +12% Crit).",
     },
     cryo_railgun = {
         Id = "cryo_railgun", Name = "Cryo Railgun • Pháo Từ Trường Băng", Category = "Weapons", Slot = "Offhand",
-        Rarity = "Legendary", LevelReq = 1, Icon = "Sword",
+        Rarity = "Legendary", LevelReq = 1, Icon = "Gun",
         Stats = { ATK = 125, CRIT = 18 }, Description = "Pháo từ trường bắn tia laser băng giá (+125 ATK, +18% Crit).",
     },
     soul_guitar_void = {
         Id = "soul_guitar_void", Name = "Void Lyre • Đàn Hồn Hư Không", VietnameseName = "Đàn Hồn Hư Không", Category = "Weapons", Slot = "Offhand",
-        Rarity = "Mythic", LevelReq = 1, Icon = "Sword",
+        Rarity = "Mythic", LevelReq = 1, Icon = "Gun",
         Stats = { ATK = 165, CRIT = 22 }, Description = "Đàn hồn thần thoại triệu hồi sóng âm hư không (+165 ATK, +22% Crit).",
     },
     skyward_helm = {
@@ -578,7 +578,7 @@ RarityConfig.Recipes = {
         Category = "Weapon",
         Type = "Craft",
         LevelReq = 10,
-        GoldCost = 500,
+        GoldCost = 95000,
         CoreShardCost = 0,
         Materials = {
             { ItemId = "SunshardCore", Count = 2 },
@@ -595,7 +595,7 @@ RarityConfig.Recipes = {
         Category = "Weapon",
         Type = "Craft",
         LevelReq = 20,
-        GoldCost = 1200,
+        GoldCost = 240000,
         CoreShardCost = 0,
         Materials = {
             { ItemId = "SunshardCore", Count = 2 },
@@ -612,7 +612,7 @@ RarityConfig.Recipes = {
         Category = "Weapon",
         Type = "Craft",
         LevelReq = 20,
-        GoldCost = 1200,
+        GoldCost = 260000,
         CoreShardCost = 0,
         Materials = {
             { ItemId = "SunshardCore", Count = 2 },
@@ -629,7 +629,7 @@ RarityConfig.Recipes = {
         Category = "Armor",
         Type = "Craft",
         LevelReq = 15,
-        GoldCost = 800,
+        GoldCost = 55000,
         CoreShardCost = 0,
         Materials = {
             { ItemId = "CelestialFeather", Count = 2 },
@@ -646,7 +646,7 @@ RarityConfig.Recipes = {
         Category = "Accessory",
         Type = "Craft",
         LevelReq = 12,
-        GoldCost = 600,
+        GoldCost = 42000,
         CoreShardCost = 0,
         Materials = {
             { ItemId = "SunshardCore", Count = 1 },

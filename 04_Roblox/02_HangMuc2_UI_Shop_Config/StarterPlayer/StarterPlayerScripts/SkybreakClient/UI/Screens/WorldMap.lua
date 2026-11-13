@@ -606,19 +606,62 @@ local function queryLiveBossStatus(bossKey)
     return false, 0
 end
 
+local function getIslandLockStatus(isl, snap)
+    snap = snap or Store.GetSnapshot()
+    local _, cfgMinLv, isDiscovered = PartyController.IsIslandUnlockedForTravel(isl.Id, snap)
+    local parsedMin = tonumber(isl.MinLevel) or tonumber(string.match(tostring(isl.LevelRange or ""), "%d+")) or 1
+    local seaFloor = (isl.Sea == "Sea2") and 700 or ((isl.Sea == "Sea3") and 1500 or 1)
+    local minLv = math.max(tonumber(cfgMinLv) or 1, parsedMin, seaFloor)
+    if isl.Id == "SkyHub" or isl.Id == "GoldenSky" then
+        return true, 1, true, true
+    end
+    local playerLv = tonumber(snap and snap.player and snap.player.level) or 1
+    local lvOk = (playerLv >= minLv)
+    local disc = (isDiscovered == true)
+        or (snap and snap.discoveredIslands and snap.discoveredIslands[isl.Id] == true)
+        or false
+    return (disc and lvOk), minLv, disc, lvOk
+end
+
 local function requestIslandFastTravel(isl)
+    local snap = Store.GetSnapshot()
+    local unlocked, minLv, isDiscovered = getIslandLockStatus(isl, snap)
+    if not unlocked and not (snap and snap.isDemoMode) then
+        if not isDiscovered then
+            Store.ShowToast(
+                I18n.Pick(
+                    string.format("Chưa khám phá [%s]! Hãy lái Tàu Bay tới đảo lần đầu (Lv. %d+) để mở Dịch Chuyển Nhanh.", getIslandName(isl), minLv),
+                    string.format("[%s] is undiscovered! Sail there by Sky Ship first (Lv. %d+) to unlock Fast Travel.", getIslandName(isl), minLv)
+                ),
+                "warning",
+                3.2
+            )
+        else
+            Store.ShowToast(
+                I18n.Pick(
+                    string.format("Chưa đủ cấp độ! Cần đạt Lv. %d+ để Dịch Chuyển Nhanh tới [%s].", minLv, getIslandName(isl)),
+                    string.format("Requires Lv. %d+ to Fast Travel to [%s]!", minLv, getIslandName(isl))
+                ),
+                "warning",
+                2.8
+            )
+        end
+        return
+    end
     if WorldConfig.RealmById[isl.Id] or (WorldConfig.IslandById and WorldConfig.IslandById[isl.Id]) then
         PartyController.RequestFastTravel(isl.Id)
         return
     end
-    local snap = Store.GetSnapshot()
+    local uiRem = PartyController.GetUIRequestRemote and PartyController.GetUIRequestRemote() or nil
     local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-    if remotes and snap and not snap.isDemoMode then
-        if remotes:FindFirstChild("EquipmentRequest") then
+    if snap and not snap.isDemoMode then
+        if uiRem then
+            uiRem:FireServer("FastTravel", { command = "FastTravel", islandId = isl.Id, nodeId = isl.Id })
+        elseif remotes and remotes:FindFirstChild("EquipmentRequest") then
             remotes.EquipmentRequest:FireServer({ action = "FastTravel", nodeId = isl.Id, islandId = isl.Id })
-        elseif remotes:FindFirstChild("UIRequest") then
+        elseif remotes and remotes:FindFirstChild("UIRequest") then
             remotes.UIRequest:FireServer("FastTravel", { islandId = isl.Id, nodeId = isl.Id })
-        elseif remotes:FindFirstChild("InteractRequest") then
+        elseif remotes and remotes:FindFirstChild("InteractRequest") then
             remotes.InteractRequest:FireServer("FastTravel", { islandId = isl.Id, nodeId = isl.Id })
         end
     end
@@ -632,11 +675,15 @@ local function requestIslandFastTravel(isl)
     )
 end
 
-function WorldMap.Build(parent)
+function WorldMap.Build(parent, responsiveState)
     WorldMap.Cleanup()
     local colors = Theme.Colors
     local snap = Store.GetSnapshot()
     local view = Store.GetView()
+    local cam = workspace.CurrentCamera
+    local vp = (cam and cam.ViewportSize) or Vector2.new(1366, 768)
+    local isPortrait = (responsiveState and responsiveState.IsPortrait == true) or (vp.Y > vp.X and vp.X < 680)
+    local isCompactTabs = isPortrait or (vp.X < 1100)
 
     local hereIslandId = detectCurrentIslandId(snap)
     if view.selectedRealmId and ISLAND_BY_ID[view.selectedRealmId] then
@@ -666,29 +713,35 @@ function WorldMap.Build(parent)
         end,
     })
 
-    -- Left Interactive 20-Island Astrolabe Map Panel (61% width)
+    -- Left Interactive 20-Island Astrolabe Map Panel (61% width on landscape, top half on portrait)
     local mapPanel = PremiumPanel.Create(root, {
         name = "WorldMap",
         title = I18n.Pick("BẢN ĐỒ THIÊN GIỚI 20 ĐẢO (SKY 1 • SKY 2 • SKY 3)", "CELESTIAL 20-ISLAND WORLD MAP (SKY 1 - SKY 3)"),
         subtitle = I18n.Pick("Định vị trực tiếp • Trạng thái Boss Live • Dịch chuyển 1 chạm", "Live GPS Marker • Real-Time Boss Status • 1-Click Fast Travel"),
-        position = UDim2.fromOffset(16, 74),
-        size = UDim2.new(0.61, -12, 1, -88),
+        position = isPortrait and UDim2.fromOffset(10, 68) or UDim2.fromOffset(16, 74),
+        size = isPortrait and UDim2.new(1, -20, 0.52, -38) or UDim2.new(0.61, -12, 1, -88),
     })
 
-    -- Sea Filter Tabs Bar (#61)
-    local seaTabsRow = UIFactory.Create("Frame", mapPanel, {
+    -- Sea Filter Tabs Bar (#61 — Scrollable + Compact so 667x375 & portrait never clip)
+    local seaTabsRow = UIFactory.Create("ScrollingFrame", mapPanel, {
         Name = "SeaFilterTabs",
         Position = UDim2.fromOffset(14, 54),
-        Size = UDim2.new(1, -28, 0, 32),
+        Size = UDim2.new(1, -28, 0, 34),
         BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 2,
+        ScrollBarImageColor3 = colors.ACCENT_GOLD,
+        ScrollingDirection = Enum.ScrollingDirection.X,
+        AutomaticCanvasSize = Enum.AutomaticSize.X,
+        CanvasSize = UDim2.fromOffset(0, 0),
     })
     UIFactory.ListLayout(seaTabsRow, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
 
     local seaFilters = {
-        { id = "All", label = I18n.Pick("TẤT CẢ (20 ĐẢO)", "ALL (20 ISLANDS)"), w = 136 },
-        { id = "Sea1", label = "SKY 1 (8 • LV.1-700)", w = 152 },
-        { id = "Sea2", label = "SKY 2 (6 • LV.700-1500)", w = 164 },
-        { id = "Sea3", label = "SKY 3 (6 • LV.1500-2550)", w = 168 },
+        { id = "All", label = isCompactTabs and I18n.Pick("TẤT CẢ (20)", "ALL (20)") or I18n.Pick("TẤT CẢ (20 ĐẢO)", "ALL (20 ISLANDS)"), w = isCompactTabs and 104 or 136 },
+        { id = "Sea1", label = isCompactTabs and "SKY 1 (LV.1-700)" or "SKY 1 (8 • LV.1-700)", w = isCompactTabs and 122 or 152 },
+        { id = "Sea2", label = isCompactTabs and "SKY 2 (700-1500)" or "SKY 2 (6 • LV.700-1500)", w = isCompactTabs and 126 or 164 },
+        { id = "Sea3", label = isCompactTabs and "SKY 3 (1500-2550)" or "SKY 3 (6 • LV.1500-2550)", w = isCompactTabs and 132 or 168 },
     }
     for idx, sf in ipairs(seaFilters) do
         local isSel = (WorldMap.ActiveSeaFilter == sf.id)
@@ -798,6 +851,7 @@ function WorldMap.Build(parent)
             local isHere = (isl.Id == hereIslandId)
             local isSelected = (isl.Id == selectedIsland.Id)
             local bossAlive = isl.BossKey and queryLiveBossStatus(isl.BossKey) or false
+            local islUnlocked, islMinLv, islDiscovered = getIslandLockStatus(isl, snap)
 
             local nodeBtn = UIFactory.Create("TextButton", mapCanvas, {
                 Name = "IslandNode_" .. isl.Id,
@@ -805,7 +859,7 @@ function WorldMap.Build(parent)
                 Position = UDim2.fromScale(pos2D.X, pos2D.Y),
                 Size = UDim2.fromOffset(nodeW, nodeH),
                 BackgroundColor3 = isSelected and colors.BG_700 or colors.BG_800,
-                BackgroundTransparency = 0.04,
+                BackgroundTransparency = (islUnlocked or isHere or isSelected) and 0.04 or 0.24,
                 BorderSizePixel = 0,
                 Text = "",
                 AutoButtonColor = false,
@@ -814,9 +868,11 @@ function WorldMap.Build(parent)
             UIFactory.Corner(nodeBtn, Theme.Radius.Small)
             UIFactory.Stroke(
                 nodeBtn,
-                isHere and colors.SUCCESS or (isSelected and colors.ACCENT_GOLD or isl.Accent),
+                isHere and colors.SUCCESS
+                    or (isSelected and colors.ACCENT_GOLD
+                    or (islUnlocked and isl.Accent or colors.STROKE_STEEL)),
                 (isSelected or isHere) and 2.2 or 1.3,
-                0.1
+                (islUnlocked or isHere or isSelected) and 0.10 or 0.42
             )
 
             local titleLbl = UIFactory.Label(nodeBtn, {
@@ -825,7 +881,7 @@ function WorldMap.Build(parent)
                 Position = UDim2.fromOffset(6, 4),
                 Size = UDim2.new(1, -12, 0, 18),
                 TextSize = isCompactAll and 10 or 12,
-                TextColor = isl.Accent,
+                TextColor = (islUnlocked or isHere or isSelected) and isl.Accent or colors.TEXT_SECONDARY,
                 Bold = true,
                 XAlign = Enum.TextXAlignment.Center,
                 Truncate = Enum.TextTruncate.AtEnd,
@@ -845,12 +901,26 @@ function WorldMap.Build(parent)
                 ZIndex = nodeBtn.ZIndex + 1,
             })
 
-            local statusTxt = isHere
-                and I18n.Pick("BẠN ĐANG Ở ĐÂY", "YOU ARE HERE")
-                or (isl.BossKey and (bossAlive and I18n.Pick("BOSS ĐANG SỐNG", "BOSS ALIVE") or I18n.Pick("BOSS HỒI SINH", "BOSS RESPAWN")) or isl.SeaLabel)
-            local statusCol = isHere
-                and colors.SUCCESS
-                or (bossAlive and colors.HP_RED or (isl.BossKey and colors.ACCENT_GOLD or colors.TEXT_SECONDARY))
+            local statusTxt
+            local statusCol
+            if isHere then
+                statusTxt = I18n.Pick("BẠN ĐANG Ở ĐÂY", "YOU ARE HERE")
+                statusCol = colors.SUCCESS
+            elseif bossAlive then
+                statusTxt = islUnlocked
+                    and I18n.Pick("BOSS SỐNG • ĐÃ MỞ ✓", "BOSS ALIVE • UNLOCKED")
+                    or I18n.Pick("BOSS SỐNG • CHƯA MỞ", "BOSS ALIVE • LOCKED")
+                statusCol = colors.HP_RED
+            elseif islUnlocked then
+                statusTxt = I18n.Pick("ĐÃ MỞ DỊCH CHUYỂN ✓", "FAST TRAVEL READY ✓")
+                statusCol = colors.SUCCESS
+            elseif not islDiscovered then
+                statusTxt = I18n.Pick("CHƯA KHÁM PHÁ (TÀU)", "UNDISCOVERED (SHIP)")
+                statusCol = Color3.fromRGB(162, 180, 208)
+            else
+                statusTxt = I18n.Pick("KHÓA CẤP LV." .. tostring(islMinLv), "LOCKED LV." .. tostring(islMinLv))
+                statusCol = colors.ACCENT_GOLD
+            end
 
             local stLbl = UIFactory.Label(nodeBtn, {
                 Name = "StatusTag",
@@ -941,14 +1011,14 @@ function WorldMap.Build(parent)
         end
     end)
 
-    -- Right Inspector & Bestiary Codex Column (39% width) (#61 & #99)
+    -- Right Inspector & Bestiary Codex Column (39% width on landscape, bottom half on portrait) (#61 & #99)
     local detailPanel = PremiumPanel.Create(root, {
         name = "WorldDetail",
         variant = "gold",
         title = UIFactory.Upper(getIslandName(selectedIsland)),
         subtitle = selectedIsland.SeaLabel .. "  •  " .. selectedIsland.LevelRange,
-        position = UDim2.new(0.61, 10, 0, 74),
-        size = UDim2.new(0.39, -26, 1, -88),
+        position = isPortrait and UDim2.new(0, 10, 0.52, 34) or UDim2.new(0.61, 10, 0, 74),
+        size = isPortrait and UDim2.new(1, -20, 0.48, -44) or UDim2.new(0.39, -26, 1, -88),
     })
 
     -- Top Drawer Tabs inside Inspector: [THÔNG TIN ĐẢO & BOSS] vs [CODEX / TỈ LỆ RỚT ĐỒ] (#99)
@@ -1171,6 +1241,9 @@ function WorldMap.Build(parent)
         end
     end
 
+    local selUnlocked, selMinLv, selDiscovered = getIslandLockStatus(selectedIsland, snap)
+    local unlockStatusLbl = nil
+
     if WorldMap.InspectorTab == "Info" then
         local isHere = (selectedIsland.Id == hereIslandId)
         local bossAlive, bossHpPct = queryLiveBossStatus(selectedIsland.BossKey)
@@ -1179,7 +1252,7 @@ function WorldMap.Build(parent)
         local liveStatusCard = UIFactory.Create("Frame", detailPanel, {
             Name = "LiveStatusCard",
             Position = UDim2.fromOffset(16, 94),
-            Size = UDim2.new(1, -32, 0, 78),
+            Size = UDim2.new(1, -32, 0, 94),
             BackgroundColor3 = colors.BG_900,
             BorderSizePixel = 0,
         })
@@ -1201,10 +1274,38 @@ function WorldMap.Build(parent)
         UIFactory.Label(liveStatusCard, {
             Name = "GpsLine",
             Text = bossLineText,
-            Position = UDim2.fromOffset(12, 6),
-            Size = UDim2.new(1, -24, 0, 18),
+            Position = UDim2.fromOffset(12, 5),
+            Size = UDim2.new(1, -24, 0, 17),
             TextSize = 11,
             TextColor = bossLineCol,
+            Bold = true,
+            Truncate = Enum.TextTruncate.AtEnd,
+            Wrapped = false,
+        })
+
+        local lockTxt = selUnlocked
+            and I18n.Pick(
+                string.format("TRẠNG THÁI: ĐÃ KHÁM PHÁ • MỞ DỊCH CHUYỂN NHANH ✓ (Lv.%d+)", selMinLv),
+                string.format("STATUS: DISCOVERED • FAST TRAVEL UNLOCKED ✓ (Lv.%d+)", selMinLv)
+            )
+            or ((not selDiscovered)
+                and I18n.Pick(
+                    string.format("CHƯA KHÁM PHÁ — Lái Tàu Bay tới đảo lần đầu để mở Dịch Chuyển (Lv.%d+)", selMinLv),
+                    string.format("UNDISCOVERED — Sail by Sky Ship to unlock Fast Travel (Lv.%d+)", selMinLv)
+                )
+                or I18n.Pick(
+                    string.format("ĐÃ KHÁM PHÁ NHƯNG KHÓA CẤP — Yêu cầu đạt Lv.%d+", selMinLv),
+                    string.format("DISCOVERED • LEVEL LOCKED — Requires Lv.%d+", selMinLv)
+                ))
+        local lockCol = selUnlocked and colors.SUCCESS or ((not selDiscovered) and colors.ACCENT_GOLD or colors.HP_RED)
+
+        unlockStatusLbl = UIFactory.Label(liveStatusCard, {
+            Name = "UnlockStatusLine",
+            Text = lockTxt,
+            Position = UDim2.fromOffset(12, 23),
+            Size = UDim2.new(1, -24, 0, 16),
+            TextSize = 10,
+            TextColor = lockCol,
             Bold = true,
             Truncate = Enum.TextTruncate.AtEnd,
             Wrapped = false,
@@ -1213,7 +1314,7 @@ function WorldMap.Build(parent)
         UIFactory.Label(liveStatusCard, {
             Name = "WorldInfo",
             Text = getIslandDesc(selectedIsland),
-            Position = UDim2.fromOffset(12, 25),
+            Position = UDim2.fromOffset(12, 41),
             Size = UDim2.new(1, -24, 0, 48),
             TextSize = 11,
             TextColor = colors.TEXT_SECONDARY,
@@ -1222,8 +1323,8 @@ function WorldMap.Build(parent)
 
         local infoEnemyScroll = UIFactory.Create("ScrollingFrame", detailPanel, {
             Name = "IslandEnemyPreviewScroll",
-            Position = UDim2.fromOffset(16, 180),
-            Size = UDim2.new(1, -32, 1, -286),
+            Position = UDim2.fromOffset(16, 196),
+            Size = UDim2.new(1, -32, 1, -302),
             BackgroundTransparency = 1,
             BorderSizePixel = 0,
             ScrollBarThickness = 5,
@@ -1299,13 +1400,18 @@ function WorldMap.Build(parent)
     end
 
     -- 2 Signature Bottom CTA Buttons from Figma SKYBREAK_Figma_v2_02_WorldMap_Atlas.png:
-    -- 1) Glossy Gold Fast Travel
+    -- 1) Glossy Gold Fast Travel (shows Unlocked vs Undiscovered Sky Ship vs Level Locked)
     -- 2) Glossy Sapphire Minimap Waypoint Compass
-    PremiumButton.Create(detailPanel, {
+    local ftLabel = selUnlocked
+        and I18n.Pick("DỊCH CHUYỂN TỨC THỜI ĐẾN " .. UIFactory.Upper(getIslandName(selectedIsland)), "FAST TRAVEL TO " .. UIFactory.Upper(getIslandName(selectedIsland)))
+        or ((not selDiscovered)
+            and I18n.Pick(string.format("CHƯA KHÁM PHÁ • LÁI TÀU BAY TỚI ĐẢO ĐỂ MỞ (LV.%d+)", selMinLv), string.format("UNDISCOVERED • SAIL BY SKY SHIP FIRST (LV.%d+)", selMinLv))
+            or I18n.Pick(string.format("KHÓA DỊCH CHUYỂN • YÊU CẦU ĐẠT LV.%d+", selMinLv), string.format("LOCKED • REQUIRES LV.%d+", selMinLv)))
+    local _, fastTravelApi = PremiumButton.Create(detailPanel, {
         name = "FastTravelButton",
         icon = "Wing",
-        label = I18n.Pick("DỊCH CHUYỂN TỨC THỜI ĐẾN " .. UIFactory.Upper(getIslandName(selectedIsland)), "FAST TRAVEL TO " .. UIFactory.Upper(getIslandName(selectedIsland))),
-        variant = "gold",
+        label = ftLabel,
+        variant = selUnlocked and "gold" or "secondary",
         position = UDim2.new(0, 16, 1, -98),
         size = UDim2.new(1, -32, 0, 42),
         textSize = 12,
@@ -1350,13 +1456,54 @@ function WorldMap.Build(parent)
         HeaderRefs = headerRefs,
         LivePlayerMarker = livePlayerMarker,
         GpsConn = gpsConn,
+        SelectedIsland = selectedIsland,
+        UnlockStatusLbl = unlockStatusLbl,
+        FastTravelApi = fastTravelApi,
+        LastLang = I18n.GetLanguage(),
     }
     return root
 end
 
 function WorldMap.Update(snap)
+    snap = snap or Store.GetSnapshot()
+    if WorldMap.Refs.LastLang and WorldMap.Refs.LastLang ~= I18n.GetLanguage() then
+        ScreenRouter.Navigate(UIState.Screens.WorldMap, { forceRebuild = true, replace = true })
+        return
+    end
     if WorldMap.Refs.HeaderRefs and WorldMap.Refs.HeaderRefs.UpdateCurrencies then
-        WorldMap.Refs.HeaderRefs.UpdateCurrencies(snap or Store.GetSnapshot())
+        WorldMap.Refs.HeaderRefs.UpdateCurrencies(snap)
+    end
+    local sel = WorldMap.Refs.SelectedIsland
+    if sel then
+        local colors = Theme.Colors
+        local unlocked, minLv, discovered = getIslandLockStatus(sel, snap)
+        if WorldMap.Refs.UnlockStatusLbl and WorldMap.Refs.UnlockStatusLbl.Parent then
+            WorldMap.Refs.UnlockStatusLbl.Text = unlocked
+                and I18n.Pick(
+                    string.format("TRẠNG THÁI: ĐÃ KHÁM PHÁ • MỞ DỊCH CHUYỂN NHANH ✓ (Lv.%d+)", minLv),
+                    string.format("STATUS: DISCOVERED • FAST TRAVEL UNLOCKED ✓ (Lv.%d+)", minLv)
+                )
+                or ((not discovered)
+                    and I18n.Pick(
+                        string.format("CHƯA KHÁM PHÁ — Lái Tàu Bay tới đảo lần đầu để mở Dịch Chuyển (Lv.%d+)", minLv),
+                        string.format("UNDISCOVERED — Sail by Sky Ship to unlock Fast Travel (Lv.%d+)", minLv)
+                    )
+                    or I18n.Pick(
+                        string.format("ĐÃ KHÁM PHÁ NHƯNG KHÓA CẤP — Yêu cầu đạt Lv.%d+", minLv),
+                        string.format("DISCOVERED • LEVEL LOCKED — Requires Lv.%d+", minLv)
+                    ))
+            WorldMap.Refs.UnlockStatusLbl.TextColor3 = unlocked and colors.SUCCESS or ((not discovered) and colors.ACCENT_GOLD or colors.HP_RED)
+        end
+        if WorldMap.Refs.FastTravelApi then
+            WorldMap.Refs.FastTravelApi:Update({
+                variant = unlocked and "gold" or "secondary",
+                label = unlocked
+                    and I18n.Pick("DỊCH CHUYỂN TỨC THỜI ĐẾN " .. UIFactory.Upper(getIslandName(sel)), "FAST TRAVEL TO " .. UIFactory.Upper(getIslandName(sel)))
+                    or ((not discovered)
+                        and I18n.Pick(string.format("CHƯA KHÁM PHÁ • LÁI TÀU BAY TỚI ĐẢO ĐỂ MỞ (LV.%d+)", minLv), string.format("UNDISCOVERED • SAIL BY SKY SHIP FIRST (LV.%d+)", minLv))
+                        or I18n.Pick(string.format("KHÓA DỊCH CHUYỂN • YÊU CẦU ĐẠT LV.%d+", minLv), string.format("LOCKED • REQUIRES LV.%d+", minLv))),
+            })
+        end
     end
 end
 

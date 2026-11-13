@@ -2,17 +2,47 @@
 -- Compressed source inputs survive saving; ephemeral meshes are rebuilt per play session.
 local Asset=game:GetService('AssetService')
 local Run=game:GetService('RunService')
+local Players=game:GetService('Players')
+local UIS=game:GetService('UserInputService')
 local Sources=game.ReplicatedStorage:WaitForChild('DelegatedV5Sources')
-local M={Models={},Images={},Surfaces={},Contents={},Jobs={}}
+local M={Models={},Images={},Surfaces={},Contents={},ModelContents={},ModelImages={},ModelSurfaces={},Jobs={}}
+local function getGraphicsTier()
+    if Run:IsServer() then return 'Ultra' end
+    local lp=Players.LocalPlayer
+    if lp then
+        local t=lp:GetAttribute('GraphicsTier')
+        if t=='Ultra' or t=='Balanced' or t=='Smooth' then return t end
+    end
+    local wt=workspace:GetAttribute('GraphicsTier')
+    if wt=='Ultra' or wt=='Balanced' or wt=='Smooth' then return wt end
+    if (lp and lp:GetAttribute('LowFXMode')==true) or workspace:GetAttribute('LowFXMode')==true then return 'Smooth' end
+    if UIS.TouchEnabled and not UIS.KeyboardEnabled then return 'Smooth' end
+    return 'Ultra'
+end
 local function v(a)return Vector3.new(a[1],a[2],a[3])end
 local function cf(a)return CFrame.new(table.unpack(a))end
 local function srgb(x)return x<=.0031308 and x*12.92 or 1.055*x^(1/2.4)-.055 end
 local function snapshot(e)
     local status,content=Asset:CreateDataModelContentAsync(Content.fromObject(e))
     assert(status==Enum.CreateContentResult.Success,'V5 content: '..tostring(status))
-    table.insert(M.Contents,content);return content
+    local bname=M.ActiveBuildName
+    if bname then
+        M.ModelContents[bname]=M.ModelContents[bname] or {}
+        table.insert(M.ModelContents[bname],content)
+    else
+        table.insert(M.Contents,content)
+    end
+    return content
+end
+local function trackModelImage(name)
+    local bname=M.ActiveBuildName
+    if bname and name then
+        M.ModelImages[bname]=M.ModelImages[bname] or {}
+        M.ModelImages[bname][name]=true
+    end
 end
 local function texture(name)
+    trackModelImage(name)
     if M.Images[name] then return M.Images[name] end
     local module=Sources.Textures:FindFirstChild(name)
     if not module then return nil end
@@ -31,21 +61,49 @@ local function texture(name)
         local h=math.max(1,math.floor(npx/w))
         data={width=w,height=h,pixels=b}
     end
-    -- Runtime preview maps fit the shared client EditableImage budget. Original
-    -- full-resolution pixels remain in saved source modules and Blender files.
-    local cap=256
+    -- Runtime preview maps fit the shared client EditableImage budget with smooth bilinear resampling.
+    -- Original full-resolution pixels remain in saved source modules and Blender files.
+    local cap=(getGraphicsTier()=='Smooth') and 256 or 512
     local scale=math.min(1,cap/math.max(data.width,data.height))
     local width=math.max(1,math.floor(data.width*scale));local height=math.max(1,math.floor(data.height*scale))
     local pixels=data.pixels
     if width~=data.width or height~=data.height then
+        local sw,sh=data.width,data.height
+        local src=data.pixels
         pixels=buffer.create(width*height*4)
         for y=0,height-1 do
+            local fy=math.clamp(((y+0.5)*sh/height)-0.5,0,sh-1)
+            local y0=math.floor(fy)
+            local y1=math.min(sh-1,y0+1)
+            local ty=fy-y0
+            local ity=1-ty
+            local row0=y0*sw
+            local row1=y1*sw
+            local dstRow=y*width
             for x=0,width-1 do
-                local sx=math.min(data.width-1,math.floor((x+.5)*data.width/width))
-                local sy=math.min(data.height-1,math.floor((y+.5)*data.height/height))
-                buffer.copy(pixels,(y*width+x)*4,data.pixels,(sy*data.width+sx)*4,4)
+                local fx=math.clamp(((x+0.5)*sw/width)-0.5,0,sw-1)
+                local x0=math.floor(fx)
+                local x1=math.min(sw-1,x0+1)
+                local tx=fx-x0
+                local itx=1-tx
+                local w00=itx*ity
+                local w10=tx*ity
+                local w01=itx*ty
+                local w11=tx*ty
+                local o00=(row0+x0)*4
+                local o10=(row0+x1)*4
+                local o01=(row1+x0)*4
+                local o11=(row1+x1)*4
+                local dOff=(dstRow+x)*4
+                for c=0,3 do
+                    local val=buffer.readu8(src,o00+c)*w00
+                        +buffer.readu8(src,o10+c)*w10
+                        +buffer.readu8(src,o01+c)*w01
+                        +buffer.readu8(src,o11+c)*w11
+                    buffer.writeu8(pixels,dOff+c,math.clamp(math.floor(val+0.5),0,255))
+                end
             end
-            if y%32==0 then task.wait()end
+            if y>0 and y%24==0 then task.wait()end
         end
     end
     local im=assert(Asset:CreateEditableImage({Size=Vector2.new(width,height)}),'Texture allocation '..name)
@@ -65,6 +123,12 @@ local function surface(mat)
         error('Missing cloud surface template: '..mat.name)
     end
     local key=game.HttpService:JSONEncode(mat.maps)..':'..tostring(mat.emission_strength)
+    local bname=M.ActiveBuildName
+    if bname then
+        M.ModelSurfaces[bname]=M.ModelSurfaces[bname] or {}
+        M.ModelSurfaces[bname][key]=true
+        for _,tname in mat.maps do trackModelImage(tname) end
+    end
     if M.Surfaces[key] then return M.Surfaces[key]:Clone() end
     local maps={}
     for slot,name in mat.maps do local im=texture(name);if im then maps[slot]=Content.fromObject(im) end end
@@ -417,7 +481,7 @@ local function getWorldShaderSpec(matName,rawColor)
             scale=7.5,
             boost=1.12,
             mat=Enum.Material.Metal,
-            refl=0.22,
+            refl=0.12,
         }
     elseif ml:find('steel') or ml:find('iron') or ml:find('alloy') or ml:find('chrome') or ml:find('hull') and ml:find('W4') then
         spec={
@@ -426,7 +490,7 @@ local function getWorldShaderSpec(matName,rawColor)
             scale=7.5,
             boost=1.06,
             mat=Enum.Material.Metal,
-            refl=0.16,
+            refl=0.12,
         }
     elseif ml:find('cliff') or ml:find('canyon') or ml:find('mesa') or ml:find('crag') or ml:find('spire') then
         if ml:find('goldencliff') or ml:find('suncliff') then
@@ -439,8 +503,8 @@ local function getWorldShaderSpec(matName,rawColor)
             stops=makeWorldStops(r,g,b,1.58,0.44,0.96,1.32,0.07),
             scale=5.4,
             boost=1.06,
-            mat=isIcy and Enum.Material.Glacier or (isDarkVolcanic and Enum.Material.Basalt or Enum.Material.Sandstone),
-            refl=isIcy and 0.12 or 0.0,
+            mat=isIcy and Enum.Material.Ice or (isDarkVolcanic and Enum.Material.Slate or Enum.Material.Rock),
+            refl=isIcy and 0.06 or 0.0,
         }
     elseif ml:find('water') or ml:find('sea') or ml:find('pool') or ml:find('fountain') then
         spec={
@@ -449,26 +513,18 @@ local function getWorldShaderSpec(matName,rawColor)
             scale=4.5,
             boost=1.12,
             mat=Enum.Material.Glass,
-            refl=0.28,
+            refl=0.20,
             trans=0.18,
         }
-    elseif ml:find('ice') or ml:find('glacier') or ml:find('frost') then
+    elseif ml:find('ice') or ml:find('glacier') or ml:find('frost') or ml:find('cryo') or ml:find('snow') then
+        local isSnowOnly=ml:find('snow') and not (ml:find('ice') or ml:find('glacier') or ml:find('frost'))
         spec={
-            mode='WORLD_CLIFF',
-            stops=makeWorldStops(r,g,b,1.50,0.58,1.04,1.32,0.06),
-            scale=5.0,
-            boost=1.08,
-            mat=Enum.Material.Glacier,
-            refl=0.14,
-        }
-    elseif ml:find('snow') then
-        spec={
-            mode='WORLD_TURF',
-            stops=makeWorldStops(0.78,0.88,0.98,1.25,0.74,1.00,1.16,0.04),
-            scale=4.5,
-            boost=1.04,
-            mat=Enum.Material.Snow,
-            refl=0.04,
+            mode=isSnowOnly and 'WORLD_TURF' or 'WORLD_CLIFF',
+            stops=isSnowOnly and makeWorldStops(0.78,0.88,0.98,1.25,0.74,1.00,1.16,0.04) or makeWorldStops(r,g,b,1.50,0.58,1.04,1.32,0.06),
+            scale=4.8,
+            boost=isSnowOnly and 1.04 or 1.08,
+            mat=Enum.Material.Ice,
+            refl=0.06,
         }
     elseif ml:find('wood') or ml:find('timber') or ml:find('plank') or ml:find('deck') or ml:find('trunk') or ml:find('bark') or ml:find('hull') then
         spec={
@@ -769,14 +825,88 @@ local VIRTUAL_SPLIT_SPECS={
     Mat_VoidShard={source='CraftingMaterialsAndRelicsSet',bones={Mat_VoidShard=true},meshes={[0]=true,[12]=true,[17]=true,[18]=true}},
 }
 M.VirtualSplitSpecs=VIRTUAL_SPLIT_SPECS
+local function resolveEnvMaterial(matLow,meshLow,modelLow,isEmissive,metalness)
+    local s=(matLow or '')..' '..(meshLow or '')
+    if s:find('crystal') or s:find('gem') or s:find('prism') or s:find('leyline') or s:find('amethyst') or s:find('sapphire') or s:find('quartz') then
+        if isEmissive then return Enum.Material.Neon,0 end
+        return Enum.Material.Glass,0.12
+    end
+    if isEmissive then
+        return Enum.Material.Neon,0
+    end
+    if (metalness or 0)>0.5 or s:find('gold') or s:find('bronze') or s:find('brass') or s:find('copper') or s:find('steel') or s:find('iron') or s:find('chain') or s:find('anchor') or s:find('cannon') or s:find('alloy') or s:find('chrome') then
+        return Enum.Material.Metal,0.12
+    end
+    if s:find('ice') or s:find('glacier') or s:find('frost') or s:find('cryo') or s:find('snow') or s:find('permafrost') then
+        return Enum.Material.Ice,0.06
+    end
+    if s:find('plank') or s:find('deck') or s:find('pier') or s:find('bridge') or s:find('crate') or s:find('barrel') or s:find('hull') or s:find('timber') or s:find('dock') or s:find('mast') then
+        return Enum.Material.WoodPlanks,0
+    end
+    if s:find('bark') or s:find('trunk') or s:find('root') or s:find('branch') or s:find('wood') then
+        return Enum.Material.Wood,0
+    end
+    if s:find('foliage') or s:find('canopy') or s:find('leaf') or s:find('leaves') or s:find('pine') or s:find('bush') or s:find('vine') or s:find('hedge') then
+        return Enum.Material.Grass,0
+    end
+    if s:find('grass') or s:find('turf') or s:find('moss') or s:find('meadow') or s:find('lawn') then
+        return Enum.Material.LeafyGrass,0
+    end
+    if s:find('marble') or s:find('sanctum') or s:find('palace') or s:find('alabaster') then
+        return Enum.Material.Marble,0.04
+    end
+    if s:find('sandstone') then
+        return Enum.Material.Sandstone,0
+    end
+    if s:find('sand') or s:find('dune') or s:find('beach') then
+        return Enum.Material.Sand,0
+    end
+    if s:find('sail') or s:find('banner') or s:find('cloth') or s:find('tent') or s:find('awning') then
+        return Enum.Material.Fabric,0
+    end
+    if s:find('roof') or s:find('shingle') then
+        return Enum.Material.RoofShingles,0
+    end
+    if s:find('cobble') or s:find('brick') or s:find('pave') or s:find('plaza') or s:find('road') then
+        return Enum.Material.Cobblestone,0
+    end
+    if s:find('pillar') or s:find('temple') or s:find('column') or s:find('arch') then
+        return Enum.Material.Limestone,0
+    end
+    if s:find('tile') or s:find('stair') or s:find('wall') then
+        return Enum.Material.Sandstone,0
+    end
+    if s:find('obsidian') or s:find('basalt') or s:find('ruin') or s:find('slate') or s:find('fortress') or s:find('arena') then
+        return Enum.Material.Slate,0.02
+    end
+    if s:find('cliff') or s:find('crag') or s:find('boulder') or s:find('rock') or s:find('mountain') or s:find('canyon') or s:find('island_base') or s:find('mesa') or s:find('stone') then
+        return Enum.Material.Rock,0
+    end
+    local ml=modelLow or ''
+    if ml:find('shadow') or ml:find('void') or ml:find('umbral') or ml:find('castle') or ml:find('fortress') then
+        return Enum.Material.Slate,0.02
+    elseif ml:find('golden') or ml:find('sunshard') or ml:find('shrine') or ml:find('temple') then
+        return Enum.Material.Sandstone,0
+    end
+    return Enum.Material.Rock,0
+end
 local function build(name,progress)
     if M.Models[name] and M.Models[name].PrimaryPart and M.Models[name].PrimaryPart.Parent then return M.Models[name] end
+    M.ActiveBuildName=name;M.ModelContents[name]={};M.ModelImages[name]={};M.ModelSurfaces[name]={}
     local vspec=VIRTUAL_SPLIT_SPECS[name]
     local isFruit=(name:sub(1,6)=='Fruit_' or name=='AetherFruitsCollection1' or name=='AetherFruitsCollection2')
     local isStatic=(STATIC_WORLD_MODELS[name]==true or isFruit or (vspec~=nil and vspec.bonePrefix==nil))
     local folder=Sources:WaitForChild(vspec and vspec.source or name);local h=require(folder.Header)
     if type(h)=='string' then h=game.HttpService:JSONDecode(h) end
     local model=Instance.new('Model');model.Name=name;model:SetAttribute('BlenderHandoff',true)
+    if Run:IsClient() then
+        local ss=game:GetService('SoundService')
+        local templateVault=ss:FindFirstChild('_SKYBREAK_MeshTemplates')
+        if not templateVault then
+            templateVault=Instance.new('Folder');templateVault.Name='_SKYBREAK_MeshTemplates';templateVault.Parent=ss
+        end
+        model.Parent=templateVault
+    end
     M.ActiveModel=model
     local root=Instance.new('Part');root.Name='RootPart';root.Transparency=1;root.Size=Vector3.one*.1
     root.Anchored=true;root.CanCollide=false;root.CanQuery=false;root.CanTouch=false;root.Parent=model;model.PrimaryPart=root
@@ -1032,23 +1162,33 @@ local function build(name,progress)
                 if (bidx-batchStart+1)%4000==0 then task.wait() end
             end
             local part=Asset:CreateMeshPartAsync(snapshot(e),{CollisionFidelity=Enum.CollisionFidelity.Box})
-            -- Release the mutable builder before allocating any image/surface data.
-            e:Destroy();M.ActiveEditable=nil
+            M.ActiveEditable=nil
             part.Name=batchIdx==1 and d.name or (d.name..'_'..tostring(batchIdx));part.CFrame=CFrame.new(center);part.Anchored=true;part.CanCollide=false;part.CanQuery=false;part.CanTouch=false;part.Massless=true
             local isHandOrElemFX=(isHandRibbonFX or isElemFX)
             part:SetAttribute('SourceTriangles',batchEnd-batchStart+1);part:SetAttribute('EquipmentRole',isHandOrElemFX and 'AuraFX' or d.role)
             part:SetAttribute('BlenderMaterial',d.material.name)
             local color=mat.color_linear
+            local isAuthoredDragon=matNameLower:sub(1,9)=='mat_asd2_' or matNameLower:sub(1,9)=='mat_adh2_'
+            local isWorldEnv=(d.role=='Environment') and (not isFruit) and (not isAuthoredDragon) and (not (vspec and (vspec.bones or vspec.bonePrefix)))
             if fruitSpec then
                 part.Color=fruitSpec.neon and (fruitSpec.neonColor or Color3.new(1,1,1)) or Color3.new(1,1,1)
-                part.Material=fruitSpec.mat or Enum.Material.SmoothPlastic
-                part.Reflectance=fruitSpec.refl or 0
+                if fruitSpec.mat then
+                    part.Material=fruitSpec.mat
+                    part.Reflectance=fruitSpec.refl or 0
+                elseif isWorldEnv then
+                    local envMat,envRefl=resolveEnvMaterial(matNameLower,string.lower(meshNameStr),string.lower(name),fruitSpec.mode=='PLASMA' and (fruitSpec.refl or 0)==0,mat.metalness or mat.metallic or 0)
+                    part.Material=envMat
+                    part.Reflectance=fruitSpec.refl or envRefl
+                else
+                    part.Material=Enum.Material.SmoothPlastic
+                    part.Reflectance=fruitSpec.refl or 0
+                end
                 if fruitSpec.lightColor and batchIdx==1 then
                     local pl=Instance.new('PointLight')
                     pl.Name='WorldCrystalLight'
                     pl.Color=fruitSpec.lightColor
-                    pl.Brightness=1.85
-                    pl.Range=32
+                    pl.Brightness=1.10
+                    pl.Range=16
                     pl.Shadows=false
                     pl.Parent=part
                 end
@@ -1108,7 +1248,6 @@ local function build(name,progress)
             local peak=math.max(cr,cg,cb)
             local minC=math.min(cr,cg,cb)
             -- Bo vat lieu rong v2 giu dung mau da chinh, khong nang sang va khong tone map.
-            local isAuthoredDragon=matNameLower:sub(1,9)=='mat_asd2_' or matNameLower:sub(1,9)=='mat_adh2_'
             if not isHandOrElemFX and not isAuthoredDragon then
                 if d.role=='Environment' then
                     if peak>0.90 then
@@ -1138,21 +1277,27 @@ local function build(name,progress)
             end
             part.Color=Color3.new(math.clamp(cr,0,1),math.clamp(cg,0,1),math.clamp(cb,0,1))
             local metalness=mat.metalness or mat.metallic or 0
-            part.Material=metalness>.5 and Enum.Material.Metal or Enum.Material.SmoothPlastic
-            if isAuthoredDragon then
-                part.Reflectance=0
-                if d.vcol then
-                    part.Color=Color3.new(1,1,1)
-                elseif (mat.emission_strength or 0)>=1.5 then
-                    part.Material=Enum.Material.Neon
-                    part.Color=Color3.new(math.clamp(srgb(em[1] or 0),0,1),math.clamp(srgb(em[2] or 0),0,1),math.clamp(srgb(em[3] or 0),0,1))
+            if isWorldEnv then
+                local envMat,envRefl=resolveEnvMaterial(matNameLower,string.lower(meshNameStr),string.lower(name),isTrueEmissive,metalness)
+                part.Material=envMat
+                part.Reflectance=envRefl
+            else
+                part.Material=metalness>.5 and Enum.Material.Metal or Enum.Material.SmoothPlastic
+                if isAuthoredDragon then
+                    part.Reflectance=0
+                    if d.vcol then
+                        part.Color=Color3.new(1,1,1)
+                    elseif (mat.emission_strength or 0)>=1.5 then
+                        part.Material=Enum.Material.Neon
+                        part.Color=Color3.new(math.clamp(srgb(em[1] or 0),0,1),math.clamp(srgb(em[2] or 0),0,1),math.clamp(srgb(em[3] or 0),0,1))
+                    end
+                elseif metalness>.5 then
+                    part.Reflectance=math.clamp((1-(mat.roughness or 0.45))*0.12,0.03,0.12)
+                elseif matNameLower:find('hair') then
+                    part.Reflectance=0.04
+                elseif matNameLower:find('skin') then
+                    part.Reflectance=0.01
                 end
-            elseif metalness>.5 then
-                part.Reflectance=math.clamp((1-(mat.roughness or 0.45))*0.12,0.03,0.12)
-            elseif matNameLower:find('hair') then
-                part.Reflectance=0.04
-            elseif matNameLower:find('skin') then
-                part.Reflectance=0.01
             end
             if isHandOrElemFX then
                 local er,eg,eb=srgb(em[1] or 0),srgb(em[2] or 0),srgb(em[3] or 0)
@@ -1174,7 +1319,7 @@ local function build(name,progress)
                 end
                 if nr and ng and nb then
                     part.Color=Color3.new(math.clamp(nr,0,1),math.clamp(ng,0,1),math.clamp(nb,0,1))
-                    part.Material=Enum.Material.SmoothPlastic;part.Reflectance=0
+                    part.Material=isWorldEnv and Enum.Material.Neon or Enum.Material.SmoothPlastic;part.Reflectance=0
                 end
             elseif mat.maps and next(mat.maps) then
                 if Run:IsServer() then
@@ -1184,7 +1329,14 @@ local function build(name,progress)
                 end
             end
             end
-            part.Transparency=isHandOrElemFX and 0.80 or ((fruitSpec and fruitSpec.trans) or (1-color[4]*(mat.alpha or 1)));part.Parent=model
+            part.Transparency=isHandOrElemFX and 0.80 or ((fruitSpec and fruitSpec.trans) or (1-color[4]*(mat.alpha or 1)))
+            if d.role=='Environment' and not isHandOrElemFX then
+                local pSz=part.Size
+                local maxDim=math.max(pSz.X,pSz.Y,pSz.Z)
+                part.CastShadow=(getGraphicsTier()~='Smooth') and (part.Transparency<0.25) and (part.Material~=Enum.Material.Neon) and (maxDim>=4.0)
+            end
+            part.Parent=model
+            local deadE=e;M.ActiveEditable=nil;task.defer(function() pcall(deadE.Destroy,deadE) end)
             if (not meshStatic) and #h.bones>0 then local weld=Instance.new('WeldConstraint');weld.Part0=root;weld.Part1=part;weld.Parent=part end
             if index%4==0 then task.wait() end
         end
@@ -1360,7 +1512,7 @@ local function build(name,progress)
         pe.Parent=root
     end
     model:SetAttribute('ImportStatus','BuiltLocally');model:SetAttribute('SourceTriangles',h.triangles)
-    M.Models[name]=model;return model
+    M.ActiveBuildName=nil;M.Models[name]=model;return model
 end
 local function clientBuild(name,progress)
     return build(name,progress)
@@ -1378,6 +1530,10 @@ local ALIAS={
     SolarTitanCore='Fruit_SolarTitanCore',
     AetherflowCore='Fruit_AetherflowCore',
     AbyssalSovereignCore='Fruit_AbyssalSovereignCore',
+    Gale='Fruit_GaleCore',Smoke='Fruit_SandstoneCore',Flame='Fruit_SolarFlameCore',Ice='Fruit_GlacierIceCore',
+    Light='Fruit_CelestialLightCore',Magma='Fruit_StarforgedMagmaCore',Rumble='Fruit_ThunderRumbleCore',Gravity='Fruit_AstralGravityCore',
+    Portal='Fruit_DimensionalPortalCore',Buddha='Fruit_SolarTitanCore',Quake='Fruit_SolarTitanCore',Dough='Fruit_AetherflowCore',
+    SweetDoughCore='Fruit_AetherflowCore',Dragon='Fruit_AbyssalSovereignCore',
     StarlightQuakeCore='Fruit_SolarTitanCore',
     Fruit_StarlightQuakeCore='Fruit_SolarTitanCore',
     GlacialPermafrostCore='Fruit_GlacierIceCore',
@@ -1571,7 +1727,7 @@ function M.BuildPriority(name,priorityDist,progress)
     end,debug.traceback)
     if M.ActiveEditable then M.ActiveEditable:Destroy();M.ActiveEditable=nil end
     if not ok and M.ActiveModel then M.ActiveModel:Destroy()end
-    M.ActiveModel=nil;M.Building=false
+    M.ActiveBuildName=nil;M.ActiveModel=nil;M.Building=false
     job.Done=true
     if #M.WaitQueue>0 then
         local bestIdx,bestPrio=1,math.huge
@@ -2569,6 +2725,56 @@ function M.Pose(model,clip,time,dynCtx)
             bone.Transform=(blend<1 and fromCF) and fromCF:Lerp(target,blend) or target
         end
     end
+end
+function M.EvictModel(name)
+    name=ALIAS[name]or name
+    if not name or (M.Building and M.ActiveBuildName==name) then return false end
+    if M.Jobs[name] and not M.Jobs[name].Done then return false end
+    local mdl=M.Models[name]
+    M.Models[name]=nil;M.Jobs[name]=nil;M.ModelContents[name]=nil
+    local surfSet=M.ModelSurfaces[name];M.ModelSurfaces[name]=nil
+    local imgSet=M.ModelImages[name];M.ModelImages[name]=nil
+    if mdl then
+        boneCache[mdl]=nil;fxCache[mdl]=nil;poseState[mdl]=nil
+        pcall(mdl.Destroy,mdl)
+    end
+    if surfSet then
+        for skey in pairs(surfSet) do
+            local stillUsed=false
+            if M.ActiveBuildName and M.ModelSurfaces[M.ActiveBuildName] and M.ModelSurfaces[M.ActiveBuildName][skey] then
+                stillUsed=true
+            else
+                for otherName in pairs(M.Models) do
+                    if M.ModelSurfaces[otherName] and M.ModelSurfaces[otherName][skey] then
+                        stillUsed=true;break
+                    end
+                end
+            end
+            if not stillUsed then
+                local sa=M.Surfaces[skey];M.Surfaces[skey]=nil
+                if sa then pcall(sa.Destroy,sa) end
+            end
+        end
+    end
+    if imgSet then
+        for iname in pairs(imgSet) do
+            local stillUsed=false
+            if M.ActiveBuildName and M.ModelImages[M.ActiveBuildName] and M.ModelImages[M.ActiveBuildName][iname] then
+                stillUsed=true
+            else
+                for otherName in pairs(M.Models) do
+                    if M.ModelImages[otherName] and M.ModelImages[otherName][iname] then
+                        stillUsed=true;break
+                    end
+                end
+            end
+            if not stillUsed then
+                local im=M.Images[iname];M.Images[iname]=nil
+                if im then pcall(im.Destroy,im) end
+            end
+        end
+    end
+    return true
 end
 M.CanonicalClips={'Idle','Walk','Run','Attack','Skill','ElementalSurge','HeroicKata','UltimateAwakening'}
 M.CrossfadeDuration=0.12

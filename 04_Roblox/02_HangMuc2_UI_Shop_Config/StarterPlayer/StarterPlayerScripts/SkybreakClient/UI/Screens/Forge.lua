@@ -44,6 +44,15 @@ local STAR_BONUSES = {
     [5] = { Crit = 22, SkillDmg = 45, ShardCost = 0,   GoldCost = 0,     Rate = 100, PityGain = 0,  TagVi = "THẦN THOẠI",  TagEn = "SOVEREIGN" },
 }
 
+local CoreSharedConfig = nil
+pcall(function()
+    local sh = ReplicatedStorage:FindFirstChild("Shared")
+    local cfgMod = sh and sh:FindFirstChild("Config")
+    if cfgMod and cfgMod:IsA("ModuleScript") then
+        CoreSharedConfig = require(cfgMod)
+    end
+end)
+
 -- Signature separated 3D Blender weapons guaranteed in Forge Blueprints & Ascension Workbench
 local SIGNATURE_ARSENAL = {
     {
@@ -52,7 +61,9 @@ local SIGNATURE_ARSENAL = {
         NameVi = "Thần Kiếm Bình Minh (Dawnbringer)",
         NameEn = "Dawnbringer Celestial Blade",
         Type = "Craft",
-        GoldCost = 500,
+        LevelReq = 10,
+        GoldCost = 95000,
+        CoreShardCost = 0,
         SuccessRate = 1.0,
         ServerRemote = "ForgeRequest",
         Materials = {
@@ -69,7 +80,9 @@ local SIGNATURE_ARSENAL = {
         NameVi = "Song Kiếm Nguyệt Thực (Eclipse Twinblades)",
         NameEn = "Eclipse Twinblades",
         Type = "Craft",
-        GoldCost = 5000,
+        LevelReq = 1500,
+        GoldCost = 950000,
+        CoreShardCost = 0,
         SuccessRate = 1.0,
         ServerRemote = "EquipmentRequest",
         Materials = {
@@ -86,7 +99,9 @@ local SIGNATURE_ARSENAL = {
         NameVi = "Hàn Băng Thần Kiếm (Cryon Frostblade)",
         NameEn = "Cryon Frostblade",
         Type = "Craft",
-        GoldCost = 1800,
+        LevelReq = 750,
+        GoldCost = 280000,
+        CoreShardCost = 0,
         SuccessRate = 1.0,
         ServerRemote = "EquipmentRequest",
         Materials = {
@@ -103,7 +118,9 @@ local SIGNATURE_ARSENAL = {
         NameVi = "Đại Đao Hư Không Noxar (Abyssal Greatsword)",
         NameEn = "Noxar's Abyssal Greatsword",
         Type = "Craft",
-        GoldCost = 7500,
+        LevelReq = 1850,
+        GoldCost = 1450000,
+        CoreShardCost = 0,
         SuccessRate = 1.0,
         ServerRemote = "EquipmentRequest",
         Materials = {
@@ -120,7 +137,9 @@ local SIGNATURE_ARSENAL = {
         NameVi = "Thánh Kiếm Aureon (Saber of Aureon)",
         NameEn = "Saber of Aureon",
         Type = "Craft",
-        GoldCost = 1200,
+        LevelReq = 200,
+        GoldCost = 125000,
+        CoreShardCost = 0,
         SuccessRate = 1.0,
         ServerRemote = "EquipmentRequest",
         Materials = {
@@ -137,7 +156,9 @@ local SIGNATURE_ARSENAL = {
         NameVi = "Song Đao Lôi Nha (Stormfang)",
         NameEn = "Stormfang Twin Blades",
         Type = "Craft",
-        GoldCost = 1200,
+        LevelReq = 20,
+        GoldCost = 240000,
+        CoreShardCost = 0,
         SuccessRate = 1.0,
         ServerRemote = "EquipmentRequest",
         Materials = {
@@ -154,7 +175,9 @@ local SIGNATURE_ARSENAL = {
         NameVi = "Đàn Hồn Hư Không (Void Lyre)",
         NameEn = "Void Lyre",
         Type = "Craft",
-        GoldCost = 6000,
+        LevelReq = 1750,
+        GoldCost = 1100000,
+        CoreShardCost = 0,
         SuccessRate = 1.0,
         ServerRemote = "EquipmentRequest",
         Materials = {
@@ -171,7 +194,9 @@ local SIGNATURE_ARSENAL = {
         NameVi = "Pháo Từ Trường Hàn Băng (Cryo Railgun)",
         NameEn = "Cryo Magnetic Railgun",
         Type = "Craft",
-        GoldCost = 2400,
+        LevelReq = 850,
+        GoldCost = 320000,
+        CoreShardCost = 0,
         SuccessRate = 1.0,
         ServerRemote = "EquipmentRequest",
         Materials = {
@@ -184,10 +209,32 @@ local SIGNATURE_ARSENAL = {
     },
 }
 
+local function syncRecipeWithServerConfig(rec)
+    if type(rec) ~= "table" then
+        return rec
+    end
+    local outId = rec.OutputItemId
+    local srvRecipes = CoreSharedConfig and CoreSharedConfig.ForgeRecipes
+    local srv = outId and srvRecipes and srvRecipes[outId]
+    if type(srv) == "table" then
+        if tonumber(srv.Gold) and tonumber(srv.Gold) > 0 then
+            rec.GoldCost = tonumber(srv.Gold)
+        end
+        if tonumber(srv.CoreShardCost) then
+            rec.CoreShardCost = tonumber(srv.CoreShardCost)
+        end
+        if tonumber(srv.LevelReq) and tonumber(srv.LevelReq) > (tonumber(rec.LevelReq) or 0) then
+            rec.LevelReq = tonumber(srv.LevelReq)
+        end
+    end
+    return rec
+end
+
 local function buildCombinedBlueprints()
     local list = {}
     local seenOutput = {}
     for _, baseRec in ipairs(RarityConfig.Recipes or RarityConfig.ForgeRecipes or {}) do
+        syncRecipeWithServerConfig(baseRec)
         table.insert(list, baseRec)
         if baseRec.OutputItemId then
             seenOutput[baseRec.OutputItemId] = true
@@ -195,12 +242,14 @@ local function buildCombinedBlueprints()
     end
     for _, sig in ipairs(SIGNATURE_ARSENAL) do
         if not seenOutput[sig.OutputItemId] then
+            syncRecipeWithServerConfig(sig)
             table.insert(list, sig)
             seenOutput[sig.OutputItemId] = true
         end
     end
     for _, expRec in ipairs(ArsenalExpansionConfig.ExpansionRecipes or {}) do
         if expRec.OutputItemId and not seenOutput[expRec.OutputItemId] then
+            syncRecipeWithServerConfig(expRec)
             table.insert(list, expRec)
             seenOutput[expRec.OutputItemId] = true
         end
@@ -237,14 +286,14 @@ local function getRecipeDisplayName(recipe, outItem)
 end
 
 local function getOwnedCount(inventory, itemId, snap)
+    local perWeaponMap = snap and snap.weaponEnhances
     for _, entry in ipairs(inventory or {}) do
         if entry.itemId == itemId then
-            local upg = tonumber(entry.upgrade) or 0
-            if snap and tonumber(snap.weaponEnhance) and (entry.count or 0) > 0 then
-                local cfg = RarityConfig.GetItem(itemId)
-                if not cfg or cfg.Category == "Weapons" or cfg.Slot == "Weapon" or cfg.Slot == "Offhand" then
-                    upg = math.max(upg, tonumber(snap.weaponEnhance) or 0)
-                end
+            local upg = 0
+            if type(perWeaponMap) == "table" and tonumber(perWeaponMap[itemId]) ~= nil then
+                upg = math.max(0, math.floor(tonumber(perWeaponMap[itemId]) or 0))
+            else
+                upg = math.max(0, math.floor(tonumber(entry.upgrade) or 0))
             end
             return entry.count or 0, upg
         end
@@ -254,10 +303,14 @@ end
 
 local function computeAnvilActionState(snap, selectedRecipe, ownedCount, curUpgrade)
     local inv = snap and snap.inventory or {}
+    local curLv = tonumber(snap and snap.player and snap.player.level) or 1
     local curGold = tonumber((snap and snap.currency and snap.currency.gold) or (snap and snap.currencies and snap.currencies.gold)) or 0
+    local curShards = tonumber((snap and snap.currency and snap.currency.coreShards) or (snap and snap.currencies and snap.currencies.coreShards)) or 0
     local isOwned = (ownedCount or 0) > 0
     if not isOwned then
+        local reqLv = math.max(1, math.floor(tonumber(selectedRecipe and selectedRecipe.LevelReq) or 1))
         local reqGold = tonumber(selectedRecipe and selectedRecipe.GoldCost) or 0
+        local reqShards = math.max(0, math.floor(tonumber(selectedRecipe and selectedRecipe.CoreShardCost) or 0))
         local matsOk = true
         for _, mat in ipairs((selectedRecipe and selectedRecipe.Materials) or {}) do
             local mId = mat.ItemId or mat.itemId
@@ -267,16 +320,29 @@ local function computeAnvilActionState(snap, selectedRecipe, ownedCount, curUpgr
                 break
             end
         end
-        local ready = (curGold >= reqGold) and matsOk
+        local lvOk = (curLv >= reqLv) or (snap and snap.isDemoMode == true)
+        local goldOk = (curGold >= reqGold)
+        local shardsOk = (curShards >= reqShards)
+        local ready = lvOk and goldOk and shardsOk and matsOk
+        local blockedLabel
+        if not lvOk then
+            blockedLabel = I18n.Pick("CẦN ĐẠT LV." .. tostring(reqLv) .. " ĐỂ RÈN", "REQUIRES LV." .. tostring(reqLv))
+        elseif not shardsOk and reqShards > 0 then
+            blockedLabel = I18n.Pick("THIẾU CORE SHARDS (" .. tostring(reqShards) .. ")", "NEED " .. tostring(reqShards) .. " SHARDS")
+        else
+            blockedLabel = I18n.Pick("THIẾU NGUYÊN LIỆU / VÀNG", "NEED MATERIALS / GOLD")
+        end
         return {
             ForgeAction = "ForgeCraft",
             IsOwned = false,
             IsMax = false,
+            LevelReq = reqLv,
             GoldCost = reqGold,
+            CoreShardCost = reqShards,
             Ready = ready,
             Label = ready
                 and I18n.Pick("RÈN THẦN KHÍ 3D NGAY", "FORGE 3D WEAPON NOW")
-                or I18n.Pick("THIẾU NGUYÊN LIỆU / VÀNG", "NEED MATERIALS / GOLD"),
+                or blockedLabel,
         }
     end
     local upg = math.max(0, math.floor(tonumber(curUpgrade) or 0))
@@ -286,27 +352,63 @@ local function computeAnvilActionState(snap, selectedRecipe, ownedCount, curUpgr
             IsOwned = true,
             IsMax = true,
             GoldCost = 0,
+            CoreShardCost = 0,
             Ready = false,
             Label = I18n.Pick("ĐÃ ĐẠT CƯỜNG HÓA +15 TỐI ĐA", "MAX ENHANCE (+15)"),
         }
     end
-    local enhGold = (upg >= 10) and 250 or 100
+    local nextTier = upg + 1
+    local enhGold = nil
+    local enhShards = 0
+    local reqMats = 1
+    local enhRate = 100
+    if CoreSharedConfig and type(CoreSharedConfig.GetForgeUpgradeCost) == "function" then
+        local okCost, r1, r2 = pcall(CoreSharedConfig.GetForgeUpgradeCost, nextTier)
+        if okCost and r1 ~= nil then
+            if type(r1) == "table" then
+                enhGold = tonumber(r1.Gold or r1.GoldCost or r1.gold or r1[1])
+                enhShards = math.max(0, math.floor(tonumber(r1.CoreShards or r1.ShardCost or r1.Shards or r1.shards or r1[2]) or 0))
+                reqMats = math.max(1, math.floor(tonumber(r1.Materials or r1.MaterialCount) or 1))
+                enhRate = math.clamp(math.floor(tonumber(r1.Rate) or 100), 1, 100)
+            else
+                enhGold = tonumber(r1)
+                enhShards = math.max(0, math.floor(tonumber(r2) or 0))
+            end
+        end
+    end
+    if not enhGold or enhGold <= 0 then
+        local fallbackTiers = {
+            [1] = { 1500, 0, 1, 100 }, [2] = { 2500, 0, 1, 100 }, [3] = { 4000, 0, 1, 100 },
+            [4] = { 6000, 5, 1, 100 }, [5] = { 9000, 10, 1, 100 }, [6] = { 12500, 15, 2, 100 },
+            [7] = { 16500, 22, 2, 100 }, [8] = { 21000, 30, 2, 100 }, [9] = { 26000, 40, 2, 100 },
+            [10] = { 32000, 50, 2, 100 }, [11] = { 45000, 75, 3, 75 }, [12] = { 60000, 100, 3, 65 },
+            [13] = { 80000, 135, 3, 55 }, [14] = { 105000, 175, 4, 42 }, [15] = { 135000, 225, 4, 32 },
+        }
+        local row = fallbackTiers[math.clamp(nextTier, 1, 15)] or fallbackTiers[15]
+        enhGold, enhShards, reqMats, enhRate = row[1], row[2], row[3], row[4]
+    end
     local enhMats = getOwnedCount(inv, "upgrade_material") + getOwnedCount(inv, "SkyIron")
-    local ready = (curGold >= enhGold) and (enhMats >= 1)
+    local ready = (curGold >= enhGold) and (curShards >= enhShards) and (enhMats >= reqMats)
+    local costStr = UIFactory.FormatNumber(enhGold) .. " G"
+    if enhShards > 0 then
+        costStr = costStr .. " + " .. tostring(enhShards) .. " Shards"
+    end
+    local rateTag = (enhRate < 100) and (" • " .. tostring(enhRate) .. "%") or ""
     return {
         ForgeAction = "ForgeEnhance",
         IsOwned = true,
         IsMax = false,
         GoldCost = enhGold,
+        CoreShardCost = enhShards,
         Ready = ready,
         Label = ready
             and I18n.Pick(
-                string.format("CƯỜNG HÓA (+%d -> +%d • %d G)", upg, upg + 1, enhGold),
-                string.format("ENHANCE (+%d -> +%d • %d G)", upg, upg + 1, enhGold)
+                string.format("CƯỜNG HÓA (+%d -> +%d • %s%s)", upg, nextTier, costStr, rateTag),
+                string.format("ENHANCE (+%d -> +%d • %s%s)", upg, nextTier, costStr, rateTag)
             )
             or I18n.Pick(
-                string.format("CẦN %d G & ĐÁ RÈN (+%d -> +%d)", enhGold, upg, upg + 1),
-                string.format("NEED %d G & MAT (+%d -> +%d)", enhGold, upg, upg + 1)
+                string.format("CẦN %s & %d ĐÁ RÈN (+%d -> +%d)", costStr, reqMats, upg, nextTier),
+                string.format("NEED %s & %d MAT (+%d -> +%d)", costStr, reqMats, upg, nextTier)
             ),
     }
 end
@@ -509,21 +611,25 @@ local function rebuildSynthesisCardsRow(holder, selectedRecipe, outItem, snap, c
         order = order + 1
     end
 
-    -- Vivid Legendary Gold Cost Card
+    -- Vivid Legendary Gold (& Core Shards) Cost Card
     local reqGold = tonumber(selectedRecipe and selectedRecipe.GoldCost) or 0
+    local reqShards = math.max(0, math.floor(tonumber(selectedRecipe and selectedRecipe.CoreShardCost) or 0))
+    local reqLv = math.max(1, math.floor(tonumber(selectedRecipe and selectedRecipe.LevelReq) or 1))
     local curGold = tonumber((snap and snap.currency and snap.currency.gold) or (snap and snap.currencies and snap.currencies.gold)) or 0
-    local goldOk = curGold >= reqGold
+    local curShards = tonumber((snap and snap.currency and snap.currency.coreShards) or (snap and snap.currencies and snap.currencies.coreShards)) or 0
+    local curLv = tonumber(snap and snap.player and snap.player.level) or 1
+    local goldOk = (curGold >= reqGold) and (curShards >= reqShards) and ((curLv >= reqLv) or (snap and snap.isDemoMode == true))
 
     local goldCard = UIFactory.Create("Frame", holder, {
         Name = "GoldRequirementCard",
-        Size = UDim2.fromOffset(78, 94),
+        Size = UDim2.fromOffset(86, 94),
         BackgroundColor3 = Color3.new(1, 1, 1),
         BorderSizePixel = 0,
         LayoutOrder = order,
         ZIndex = 7,
     })
     order = order + 1
-    UIFactory.ApplyRarityCardStyle(goldCard, "Legendary", {
+    UIFactory.ApplyRarityCardStyle(goldCard, reqShards > 0 and "Mythic" or "Legendary", {
         CornerRadius = 10,
         Selected = false,
     })
@@ -531,7 +637,7 @@ local function rebuildSynthesisCardsRow(holder, selectedRecipe, outItem, snap, c
     local gTopPill = UIFactory.Create("Frame", goldCard, {
         Name = "GoldHeaderTag",
         Position = UDim2.fromOffset(4, 4),
-        Size = UDim2.fromOffset(44, 13),
+        Size = UDim2.fromOffset(78, 13),
         BackgroundColor3 = Color3.fromRGB(9, 13, 24),
         BackgroundTransparency = 0.08,
         BorderSizePixel = 0,
@@ -540,7 +646,7 @@ local function rebuildSynthesisCardsRow(holder, selectedRecipe, outItem, snap, c
     UIFactory.Corner(gTopPill, 4)
     UIFactory.Label(gTopPill, {
         Name = "Txt",
-        Text = I18n.Pick("CHI PHÍ", "COST"),
+        Text = "LV." .. tostring(reqLv),
         Size = UDim2.fromScale(1, 1),
         TextSize = 8,
         TextColor = colors.ACCENT_GOLD_BRIGHT,
@@ -550,14 +656,14 @@ local function rebuildSynthesisCardsRow(holder, selectedRecipe, outItem, snap, c
         ZIndex = 11,
     })
 
-    local gIcon = UIFactory.Icon(goldCard, "Gold", UDim2.new(0.5, -16, 0.40, -16), 32, Color3.fromRGB(255, 250, 232))
+    local gIcon = UIFactory.Icon(goldCard, reqShards > 0 and "CoreShards" or "Gold", UDim2.new(0.5, -15, 0.39, -15), 30, Color3.fromRGB(255, 250, 232))
     gIcon.ZIndex = 10
 
     local gFooter = UIFactory.Create("Frame", goldCard, {
         Name = "GoldFooter",
         AnchorPoint = Vector2.new(0, 1),
         Position = UDim2.new(0, 4, 1, -4),
-        Size = UDim2.new(1, -8, 0, 26),
+        Size = UDim2.new(1, -8, 0, 28),
         BackgroundColor3 = Color3.fromRGB(9, 13, 24),
         BackgroundTransparency = 0.10,
         BorderSizePixel = 0,
@@ -566,10 +672,12 @@ local function rebuildSynthesisCardsRow(holder, selectedRecipe, outItem, snap, c
     UIFactory.Corner(gFooter, 6)
     UIFactory.Label(gFooter, {
         Name = "GoldAmt",
-        Text = UIFactory.FormatNumber(reqGold) .. " G",
+        Text = (reqShards > 0)
+            and (UIFactory.FormatNumber(reqGold) .. "G • " .. tostring(reqShards) .. "S")
+            or (UIFactory.FormatNumber(reqGold) .. " G"),
         Position = UDim2.fromOffset(2, 1),
         Size = UDim2.new(1, -4, 0, 13),
-        TextSize = 9,
+        TextSize = 8,
         TextColor = Color3.fromRGB(255, 244, 196),
         Bold = true,
         XAlign = Enum.TextXAlignment.Center,
@@ -579,7 +687,7 @@ local function rebuildSynthesisCardsRow(holder, selectedRecipe, outItem, snap, c
     })
     UIFactory.Label(gFooter, {
         Name = "GoldStatus",
-        Text = goldOk and I18n.Pick("ĐỦ VÀNG", "OK") or I18n.Pick("THIẾU", "LOW"),
+        Text = goldOk and I18n.Pick("ĐỦ ĐK", "READY") or I18n.Pick("THIẾU", "LOW"),
         Position = UDim2.new(0, 2, 1, -12),
         Size = UDim2.new(1, -4, 0, 11),
         TextSize = 8,
@@ -779,10 +887,12 @@ function Forge.Build(parent, responsiveState)
         ZIndex = 2,
     })
 
-    -- Shared Top Screen Header with Currency Pills & Navigation Tabs
+    -- Contextual NPC Station Header (Blacksmith Kael)
     local _, headerRefs = UIFactory.BuildScreenHeader(root, {
         ActiveScreen = UIState.Screens.Forge,
-        Title = I18n.Pick("LÒ RÈN THẦN KHÍ KAEL & ĐỘT PHÁ SAO *1-*5 [F]", "KAEL'S 3D FORGE & STAR BREAKTHROUGH [F]"),
+        ContextualNPCStation = true,
+        StationBadgeText = I18n.Pick("THỢ RÈN KAEL • LÒ RÈN THẦN KHÍ", "MASTER KAEL • CELESTIAL FORGE"),
+        Title = I18n.Pick("LÒ RÈN THẦN KHÍ KAEL & ĐỘT PHÁ SAO *1-*5", "KAEL'S 3D FORGE & STAR BREAKTHROUGH"),
         Snapshot = snap,
         OnNavigate = function(targetId)
             ScreenRouter.Navigate(targetId)
@@ -923,12 +1033,18 @@ function Forge.Build(parent, responsiveState)
         pipRow.AnchorPoint = Vector2.new(1, 0.5)
         pipRow.Position = UDim2.new(1, 0, 0.5, 0)
 
+        local rowReqLv = math.max(1, math.floor(tonumber(recipe.LevelReq) or 1))
+        local rowReqShards = math.max(0, math.floor(tonumber(recipe.CoreShardCost) or 0))
+        local subCostStr = (rowReqShards > 0)
+            and string.format("Lv.%d • %sG • %d Shards", rowReqLv, UIFactory.FormatNumber(recipe.GoldCost or 0), rowReqShards)
+            or string.format("Lv.%d • %s Gold", rowReqLv, UIFactory.FormatNumber(recipe.GoldCost or 0))
+
         UIFactory.Label(row, {
             Name = "Sub",
             Text = string.format(
-                "%s   •   %s Gold",
+                "%s   •   %s",
                 UIFactory.Upper(I18n.GetRarityLabel(rInfo.Id)),
-                UIFactory.FormatNumber(recipe.GoldCost or 0)
+                subCostStr
             ),
             Position = UDim2.fromOffset(74, 30),
             Size = UDim2.new(1, -154, 0, 16),

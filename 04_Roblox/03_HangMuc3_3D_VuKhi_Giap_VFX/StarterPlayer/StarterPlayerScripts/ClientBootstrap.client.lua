@@ -6,6 +6,8 @@ local Tween=game:GetService("TweenService")
 local Debris=game:GetService("Debris")
 local Lighting=game:GetService("Lighting")
 local SoundService=game:GetService("SoundService")
+local LocalizationService=game:GetService("LocalizationService")
+local TextChatService=game:GetService("TextChatService")
 
 local player=Players.LocalPlayer
 local C=require(game.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
@@ -66,6 +68,7 @@ AudioEngine.Bind(UI,tempFX)
 local AudioGroup=AudioEngine.AudioGroup
 local playSFX=AudioEngine.PlaySFX
 local updateBGM=AudioEngine.UpdateBGM
+local CombatExt=require(script.Parent:WaitForChild("SkybreakClient"):WaitForChild("ClientCombatAndHUDExt"))
 local ClientVFX=nil
 do
 	local vfxMod=script.Parent:FindFirstChild("SkybreakClientVFX")
@@ -334,6 +337,7 @@ end
 -- 2B. OBSERVATION HAKI (INSTINCT) CLIENT-SIDE VISION EFFECT ([U])
 -- ============================================================================
 local lastInstinctState=false
+local nextInstinctPollAt=0
 local function updateInstinctVision()
 	if ClientVFX and type(ClientVFX.UpdateInstinctVision)=="function" then
 		ClientVFX.UpdateInstinctVision()
@@ -538,17 +542,83 @@ local function performCombatLunge(actorChar,isHeavy)
 	root.AssemblyLinearVelocity=flatLook*lungeSpeed+Vector3.new(0,math.max(curVel.Y,isHeavy and 8 or 0),0)
 end
 
+local hitstopToken=0
+local lastHitstopAt=-10
+local activeHitstopTracks={}
+
+local function clearLocalHitstop(actorChar)
+	hitstopToken+=1
+	for tr,spd in pairs(activeHitstopTracks) do
+		pcall(function()
+			if tr and tr.IsPlaying then tr:AdjustSpeed(spd) end
+		end)
+		activeHitstopTracks[tr]=nil
+	end
+	local c=actorChar or player.Character
+	if c and c:GetAttribute("HitstopUntil")~=nil and c:GetAttribute("HitstopUntil")~=0 then
+		c:SetAttribute("HitstopUntil",0)
+	end
+end
+
+local function triggerLocalM1FinisherHitstop(actorChar)
+	local ch=actorChar or player.Character
+	if not ch or ch~=player.Character then return end
+	local now=os.clock()
+	if now-lastHitstopAt<0.18 then return end
+	local hum=ch:FindFirstChildOfClass("Humanoid")
+	local root=ch:FindFirstChild("HumanoidRootPart")
+	if not hum or hum.Health<=0 or not root then return end
+	lastHitstopAt=now
+	clearLocalHitstop(ch)
+	hitstopToken+=1
+	local myToken=hitstopToken
+	ch:SetAttribute("HitstopUntil",now+0.045)
+	local animator=hum:FindFirstChildOfClass("Animator")
+	if animator then
+		local okTr,tracks=pcall(function() return animator:GetPlayingAnimationTracks() end)
+		if okTr and type(tracks)=="table" then
+			for _,tr in ipairs(tracks) do
+				local spd=tonumber(tr.Speed) or 1
+				if spd>0.05 then
+					activeHitstopTracks[tr]=spd
+					pcall(function() tr:AdjustSpeed(0.02) end)
+				end
+			end
+		end
+	end
+	local preVel=root.AssemblyLinearVelocity
+	root.AssemblyLinearVelocity=Vector3.new(preVel.X*0.28,preVel.Y,preVel.Z*0.28)
+	shakeCamera(0.24,0.11,-1.8)
+	task.delay(0.045,function()
+		if hitstopToken~=myToken then return end
+		clearLocalHitstop(ch)
+		if root.Parent and hum.Parent and hum.Health>0 then
+			local curV=root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity=Vector3.new(preVel.X*0.85,curV.Y,preVel.Z*0.85)
+		end
+	end)
+end
+
 local traversalStateConn=nil
+local traversalDiedConn=nil
 local function bindCharacterTraversal(ch)
 	if not ch then return end
 	activeDashToken+=1
+	clearLocalHitstop(ch)
 	airJumpCount=0
 	if traversalStateConn then
 		traversalStateConn:Disconnect()
 		traversalStateConn=nil
 	end
+	if traversalDiedConn then
+		traversalDiedConn:Disconnect()
+		traversalDiedConn=nil
+	end
 	local hum=ch:WaitForChild("Humanoid",5)
 	if not hum then return end
+	traversalDiedConn=hum.Died:Connect(function()
+		clearLocalHitstop(ch)
+	end)
 	traversalStateConn=hum.StateChanged:Connect(function(oldState,newState)
 		if newState==Enum.HumanoidStateType.Landed or newState==Enum.HumanoidStateType.Running or newState==Enum.HumanoidStateType.RunningNoPhysics then
 			if oldState==Enum.HumanoidStateType.Freefall and airJumpCount>0 then
@@ -638,8 +708,13 @@ Run.RenderStepped:Connect(function()
 		end
 	end
 
-    -- 2. Update Observation Haki (Instinct) Vision Effect
-	updateInstinctVision()
+    -- 2. Update Observation Haki (Instinct) Vision Effect (throttled when idle/active)
+	local instActiveNow=(ch and ch:GetAttribute("HakiInstinct")==true) or (player:GetAttribute("HakiInstinct")==true)
+	if instActiveNow~=lastInstinctState or (instActiveNow and os.clock()>=(nextInstinctPollAt or 0)) then
+		lastInstinctState=instActiveNow
+		nextInstinctPollAt=os.clock()+0.12
+		updateInstinctVision()
+	end
 
     -- 2b. End-of-World 3D Portal Compass Guide (disabled for clean HUD/character view)
 	local compass=tempFX:FindFirstChild("WorldGateCompass")
@@ -811,6 +886,7 @@ local function vfxPart(name,shape,size,cf,color,transparency,material)
 	p.CastShadow=false
 	if (p.Shape==Enum.PartType.Block or p.Shape==Enum.PartType.Wedge)
 		and mat==Enum.Material.Neon
+		and p:GetAttribute("PreserveGeometry")~=true
 		and not name:find("Shard")
 		and not name:find("Boulder")
 		and not name:find("Slab")
@@ -2635,47 +2711,13 @@ local lastKnownLevel=nil
 local lastKnownQuestId=nil
 local lastKnownBossPhase=nil
 local hasActiveBoss=false
-local RealmEnvOk, RealmEnv = pcall(function()
-	return require(game.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RealmEnvironment"))
-end)
 local function updateRealmAtmosphere()
-	local realm=player:GetAttribute("CurrentRealm") or "GoldenSky"
-	local hasBoss=hasActiveBoss or (UI.State and UI.State.Boss~=nil)
-	local bgmKey=hasBoss and "BossBattle" or ((realm=="FrozenCyber" and "FrozenCyber") or ((realm=="GoldenSky" or realm=="SkyHub") and "GoldenSky") or "ShadowRealm")
+	local realm=tostring(player:GetAttribute("CurrentRealm") or "GoldenSky")
+	if realm=="" or realm=="SkyHub" then
+		realm="GoldenSky"
+	end
+	local bgmKey=(AudioEngine.BGM_Specs and AudioEngine.BGM_Specs[realm]) and realm or "GoldenSky"
 	updateBGM(bgmKey)
-	local key=realm.."/"..(hasBoss and "Boss" or "Normal")
-	if key==lastAtmosphereKey then return end
-	lastAtmosphereKey=key
-
-	for _, name in ipairs({"SkybreakRealmCC", "SkybreakRealmBloom", "SkybreakSunRays"}) do
-		local old = Lighting:FindFirstChild(name)
-		if old then old:Destroy() end
-	end
-
-	if RealmEnvOk and RealmEnv and RealmEnv.Apply then
-		pcall(function() RealmEnv.Apply(realm) end)
-	end
-
-    -- Tune Realm Lighting & Anti-Washout Crisp Horizon Settings (GoldenSky & All Realms)
-	local isGolden = (realm == "GoldenSky" or realm == "SkyHub" or realm == "VerdantCrown" or realm == "ChronosBastion")
-	local atmo = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", Lighting)
-	atmo.Density = isGolden and 0.14 or 0.16
-	atmo.Haze = math.min(atmo.Haze or 0.20, 0.20)
-	atmo.Offset = 0.12
-	atmo.Glare = math.min(atmo.Glare or 0.05, 0.06)
-	Lighting.FogColor = atmo.Color
-	Lighting.FogStart = (Lighting.FogStart and Lighting.FogStart >= 800 and Lighting.FogStart <= 1200) and Lighting.FogStart or 900
-	Lighting.FogEnd = (Lighting.FogEnd and Lighting.FogEnd >= 8000 and Lighting.FogEnd <= 12000) and Lighting.FogEnd or 9500
-
-	-- Độ sáng, phơi sáng, bloom và màu chỉ do stepAtmosphereAndWeather trong SkybreakWorldClient quyết định.
-	-- Không đặt lại các giá trị đó ở đây, vì nhiều nơi cùng ghi là nguyên nhân game lúc chói lúc nhợt.
-	local dof = Lighting:FindFirstChild("SkybreakDistanceDOF") or Instance.new("DepthOfFieldEffect", Lighting)
-	dof.Name = "SkybreakDistanceDOF"
-	dof.Enabled = true
-	dof.FarIntensity = 0.04
-	dof.FocusDistance = 380
-	dof.InFocusRadius = 520
-	dof.NearIntensity = 0
 end
 local applyRealmAtmosphere = updateRealmAtmosphere
 local updateRealmLighting = updateRealmAtmosphere
@@ -2704,7 +2746,6 @@ local TRUE_FLIGHT_FRUIT_MAP = {
 	CelestialLightCore = true,
 	StarforgedMagmaCore = true,
 	AstralGravityCore = true,
-	-- Legacy aliases
 	Gale = true,
 	Smoke = true,
 	Flame = true,
@@ -2713,10 +2754,49 @@ local TRUE_FLIGHT_FRUIT_MAP = {
 	Gravity = true,
 }
 
+local CANONICAL_FRUIT_MAP = {
+	galecore = "GaleCore", gale = "GaleCore", wind = "GaleCore",
+	sandstonecore = "SandstoneCore", sandstone = "SandstoneCore", sand = "SandstoneCore", smoke = "SandstoneCore",
+	solarflamecore = "SolarFlameCore", solarflame = "SolarFlameCore", flame = "SolarFlameCore", fire = "SolarFlameCore",
+	glaciericecore = "GlacierIceCore", glacierice = "GlacierIceCore", ice = "GlacierIceCore", frost = "GlacierIceCore",
+	celestiallightcore = "CelestialLightCore", celestiallight = "CelestialLightCore", light = "CelestialLightCore",
+	starforgedmagmacore = "StarforgedMagmaCore", starforgedmagma = "StarforgedMagmaCore", magma = "StarforgedMagmaCore",
+	thunderrumblecore = "ThunderRumbleCore", thunderrumble = "ThunderRumbleCore", rumble = "ThunderRumbleCore", thunder = "ThunderRumbleCore",
+	astralgravitycore = "AstralGravityCore", astralgravity = "AstralGravityCore", gravity = "AstralGravityCore",
+	dimensionalportalcore = "DimensionalPortalCore", dimensionalportal = "DimensionalPortalCore", portal = "DimensionalPortalCore",
+	solartitancore = "SolarTitanCore", solartitan = "SolarTitanCore", buddha = "SolarTitanCore", quake = "SolarTitanCore", starlightquakecore = "SolarTitanCore",
+	aetherflowcore = "AetherflowCore", aetherflow = "AetherflowCore", sweetdoughcore = "AetherflowCore", dough = "AetherflowCore", mochi = "AetherflowCore",
+	abyssalsovereigncore = "AbyssalSovereignCore", dragon = "AbyssalSovereignCore", abyssal_dragon = "AbyssalSovereignCore",
+}
+
+local latestSyncedState = nil
+local bloxSkillCooldowns = {}
+local canClientCastSkillKey = nil
+
 local lastFMoveCastAt = 0
 local lastFMoveStartPos = nil
 local lastFMoveFruitId = ""
 local lastFMoveSlot = 1
+
+local function isClientStunned(ch)
+	local c = ch or player.Character
+	if (tonumber((c and c:GetAttribute("StunnedUntil")) or player:GetAttribute("StunnedUntil")) or 0) > workspace:GetServerTimeNow() then
+		return true
+	end
+	if (c and c:GetAttribute("Stunned") == true) or player:GetAttribute("Stunned") == true then
+		return true
+	end
+	local hum = c and c:FindFirstChildOfClass("Humanoid")
+	if hum and hum.PlatformStand == true and player:GetAttribute("SkybreakFlightActive") ~= true then
+		return true
+	end
+	return false
+end
+
+local function getSyncedEnergy(ch)
+	local c = ch or player.Character
+	return tonumber((c and c:GetAttribute("Energy")) or (latestSyncedState and latestSyncedState.Energy) or (UI and UI.State and UI.State.Energy) or player:GetAttribute("ClientEnergy") or player:GetAttribute("Energy")) or 100
+end
 
 local function resolveClientEquippedFruit()
 	local ch = player.Character
@@ -2728,10 +2808,17 @@ local function resolveClientEquippedFruit()
 		or ""
 	)
 	local canonical = raw:match("^([^|]+)") or raw
-	if canonical == "SweetDoughCore" or canonical == "Dough" then
-		return "AetherflowCore"
+	if canonical == "" or canonical == "None" then
+		return ""
 	end
-	return canonical
+	local mapped = CANONICAL_FRUIT_MAP[string.lower(canonical)]
+	if mapped then
+		return mapped
+	end
+	if C and C.AetherFruits and C.AetherFruits[canonical] then
+		return canonical
+	end
+	return ""
 end
 
 local function isCurrentSlotTrueFlightF()
@@ -2740,50 +2827,75 @@ local function isCurrentSlotTrueFlightF()
 		return false
 	end
 	local fruitKey = resolveClientEquippedFruit()
-	if fruitKey == "" or fruitKey == "None" then
+	if fruitKey == "" then
 		return false
 	end
 	local ch = player.Character
-	if fruitKey == "AbyssalSovereignCore" or fruitKey == "Dragon" then
+	if fruitKey == "AbyssalSovereignCore" then
 		local tier = tonumber(ch and ch:GetAttribute("DragonFormTier")) or tonumber(player:GetAttribute("DragonFormTier")) or 0
 		local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
-		return (tier >= 2) or (tf == "AbyssalSovereign")
+		return (tier >= 2) or (tf == "AbyssalSovereign") or (tf == "DragonFull")
 	end
 	return TRUE_FLIGHT_FRUIT_MAP[fruitKey] == true
 end
 
 local function hasUnlockedFruitFMastery()
+	local ch = player.Character
 	local fruitKey = resolveClientEquippedFruit()
-	local reqMastery = 10
-	local styles = C and C.CombatStyles
-	local styleDef = styles and styles[fruitKey]
-	if styleDef and type(styleDef.Moves) == "table" and type(styleDef.Moves.F) == "table" then
-		reqMastery = tonumber(styleDef.Moves.F.Mastery) or 10
+	if fruitKey == "" or isClientStunned(ch) then
+		return false
 	end
+	local fDef = C and C.AetherFruits and C.AetherFruits[fruitKey]
+	local mv = fDef and type(fDef.Moves) == "table" and fDef.Moves.F or nil
+	if fruitKey == "AbyssalSovereignCore" then
+		local tier = tonumber(ch and ch:GetAttribute("DragonFormTier")) or tonumber(player:GetAttribute("DragonFormTier")) or 0
+		local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
+		if (tier >= 2 or tf == "AbyssalSovereign" or tf == "DragonFull") and fDef and type(fDef.Form2Moves) == "table" and fDef.Form2Moves.F then
+			mv = fDef.Form2Moves.F
+		end
+	end
+	local reqMastery = tonumber(mv and mv.Mastery) or 1
+	local reqCost = tonumber(mv and mv.Cost) or 8
+	local stMas = latestSyncedState and type(latestSyncedState.Mastery) == "table" and tonumber(latestSyncedState.Mastery[fruitKey]) or nil
 	local curMastery = tonumber(player:GetAttribute("FruitMastery_" .. tostring(fruitKey)))
 		or tonumber(player:GetAttribute("FruitMastery"))
-		or tonumber(player:GetAttribute("StyleMastery"))
+		or stMas
 		or 1
-	return curMastery >= reqMastery
+	return (curMastery >= reqMastery) and (getSyncedEnergy(ch) >= math.max(1, reqCost))
 end
 
+canClientCastSkillKey = CombatExt.CanClientCastSkillKey
+
 local function fireSlotMove(keyLetter)
-	if UI.BlocksCombat() or UIS:GetFocusedTextBox() then return end
-	faceLockedTarget()
+	if UI.BlocksCombat() or UIS:GetFocusedTextBox() or CombatExt.IsInspectModalOpen() then return end
 	local ch = player.Character
-	if ch then
+	if isClientStunned(ch) then return end
+	faceLockedTarget()
+	if ch and (not canClientCastSkillKey or canClientCastSkillKey(keyLetter)) then
 		ch:SetAttribute("LastClientSkillKey",tostring(keyLetter or "Z"))
 		ch:SetAttribute("LastClientSkillAt",os.clock())
+		local curSlot, itemId, _, elem = CombatExt.ResolveActiveCombatLoadout()
+		local r = ch:FindFirstChild("HumanoidRootPart")
+		CombatExt.PlayWeaponSFX(curSlot, keyLetter == "V" or keyLetter == "C", 2, elem, r and r.Position, "local_skill")
+		if r and itemId ~= "None" then
+			spawnSkillVFX("LocalPreCast", r.Position, ch, {IsLocalPreCast=true, Slot=curSlot, ItemId=itemId, MoveKey=keyLetter, Element=elem})
+		end
 		if keyLetter == "F" then
-			local r = ch:FindFirstChild("HumanoidRootPart")
 			lastFMoveCastAt = os.clock()
 			lastFMoveStartPos = r and r.Position or nil
 			lastFMoveFruitId = resolveClientEquippedFruit()
 			lastFMoveSlot = tonumber(player:GetAttribute("ActiveSlot")) or tonumber(UI and UI.State and UI.State.ActiveSlot) or 1
 		end
 	end
-	remotes.AbilityRequest:FireServer({action="SlotMove",key=keyLetter})
+	remotes.AbilityRequest:FireServer(CombatExt.AttachAimPayload({action="SlotMove",key=keyLetter}))
 end
+
+local SLOT_SELECT_INDEX = {
+	SelectSlot1 = 1, Slot1 = 1,
+	SelectSlot2 = 2, Slot2 = 2,
+	SelectSlot3 = 3, Slot3 = 3,
+	SelectSlot4 = 4, Slot4 = 4,
+}
 
 local function send(action)
 	if action=="ToggleLock" then
@@ -2824,7 +2936,9 @@ local function send(action)
 				end)
 				return
 			end
-			remotes.InteractRequest:FireServer({interactableId=nearby:GetAttribute("InteractableId")})
+			local interId=nearby:GetAttribute("InteractableId")
+			CombatExt.NotifyInteracted(interId)
+			remotes.InteractRequest:FireServer({interactableId=interId})
 		end
 		return
 	end
@@ -2838,64 +2952,81 @@ local function send(action)
 	end
 	if action=="ConquerorBurst" then
 		faceLockedTarget()
+		CombatExt.TriggerUtilityCooldown("ConquerorBurst",28)
 		remotes.EquipmentRequest:FireServer({action="ConquerorBurst"})
 		return
 	end
 	if action=="ActivateRaceV4" then
+		if player.Character then
+			player.Character:SetAttribute("NativeRaceV4Toggled",true)
+		end
 		remotes.EquipmentRequest:FireServer({action="ActivateRaceV4"})
 		return
 	end
-	if action=="Z" or action=="X" or action=="C" or action=="F" then
-		fireSlotMove(action)
-		return
-	end
-	if action=="SlotMoveZ" or action=="SlotMoveX" or action=="SlotMoveC" or action=="SlotMoveV" or action=="SlotMoveF" then
-		fireSlotMove(action:sub(-1))
+	if action=="Z" or action=="X" or action=="C" or action=="V" or action=="F" or action=="SlotMoveZ" or action=="SlotMoveX" or action=="SlotMoveC" or action=="SlotMoveV" or action=="SlotMoveF" then
+		local keyLetter=(action:sub(1,8)=="SlotMove") and action:sub(-1) or action
+		if keyLetter=="F" and isCurrentSlotTrueFlightF() then
+			local toggleFlightEvt=player:FindFirstChild("SkybreakToggleFlight")
+			if toggleFlightEvt and toggleFlightEvt:IsA("BindableEvent") then
+				if player:GetAttribute("SkybreakFlightActive")==true or hasUnlockedFruitFMastery() then
+					if player.Character and player:GetAttribute("SkybreakFlightActive")~=true then
+						player.Character:SetAttribute("LastClientSkillKey","F")
+						player.Character:SetAttribute("LastClientSkillAt",os.clock())
+					end
+					toggleFlightEvt:Fire()
+				else
+					fireSlotMove("F")
+				end
+			end
+			return
+		end
+		fireSlotMove(keyLetter)
 		return
 	end
 	if action=="UsePotion" or action=="Potion" then
+		CombatExt.TriggerUtilityCooldown("UsePotion",3.0)
+		playSFX("potion_heal",nil,0.03)
 		remotes.EquipmentRequest:FireServer({action="UsePotion"})
 		return
 	end
-	if action=="V" then
-		faceLockedTarget()
-		local ch=player.Character
-		if ch then
-			ch:SetAttribute("LastClientSkillKey","V")
-			ch:SetAttribute("LastClientSkillAt",os.clock())
+	local selectSlotIdx=SLOT_SELECT_INDEX[action]
+	if selectSlotIdx then
+		clearLocalHitstop(player.Character)
+		player:SetAttribute("ActiveSlot",selectSlotIdx)
+		if player.Character then
+			player.Character:SetAttribute("ActiveSlot",selectSlotIdx)
 		end
-		local hum=ch and ch:FindFirstChildOfClass("Humanoid")
-		remotes.AbilityRequest:FireServer({action="SlotMove",key="V"})
-		if hum and hum.Health<hum.MaxHealth then
-			remotes.EquipmentRequest:FireServer({action="UsePotion"})
-		end
-		return
-	end
-	if action=="Slot4" or action=="SelectSlot4" then
-		remotes.EquipmentRequest:FireServer({action="SelectSlot",slot=4})
+		playSFX("ui_click",nil,0.03)
+		remotes.EquipmentRequest:FireServer({action="SelectSlot",slot=selectSlotIdx})
 		return
 	end
 	local slot=SKILL_SLOT_INDEX[action]
 	if slot then
-		if slot>=1 and slot<=3 then
-			remotes.EquipmentRequest:FireServer({action="SelectSlot",slot=slot})
-		end
+		local ch=player.Character
+		if isClientStunned(ch) then return end
 		faceLockedTarget()
 		local cid=player:GetAttribute("ClassId") or "SkyGuardian"
 		local skills=(C.ClassSkills and C.ClassSkills[cid]) or DEFAULT_SKILLS[cid] or DEFAULT_SKILLS.SkyGuardian
 		local skillId=skills[slot] or (DEFAULT_SKILLS[cid] and DEFAULT_SKILLS[cid][slot]) or "SkySlash"
-		if skillId=="FlashStep" and player.Character then
-			local root=player.Character:FindFirstChild("HumanoidRootPart")
-			local hum=player.Character:FindFirstChildOfClass("Humanoid")
-			local dir=(hum and hum.MoveDirection.Magnitude>0.05) and hum.MoveDirection.Unit or (root and root.CFrame.LookVector or Vector3.new(0,0,-1))
-			performDashGlide(player.Character,"FlashStep",dir,58,0.34)
+		if action=="Ultimate" then
+			local pLv=tonumber((latestSyncedState and latestSyncedState.Level) or player:GetAttribute("Level")) or 1
+			if pLv>=20 then
+				CombatExt.TriggerUtilityCooldown("Ultimate",45)
+			end
 		end
-		remotes.AbilityRequest:FireServer({skillId=skillId})
+		if skillId=="FlashStep" and ch and getSyncedEnergy(ch)>=10 then
+			local root=ch:FindFirstChild("HumanoidRootPart")
+			local hum=ch:FindFirstChildOfClass("Humanoid")
+			local dir=(hum and hum.MoveDirection.Magnitude>0.05) and hum.MoveDirection.Unit or (root and root.CFrame.LookVector or Vector3.new(0,0,-1))
+			performDashGlide(ch,"FlashStep",dir,58,0.34)
+		end
+		remotes.AbilityRequest:FireServer(CombatExt.AttachAimPayload({skillId=skillId,action=skillId}))
 	else
 		local ch=player.Character
 		local root=ch and ch:FindFirstChild("HumanoidRootPart")
 		local hum=ch and ch:FindFirstChildOfClass("Humanoid")
 		if action=="Dash" or action=="Dodge" then
+			if isClientStunned(ch) then return end
 			local now=os.clock()
 			local isDash=(action=="Dash")
 			local cd=isDash and 0.85 or 1.35
@@ -2910,75 +3041,171 @@ local function send(action)
 					dir=isDash and flatLk.Unit or -flatLk.Unit
 				end
 			end
-			if now-lastT>=cd then
+			if now-lastT>=cd and getSyncedEnergy(ch)>=(isDash and 5 or 8) then
 				if isDash then lastClientDashTime=now else lastClientDodgeTime=now end
+				CombatExt.TriggerUtilityCooldown("Dodge",cd)
 				performDashGlide(ch,action,dir,isDash and 44 or 38,isDash and 0.38 or 0.34)
 			end
 			remotes.CombatRequest:FireServer({action=action,direction=dir})
 		else
+			if isClientStunned(ch) then return end
 			if action=="Attack" or action=="Heavy" then
+				if CombatExt.IsSeatedInSkyShip() then
+					CombatExt.FireSeatedShipCannon()
+					return
+				end
+				local curSlot,itemId,_,elem=CombatExt.ResolveActiveCombatLoadout()
+				local cmb=CombatExt.NextLocalComboIndex()
+				CombatExt.PlayWeaponSFX(curSlot,action=="Heavy",cmb,elem,root and root.Position,"local")
 				faceLockedTarget()
+				if root and itemId~="None" then
+					spawnSkillVFX(action,root.Position,ch,{IsLocalM1=true,Kind="Swing",Slot=curSlot,ItemId=itemId,Combo=cmb,Heavy=(action=="Heavy"),Element=elem,Direction=root.CFrame.LookVector})
+				end
 				performCombatLunge(ch,action=="Heavy")
+				if cmb==4 or action=="Heavy" then
+					triggerLocalM1FinisherHitstop(ch)
+				end
 			end
-			remotes.CombatRequest:FireServer({action=action})
+			remotes.CombatRequest:FireServer(CombatExt.AttachAimPayload({action=action}))
 		end
 	end
 end
 
 local function beginAttack(input)
-	if held or UI.BlocksCombat() then return end
+	if held or UI.BlocksCombat() or UIS:GetFocusedTextBox() or CombatExt.IsInspectModalOpen() then return end
+	if UIS:IsKeyDown(Enum.KeyCode.LeftAlt) or UIS:IsKeyDown(Enum.KeyCode.RightAlt) then return end
 	held=input
 	heavySent=false
 	attackToken+=1
 	local token=attackToken
-	task.delay(.4,function()
-		if held and token==attackToken then
+	-- Instant 0ms M1 on InputBegan!
+	send("Attack")
+	task.spawn(function()
+		task.wait(0.38)
+		if held~=input or token~=attackToken then return end
+		if not UI.BlocksCombat() and not UIS:GetFocusedTextBox() and not CombatExt.IsInspectModalOpen() and not CombatExt.IsSeatedInSkyShip() then
 			heavySent=true
 			send("Heavy")
+		end
+		while held==input and token==attackToken do
+			task.wait(0.34)
+			if held~=input or token~=attackToken then break end
+			if not UI.BlocksCombat() and not UIS:GetFocusedTextBox() and not CombatExt.IsInspectModalOpen() then
+				send("Attack")
+			end
 		end
 	end)
 end
 
 UI.Init(send,beginAttack)
 
+local markers={}
+local worldPrompts={}
+
+local function getPromptWorldPos(pr)
+	local p=pr and pr.Parent
+	if not p then return nil end
+	if p:IsA("BasePart") then return p.Position end
+	if p:IsA("Attachment") then return p.WorldPosition end
+	if p:IsA("Model") then
+		local ok,piv=pcall(p.GetPivot,p)
+		if ok and typeof(piv)=="CFrame" then return piv.Position end
+		if p.PrimaryPart then return p.PrimaryPart.Position end
+	end
+	local bp=p:FindFirstAncestorWhichIsA("BasePart")
+	if bp then return bp.Position end
+	return nil
+end
+
+local function findNearestNativePromptDist(originPos)
+	local bestDist=math.huge
+	local bestPrompt=nil
+	for pr in pairs(worldPrompts) do
+		if not pr.Parent then
+			worldPrompts[pr]=nil
+		elseif pr.Enabled and pr.Style~=Enum.ProximityPromptStyle.Custom then
+			local pPos=getPromptWorldPos(pr)
+			if pPos then
+				local maxDist=(tonumber(pr.MaxActivationDistance) or 10)+1.5
+				local d=(originPos-pPos).Magnitude
+				if d<=maxDist and d<bestDist then
+					bestDist=d
+					bestPrompt=pr
+				end
+			end
+		end
+	end
+	return bestPrompt,bestDist
+end
+
+local function resolveCustomInteractMarker()
+	local r=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not r or UI.BlocksCombat() then return nil end
+	local originPos=r.Position
+	local bestMarker=nil
+	local bestMarkerDist=14
+	for marker in pairs(markers) do
+		if not marker.Parent then
+			markers[marker]=nil
+		else
+			local d=(originPos-marker.Position).Magnitude
+			if d<=bestMarkerDist then
+				bestMarkerDist=d
+				bestMarker=marker
+			end
+		end
+	end
+	if not bestMarker then
+		return nil
+	end
+	local nearPrompt,nearPromptDist=findNearestNativePromptDist(originPos)
+	if nearPrompt and nearPromptDist<bestMarkerDist then
+		return nil
+	end
+	return bestMarker
+end
+
 task.spawn(function()
-	local markers={}
 	local function register(o)
 		if o:IsA("BasePart") and o:GetAttribute("InteractableId") then markers[o]=true end
-		-- Only hide prompts the HUD [E]/INTERACT button replaces (parent has InteractableId). Custom style with no
-		-- PromptShown UI left world-event prompts (pillars, altar, ship board/cannon...) untappable on touch.
-		if o:IsA("ProximityPrompt") and o.Name~="InspectFruit3DPrompt" and o.Parent and o.Parent:GetAttribute("InteractableId") then o.Style=Enum.ProximityPromptStyle.Custom end
+		if o:IsA("ProximityPrompt") then
+			if o.Name~="InspectFruit3DPrompt" and o.Parent and o.Parent:GetAttribute("InteractableId") then
+				o.Style=Enum.ProximityPromptStyle.Custom
+			else
+				worldPrompts[o]=true
+			end
+		end
 		if o:IsA("ParticleEmitter") and o.Name=="SkybreakCloud" then o:Emit(8) end
 	end
 	for _,o in ipairs(workspace:GetDescendants()) do register(o) end
 	workspace.DescendantAdded:Connect(register)
 	while player.Parent do
-		nearby=nil
-		local best=12
-		local r=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-		if r and not UI.BlocksCombat() then
-			for marker in pairs(markers) do
-				if not marker.Parent then
-					markers[marker]=nil
-				else
-					local distance=(r.Position-marker.Position).Magnitude
-					if distance<best then
-						best=distance
-						nearby=marker
-					end
-				end
-			end
-		end
+		nearby=resolveCustomInteractMarker()
 		local prompt=nearby and nearby:FindFirstChildOfClass("ProximityPrompt")
 		UI.SetInteract(prompt and prompt.ObjectText or nil)
 		task.wait(.15)
 	end
 end)
 
+local rmbDownAt=0
+local rmbDragPixels=0
+local rmbStartPos=Vector2.zero
+
 UIS.InputBegan:Connect(function(input,processed)
 	if UIS:GetFocusedTextBox() then return end
 	if not processed and input.UserInputType==Enum.UserInputType.MouseButton1 then
+		if UIS:IsKeyDown(Enum.KeyCode.LeftAlt) or UIS:IsKeyDown(Enum.KeyCode.RightAlt) or CombatExt.IsInspectModalOpen() then
+			return
+		end
 		beginAttack(input)
+		return
+	end
+	if not processed and input.UserInputType==Enum.UserInputType.MouseButton2 then
+		if not UI.BlocksCombat() and not CombatExt.IsInspectModalOpen() and not (UIS:IsKeyDown(Enum.KeyCode.LeftAlt) or UIS:IsKeyDown(Enum.KeyCode.RightAlt)) then
+			rmbDownAt=os.clock()
+			rmbDragPixels=0
+			rmbStartPos=UIS:GetMouseLocation()
+		end
 		return
 	end
 	local kc=input.KeyCode
@@ -2991,12 +3218,20 @@ UIS.InputBegan:Connect(function(input,processed)
 			fireSlotMove("X")
 		end
 	elseif kc==Enum.KeyCode.C then
-		if not UI.BlocksCombat() then
+		local seated,isPilot=CombatExt.IsSeatedInSkyShip()
+		if not (seated and isPilot) and not UI.BlocksCombat() then
 			fireSlotMove("C")
 		end
 	elseif kc==Enum.KeyCode.T then
 		if not UI.BlocksCombat() then
-			fireSlotMove("V")
+			local cmdEvt=tempFX:FindFirstChild("SkybreakFlightCamCommand")
+			if cmdEvt and cmdEvt:IsA("BindableEvent") then
+				cmdEvt:Fire("FlashStep")
+			end
+		end
+	elseif kc==Enum.KeyCode.Five then
+		if not processed and player:GetAttribute("SkybreakEmoteWheelOpen")~=true and not UI.BlocksCombat() then
+			send("UsePotion")
 		end
 	elseif kc==Enum.KeyCode.U then
 		if not UI.BlocksCombat() then
@@ -3004,31 +3239,36 @@ UIS.InputBegan:Connect(function(input,processed)
 		end
 	elseif kc==Enum.KeyCode.H then
 		if not UI.BlocksCombat() then
-			faceLockedTarget()
-			remotes.EquipmentRequest:FireServer({action="ConquerorBurst"})
+			send("ConquerorBurst")
 		end
 	elseif kc==Enum.KeyCode.Y then
 		if not UI.BlocksCombat() then
-			if player.Character then
-				player.Character:SetAttribute("NativeRaceV4Toggled",true)
-			end
-			remotes.EquipmentRequest:FireServer({action="ActivateRaceV4"})
+			send("ActivateRaceV4")
 		end
-	elseif kc==Enum.KeyCode.Four then
-		if not UI.BlocksCombat() then
-			remotes.EquipmentRequest:FireServer({action="SelectSlot",slot=4})
-		end
+	end
+end)
+UIS.InputChanged:Connect(function(input)
+	if rmbDownAt>0 and input.UserInputType==Enum.UserInputType.MouseMovement then
+		rmbDragPixels+=Vector2.new(input.Delta.X,input.Delta.Y).Magnitude
 	end
 end)
 UIS.InputEnded:Connect(function(input)
 	if held==input then
-		if not heavySent then send("Attack") end
 		held=nil
 		attackToken+=1
+	end
+	if input.UserInputType==Enum.UserInputType.MouseButton2 and rmbDownAt>0 then
+		local dt=os.clock()-rmbDownAt
+		local moved=math.max(rmbDragPixels,(UIS:GetMouseLocation()-rmbStartPos).Magnitude)
+		rmbDownAt=0
+		if dt<=0.26 and moved<=7 and not UI.BlocksCombat() and not UIS:GetFocusedTextBox() and not CombatExt.IsInspectModalOpen() and not CombatExt.IsSeatedInSkyShip() then
+			send("Heavy")
+		end
 	end
 end)
 UIS.WindowFocusReleased:Connect(function()
 	held=nil
+	rmbDownAt=0
 	attackToken+=1
 end)
 
@@ -3042,12 +3282,13 @@ local PAGE_KEYS={
 local keys={
 	Interact=Enum.KeyCode.E,
 	Dodge=Enum.KeyCode.Q,
-	Dash=Enum.KeyCode.LeftShift,
-	Skill1=Enum.KeyCode.One,
-	Skill2=Enum.KeyCode.Two,
-	Skill3=Enum.KeyCode.Three,
+	SelectSlot1=Enum.KeyCode.One,
+	SelectSlot2=Enum.KeyCode.Two,
+	SelectSlot3=Enum.KeyCode.Three,
+	SelectSlot4=Enum.KeyCode.Four,
 	Ultimate=Enum.KeyCode.R,
-	UsePotion=Enum.KeyCode.V,
+	SlotV=Enum.KeyCode.V,
+	UsePotion=Enum.KeyCode.Backquote,
 	ToggleLock=Enum.KeyCode.Tab,
 	Inventory=Enum.KeyCode.I,
 	Classes=Enum.KeyCode.K,
@@ -3057,9 +3298,40 @@ local keys={
 	Settings=Enum.KeyCode.O,
 }
 
+local holdingCustomInteractE=false
+
 for name,key in pairs(keys) do
 	CAS:BindActionAtPriority("Skybreak"..name,function(_,inputState)
 		if UIS:GetFocusedTextBox() then return Enum.ContextActionResult.Pass end
+		if name=="Interact" then
+			if inputState==Enum.UserInputState.Begin then
+				local customMarker=resolveCustomInteractMarker()
+				if not customMarker then
+					holdingCustomInteractE=false
+					return Enum.ContextActionResult.Pass
+				end
+				nearby=customMarker
+				holdingCustomInteractE=true
+				send("Interact")
+				return Enum.ContextActionResult.Sink
+			elseif inputState==Enum.UserInputState.End or inputState==Enum.UserInputState.Cancel then
+				if holdingCustomInteractE then
+					holdingCustomInteractE=false
+					return Enum.ContextActionResult.Sink
+				end
+				return Enum.ContextActionResult.Pass
+			end
+			return holdingCustomInteractE and Enum.ContextActionResult.Sink or Enum.ContextActionResult.Pass
+		end
+		if SLOT_SELECT_INDEX[name] and player:GetAttribute("SkybreakEmoteWheelOpen")==true then
+			return Enum.ContextActionResult.Pass
+		end
+		if name=="Ultimate" then
+			local seated,isPilot=CombatExt.IsSeatedInSkyShip()
+			if seated and isPilot then
+				return Enum.ContextActionResult.Pass
+			end
+		end
 		if inputState==Enum.UserInputState.Begin then
 			if name=="Quests" then
 				local shiftDown=UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.RightShift)
@@ -3069,13 +3341,10 @@ for name,key in pairs(keys) do
 					remotes.EquipmentRequest:FireServer({action="ToggleAura"})
 				end
 			elseif name=="Forge" then
-				local shiftDown=UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.RightShift)
-				if shiftDown or UI.Page=="Forge" then
-					if UI.Toggle then UI.Toggle("Forge") else UI.Show(UI.Page=="Forge" and "HUD" or "Forge") end
-				elseif not UI.BlocksCombat() then
-					if isCurrentSlotTrueFlightF() and hasUnlockedFruitFMastery() then
-						-- True flight Devil Fruit on Slot 2: SkybreakFlightAndCamera toggles 6-DOF Free Flight
-						if player.Character then
+				if not UI.BlocksCombat() then
+					if isCurrentSlotTrueFlightF() then
+						-- True flight Devil Fruit on Slot 2: SkybreakFlightAndCamera toggles 6-DOF Free Flight (never fall back to SlotMove)
+						if hasUnlockedFruitFMastery() and player.Character then
 							player.Character:SetAttribute("LastClientSkillKey","F")
 							player.Character:SetAttribute("LastClientSkillAt",os.clock())
 						end
@@ -3083,24 +3352,19 @@ for name,key in pairs(keys) do
 						-- Non-flight [F] skill (GlacierIce, ThunderRumble, DimensionalPortal, SolarTitan, Aetherflow, Dragon Form 0/1, or Slots 1/3/4): fire immediately (0ms)!
 						fireSlotMove("F")
 					end
-				else
-					if UI.Toggle then UI.Toggle("Forge") else UI.Show("Forge") end
 				end
 			elseif name=="Ultimate" then
 				local shiftDown=UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.RightShift)
 				local cmdEvt=tempFX:FindFirstChild("SkybreakFlightCamCommand")
-				if not shiftDown and cmdEvt and cmdEvt:IsA("BindableEvent") then
+				if shiftDown and cmdEvt and cmdEvt:IsA("BindableEvent") then
 					cmdEvt:Fire("FlashStep")
 				else
 					send("Ultimate")
 				end
+			elseif name=="SlotV" then
+				fireSlotMove("V")
 			elseif name=="UsePotion" then
-				local shiftDown=UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.RightShift)
-				if shiftDown then
-					send("UsePotion")
-				else
-					send("V")
-				end
+				send("UsePotion")
 			elseif name=="ToggleLock" then
 				local shiftDown=UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.RightShift)
 				local cmdEvt=tempFX:FindFirstChild("SkybreakFlightCamCommand")
@@ -3280,8 +3544,8 @@ remotes.StateUpdate.OnClientEvent:Connect(function(payload)
 			local dist = (payload.TeleportSnap - lastFMoveStartPos).Magnitude
 			local fId = lastFMoveFruitId
 			if dist > 6 and dist < 135 and (
-				fId == "SolarTitanCore" or fId == "Buddha"
-				or fId == "AetherflowCore"
+				fId == "SolarTitanCore" or fId == "Buddha" or fId == "Quake"
+				or fId == "AetherflowCore" or fId == "SweetDoughCore" or fId == "Dough"
 				or fId == "GlacierIceCore" or fId == "Ice"
 				or fId == "AbyssalSovereignCore" or fId == "Dragon"
 			) then
@@ -3306,8 +3570,22 @@ remotes.StateUpdate.OnClientEvent:Connect(function(payload)
 	end
 	if payload.State then
 		local st=payload.State
-		st.Companions={}
-		st.PartySize="Solo"
+		local prevSt=latestSyncedState
+		if prevSt then
+			if st.Party==nil and prevSt.Party~=nil then st.Party=prevSt.Party end
+			if st.Companions==nil and prevSt.Companions~=nil then st.Companions=prevSt.Companions end
+			if st.PartySize==nil and prevSt.PartySize~=nil then st.PartySize=prevSt.PartySize end
+			if st.PartyMembers==nil and prevSt.PartyMembers~=nil then st.PartyMembers=prevSt.PartyMembers end
+			if st.PartyLeader==nil and prevSt.PartyLeader~=nil then st.PartyLeader=prevSt.PartyLeader end
+		end
+		latestSyncedState=st
+		CombatExt.SyncState(st)
+		if st.Energy~=nil then
+			player:SetAttribute("ClientEnergy",tonumber(st.Energy))
+		end
+		if st.PvPCombatUntil~=nil then
+			player:SetAttribute("PvPCombatUntil",tonumber(st.PvPCombatUntil) or 0)
+		end
 		if lastKnownLevel and st.Level and st.Level>lastKnownLevel then
 			playSFX("level_up",nil,0.01)
 			if ClientVFX and type(ClientVFX.SpawnProgressionVFX)=="function" then
@@ -3354,14 +3632,16 @@ remotes.StateUpdate.OnClientEvent:Connect(function(payload)
 	end
 end)
 
-local function playCombatActionSFX(kind,action,pos,combo,element)
+local function playCombatActionSFX(kind,action,pos,combo,element,actorId,actor,actorChar)
 	local act=tostring(action or "")
 	local el=tostring(element or "")
+	local isLocalActor=(actorId==nil or actorId==player.UserId)
 	if kind=="ChestOpened" then
 		playSFX("chest_open",pos,0.04)
 	elseif kind=="LootOrbPickup" then
 		playSFX("coin_collect",pos,0.06)
 	elseif kind=="ShipCannonBlast" then
+		if isLocalActor and CombatExt.WasLocalWeaponSFXRecent(0.55) then return end
 		playSFX("ship_cannon",pos,0.05)
 	elseif kind=="CloudGeyserRescue" then
 		playSFX("cloud_geyser",pos,0.04)
@@ -3377,8 +3657,11 @@ local function playCombatActionSFX(kind,action,pos,combo,element)
 		playSFX("level_up",pos,0.03)
 	elseif kind=="HakiStageUp" or act=="HakiStageUp" or act=="ConquerorHaki" or act=="ConquerorBurst" then
 		playSFX("haki_conqueror",pos,0.03)
-	elseif kind=="GunShot" or kind=="SeaBeastBeam" then
+	elseif kind=="SeaBeastBeam" then
 		playSFX("light_beam",pos,0.05)
+	elseif kind=="GunShot" then
+		if isLocalActor and CombatExt.WasLocalWeaponSFXRecent(0.55) then return end
+		CombatExt.PlayWeaponSFX(4,false,combo,el,pos,actorId or "remote_gun")
 	elseif act=="FlashStep" then
 		playSFX("flash_step",pos,0.05)
 	elseif kind=="Dodge" or act=="Dodge" or act=="Dash" then
@@ -3403,20 +3686,25 @@ local function playCombatActionSFX(kind,action,pos,combo,element)
 		playSFX("skill_frost_shatter",pos,0.05)
 	elseif act=="JudgmentStrike" or act=="CelestialAegis" then
 		playSFX("skill_judgment_strike",pos,0.04)
-	elseif act=="SkySlash" or kind=="ChargedSlash" then
+	elseif act=="SkySlash" then
 		playSFX("skill_sky_slash",pos,0.04)
-	elseif act=="Heavy" then
-		playSFX("heavy_cleave",pos,0.05)
-	elseif kind=="Swing" or act=="Attack" then
-		local c=math.clamp(tonumber(combo) or 1,1,3)
-		playSFX("sword_swing_"..tostring(c),pos,0.05)
+	elseif kind=="ChargedSlash" or act=="Heavy" or kind=="Swing" or act=="Attack" or kind=="StyleMove" then
+		if isLocalActor and CombatExt.WasLocalWeaponSFXRecent(0.55) then return end
+		local aSlot=tonumber((actorChar and actorChar:GetAttribute("ActiveSlot")) or (actor and actor:GetAttribute("ActiveSlot")))
+			or (kind=="StyleMove" and 1)
+			or (kind=="ChargedSlash" and 3)
+			or (isLocalActor and (CombatExt.ResolveActiveCombatLoadout()))
+			or 3
+		CombatExt.PlayWeaponSFX(aSlot,act=="Heavy" or kind=="ChargedSlash",combo,el,pos,actorId or "remote_swing")
 	else
+		if isLocalActor and CombatExt.WasLocalWeaponSFXRecent(0.42) then return end
 		playSFX("skill_sky_slash",pos,0.05)
 	end
 end
 
 local function handleCombatFX(fx)
 	if type(fx)~="table" then return end
+	CombatExt.NotifyCombatFX(fx)
 	local kind=fx.Kind or fx.kind
 	local action=fx.Action or fx.action or fx.skillId
 	local actorId=fx.Actor or fx.Owner or fx.userId
@@ -3429,6 +3717,9 @@ local function handleCombatFX(fx)
 		if fallbackRoot then pos=fallbackRoot.Position end
 	end
 
+	if (actorId==player.UserId or (actorId==nil and fx.TargetId~=nil)) and tonumber(fx.Combo)==4 then
+		triggerLocalM1FinisherHitstop(player.Character)
+	end
 	if kind=="DamageNumber" or kind=="Hit" or kind=="LogiaDodge" or kind=="ElementalReflex" or fx.LogiaDodge==true or fx.amount~=nil or fx.Amount~=nil or fx.Text~=nil then
 		if (kind=="LogiaDodge" or kind=="ElementalReflex" or fx.LogiaDodge==true) and fx.Text==nil and fx.amount==nil then
 			fx.Text="ELEMENTAL REFLEX"
@@ -3436,7 +3727,7 @@ local function handleCombatFX(fx)
 		spawnDamagePopup(fx)
 	else
 		local sfxArg=(fx.DragonFormTier~=nil) and fx.DragonFormTier or fx.Combo
-		playCombatActionSFX(kind,action,pos,sfxArg,fx.element or fx.Element)
+		playCombatActionSFX(kind,action,pos,sfxArg,fx.element or fx.Element,actorId,actor,actorChar)
 	end
 
 	if actorChar then
@@ -3475,7 +3766,7 @@ local function handleCombatFX(fx)
 		return
 	end
 
-	if typeof(pos)=="Vector3" and (kind=="Swing" or kind=="Dodge" or kind=="Skill" or kind=="Burst" or kind=="SlotMove" or kind=="FruitMove" or kind=="StyleMove" or kind=="ChargedSlash" or kind=="GunShot" or kind=="DragonTransform" or kind=="PortalWarp" or kind=="SeaBeastBeam" or kind=="HakiStageUp" or kind=="RaceV4Unlock" or kind=="ChestOpened" or kind=="LootOrbPickup" or kind=="ShipCannonBlast" or kind=="CloudGeyserRescue" or fx.skillId~=nil or fx.key~=nil or fx.MoveKey~=nil) then
+	if typeof(pos)=="Vector3" and (kind=="Swing" or kind=="Dodge" or kind=="Skill" or kind=="SkillCast" or kind=="M1Hit" or kind=="ElementalSynergy" or kind=="HazardZone" or kind=="WallSlam" or kind=="CryoShatter" or kind=="Burst" or kind=="SlotMove" or kind=="FruitMove" or kind=="StyleMove" or kind=="ChargedSlash" or kind=="GunShot" or kind=="DragonTransform" or kind=="PortalWarp" or kind=="SeaBeastBeam" or kind=="HakiStageUp" or kind=="RaceV4Unlock" or kind=="ChestOpened" or kind=="LootOrbPickup" or kind=="ShipCannonBlast" or kind=="CloudGeyserRescue" or fx.skillId~=nil or fx.key~=nil or fx.MoveKey~=nil) then
 		spawnSkillVFX(action or kind or "Attack",pos,actorChar,fx)
 	end
 end
@@ -3487,511 +3778,83 @@ if combatEventRemote and combatEventRemote:IsA("RemoteEvent") then
 end
 
 -- ============================================================================
--- 7. BLOX FRUITS-STYLE BOTTOM-RIGHT SKILL STACK (NAME + MASTERY + LIVE COOLDOWN)
+-- 7. UNIFIED BLOX FRUITS SKILL HUD + UTILITY STRIP + WAYPOINT BEAM + SHIP PILOT HUD
 -- ============================================================================
-local latestSyncedState = nil
-local bloxSkillCooldowns = {} -- [slot_key] = { Start = clock, Duration = cd, End = clock + cd }
+CombatExt.Init({
+	Player = player,
+	Config = C,
+	Remotes = remotes,
+	UI = UI,
+	Audio = AudioEngine,
+	TempFX = tempFX,
+	Send = send,
+	FireSlotMove = fireSlotMove,
+	IsCurrentSlotTrueFlightF = isCurrentSlotTrueFlightF,
+	HasUnlockedFruitFMastery = hasUnlockedFruitFMastery,
+	IsClientStunned = isClientStunned,
+	GetSyncedEnergy = getSyncedEnergy,
+	CanonicalFruitMap = CANONICAL_FRUIT_MAP,
+})
 
-local ELEMENT_HUD_PALETTES = {
-	Sky = { Accent = Color3.fromRGB(252, 208, 92), Dark = Color3.fromRGB(28, 24, 14), Badge = Color3.fromRGB(218, 152, 28) },
-	Frost = { Accent = Color3.fromRGB(86, 214, 255), Dark = Color3.fromRGB(12, 24, 38), Badge = Color3.fromRGB(32, 148, 224) },
-	Lightning = { Accent = Color3.fromRGB(116, 184, 255), Dark = Color3.fromRGB(16, 20, 42), Badge = Color3.fromRGB(78, 118, 246) },
-	Flame = { Accent = Color3.fromRGB(255, 132, 56), Dark = Color3.fromRGB(36, 16, 12), Badge = Color3.fromRGB(228, 78, 28) },
-	Jade = { Accent = Color3.fromRGB(72, 236, 164), Dark = Color3.fromRGB(12, 32, 24), Badge = Color3.fromRGB(28, 172, 112) },
-	Celestial = { Accent = Color3.fromRGB(255, 226, 118), Dark = Color3.fromRGB(28, 24, 16), Badge = Color3.fromRGB(224, 168, 38) },
-	Void = { Accent = Color3.fromRGB(196, 108, 255), Dark = Color3.fromRGB(24, 12, 38), Badge = Color3.fromRGB(138, 48, 216) },
-}
-
-local FRUIT_ID_LOOKUP = {}
-if C and C.AetherFruits then
-	for k, v in pairs(C.AetherFruits) do
-		FRUIT_ID_LOOKUP[string.lower(k)] = k
-		if v.Name then
-			FRUIT_ID_LOOKUP[string.lower(v.Name)] = k
+-- ============================================================================
+-- 8. PLAYER LOCALE SYNC (EN/VI SERVER TOASTS) & VIP / SOVEREIGN CHAT TAGS
+-- ============================================================================
+do
+	local function resolvePlayerLocaleAndLang()
+		local okLoc,rawLoc=pcall(function()
+			return LocalizationService.RobloxLocaleId
+		end)
+		local rbxLocale=(okLoc and type(rawLoc)=="string" and rawLoc~="") and rawLoc or "en-us"
+		local attrLang=tostring(player:GetAttribute("Language") or "")
+		local lang=(attrLang=="en" or attrLang=="vi") and attrLang or (rbxLocale:lower():sub(1,2)=="vi" and "vi" or "en")
+		if attrLang~="en" and attrLang~="vi" then
+			player:SetAttribute("Language",lang)
 		end
-	end
-end
-FRUIT_ID_LOOKUP["dragon"] = "AbyssalSovereignCore"
-FRUIT_ID_LOOKUP["abyssal_dragon"] = "AbyssalSovereignCore"
-FRUIT_ID_LOOKUP["dough"] = "AetherflowCore"
-FRUIT_ID_LOOKUP["buddha"] = "SolarTitanCore"
-FRUIT_ID_LOOKUP["portal"] = "DimensionalPortalCore"
-FRUIT_ID_LOOKUP["gravity"] = "AstralGravityCore"
-FRUIT_ID_LOOKUP["rumble"] = "ThunderRumbleCore"
-FRUIT_ID_LOOKUP["magma"] = "StarforgedMagmaCore"
-FRUIT_ID_LOOKUP["light"] = "CelestialLightCore"
-FRUIT_ID_LOOKUP["ice"] = "GlacierIceCore"
-FRUIT_ID_LOOKUP["flame"] = "SolarFlameCore"
-FRUIT_ID_LOOKUP["sand"] = "SandstoneCore"
-FRUIT_ID_LOOKUP["gale"] = "GaleCore"
-
-local function resolveActiveCombatLoadout()
-	local ch = player.Character
-	local rawTier = tonumber((ch and ch:GetAttribute("DragonFormTier")) or player:GetAttribute("DragonFormTier")) or 0
-	local tf = tostring((ch and ch:GetAttribute("FruitTransform")) or player:GetAttribute("FruitTransform") or "")
-	local dragonTier = 0
-	if rawTier >= 2 or tf == "AbyssalSovereign" then
-		dragonTier = 2
-	elseif rawTier == 1 or tf == "AbyssalDragonHybrid" then
-		dragonTier = 1
+		player:SetAttribute("ClientLocale",rbxLocale)
+		return rbxLocale,lang
 	end
 
-	if C and C.AetherFruits and C.AetherFruits.AbyssalSovereignCore and type(C.GetDragonFormMoves) == "function" then
-		local activeMoves = C.GetDragonFormMoves(dragonTier)
-		if activeMoves then
-			C.AetherFruits.AbyssalSovereignCore.Moves = activeMoves
-		end
-	end
-
-	local curSlot = tonumber((ch and ch:GetAttribute("ActiveSlot")) or player:GetAttribute("ActiveSlot") or (latestSyncedState and latestSyncedState.ActiveSlot)) or 1
-	local rawFruit = tostring((ch and ch:GetAttribute("EquippedFruit")) or player:GetAttribute("EquippedFruit") or (latestSyncedState and (latestSyncedState.EquippedFruit or latestSyncedState.FruitId)) or "")
-	local fruitId = FRUIT_ID_LOOKUP[string.lower(rawFruit)] or (C.AetherFruits and C.AetherFruits[rawFruit] and rawFruit) or nil
-	if dragonTier > 0 then
-		fruitId = "AbyssalSovereignCore"
-		curSlot = 2
-	end
-
-	local masteryTable = (latestSyncedState and type(latestSyncedState.Mastery) == "table" and latestSyncedState.Mastery) or {}
-	local playerLv = tonumber((latestSyncedState and latestSyncedState.Level) or player:GetAttribute("Level")) or 1
-
-	if curSlot == 2 then
-		local fDef = (fruitId and C.AetherFruits and C.AetherFruits[fruitId]) or (C.AetherFruits and C.AetherFruits.AbyssalSovereignCore)
-		if fDef then
-			local moves = fDef.Moves
-			local headerName = fDef.Name or fruitId
-			if fDef.Id == "AbyssalSovereignCore" then
-				if dragonTier >= 2 then
-					moves = fDef.Form2Moves or moves
-					headerName = "Thái Cổ Long Hoàng • Dạng 2"
-				elseif dragonTier == 1 then
-					moves = fDef.Form1Moves or moves
-					headerName = "Bán Long Nhân • Dạng 1"
-				else
-					moves = fDef.Form1Moves or moves
-					headerName = "Lõi Long Đế Vực Thẳm"
-				end
+	local function syncLocaleToServer()
+		local rbxLocale,lang=resolvePlayerLocaleAndLang()
+		pcall(function()
+			local locRemote=remotes:FindFirstChild("SetLocale") or remotes:FindFirstChild("ClientLocale") or remotes:FindFirstChild("SetLanguage")
+			if locRemote and locRemote:IsA("RemoteEvent") then
+				locRemote:FireServer(rbxLocale,lang)
 			end
-			local mas = tonumber(masteryTable[fDef.Id] or masteryTable.Fruit or player:GetAttribute("FruitMastery")) or math.max(1, math.min(600, playerLv))
-			return curSlot, fDef.Id, headerName, fDef.Element or "Void", mas, moves or {}
-		end
-	elseif curSlot == 1 then
-		local rawStyle = tostring((ch and ch:GetAttribute("FightingStyle")) or player:GetAttribute("FightingStyle") or player:GetAttribute("EquippedStyle") or (latestSyncedState and latestSyncedState.FightingStyle) or "skyborn_combat")
-		local sDef = (C.FightingStyles and (C.FightingStyles[rawStyle] or C.FightingStyles.skyborn_combat))
-		if sDef then
-			local mas = tonumber(masteryTable[sDef.Id] or masteryTable.Melee or player:GetAttribute("MeleeMastery")) or math.max(1, math.min(600, playerLv))
-			return curSlot, sDef.Id, sDef.Name or rawStyle, sDef.Element or "Sky", mas, sDef.Moves or {}
-		end
-	elseif curSlot == 3 then
-		local eqWep = tostring((latestSyncedState and latestSyncedState.Equipment and latestSyncedState.Equipment.Weapon) or (ch and ch:GetAttribute("EquippedWeapon")) or player:GetAttribute("EquippedWeapon") or "starter_sword")
-		local wDef = (C.Swords and (C.Swords[eqWep] or C.Swords[string.lower(eqWep)] or C.Swords.starter_sword))
-		if wDef then
-			local mas = tonumber(masteryTable[wDef.Id] or masteryTable.Sword or player:GetAttribute("SwordMastery")) or math.max(1, math.min(600, playerLv))
-			return curSlot, wDef.Id, wDef.Name or eqWep, wDef.Element or "Sky", mas, wDef.Moves or {}
-		end
-	elseif curSlot == 4 then
-		local eqGun = tostring((latestSyncedState and latestSyncedState.Equipment and (latestSyncedState.Equipment.Offhand or latestSyncedState.Equipment.Gun)) or player:GetAttribute("EquippedGun") or "aether_flintlock")
-		local gDef = (C.Guns and (C.Guns[eqGun] or C.Guns[string.lower(eqGun)] or C.Guns.aether_flintlock))
-		if gDef then
-			local mas = tonumber(masteryTable[gDef.Id] or masteryTable.Gun or player:GetAttribute("GunMastery")) or math.max(1, math.min(600, playerLv))
-			return curSlot, gDef.Id, gDef.Name or eqGun, gDef.Element or "Sky", mas, gDef.Moves or {}
-		end
+			remotes.EquipmentRequest:FireServer({
+				action="SetLocale",
+				locale=rbxLocale,
+				RobloxLocaleId=rbxLocale,
+				lang=lang,
+				Language=lang,
+			})
+		end)
 	end
 
-	local fallbackFruit = C.AetherFruits and C.AetherFruits.GaleCore
-	return 2, "GaleCore", (fallbackFruit and fallbackFruit.Name) or "Lõi Cuồng Phong • Gale Core", "Sky", math.max(1, playerLv), (fallbackFruit and fallbackFruit.Moves) or {}
+	task.defer(syncLocaleToServer)
+	player:GetAttributeChangedSignal("Language"):Connect(syncLocaleToServer)
 end
 
-local function triggerBloxSkillCooldown(moveKey, customDuration)
-	local k = string.upper(tostring(moveKey or ""))
-	if k ~= "Z" and k ~= "X" and k ~= "C" and k ~= "V" and k ~= "F" then return end
-	local curSlot, itemId, _, _, curMas, moves = resolveActiveCombatLoadout()
-	local mv = moves and moves[k]
-	if not mv then return end
-	local reqMas = tonumber(mv.Mastery) or 1
-	if curMas < reqMas then return end
-	local cd = tonumber(customDuration) or tonumber(mv.Cooldown) or 6.0
-	if cd <= 0 then return end
-	local cdId = tostring(curSlot) .. "_" .. tostring(itemId) .. "_" .. k
-	local now = os.clock()
-	local existing = bloxSkillCooldowns[cdId]
-	if existing and existing.End > now + 0.15 and not customDuration then
-		return
-	end
-	bloxSkillCooldowns[cdId] = {
-		Start = now,
-		Duration = cd,
-		End = now + cd,
-	}
-end
-
-player:GetAttributeChangedSignal("LastClientSkillAt"):Connect(function()
-	local k = player.Character and player.Character:GetAttribute("LastClientSkillKey")
-	if k then
-		triggerBloxSkillCooldown(k)
-	end
-end)
-
-player.CharacterAdded:Connect(function(ch)
-	ch:GetAttributeChangedSignal("LastClientSkillAt"):Connect(function()
-		local k = ch:GetAttribute("LastClientSkillKey")
-		if k then
-			triggerBloxSkillCooldown(k)
-		end
-	end)
-end)
-if player.Character then
-	player.Character:GetAttributeChangedSignal("LastClientSkillAt"):Connect(function()
-		local k = player.Character:GetAttribute("LastClientSkillKey")
-		if k then
-			triggerBloxSkillCooldown(k)
-		end
-	end)
-end
-
-remotes.StateUpdate.OnClientEvent:Connect(function(payload)
-	if type(payload) == "table" and type(payload.State) == "table" then
-		latestSyncedState = payload.State
-	end
-end)
-
-remotes.CombatFX.OnClientEvent:Connect(function(fx)
-	if type(fx) ~= "table" then return end
-	local actorId = tonumber(fx.Actor or fx.Owner or fx.userId)
-	if actorId == nil or actorId == player.UserId then
-		local k = fx.MoveKey or fx.key or (type(fx.Action) == "string" and fx.Action:match("_([ZXCVF])$"))
-		if k then
-			triggerBloxSkillCooldown(k, tonumber(fx.Cooldown))
-		end
-	end
-end)
-
-task.spawn(function()
-	local KEY_ORDER = { "Z", "X", "C", "V", "F" }
-	local stackGui = nil
-	local container = nil
-	local headerTitle = nil
-	local headerMasText = nil
-	local headerMasFill = nil
-	local headerStroke = nil
-	local rowRefs = {}
-
-	local function buildBloxFruitsSkillHUD()
-		local pgui = player:WaitForChild("PlayerGui", 10)
-		if not pgui then return nil end
-		local existing = pgui:FindFirstChild("BloxFruitsSkillHUD")
-		if existing then
-			existing:Destroy()
-		end
-
-		stackGui = Instance.new("ScreenGui")
-		stackGui.Name = "BloxFruitsSkillHUD"
-		stackGui.ResetOnSpawn = false
-		stackGui.IgnoreGuiInset = false
-		stackGui.DisplayOrder = 18
-		stackGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-		stackGui.Parent = pgui
-
-		container = Instance.new("Frame")
-		container.Name = "BottomRightSkillStack"
-		container.AnchorPoint = Vector2.new(1, 1)
-		container.Position = UDim2.new(1, -16, 1, -14)
-		container.Size = UDim2.fromOffset(312, 232)
-		container.BackgroundTransparency = 1
-		container.Parent = stackGui
-
-		local layout = Instance.new("UIListLayout")
-		layout.FillDirection = Enum.FillDirection.Vertical
-		layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-		layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-		layout.SortOrder = Enum.SortOrder.LayoutOrder
-		layout.Padding = UDim.new(0, 5)
-		layout.Parent = container
-
-		-- Header Card: Equipped Fruit / Weapon Name + Mastery Bar (LayoutOrder = 0)
-		local headerCard = Instance.new("Frame")
-		headerCard.Name = "MasteryHeaderCard"
-		headerCard.Size = UDim2.fromOffset(312, 40)
-		headerCard.BackgroundColor3 = Color3.fromRGB(11, 16, 28)
-		headerCard.BackgroundTransparency = 0.06
-		headerCard.BorderSizePixel = 0
-		headerCard.LayoutOrder = 0
-		headerCard.Parent = container
-
-		local hCorner = Instance.new("UICorner")
-		hCorner.CornerRadius = UDim.new(0, 8)
-		hCorner.Parent = headerCard
-
-		headerStroke = Instance.new("UIStroke")
-		headerStroke.Color = Color3.fromRGB(252, 208, 92)
-		headerStroke.Thickness = 1.6
-		headerStroke.Transparency = 0.08
-		headerStroke.Parent = headerCard
-
-		headerTitle = Instance.new("TextLabel")
-		headerTitle.Name = "WeaponTitle"
-		headerTitle.Position = UDim2.fromOffset(10, 3)
-		headerTitle.Size = UDim2.new(1, -110, 0, 18)
-		headerTitle.BackgroundTransparency = 1
-		headerTitle.Font = Enum.Font.GothamBlack
-		headerTitle.TextSize = 12
-		headerTitle.TextColor3 = Color3.fromRGB(255, 246, 214)
-		headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-		headerTitle.TextTruncate = Enum.TextTruncate.AtEnd
-		headerTitle.Text = "Lõi Aether"
-		headerTitle.Parent = headerCard
-
-		headerMasText = Instance.new("TextLabel")
-		headerMasText.Name = "MasteryLevelText"
-		headerMasText.AnchorPoint = Vector2.new(1, 0)
-		headerMasText.Position = UDim2.new(1, -10, 0, 3)
-		headerMasText.Size = UDim2.fromOffset(96, 18)
-		headerMasText.BackgroundTransparency = 1
-		headerMasText.Font = Enum.Font.GothamBold
-		headerMasText.TextSize = 11
-		headerMasText.TextColor3 = Color3.fromRGB(255, 218, 108)
-		headerMasText.TextXAlignment = Enum.TextXAlignment.Right
-		headerMasText.Text = "Mastery 1"
-		headerMasText.Parent = headerCard
-
-		local barBg = Instance.new("Frame")
-		barBg.Name = "MasteryBarBg"
-		barBg.Position = UDim2.fromOffset(10, 25)
-		barBg.Size = UDim2.new(1, -20, 0, 8)
-		barBg.BackgroundColor3 = Color3.fromRGB(22, 30, 48)
-		barBg.BorderSizePixel = 0
-		barBg.Parent = headerCard
-		local barCorner = Instance.new("UICorner")
-		barCorner.CornerRadius = UDim.new(1, 0)
-		barCorner.Parent = barBg
-
-		headerMasFill = Instance.new("Frame")
-		headerMasFill.Name = "MasteryBarFill"
-		headerMasFill.Size = UDim2.fromScale(0.35, 1)
-		headerMasFill.BackgroundColor3 = Color3.fromRGB(252, 208, 92)
-		headerMasFill.BorderSizePixel = 0
-		headerMasFill.Parent = barBg
-		local fillCorner = Instance.new("UICorner")
-		fillCorner.CornerRadius = UDim.new(1, 0)
-		fillCorner.Parent = headerMasFill
-
-		table.clear(rowRefs)
-		for idx, k in ipairs(KEY_ORDER) do
-			local rowBtn = Instance.new("TextButton")
-			rowBtn.Name = "BloxSkillRow_" .. k
-			rowBtn.Size = UDim2.fromOffset(312, 33)
-			rowBtn.BackgroundColor3 = Color3.fromRGB(14, 20, 34)
-			rowBtn.BackgroundTransparency = 0.06
-			rowBtn.BorderSizePixel = 0
-			rowBtn.Text = ""
-			rowBtn.AutoButtonColor = false
-			rowBtn.ClipsDescendants = true
-			rowBtn.LayoutOrder = idx
-			rowBtn.Parent = container
-
-			local rCorner = Instance.new("UICorner")
-			rCorner.CornerRadius = UDim.new(0, 7)
-			rCorner.Parent = rowBtn
-
-			local rStroke = Instance.new("UIStroke")
-			rStroke.Color = Color3.fromRGB(88, 118, 168)
-			rStroke.Thickness = 1.4
-			rStroke.Transparency = 0.14
-			rStroke.Parent = rowBtn
-
-			-- Horizontal Cooldown Fill Sweep (Blox Fruits style)
-			local cdFill = Instance.new("Frame")
-			cdFill.Name = "CooldownFill"
-			cdFill.Size = UDim2.fromScale(0, 1)
-			cdFill.Position = UDim2.fromScale(0, 0)
-			cdFill.BackgroundColor3 = Color3.fromRGB(238, 64, 88)
-			cdFill.BackgroundTransparency = 0.32
-			cdFill.BorderSizePixel = 0
-			cdFill.ZIndex = 2
-			cdFill.Parent = rowBtn
-
-			-- Left Key Badge [Z] [X] [C] [V] [F]
-			local keyBadge = Instance.new("Frame")
-			keyBadge.Name = "KeyBadge"
-			keyBadge.AnchorPoint = Vector2.new(0, 0.5)
-			keyBadge.Position = UDim2.new(0, 5, 0.5, 0)
-			keyBadge.Size = UDim2.fromOffset(28, 24)
-			keyBadge.BackgroundColor3 = Color3.fromRGB(218, 152, 28)
-			keyBadge.BorderSizePixel = 0
-			keyBadge.ZIndex = 4
-			keyBadge.Parent = rowBtn
-			local kbCorner = Instance.new("UICorner")
-			kbCorner.CornerRadius = UDim.new(0, 5)
-			kbCorner.Parent = keyBadge
-
-			local keyLbl = Instance.new("TextLabel")
-			keyLbl.Size = UDim2.fromScale(1, 1)
-			keyLbl.BackgroundTransparency = 1
-			keyLbl.Font = Enum.Font.GothamBlack
-			keyLbl.TextSize = 13
-			keyLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-			keyLbl.TextStrokeTransparency = 0.25
-			keyLbl.Text = k
-			keyLbl.ZIndex = 5
-			keyLbl.Parent = keyBadge
-
-			-- Center Full Skill Name Label
-			local skillNameLbl = Instance.new("TextLabel")
-			skillNameLbl.Name = "SkillName"
-			skillNameLbl.Position = UDim2.fromOffset(40, 0)
-			skillNameLbl.Size = UDim2.new(1, -124, 1, 0)
-			skillNameLbl.BackgroundTransparency = 1
-			skillNameLbl.Font = Enum.Font.GothamBold
-			skillNameLbl.TextSize = 12
-			skillNameLbl.TextColor3 = Color3.fromRGB(244, 248, 255)
-			skillNameLbl.TextStrokeTransparency = 0.35
-			skillNameLbl.TextXAlignment = Enum.TextXAlignment.Left
-			skillNameLbl.TextTruncate = Enum.TextTruncate.AtEnd
-			skillNameLbl.Text = "Kỹ Năng [" .. k .. "]"
-			skillNameLbl.ZIndex = 4
-			skillNameLbl.Parent = rowBtn
-
-			-- Right Mastery Requirement / Cooldown Timer Pill
-			local masBadge = Instance.new("Frame")
-			masBadge.Name = "MasteryBadge"
-			masBadge.AnchorPoint = Vector2.new(1, 0.5)
-			masBadge.Position = UDim2.new(1, -6, 0.5, 0)
-			masBadge.Size = UDim2.fromOffset(74, 21)
-			masBadge.BackgroundColor3 = Color3.fromRGB(18, 28, 46)
-			masBadge.BorderSizePixel = 0
-			masBadge.ZIndex = 4
-			masBadge.Parent = rowBtn
-			local mbCorner = Instance.new("UICorner")
-			mbCorner.CornerRadius = UDim.new(0, 5)
-			mbCorner.Parent = masBadge
-
-			local masLbl = Instance.new("TextLabel")
-			masLbl.Name = "MasText"
-			masLbl.Size = UDim2.fromScale(1, 1)
-			masLbl.BackgroundTransparency = 1
-			masLbl.Font = Enum.Font.GothamBold
-			masLbl.TextSize = 10
-			masLbl.TextColor3 = Color3.fromRGB(255, 218, 108)
-			masLbl.Text = "Mas. 1"
-			masLbl.ZIndex = 5
-			masLbl.Parent = masBadge
-
-			rowBtn.Activated:Connect(function()
-				if UI.BlocksCombat() then return end
-				triggerBloxSkillCooldown(k)
-				if k == "V" then
-					send("V")
-				else
-					fireSlotMove(k)
-				end
-			end)
-
-			rowRefs[k] = {
-				Button = rowBtn,
-				Stroke = rStroke,
-				CDFill = cdFill,
-				KeyBadge = keyBadge,
-				KeyLabel = keyLbl,
-				NameLabel = skillNameLbl,
-				MasBadge = masBadge,
-				MasLabel = masLbl,
-			}
-		end
-		return stackGui
-	end
-
-	local function stepBloxFruitsSkillHUD()
-		if not stackGui or not stackGui.Parent then
-			if not buildBloxFruitsSkillHUD() then return end
-		end
-
-		-- Hide old center-bottom AbilityHotbar skill cards so only the Blox Fruits bottom-right skill stack is shown
-		local pgui = player:FindFirstChild("PlayerGui")
-		local skyUI = pgui and pgui:FindFirstChild("SkybreakUI")
-		if skyUI then
-			local oldHotbar = skyUI:FindFirstChild("AbilityHotbar", true)
-			if oldHotbar and oldHotbar:IsA("GuiObject") then
-				oldHotbar.Visible = false
+pcall(function()
+	TextChatService.OnIncomingMessage=function(message)
+		local props=Instance.new("TextChatMessageProperties")
+		local src=message and message.TextSource
+		if not src then return props end
+		local sender=Players:GetPlayerByUserId(src.UserId)
+		if not sender then return props end
+		local curPrefix=tostring(message.PrefixText or "")
+		local hasSovereign=(sender:GetAttribute("HasSovereignAura")==true)
+			or (sender:GetAttribute("SovereignNameAura")==true)
+			or (sender:GetAttribute("OwnedPass_sovereign_name_aura")==true)
+		if hasSovereign then
+			if not curPrefix:find("%[SOVEREIGN%]") then
+				props.PrefixText='<font color="#FFD75E"><b>[SOVEREIGN]</b></font> '..curPrefix
 			end
-			local loadout1To4 = skyUI:FindFirstChild("LoadoutHotbar1To4", true)
-			if loadout1To4 and loadout1To4:IsA("GuiObject") then
-				loadout1To4.Position = UDim2.new(0.5, 28, 1, -14)
+		elseif sender:GetAttribute("VIPChatTag")==true or sender:GetAttribute("IsVIP")==true or sender:GetAttribute("OwnedPass_vip")==true then
+			if not curPrefix:find("%[VIP%]") and not curPrefix:find("%[SOVEREIGN%]") then
+				props.PrefixText='<font color="#FFD75E"><b>[VIP]</b></font> '..curPrefix
 			end
 		end
-
-		local hudVisible = not (UI and UI.BlocksCombat and UI.BlocksCombat())
-		container.Visible = hudVisible
-		if not hudVisible then return end
-
-		local curSlot, itemId, headerName, element, curMas, moves = resolveActiveCombatLoadout()
-		local pal = ELEMENT_HUD_PALETTES[tostring(element)] or ELEMENT_HUD_PALETTES.Sky
-
-		headerStroke.Color = pal.Accent
-		headerTitle.Text = tostring(headerName)
-		headerMasText.Text = string.format("Mastery %d", math.floor(curMas))
-		headerMasText.TextColor3 = pal.Accent
-		headerMasFill.BackgroundColor3 = pal.Accent
-		local masProgress = math.clamp((curMas % 100) / 100, 0.08, 1.0)
-		if curMas >= 600 then masProgress = 1.0 end
-		headerMasFill.Size = UDim2.fromScale(masProgress, 1)
-
-		local now = os.clock()
-		for _, k in ipairs(KEY_ORDER) do
-			local ref = rowRefs[k]
-			local mv = moves and moves[k]
-			if ref then
-				if mv then
-					ref.Button.Visible = true
-					local rawName = tostring(mv.Name or ("Kỹ Năng " .. k))
-					-- Prefer the Vietnamese half after "•" or "-" if present so it's super readable, while keeping English/Vietnamese clarity
-					local viPart = rawName:match("•%s*(.+)$") or rawName:match("%-%s*(.+)$")
-					local cleanTitle = viPart and (viPart .. " (" .. (rawName:match("^(.-)%s*[•%-]") or rawName) .. ")") or rawName
-					ref.NameLabel.Text = cleanTitle
-
-					local reqMas = tonumber(mv.Mastery) or 1
-					local unlocked = (curMas >= reqMas)
-					local cdId = tostring(curSlot) .. "_" .. tostring(itemId) .. "_" .. k
-					local cdEntry = bloxSkillCooldowns[cdId]
-					local rem = (cdEntry and cdEntry.End and (cdEntry.End - now)) or 0
-
-					if not unlocked then
-						ref.Button.BackgroundColor3 = Color3.fromRGB(22, 16, 22)
-						ref.KeyBadge.BackgroundColor3 = Color3.fromRGB(64, 52, 62)
-						ref.Stroke.Color = Color3.fromRGB(110, 62, 72)
-						ref.NameLabel.TextColor3 = Color3.fromRGB(150, 142, 156)
-						ref.CDFill.Size = UDim2.fromScale(0, 1)
-						ref.MasBadge.BackgroundColor3 = Color3.fromRGB(68, 22, 32)
-						ref.MasLabel.TextColor3 = Color3.fromRGB(255, 138, 148)
-						ref.MasLabel.Text = string.format("🔒 Mas. %d", reqMas)
-					elseif rem > 0.05 then
-						local dur = math.max(0.1, tonumber(cdEntry.Duration) or tonumber(mv.Cooldown) or 6)
-						local frac = math.clamp(rem / dur, 0, 1)
-						ref.Button.BackgroundColor3 = pal.Dark
-						ref.KeyBadge.BackgroundColor3 = Color3.fromRGB(84, 34, 48)
-						ref.Stroke.Color = Color3.fromRGB(238, 68, 92)
-						ref.NameLabel.TextColor3 = Color3.fromRGB(224, 214, 220)
-						ref.CDFill.Size = UDim2.fromScale(frac, 1)
-						ref.MasBadge.BackgroundColor3 = Color3.fromRGB(128, 26, 44)
-						ref.MasLabel.TextColor3 = Color3.fromRGB(255, 228, 232)
-						ref.MasLabel.Text = string.format("%.1fs", rem)
-					else
-						ref.Button.BackgroundColor3 = Color3.fromRGB(14, 20, 34)
-						ref.KeyBadge.BackgroundColor3 = pal.Badge
-						ref.Stroke.Color = pal.Accent
-						ref.NameLabel.TextColor3 = Color3.fromRGB(248, 250, 255)
-						ref.CDFill.Size = UDim2.fromScale(0, 1)
-						ref.MasBadge.BackgroundColor3 = Color3.fromRGB(18, 28, 46)
-						ref.MasLabel.TextColor3 = pal.Accent
-						ref.MasLabel.Text = string.format("Mas. %d", reqMas)
-					end
-				else
-					ref.Button.Visible = false
-				end
-			end
-		end
+		return props
 	end
-
-	buildBloxFruitsSkillHUD()
-	Run.RenderStepped:Connect(function()
-		pcall(stepBloxFruitsSkillHUD)
-	end)
 end)

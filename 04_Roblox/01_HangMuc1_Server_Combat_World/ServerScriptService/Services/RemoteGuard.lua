@@ -10,6 +10,7 @@ RemoteGuard.Channels = {
 	Ability = { Rate = 15, Burst = 20 },
 	UI = { Rate = 8, Burst = 12 },
 	Equipment = { Rate = 6, Burst = 10 },
+	StatAllocate = { Rate = 45, Burst = 80 },
 	Interact = { Rate = 8, Burst = 12 },
 	Appearance = { Rate = 4, Burst = 6 },
 	Native = { Rate = 1, Burst = 2, MaxSessionCalls = 40 },

@@ -545,7 +545,7 @@ function UIFactory.RibbonBanner(parent, props)
     return banner, refs
 end
 
--- 100% Procedural Two-Tone Geometric Vector Icon System (Matches SKYBREAK_Figma_v2_03_Design_System.png)
+-- 100% Procedural Multi-Layer Geometric Vector Icon System (with automatic ImageLabel switch when UIAssets has rbxassetid://)
 function UIFactory.Icon(parent, kind, position, sizeOffset, color)
     local px = type(sizeOffset) == "number" and sizeOffset or 28
     local c = Theme.GetColor(color or Theme.Colors.ACCENT_SAPPHIRE)
@@ -579,12 +579,16 @@ function UIFactory.Icon(parent, kind, position, sizeOffset, color)
         return holder
     end
 
-    local function part(x, y, w, h, rot, fillCol, radius, zDelta)
+    local shadeTop = Color3.fromRGB(255, 255, 255)
+    local shadeBot = Color3.fromRGB(184, 196, 218)
+
+    local function part(x, y, w, h, rot, fillCol, radius, zDelta, withSheen)
+        local col = fillCol or c
         local f = UIFactory.Create("Frame", holder, {
             Position = UDim2.fromScale(x, y),
             Size = UDim2.fromScale(w, h),
             Rotation = rot or 0,
-            BackgroundColor3 = fillCol or c,
+            BackgroundColor3 = col,
             BorderSizePixel = 0,
             ZIndex = 6 + (zDelta or 0),
         })
@@ -595,125 +599,211 @@ function UIFactory.Icon(parent, kind, position, sizeOffset, color)
                 UIFactory.Corner(f, radius)
             end
         end
+        if col ~= dark then
+            UIFactory.Create("UIGradient", f, {
+                Color = ColorSequence.new(shadeTop, shadeBot),
+                Rotation = 90 - (rot or 0),
+            })
+        end
+        if withSheen then
+            local sheen = UIFactory.Create("Frame", f, {
+                Name = "InnerHighlight",
+                Position = UDim2.fromScale(0.08, 0.07),
+                Size = UDim2.fromScale(0.84, 0.36),
+                BackgroundColor3 = white,
+                BackgroundTransparency = 0.62,
+                BorderSizePixel = 0,
+                ZIndex = f.ZIndex + 1,
+            })
+            if radius and radius >= 90 then
+                UIFactory.PillCorner(sheen)
+            else
+                UIFactory.Corner(sheen, 2)
+            end
+        end
         return f
     end
 
     if kind == "Sword" or kind == "Weapon" then
-        -- Diagonal celestial blade + bright ridge + golden crossguard + pommel
-        part(0.45, 0.08, 0.14, 0.62, 38, c, 2, 1)
-        part(0.50, 0.12, 0.05, 0.50, 38, white, 2, 2)
-        part(0.24, 0.57, 0.46, 0.10, 38, hi, 2, 2)
+        -- Multi-part celestial blade + fuller ridge + crossguard + grip + pommel
+        part(0.44, 0.07, 0.15, 0.63, 38, c, 2, 1, true)
+        part(0.49, 0.11, 0.05, 0.51, 38, white, 2, 2)
+        local guard = part(0.23, 0.56, 0.48, 0.11, 38, hi, 2, 2, true)
+        UIFactory.Stroke(guard, white, 1, 0.45)
         part(0.22, 0.68, 0.11, 0.21, 38, hi:Lerp(dark, 0.25), 2, 1)
-        part(0.16, 0.80, 0.12, 0.12, 45, hi, 2, 2)
+        part(0.15, 0.80, 0.13, 0.13, 45, hi, 2, 3)
     elseif kind == "Daggers" then
-        part(0.30, 0.12, 0.11, 0.60, 28, c, 2, 1)
-        part(0.56, 0.12, 0.11, 0.60, -28, hi, 2, 1)
-        part(0.18, 0.57, 0.32, 0.08, 28, hi, 2, 2)
-        part(0.50, 0.57, 0.32, 0.08, -28, c, 2, 2)
+        part(0.29, 0.11, 0.12, 0.60, 28, c, 2, 1, true)
+        part(0.33, 0.15, 0.04, 0.44, 28, white, 1, 2)
+        part(0.56, 0.11, 0.12, 0.60, -28, hi, 2, 1, true)
+        part(0.18, 0.57, 0.32, 0.09, 28, hi, 2, 2)
+        part(0.50, 0.57, 0.32, 0.09, -28, c, 2, 2)
     elseif kind == "Staff" then
         part(0.45, 0.24, 0.09, 0.66, 26, hi, 2, 1)
-        local orb = part(0.44, 0.08, 0.30, 0.30, 45, c, 4, 2)
+        local orb = part(0.43, 0.07, 0.32, 0.32, 45, c, 4, 2, true)
         UIFactory.Stroke(orb, white, 1.3, 0.1)
         part(0.53, 0.17, 0.12, 0.12, 45, white, 2, 3)
     elseif kind == "Gun" then
-        part(0.16, 0.28, 0.66, 0.18, 0, c, 2, 1)
-        part(0.22, 0.32, 0.44, 0.06, 0, white, 2, 2)
-        part(0.22, 0.45, 0.18, 0.35, -18, hi, 2, 1)
-        part(0.68, 0.24, 0.16, 0.11, 0, hi, 2, 2)
+        part(0.15, 0.27, 0.68, 0.19, 0, c, 2, 1, true)
+        part(0.21, 0.31, 0.45, 0.06, 0, white, 2, 2)
+        part(0.22, 0.45, 0.18, 0.35, -18, hi, 2, 1, true)
+        part(0.68, 0.23, 0.16, 0.11, 0, hi, 2, 2)
     elseif kind == "Fist" then
-        local fist = part(0.20, 0.24, 0.60, 0.52, 0, c:Lerp(dark, 0.35), 5, 1)
+        local fist = part(0.19, 0.24, 0.62, 0.52, 0, c:Lerp(dark, 0.32), 5, 1, true)
         UIFactory.Stroke(fist, c, 1.5, 0.05)
-        part(0.26, 0.28, 0.13, 0.20, 0, hi, 2, 2)
+        part(0.25, 0.28, 0.13, 0.20, 0, hi, 2, 2)
         part(0.43, 0.28, 0.13, 0.20, 0, hi, 2, 2)
-        part(0.60, 0.28, 0.13, 0.20, 0, hi, 2, 2)
+        part(0.61, 0.28, 0.13, 0.20, 0, hi, 2, 2)
     elseif kind == "Haki" then
-        -- Target crosshair ring + 4 cardinal ticks + glowing core (Figma Design System Row 2 Col 4)
         local ring = part(0.20, 0.20, 0.60, 0.60, 0, dark, 99, 1)
-        ring.BackgroundTransparency = 0.55
+        ring.BackgroundTransparency = 0.50
         UIFactory.Stroke(ring, c, 1.7, 0.05)
         part(0.46, 0.08, 0.08, 0.20, 0, c, 2, 2)
         part(0.46, 0.72, 0.08, 0.20, 0, c, 2, 2)
         part(0.08, 0.46, 0.20, 0.08, 0, c, 2, 2)
         part(0.72, 0.46, 0.20, 0.08, 0, c, 2, 2)
-        part(0.38, 0.38, 0.24, 0.24, 0, hi, 99, 3)
+        part(0.38, 0.38, 0.24, 0.24, 0, hi, 99, 3, true)
     elseif kind == "Fruit" then
-        local orb = part(0.18, 0.24, 0.64, 0.62, 0, c:Lerp(dark, 0.25), 99, 1)
+        local orb = part(0.18, 0.24, 0.64, 0.62, 0, c:Lerp(dark, 0.24), 99, 1, true)
         UIFactory.Stroke(orb, c, 1.6, 0.05)
         part(0.36, 0.42, 0.26, 0.26, 0, hi, 99, 2)
         part(0.46, 0.08, 0.09, 0.20, 18, hi, 2, 2)
         part(0.52, 0.12, 0.20, 0.10, -22, Theme.Colors.SUCCESS, 99, 2)
     elseif kind == "Shield" or kind == "Armor" then
-        local sh = part(0.20, 0.14, 0.60, 0.68, 0, c:Lerp(dark, 0.45), 6, 1)
+        local sh = part(0.19, 0.13, 0.62, 0.68, 0, c:Lerp(dark, 0.42), 6, 1, true)
         UIFactory.Stroke(sh, c, 1.6, 0.06)
+        part(0.42, 0.70, 0.16, 0.16, 45, c, 2, 1)
         part(0.46, 0.22, 0.08, 0.50, 0, hi, 2, 2)
         part(0.28, 0.38, 0.44, 0.08, 0, hi, 2, 2)
     elseif kind == "Bolt" or kind == "Lightning" then
-        part(0.46, 0.08, 0.17, 0.48, 24, c, 2, 1)
-        part(0.35, 0.43, 0.17, 0.48, 24, hi, 2, 2)
-        part(0.38, 0.44, 0.26, 0.10, 0, white, 2, 3)
+        part(0.46, 0.07, 0.18, 0.48, 24, c, 2, 1, true)
+        part(0.34, 0.43, 0.18, 0.49, 24, hi, 2, 2, true)
+        part(0.37, 0.44, 0.28, 0.10, 0, white, 2, 3)
     elseif kind == "Frost" then
         part(0.46, 0.10, 0.08, 0.80, 0, c, 2, 1)
         part(0.10, 0.46, 0.80, 0.08, 0, c, 2, 1)
         part(0.46, 0.14, 0.07, 0.72, 45, hi, 2, 1)
         part(0.46, 0.14, 0.07, 0.72, -45, hi, 2, 1)
-        part(0.34, 0.34, 0.32, 0.32, 45, white, 3, 2)
+        part(0.34, 0.34, 0.32, 0.32, 45, white, 3, 2, true)
     elseif kind == "Crown" then
-        -- Unmistakable 3-peak Royal Sovereign Crown (Figma Design System Row 3 Col 8 & [R] Ultimate)
-        local base = part(0.16, 0.68, 0.68, 0.15, 0, c, 2, 2)
-        UIFactory.Stroke(base, white, 1, 0.35)
-        -- Left, Center (tall), Right crown peaks
-        part(0.16, 0.34, 0.15, 0.40, -10, c, 2, 1)
-        part(0.42, 0.20, 0.16, 0.52, 0, c, 2, 1)
-        part(0.69, 0.34, 0.15, 0.40, 10, c, 2, 1)
-        -- Crown jewels
-        part(0.17, 0.24, 0.11, 0.11, 45, hi, 99, 3)
-        part(0.44, 0.10, 0.12, 0.12, 45, white, 99, 3)
-        part(0.72, 0.24, 0.11, 0.11, 45, hi, 99, 3)
-        part(0.45, 0.70, 0.10, 0.10, 45, white, 1, 3)
+        -- 3-Peak Royal Sovereign Crown with metallic sheen & jewels
+        local base = part(0.15, 0.68, 0.70, 0.16, 0, c, 2, 2, true)
+        UIFactory.Stroke(base, white, 1, 0.32)
+        part(0.16, 0.33, 0.16, 0.40, -10, c, 2, 1, true)
+        part(0.42, 0.19, 0.16, 0.53, 0, c, 2, 1, true)
+        part(0.68, 0.33, 0.16, 0.40, 10, c, 2, 1, true)
+        part(0.17, 0.23, 0.11, 0.11, 45, hi, 99, 3)
+        part(0.44, 0.09, 0.12, 0.12, 45, white, 99, 3)
+        part(0.71, 0.23, 0.11, 0.11, 45, hi, 99, 3)
+        part(0.45, 0.71, 0.10, 0.10, 45, white, 1, 3)
+    elseif kind == "PassExp" then
+        -- 2x EXP Ascension Pass: Twin rising chevrons + radiant 4-point star core
+        local badge = part(0.18, 0.18, 0.64, 0.64, 45, c:Lerp(dark, 0.42), 5, 0, true)
+        UIFactory.Stroke(badge, c, 1.5, 0.10)
+        part(0.29, 0.30, 0.24, 0.09, -38, hi, 2, 2)
+        part(0.47, 0.30, 0.24, 0.09, 38, hi, 2, 2)
+        part(0.29, 0.48, 0.24, 0.09, -38, white, 2, 2)
+        part(0.47, 0.48, 0.24, 0.09, 38, white, 2, 2)
+        part(0.44, 0.62, 0.12, 0.12, 45, hi, 2, 3)
+        part(0.45, 0.11, 0.10, 0.10, 45, white, 99, 3)
+    elseif kind == "PassGold" then
+        -- 2x Gold Sovereign Pass: Twin overlapping bullion coins + diamond sparkle
+        local backCoin = part(0.12, 0.24, 0.56, 0.56, 0, c:Lerp(dark, 0.25), 99, 1)
+        UIFactory.Stroke(backCoin, hi, 1.2, 0.22)
+        local frontCoin = part(0.30, 0.18, 0.58, 0.58, 0, Theme.Colors.ACCENT_GOLD, 99, 2, true)
+        UIFactory.Stroke(frontCoin, white, 1.4, 0.15)
+        part(0.50, 0.38, 0.18, 0.18, 45, dark, 2, 3)
+        part(0.54, 0.42, 0.10, 0.10, 45, white, 1, 4)
+        part(0.18, 0.12, 0.12, 0.12, 45, white, 99, 3)
+    elseif kind == "PassStorage" then
+        -- +Core Vault Capacity Pass: Ornate celestial reliquary chest + "+" crest
+        local lid = part(0.16, 0.20, 0.68, 0.20, 0, c, 4, 2, true)
+        UIFactory.Stroke(lid, white, 1.1, 0.30)
+        local chest = part(0.18, 0.38, 0.64, 0.46, 0, c:Lerp(dark, 0.38), 5, 1, true)
+        UIFactory.Stroke(chest, c, 1.5, 0.08)
+        part(0.45, 0.47, 0.10, 0.28, 0, hi, 2, 3)
+        part(0.36, 0.56, 0.28, 0.10, 0, hi, 2, 3)
+        part(0.44, 0.32, 0.12, 0.12, 45, white, 2, 4)
+    elseif kind == "PassShip" then
+        -- Fast Sky-Ship Pass: Winged Sovereign Galleon + twin sails + speed wake
+        local hull = part(0.14, 0.60, 0.74, 0.20, 0, c:Lerp(dark, 0.22), 4, 2, true)
+        UIFactory.Stroke(hull, hi, 1.3, 0.12)
+        part(0.46, 0.14, 0.08, 0.48, 0, hi, 2, 1)
+        part(0.24, 0.18, 0.44, 0.34, -10, c, 3, 2, true)
+        part(0.52, 0.24, 0.28, 0.24, 14, white, 3, 3)
+        part(0.08, 0.84, 0.58, 0.07, 0, hi, 99, 2)
+    elseif kind == "PassAura" then
+        -- Sovereign Aura Pass: Concentric radiant halo + 4 energy flares + crystal core
+        local outerHalo = part(0.12, 0.12, 0.76, 0.76, 0, dark, 99, 0)
+        outerHalo.BackgroundTransparency = 0.55
+        UIFactory.Stroke(outerHalo, c, 1.6, 0.08)
+        part(0.45, 0.04, 0.10, 0.22, 0, hi, 99, 1)
+        part(0.45, 0.74, 0.10, 0.22, 0, hi, 99, 1)
+        part(0.04, 0.45, 0.22, 0.10, 0, hi, 99, 1)
+        part(0.74, 0.45, 0.22, 0.10, 0, hi, 99, 1)
+        local core = part(0.29, 0.29, 0.42, 0.42, 45, c, 4, 2, true)
+        UIFactory.Stroke(core, white, 1.3, 0.15)
+        part(0.41, 0.41, 0.18, 0.18, 45, white, 2, 3)
+    elseif kind == "RobuxGem" then
+        -- Faceted Hex-Square Robux Gem Emblem (outer beveled nut + inner square aperture)
+        local outer = part(0.16, 0.16, 0.68, 0.68, 22, c, 6, 1, true)
+        UIFactory.Stroke(outer, white, 1.4, 0.16)
+        local mid = part(0.27, 0.27, 0.46, 0.46, 22, dark, 4, 2)
+        UIFactory.Stroke(mid, hi, 1.2, 0.18)
+        part(0.39, 0.39, 0.22, 0.22, 22, hi, 2, 3)
+    elseif kind == "Volume" or kind == "Audio" or kind == "Speaker" then
+        -- Crisp Speaker Cone + Acoustic Sound Waves
+        part(0.14, 0.36, 0.18, 0.28, 0, c, 2, 1, true)
+        part(0.24, 0.24, 0.24, 0.52, 0, c, 4, 1, true)
+        part(0.56, 0.34, 0.09, 0.32, 0, hi, 99, 2)
+        part(0.70, 0.22, 0.10, 0.56, 0, white, 99, 2)
     elseif kind == "Skill" or kind == "Sparkle" or kind == "Star" then
-        -- 4-Point Celestial Aether Star (Figma Design System Row 2 Col 6)
-        part(0.43, 0.12, 0.14, 0.76, 0, c, 99, 1)
-        part(0.12, 0.43, 0.76, 0.14, 0, c, 99, 1)
-        local core = part(0.30, 0.30, 0.40, 0.40, 45, hi, 3, 2)
+        part(0.43, 0.11, 0.14, 0.78, 0, c, 99, 1)
+        part(0.11, 0.43, 0.78, 0.14, 0, c, 99, 1)
+        local core = part(0.30, 0.30, 0.40, 0.40, 45, hi, 3, 2, true)
         UIFactory.Stroke(core, white, 1, 0.25)
         part(0.41, 0.41, 0.18, 0.18, 45, white, 99, 3)
     elseif kind == "Core" or kind == "CoreShards" or kind == "CoreShard" or kind == "Gem" or kind == "Void" or kind == "VoidEssence" or kind == "Artifact" then
-        local outer = part(0.20, 0.18, 0.60, 0.64, 45, c:Lerp(dark, 0.32), 4, 1)
+        local outer = part(0.20, 0.18, 0.60, 0.64, 45, c:Lerp(dark, 0.28), 4, 1, true)
         UIFactory.Stroke(outer, c, 1.6, 0.05)
         part(0.46, 0.18, 0.08, 0.64, 0, white, 2, 2)
         part(0.35, 0.35, 0.30, 0.30, 45, hi, 2, 3)
-    elseif kind == "Gold" then
-        local coin = part(0.16, 0.16, 0.68, 0.68, 0, Theme.Colors.ACCENT_GOLD, 99, 1)
+    elseif kind == "Gold" or kind == "Coin" then
+        local coin = part(0.16, 0.16, 0.68, 0.68, 0, Theme.Colors.ACCENT_GOLD, 99, 1, true)
         UIFactory.Stroke(coin, white, 1.3, 0.20)
         part(0.36, 0.36, 0.28, 0.28, 45, dark, 2, 2)
         part(0.42, 0.42, 0.16, 0.16, 45, white, 1, 3)
     elseif kind == "Bag" then
-        local bag = part(0.18, 0.30, 0.64, 0.54, 0, c:Lerp(dark, 0.42), 6, 1)
+        local bag = part(0.18, 0.30, 0.64, 0.54, 0, c:Lerp(dark, 0.38), 6, 1, true)
         UIFactory.Stroke(bag, c, 1.5, 0.08)
         local handle = part(0.34, 0.15, 0.32, 0.20, 0, dark, 4, 0)
         handle.BackgroundTransparency = 1
         UIFactory.Stroke(handle, c, 1.4, 0.08)
         part(0.44, 0.48, 0.12, 0.18, 0, hi, 2, 2)
     elseif kind == "Flask" or kind == "Potion" then
-        -- Energy Potion Flask for [H] Bình EN
-        part(0.38, 0.12, 0.24, 0.12, 0, hi, 2, 2)
-        local body = part(0.22, 0.26, 0.56, 0.58, 0, c:Lerp(dark, 0.35), 7, 1)
+        part(0.38, 0.11, 0.24, 0.12, 0, hi, 2, 2)
+        local body = part(0.22, 0.26, 0.56, 0.58, 0, c:Lerp(dark, 0.34), 7, 1, true)
         UIFactory.Stroke(body, c, 1.5, 0.06)
-        part(0.30, 0.48, 0.40, 0.28, 0, c, 4, 2)
+        part(0.30, 0.48, 0.40, 0.28, 0, c, 4, 2, true)
         part(0.36, 0.34, 0.12, 0.12, 0, white, 99, 3)
     elseif kind == "Anchor" then
-        part(0.45, 0.16, 0.10, 0.66, 0, c, 2, 1)
-        part(0.26, 0.32, 0.48, 0.09, 0, hi, 2, 2)
-        local base = part(0.22, 0.62, 0.56, 0.20, 0, c, 6, 1)
-        base.BackgroundTransparency = 0.2
+        local ringTop = part(0.38, 0.08, 0.24, 0.20, 0, dark, 99, 2)
+        ringTop.BackgroundTransparency = 0.5
+        UIFactory.Stroke(ringTop, hi, 1.4, 0.1)
+        part(0.45, 0.24, 0.10, 0.58, 0, c, 2, 1, true)
+        part(0.26, 0.36, 0.48, 0.09, 0, hi, 2, 2)
+        local base = part(0.20, 0.64, 0.60, 0.20, 0, c, 6, 1, true)
+        base.BackgroundTransparency = 0.14
+        part(0.16, 0.56, 0.14, 0.14, 45, hi, 2, 2)
+        part(0.70, 0.56, 0.14, 0.14, 45, hi, 2, 2)
     elseif kind == "Forge" or kind == "Anvil" then
-        part(0.22, 0.18, 0.54, 0.22, -22, c, 3, 2)
+        part(0.22, 0.18, 0.54, 0.22, -22, c, 3, 2, true)
         part(0.44, 0.30, 0.11, 0.46, 18, hi, 2, 1)
-        part(0.18, 0.72, 0.64, 0.14, 0, c, 3, 2)
+        part(0.18, 0.72, 0.64, 0.14, 0, c, 3, 2, true)
     elseif kind == "Map" then
-        local p1 = part(0.14, 0.20, 0.24, 0.60, 0, c:Lerp(dark, 0.45), 2, 1)
-        local p2 = part(0.38, 0.16, 0.24, 0.60, 0, c:Lerp(dark, 0.30), 2, 2)
-        local p3 = part(0.62, 0.20, 0.24, 0.60, 0, c:Lerp(dark, 0.45), 2, 1)
+        local p1 = part(0.14, 0.20, 0.24, 0.60, 0, c:Lerp(dark, 0.45), 2, 1, true)
+        local p2 = part(0.38, 0.16, 0.24, 0.60, 0, c:Lerp(dark, 0.28), 2, 2, true)
+        local p3 = part(0.62, 0.20, 0.24, 0.60, 0, c:Lerp(dark, 0.45), 2, 1, true)
         UIFactory.Stroke(p1, c, 1.2, 0.1)
         UIFactory.Stroke(p2, hi, 1.2, 0.1)
         UIFactory.Stroke(p3, c, 1.2, 0.1)
@@ -721,16 +811,17 @@ function UIFactory.Icon(parent, kind, position, sizeOffset, color)
         local ring = part(0.16, 0.16, 0.68, 0.68, 0, dark, 99, 1)
         ring.BackgroundTransparency = 0.35
         UIFactory.Stroke(ring, c, 1.5, 0.08)
-        part(0.43, 0.24, 0.14, 0.30, 35, hi, 2, 2)
+        part(0.43, 0.24, 0.14, 0.30, 35, hi, 2, 2, true)
         part(0.43, 0.46, 0.14, 0.30, 35, c, 2, 2)
+        part(0.44, 0.44, 0.12, 0.12, 0, white, 99, 3)
     elseif kind == "Quest" then
-        local scroll = part(0.20, 0.14, 0.60, 0.72, 0, c:Lerp(dark, 0.55), 5, 1)
+        local scroll = part(0.20, 0.14, 0.60, 0.72, 0, c:Lerp(dark, 0.50), 5, 1, true)
         UIFactory.Stroke(scroll, c, 1.5, 0.08)
         part(0.32, 0.32, 0.36, 0.08, 0, hi, 2, 2)
         part(0.32, 0.48, 0.36, 0.08, 0, white, 2, 2)
         part(0.32, 0.64, 0.24, 0.08, 0, c, 2, 2)
     elseif kind == "Raid" or kind == "Skull" then
-        local cr = part(0.20, 0.16, 0.60, 0.52, 0, c:Lerp(dark, 0.32), 99, 1)
+        local cr = part(0.20, 0.16, 0.60, 0.52, 0, c:Lerp(dark, 0.30), 99, 1, true)
         UIFactory.Stroke(cr, c, 1.6, 0.05)
         part(0.32, 0.35, 0.13, 0.13, 0, hi, 99, 2)
         part(0.55, 0.35, 0.13, 0.13, 0, hi, 99, 2)
@@ -740,76 +831,80 @@ function UIFactory.Icon(parent, kind, position, sizeOffset, color)
         part(0.10, 0.44, 0.80, 0.12, 0, c, 2, 1)
         part(0.44, 0.12, 0.12, 0.76, 45, c, 2, 1)
         part(0.44, 0.12, 0.12, 0.76, -45, c, 2, 1)
-        local gear = part(0.24, 0.24, 0.52, 0.52, 0, c:Lerp(dark, 0.40), 99, 2)
+        local gear = part(0.24, 0.24, 0.52, 0.52, 0, c:Lerp(dark, 0.38), 99, 2, true)
         UIFactory.Stroke(gear, hi, 1.5, 0.08)
         part(0.38, 0.38, 0.24, 0.24, 0, dark, 99, 3)
     elseif kind == "Lock" then
-        local arch = part(0.30, 0.16, 0.40, 0.34, 0, dark, 99, 1)
+        local arch = part(0.30, 0.15, 0.40, 0.34, 0, dark, 99, 1)
         arch.BackgroundTransparency = 1
-        UIFactory.Stroke(arch, c, 1.6, 0.1)
-        local body = part(0.22, 0.42, 0.56, 0.44, 0, c:Lerp(dark, 0.3), 4, 2)
-        UIFactory.Stroke(body, c, 1.3, 0.1)
-        part(0.45, 0.56, 0.10, 0.16, 0, hi, 2, 3)
+        UIFactory.Stroke(arch, c, 1.7, 0.08)
+        local body = part(0.22, 0.42, 0.56, 0.44, 0, c:Lerp(dark, 0.28), 4, 2, true)
+        UIFactory.Stroke(body, c, 1.4, 0.08)
+        part(0.44, 0.54, 0.12, 0.12, 99, hi, 99, 3)
+        part(0.46, 0.62, 0.08, 0.14, 0, white, 2, 3)
     elseif kind == "Check" then
-        part(0.20, 0.54, 0.24, 0.12, 42, c, 2, 1)
-        part(0.36, 0.46, 0.46, 0.12, -46, c, 2, 1)
+        local shortArm = part(0.18, 0.53, 0.26, 0.13, 42, c, 2, 1, true)
+        local longArm = part(0.35, 0.45, 0.49, 0.13, -46, c, 2, 2, true)
+        UIFactory.Stroke(shortArm, white, 0.8, 0.45)
+        UIFactory.Stroke(longArm, white, 0.8, 0.45)
     elseif kind == "Close" then
-        part(0.18, 0.44, 0.64, 0.12, 45, c, 2, 1)
-        part(0.18, 0.44, 0.64, 0.12, -45, c, 2, 1)
+        part(0.18, 0.44, 0.64, 0.12, 45, c, 2, 1, true)
+        part(0.18, 0.44, 0.64, 0.12, -45, c, 2, 1, true)
     elseif kind == "Heart" then
-        part(0.22, 0.24, 0.30, 0.30, 0, c, 99, 1)
-        part(0.48, 0.24, 0.30, 0.30, 0, c, 99, 1)
+        part(0.22, 0.24, 0.30, 0.30, 0, c, 99, 1, true)
+        part(0.48, 0.24, 0.30, 0.30, 0, c, 99, 1, true)
         part(0.28, 0.36, 0.44, 0.44, 45, c, 2, 1)
     elseif kind == "Gift" then
-        local box = part(0.20, 0.34, 0.60, 0.50, 0, c:Lerp(dark, 0.35), 4, 1)
+        local box = part(0.20, 0.34, 0.60, 0.50, 0, c:Lerp(dark, 0.34), 4, 1, true)
         UIFactory.Stroke(box, c, 1.4, 0.1)
         part(0.45, 0.34, 0.10, 0.50, 0, hi, 1, 2)
         part(0.20, 0.52, 0.60, 0.10, 0, hi, 1, 2)
-        part(0.32, 0.20, 0.36, 0.14, 0, hi, 99, 2)
+        part(0.32, 0.20, 0.36, 0.14, 0, hi, 99, 2, true)
     elseif kind == "Wing" then
-        part(0.24, 0.26, 0.58, 0.15, -34, hi, 99, 2)
-        part(0.18, 0.45, 0.54, 0.15, -24, c, 99, 1)
+        part(0.24, 0.26, 0.58, 0.15, -34, hi, 99, 2, true)
+        part(0.18, 0.45, 0.54, 0.15, -24, c, 99, 1, true)
         part(0.30, 0.63, 0.44, 0.13, -14, white, 99, 2)
     elseif kind == "Flame" then
-        local outer = part(0.24, 0.24, 0.52, 0.58, 45, c, 8, 1)
+        local outer = part(0.24, 0.24, 0.52, 0.58, 45, c, 8, 1, true)
         UIFactory.Stroke(outer, hi, 1.2, 0.2)
         part(0.38, 0.10, 0.24, 0.38, 16, c, 99, 1)
         part(0.35, 0.42, 0.30, 0.34, 45, hi, 99, 2)
         part(0.41, 0.52, 0.18, 0.20, 45, white, 99, 3)
     elseif kind == "Ship" then
-        local hull = part(0.14, 0.58, 0.72, 0.22, 0, c:Lerp(dark, 0.25), 4, 1)
+        local hull = part(0.14, 0.58, 0.72, 0.22, 0, c:Lerp(dark, 0.25), 4, 1, true)
         UIFactory.Stroke(hull, c, 1.3, 0.1)
         part(0.46, 0.16, 0.08, 0.44, 0, hi, 2, 1)
-        part(0.26, 0.20, 0.44, 0.32, -10, c, 3, 2)
+        part(0.26, 0.20, 0.44, 0.32, -10, c, 3, 2, true)
         part(0.50, 0.26, 0.28, 0.22, 14, hi, 3, 2)
     elseif kind == "Scroll" then
-        local body = part(0.22, 0.18, 0.56, 0.64, 0, c:Lerp(dark, 0.45), 3, 1)
+        local body = part(0.22, 0.18, 0.56, 0.64, 0, c:Lerp(dark, 0.42), 3, 1, true)
         UIFactory.Stroke(body, c, 1.3, 0.1)
         part(0.18, 0.14, 0.64, 0.11, 0, hi, 99, 2)
         part(0.18, 0.75, 0.64, 0.11, 0, hi, 99, 2)
         part(0.32, 0.38, 0.36, 0.08, 0, white, 2, 2)
         part(0.32, 0.54, 0.26, 0.08, 0, c, 2, 2)
     elseif kind == "Users" then
-        part(0.24, 0.18, 0.26, 0.26, 0, c, 99, 1)
-        part(0.14, 0.48, 0.46, 0.32, 0, c, 6, 1)
+        part(0.24, 0.18, 0.26, 0.26, 0, c, 99, 1, true)
+        part(0.14, 0.48, 0.46, 0.32, 0, c, 6, 1, true)
         part(0.56, 0.24, 0.22, 0.22, 0, hi, 99, 2)
         part(0.50, 0.52, 0.36, 0.26, 0, hi, 5, 2)
     elseif kind == "Trophy" then
-        local cup = part(0.26, 0.16, 0.48, 0.38, 0, hi, 5, 2)
+        local cup = part(0.26, 0.16, 0.48, 0.38, 0, hi, 5, 2, true)
         UIFactory.Stroke(cup, white, 1.2, 0.25)
         part(0.16, 0.22, 0.12, 0.20, 0, c, 3, 1)
         part(0.72, 0.22, 0.12, 0.20, 0, c, 3, 1)
         part(0.45, 0.54, 0.10, 0.18, 0, hi, 2, 1)
-        part(0.30, 0.72, 0.40, 0.12, 0, c, 3, 2)
+        part(0.30, 0.72, 0.40, 0.12, 0, c, 3, 2, true)
     elseif kind == "Trade" then
-        part(0.16, 0.30, 0.56, 0.11, 0, c, 2, 1)
+        part(0.16, 0.30, 0.56, 0.11, 0, c, 2, 1, true)
         part(0.58, 0.22, 0.22, 0.11, 38, c, 2, 1)
-        part(0.28, 0.58, 0.56, 0.11, 0, hi, 2, 2)
+        part(0.28, 0.58, 0.56, 0.11, 0, hi, 2, 2, true)
         part(0.20, 0.66, 0.22, 0.11, 38, hi, 2, 2)
     else
-        local crest = part(0.24, 0.24, 0.52, 0.52, 45, c:Lerp(dark, 0.4), 3, 1)
-        UIFactory.Stroke(crest, c, 1.5, 0.1)
-        part(0.38, 0.38, 0.24, 0.24, 45, hi, 2, 2)
+        local crest = part(0.22, 0.22, 0.56, 0.56, 45, c:Lerp(dark, 0.36), 4, 1, true)
+        UIFactory.Stroke(crest, c, 1.5, 0.08)
+        part(0.37, 0.37, 0.26, 0.26, 45, hi, 2, 2)
+        part(0.44, 0.44, 0.12, 0.12, 45, white, 1, 3)
     end
 
     return holder
@@ -823,13 +918,73 @@ function UIFactory.FormatNumber(n)
     return sign .. formatted
 end
 
--- Shared Top Header Bar with Complete NavTabs + Glossy Gold/Sapphire/Crimson Pills (Figma File 2)
+local NPC_STATION_WAYPOINTS = {
+    Forge = {
+        TargetId = "Kael",
+        FallbackPos = Vector3.new(-280, 49.0, 506),
+        LabelVi = "Thợ Rèn Kael • Lò Rèn [E]",
+        LabelEn = "Blacksmith Kael • Forge [E]",
+        ToastVi = "Đã bật mũi tên 3D chỉ đường tới Thợ Rèn Kael (Lò Rèn Thần Khí)!",
+        ToastEn = "3D GPS Waypoint set to Master Blacksmith Kael (Celestial Forge)!",
+    },
+    Zioles = {
+        TargetId = "Zioles",
+        FallbackPos = Vector3.new(-338, 49.0, 500),
+        LabelVi = "Hiền Giả Zioles • Đài Gacha [E]",
+        LabelEn = "Oracle Zioles • Gacha Shrine [E]",
+        ToastVi = "Đã bật mũi tên 3D chỉ đường tới Hiền Giả Zioles (Đài Triệu Hồi Gacha)!",
+        ToastEn = "3D GPS Waypoint set to Oracle Zioles (Aether Gacha Shrine)!",
+    },
+    Raid = {
+        TargetId = "DrVega",
+        FallbackPos = Vector3.new(340, 50.7, 977),
+        LabelVi = "Dr. Vega • Phòng Raid [E]",
+        LabelEn = "Dr. Vega • Raid Lab [E]",
+        ToastVi = "Đã bật mũi tên 3D chỉ đường tới Phòng Thí Nghiệm Raid (Dr. Vega)!",
+        ToastEn = "3D GPS Waypoint set to Microchip Raid Lab (Dr. Vega)!",
+    },
+}
+
+function UIFactory.GuideToNPCStation(stationKind, opts)
+    opts = opts or {}
+    local spec = NPC_STATION_WAYPOINTS[tostring(stationKind or "Forge")] or NPC_STATION_WAYPOINTS.Forge
+    local Players = game:GetService("Players")
+    local lp = Players.LocalPlayer
+    if lp then
+        local lbl = I18n.Pick(spec.LabelVi, spec.LabelEn)
+        pcall(function()
+            lp:SetAttribute("CustomWaypointTargetId", spec.TargetId)
+            lp:SetAttribute("CustomWaypointPos", spec.FallbackPos)
+            lp:SetAttribute("CustomWaypointLabel", lbl)
+            lp:SetAttribute("CustomWaypointUntil", os.clock() + 90)
+        end)
+    end
+    if type(opts.OnClose) == "function" then
+        opts.OnClose()
+    end
+    if type(opts.ShowToast) == "function" then
+        opts.ShowToast(I18n.Pick(spec.ToastVi, spec.ToastEn), "info", 3.2)
+    end
+end
+
+-- Shared Top Header Bar with Personal NavTabs OR Contextual NPC Station Mode (Figma File 2)
 function UIFactory.BuildScreenHeader(parent, opts)
     opts = opts or {}
     local activeScreen = opts.ActiveScreen or ""
     local titleText = opts.Title or ""
     local snapshot = opts.Snapshot or {}
     local onNavigate = opts.OnNavigate
+    local isContextualStation = (opts.ContextualNPCStation == true)
+        or (activeScreen == UIState.Screens.NPCShop)
+        or (activeScreen == UIState.Screens.Forge)
+        or (activeScreen == UIState.Screens.Raid)
+
+    local cam = workspace.CurrentCamera
+    local vp = (cam and cam.ViewportSize) or Vector2.new(1366, 768)
+    local isNarrowHeader = (vp.X < 920) or (vp.X < vp.Y)
+    local isPortraitHeader = (vp.X < vp.Y and vp.X < 680)
+    local rightStripW = isNarrowHeader and 222 or 308
+    local personalTitleW = isPortraitHeader and 0 or (isNarrowHeader and 152 or 224)
 
     local bar = UIFactory.Create("Frame", parent, {
         Name = "SharedTopHeaderBar",
@@ -848,77 +1003,114 @@ function UIFactory.BuildScreenHeader(parent, opts)
         Name = "Title",
         Text = titleText,
         Position = UDim2.fromOffset(14, 0),
-        Size = UDim2.fromOffset(238, 56),
-        TextSize = 15,
+        Size = isContextualStation
+            and UDim2.new(1, isPortraitHeader and -(rightStripW + 24) or -504, 0, 56)
+            or UDim2.fromOffset(personalTitleW, 56),
+        Visible = isContextualStation or (personalTitleW > 0),
+        TextSize = isNarrowHeader and 13 or 15,
         TextColor = Theme.Colors.ACCENT_GOLD_BRIGHT,
         Bold = true,
         Wrapped = false,
         Truncate = Enum.TextTruncate.AtEnd,
         ZIndex = 13,
     })
-    UIFactory.TextSizeConstraint(titleLbl, 11, 16)
+    UIFactory.TextSizeConstraint(titleLbl, 10, 16)
 
-    local navTabs = UIFactory.Create("ScrollingFrame", bar, {
-        Name = "NavTabs",
-        Position = UDim2.fromOffset(256, 10),
-        Size = UDim2.new(1, -576, 0, 36),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ScrollBarThickness = 2,
-        ScrollBarImageColor3 = Theme.Colors.ACCENT_GOLD,
-        ScrollingDirection = Enum.ScrollingDirection.X,
-        AutomaticCanvasSize = Enum.AutomaticSize.X,
-        CanvasSize = UDim2.fromOffset(0, 0),
-        ZIndex = 13,
-    })
-    UIFactory.ListLayout(navTabs, Enum.FillDirection.Horizontal, 5, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
-
-    local tabs = {
-        { Id = UIState.Screens.Fruits, Label = I18n.T("nav.fruits") },
-        { Id = UIState.Screens.NPCShop, Label = I18n.Pick("SHOP NPC [N]", "NPC SHOPS [N]") },
-        { Id = UIState.Screens.Inventory, Label = I18n.T("nav.inventory") },
-        { Id = UIState.Screens.Skills, Label = I18n.T("nav.skills") },
-        { Id = UIState.Screens.Forge, Label = I18n.T("nav.forge") },
-        { Id = UIState.Screens.WorldMap, Label = I18n.T("nav.map") },
-        { Id = UIState.Screens.QuestJournal, Label = I18n.T("nav.quests") },
-        { Id = UIState.Screens.Raid, Label = I18n.T("nav.raid") },
-        { Id = UIState.Screens.SocialRewards, Label = I18n.Pick("TỔ ĐỘI & QUÀ [B]", "PARTY & REWARDS [B]") },
-        { Id = UIState.Screens.Settings, Label = I18n.T("nav.settings") },
-    }
-
-    for idx, tab in ipairs(tabs) do
-        local isCurrent = (tab.Id == activeScreen)
-        local btn = UIFactory.Create("TextButton", navTabs, {
-            Name = "Nav_" .. tab.Id,
-            Size = UDim2.fromOffset(0, 32),
-            AutomaticSize = Enum.AutomaticSize.X,
-            BackgroundColor3 = isCurrent and Color3.fromRGB(244, 193, 78) or Theme.Colors.BG_700,
-            BackgroundTransparency = isCurrent and 0.02 or 0.20,
-            BorderSizePixel = 0,
-            AutoButtonColor = false,
-            Font = Theme.Fonts.Bold,
-            TextSize = 11,
-            TextColor3 = isCurrent and Theme.Colors.BG_900 or Theme.Colors.TEXT_SECONDARY,
-            Text = tab.Label,
-            LayoutOrder = idx,
-            ZIndex = 14,
-        })
-        UIFactory.Padding(btn, 0, 10, 0, 10)
-        UIFactory.Corner(btn, Theme.Radius.Small)
-        UIFactory.Stroke(
-            btn,
-            isCurrent and Theme.Colors.ACCENT_GOLD_BRIGHT or Theme.Colors.STROKE_STEEL,
-            isCurrent and 1.5 or 1,
-            isCurrent and 0.05 or 0.45
-        )
-        if isCurrent then
-            UIFactory.Gradient(btn, Color3.fromRGB(252, 214, 104), Color3.fromRGB(196, 138, 36), 90)
+    if isContextualStation then
+        if not isPortraitHeader then
+            local badgeText = opts.StationBadgeText
+                or I18n.Pick("TRẠM TƯƠNG TÁC NPC", "NPC INTERACTION STATION")
+            local stationPill = UIFactory.Create("Frame", bar, {
+                Name = "StationContextBadge",
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, -(rightStripW + 20), 0.5, 0),
+                Size = UDim2.fromOffset(0, 30),
+                AutomaticSize = Enum.AutomaticSize.X,
+                BackgroundColor3 = Theme.Colors.BG_900,
+                BackgroundTransparency = 0.10,
+                BorderSizePixel = 0,
+                ZIndex = 13,
+            })
+            UIFactory.PillCorner(stationPill)
+            UIFactory.Padding(stationPill, 0, 12, 0, 12)
+            UIFactory.Stroke(stationPill, Theme.Colors.ACCENT_SAPPHIRE, 1.2, 0.22)
+            UIFactory.Label(stationPill, {
+                Name = "BadgeText",
+                Text = badgeText,
+                Size = UDim2.fromOffset(0, 30),
+                AutomaticSize = Enum.AutomaticSize.X,
+                TextSize = 10,
+                TextColor = Theme.Colors.ACCENT_ICE,
+                Bold = true,
+                Wrapped = false,
+                ZIndex = 14,
+            })
         end
+    else
+        local navStartX = (personalTitleW > 0) and (personalTitleW + 16) or 10
+        local navTabs = UIFactory.Create("ScrollingFrame", bar, {
+            Name = "NavTabs",
+            Position = UDim2.fromOffset(navStartX, 10),
+            Size = UDim2.new(1, -(navStartX + rightStripW + 14), 0, 36),
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+            ScrollBarThickness = 2,
+            ScrollBarImageColor3 = Theme.Colors.ACCENT_GOLD,
+            ScrollingDirection = Enum.ScrollingDirection.X,
+            AutomaticCanvasSize = Enum.AutomaticSize.X,
+            CanvasSize = UDim2.fromOffset(0, 0),
+            ZIndex = 13,
+        })
+        UIFactory.Create("UISizeConstraint", navTabs, {
+            MinSize = Vector2.new(180, 32),
+        })
+        UIFactory.ListLayout(navTabs, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
 
-        if not isCurrent and type(onNavigate) == "function" then
-            btn.Activated:Connect(function()
-                onNavigate(tab.Id)
-            end)
+        -- Personal Menu Tabs ONLY (World-station screens NPCShop / Forge / Raid appear only via NPC [E] interaction)
+        local tabs = {
+            { Id = UIState.Screens.Inventory, Route = UIState.Screens.Inventory, Label = I18n.T("nav.inventory") },
+            { Id = UIState.Screens.Skills, Route = UIState.Screens.Skills, Label = I18n.T("nav.skills") },
+            { Id = UIState.Screens.Fruits, Route = "Fruits:Vault", Label = I18n.T("nav.fruits") },
+            { Id = UIState.Screens.QuestJournal, Route = UIState.Screens.QuestJournal, Label = I18n.T("nav.quests") },
+            { Id = UIState.Screens.WorldMap, Route = UIState.Screens.WorldMap, Label = I18n.T("nav.map") },
+            { Id = UIState.Screens.SocialRewards, Route = UIState.Screens.SocialRewards, Label = I18n.Pick("TỔ ĐỘI & QUÀ [B]", "PARTY & GIFTS [B]") },
+            { Id = UIState.Screens.Settings, Route = UIState.Screens.Settings, Label = I18n.T("nav.settings") },
+        }
+
+        for idx, tab in ipairs(tabs) do
+            local isCurrent = (tab.Id == activeScreen)
+            local btn = UIFactory.Create("TextButton", navTabs, {
+                Name = "Nav_" .. tab.Id,
+                Size = UDim2.fromOffset(0, 32),
+                AutomaticSize = Enum.AutomaticSize.X,
+                BackgroundColor3 = isCurrent and Color3.fromRGB(244, 193, 78) or Theme.Colors.BG_700,
+                BackgroundTransparency = isCurrent and 0.02 or 0.20,
+                BorderSizePixel = 0,
+                AutoButtonColor = false,
+                Font = Theme.Fonts.Bold,
+                TextSize = 11,
+                TextColor3 = isCurrent and Theme.Colors.BG_900 or Theme.Colors.TEXT_SECONDARY,
+                Text = tab.Label,
+                LayoutOrder = idx,
+                ZIndex = 14,
+            })
+            UIFactory.Padding(btn, 0, 10, 0, 10)
+            UIFactory.Corner(btn, Theme.Radius.Small)
+            UIFactory.Stroke(
+                btn,
+                isCurrent and Theme.Colors.ACCENT_GOLD_BRIGHT or Theme.Colors.STROKE_STEEL,
+                isCurrent and 1.5 or 1,
+                isCurrent and 0.05 or 0.45
+            )
+            if isCurrent then
+                UIFactory.Gradient(btn, Color3.fromRGB(252, 214, 104), Color3.fromRGB(196, 138, 36), 90)
+            end
+
+            if not isCurrent and type(onNavigate) == "function" then
+                btn.Activated:Connect(function()
+                    onNavigate(tab.Route or tab.Id)
+                end)
+            end
         end
     end
 
@@ -927,11 +1119,11 @@ function UIFactory.BuildScreenHeader(parent, opts)
         Name = "RightStrip",
         AnchorPoint = Vector2.new(1, 0.5),
         Position = UDim2.new(1, -12, 0.5, 0),
-        Size = UDim2.fromOffset(308, 36),
+        Size = UDim2.fromOffset(rightStripW, 36),
         BackgroundTransparency = 1,
         ZIndex = 13,
     })
-    UIFactory.ListLayout(rightStrip, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Center)
+    UIFactory.ListLayout(rightStrip, Enum.FillDirection.Horizontal, isNarrowHeader and 4 or 6, Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Center)
 
     local currencies = snapshot.currencies or snapshot.currency or {}
     local goldVal = tonumber(currencies.gold) or 0
@@ -939,7 +1131,7 @@ function UIFactory.BuildScreenHeader(parent, opts)
 
     local goldPill = UIFactory.Create("Frame", rightStrip, {
         Name = "GoldPill",
-        Size = UDim2.fromOffset(102, 32),
+        Size = UDim2.fromOffset(isNarrowHeader and 78 or 102, 32),
         BackgroundColor3 = Theme.Colors.BG_900,
         BackgroundTransparency = 0.08,
         LayoutOrder = 1,
@@ -953,7 +1145,7 @@ function UIFactory.BuildScreenHeader(parent, opts)
         Text = UIFactory.FormatNumber(goldVal),
         Position = UDim2.fromOffset(25, 0),
         Size = UDim2.new(1, -29, 1, 0),
-        TextSize = 11,
+        TextSize = isNarrowHeader and 10 or 11,
         TextColor = Theme.Colors.ACCENT_GOLD_BRIGHT,
         Bold = true,
         Wrapped = false,
@@ -963,7 +1155,7 @@ function UIFactory.BuildScreenHeader(parent, opts)
 
     local shardPill = UIFactory.Create("Frame", rightStrip, {
         Name = "ShardsPill",
-        Size = UDim2.fromOffset(92, 32),
+        Size = UDim2.fromOffset(isNarrowHeader and 72 or 92, 32),
         BackgroundColor3 = Theme.Colors.BG_900,
         BackgroundTransparency = 0.08,
         LayoutOrder = 2,
@@ -977,7 +1169,7 @@ function UIFactory.BuildScreenHeader(parent, opts)
         Text = UIFactory.FormatNumber(shardVal),
         Position = UDim2.fromOffset(25, 0),
         Size = UDim2.new(1, -29, 1, 0),
-        TextSize = 11,
+        TextSize = isNarrowHeader and 10 or 11,
         TextColor = Theme.Colors.ACCENT_ICE,
         Bold = true,
         Wrapped = false,
@@ -987,15 +1179,15 @@ function UIFactory.BuildScreenHeader(parent, opts)
 
     local closeBtn = UIFactory.Create("TextButton", rightStrip, {
         Name = "CloseToHUDBtn",
-        Size = UDim2.fromOffset(98, 32),
+        Size = UDim2.fromOffset(isNarrowHeader and 62 or 98, 32),
         BackgroundColor3 = Color3.fromRGB(214, 40, 80),
         BackgroundTransparency = 0.02,
         BorderSizePixel = 0,
         AutoButtonColor = true,
         Font = Theme.Fonts.Bold,
-        TextSize = 11,
+        TextSize = isNarrowHeader and 10 or 11,
         TextColor3 = Color3.fromRGB(255, 250, 252),
-        Text = I18n.T("nav.resume"),
+        Text = isNarrowHeader and I18n.Pick("ĐÓNG", "CLOSE") or I18n.T("nav.resume"),
         LayoutOrder = 3,
         ZIndex = 14,
     })
